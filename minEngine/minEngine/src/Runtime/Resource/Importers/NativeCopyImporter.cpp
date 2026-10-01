@@ -23,6 +23,12 @@ namespace minEngine
             ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
         }
 
+        // ASSET-F05: images are Texture2D Product only (never NativeCopy identity).
+        if (normalized == ".png" || normalized == ".jpg" || normalized == ".jpeg")
+        {
+            return false;
+        }
+
         return !normalized.empty();
     }
 
@@ -77,6 +83,13 @@ namespace minEngine
             result.ErrorMessage =
                 "external mesh source requires ImportExternalMesh (choose StaticMesh or SkeletalMesh): "
                 + sourcePath.extension().string();
+            return result;
+        }
+
+        if (extension == ".png" || extension == ".jpg" || extension == ".jpeg")
+        {
+            result.ErrorMessage =
+                "image sources require Texture2D import product (cooks .metex), got: " + extension;
             return result;
         }
 

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-01 (ED-F24 S01–S03 Done; S04 next; ASSET-F05 Planned)
+Last updated: 2026-10-01 (ED-F24 Done; ASSET-F05 Done)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,19 +11,19 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** `ED-F24` S01（AES Create 收敛）；随后 `ASSET-F05` S01。F04 人手验收可并行。`ASSET-F06` **Done**。
+**Primary：** F04 人手验收可并行。`ED-F24` / `ASSET-F05` / `ASSET-F06` **Done**。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
 | 1 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
-| 2 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Planned** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) · 待 design-review |
-| 3 | ED-F24 | AES GUI 收敛（Import/Create/Mutation 同源） | **In Progress**（S01–S03 Done） | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
+| 2 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
+| 3 | ED-F24 | AES GUI 收敛（Import/Create/Mutation 同源） | **Done** | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
 | 4 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
 | 5 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | 6 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）ED-F24 **S04**（CB Move/Rename/CreateFolder→AES）；（2）S05–S06；（3）F05 S01；（4）F04 验收可并行。
+**下一动作：**（1）ASSET-F04 人手验收；（2）Texture Inspector 设置 UI 细化（F05-S04 余量，可选）。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

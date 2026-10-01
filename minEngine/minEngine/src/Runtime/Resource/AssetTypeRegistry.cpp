@@ -63,8 +63,8 @@ namespace minEngine
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Texture2D",
             .RuntimeClassName = GetClassName<Texture2D>(),
-            .Extensions = {".png", ".jpg", ".jpeg"},
-            .FileDialogFilterLabel = "Texture2D (*.png;*.jpg;*.jpeg)"});
+            .Extensions = {".metex"},
+            .FileDialogFilterLabel = "Texture2D (*.metex)"});
         m_AssetTypeIdByClass[Texture2D::StaticClass()] = "Texture2D";
 
         // Engine-owned geometry only. FBX/glTF are Import Sources (ASSET-F01), not AssetTypes.

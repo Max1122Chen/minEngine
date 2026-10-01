@@ -532,6 +532,24 @@ namespace minEngine
             }
         };
 
+
+        struct Texture2DCookTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"texture2d-cook", "Texture2D Cook (.metex)", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'texture2d-cook'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "texture2d-cook",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct SpriteAtlasTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -880,6 +898,7 @@ namespace minEngine
         using InputTriggerDownSuite = TypedTestSuite<InputTriggerDownTestSuiteTraits>;
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
+        using Texture2DCookSuite = TypedTestSuite<Texture2DCookTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
         using SpriteRuntimeConsumeSuite = TypedTestSuite<SpriteRuntimeConsumeTestSuiteTraits>;
         using SpriteAuthoringSuite = TypedTestSuite<SpriteAuthoringTestSuiteTraits>;
@@ -938,6 +957,7 @@ namespace minEngine
             registry.Register(InputTriggerDownSuite::Get());
             registry.Register(PlayMainCameraSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
+            registry.Register(Texture2DCookSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
             registry.Register(SpriteRuntimeConsumeSuite::Get());
             registry.Register(SpriteAuthoringSuite::Get());

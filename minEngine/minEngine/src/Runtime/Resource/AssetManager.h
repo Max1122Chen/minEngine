@@ -77,6 +77,8 @@ namespace minEngine
         std::string ProductId;
         std::string SkeletonAssetPath;
         int AnimationIndex = 0;
+        // Texture2D Product: Color (default) | SingleChannel | Mask. Empty => Color.
+        std::string ChannelSemantics;
         // When true, overwrite an existing cooked product and keep its meta Guid.
         bool bOverwriteExisting = false;
     };
@@ -363,6 +365,7 @@ namespace minEngine
         friend class SpriteAtlasLoader;
         friend class AnimationGraphLoader;
         friend class NativeCopyImporter;
+        friend class Texture2DImporter;
         friend class MeshImporter;
         friend class AnimationClipImporter;
         friend class Engine;

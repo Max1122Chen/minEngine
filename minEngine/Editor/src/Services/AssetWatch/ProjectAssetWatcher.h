@@ -59,6 +59,8 @@ namespace minEngine
         void ProcessPendingActions();
         bool ShouldIgnoreFilename(const std::filesystem::path& filename) const;
         bool ShouldIgnoreMetaOnly(const std::filesystem::path& filename) const;
+        bool IsRawTextureSourceExtension(std::string_view extension) const;
+        bool TryAutoImportTexture2D(const std::filesystem::path& absolutePath);
         std::filesystem::path CombineWatchPath(const std::string& dir, const std::string& filename) const;
         bool IsUnderWatchedRoot(const std::filesystem::path& absolutePath) const;
         void RequestDebouncedFullRescan();
@@ -72,6 +74,7 @@ namespace minEngine
         efsw::FileWatcher* m_FileWatcher = nullptr;
         efsw::WatchID m_WatchId = -1;
         bool m_WatchStarted = false;
+        bool m_AutoImportTextures = true;
 
         std::mutex m_QueueMutex;
         std::vector<PendingFileEvent> m_PendingEvents;

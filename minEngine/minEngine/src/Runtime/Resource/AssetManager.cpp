@@ -333,16 +333,31 @@ namespace minEngine
             }
 
             const std::string assetTypeId = typeRegistry.InferAssetTypeFromExtension(assetPath);
-            if (assetTypeId.empty())
+            if (!assetTypeId.empty())
             {
+                AssetMeta meta = RegisterAsset(assetPath.string(), assetTypeId);
+                if (assetTypeId == "Scene")
+                {
+                    SceneManager::Get().RegisterScene(meta.AssetName, meta.AssetPath);
+                }
                 continue;
             }
 
-            AssetMeta meta = RegisterAsset(assetPath.string(), assetTypeId);
-
-            if (assetTypeId == "Scene")
+            // ASSET-F05 migration: re-register legacy Texture2D that still live as Content PNG/JPG
+            // with an existing .meta (new imports are .metex only).
+            std::string extension = assetPath.extension().string();
+            for (char& ch : extension)
             {
-                SceneManager::Get().RegisterScene(meta.AssetName, meta.AssetPath);
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            }
+            if (extension == ".png" || extension == ".jpg" || extension == ".jpeg")
+            {
+                const std::filesystem::path metaPath = BuildMetaAbsolutePath(
+                    NormalizeProjectRelativeAssetPath(assetPath.string()));
+                if (std::filesystem::exists(metaPath))
+                {
+                    RegisterAsset(assetPath.string(), "Texture2D");
+                }
             }
         }
     }
@@ -1081,6 +1096,10 @@ namespace minEngine
         else if (meta->AssetType == "AnimationClip")
         {
             productId = "AnimationClip";
+        }
+        else if (meta->AssetType == "Texture2D")
+        {
+            productId = "Texture2D";
         }
         else
         {

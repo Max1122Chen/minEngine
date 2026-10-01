@@ -4,12 +4,14 @@
 #include "Runtime/Resource/Importers/AnimationClipImporter.h"
 #include "Runtime/Resource/Importers/MeshImporter.h"
 #include "Runtime/Resource/Importers/NativeCopyImporter.h"
+#include "Runtime/Resource/Importers/Texture2DImporter.h"
 #include "Runtime/Resource/Loaders/AnimationGraphLoader.h"
 #include "Runtime/Resource/Loaders/MaterialInstanceLoader.h"
 #include "Runtime/Resource/Loaders/MaterialLoader.h"
 #include "Runtime/Resource/Loaders/PrefabLoader.h"
 #include "Runtime/Resource/Loaders/SceneLoader.h"
 #include "Runtime/Resource/Loaders/SpriteLoader.h"
+#include "Runtime/Resource/Loaders/Texture2DLoader.h"
 
 namespace minEngine
 {
@@ -40,6 +42,7 @@ namespace minEngine
         assetManager.RegisterSaveHandler("Sprite", &SpriteLoader::SaveHandler);
         assetManager.RegisterSaveHandler("SpriteAtlas", &SpriteAtlasLoader::SaveHandler);
         assetManager.RegisterSaveHandler("AnimationGraph", &AnimationGraphLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("Texture2D", &Texture2DLoader::SaveHandler);
 
         assetManager.RegisterCreateHandler("Scene", &SceneLoader::CreateHandler);
         assetManager.RegisterCreateHandler("Prefab", &PrefabLoader::CreateHandler);
@@ -48,7 +51,14 @@ namespace minEngine
         assetManager.RegisterCreateHandler("Sprite", &SpriteLoader::CreateHandler);
         assetManager.RegisterCreateHandler("SpriteAtlas", &SpriteAtlasLoader::CreateHandler);
         assetManager.RegisterCreateHandler("AnimationGraph", &AnimationGraphLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("Texture2D", &Texture2DLoader::CreateHandler);
 
+        assetManager.RegisterImportProduct(ImportProductDescriptor{
+            .ProductId = "Texture2D",
+            .DisplayName = "Texture2D",
+            .AcceptsSourceExtension = &Texture2DImporter::AcceptsSourceExtension,
+            .bNeedsSkeletonPicker = false,
+            .Import = &Texture2DImporter::Import});
         assetManager.RegisterImportProduct(ImportProductDescriptor{
             .ProductId = "NativeCopy",
             .DisplayName = "Native Asset (copy)",

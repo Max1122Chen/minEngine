@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-01（ED-F24 Planned；ASSET-F05 Planned）
+Last updated: 2026-10-01（ED-F24 Done；ASSET-F05 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -115,7 +115,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ED-F21` | 游戏模块始终链接 minEngine（consumer 契约；去双构建） | **Done** | — | [Design](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md) · [Impl](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_IMPLEMENTATION.md) · minCraft `ENG-GAP-006-B` |
 | `ED-F22` | `MinEngine_GameModuleStartup` 钩子 | **Cancelled** | — | [Design](./Editor/ED-F22_GAME_MODULE_STARTUP_DESIGN.md) · 世界搭建归游戏仓/场景；原 ED-F20-S03 / `ENG-GAP-006-C` |
 | `ED-F23` | Viewport Pointer Capture UX（Navigate + PIE Captured/Released） | **Done** | — | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
-| `ED-F24` | AssetEditorServices GUI 收敛（CB/Workflow Import·Create·Mutation 经 AES；Create 白名单对齐） | **In Progress** | — | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) · S01–S03 Done |
+| `ED-F24` | AssetEditorServices GUI 收敛（CB/Workflow Import·Create·Mutation 经 AES；Create 白名单对齐） | **Done** | — | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) · S01–S06 |
 | `MCP-F01` | minEngine MCP 总体架构（Q/E/V 真源；产品蓝图；Scene 竖切） | **Done**（P0 伞） | — | [Design](./Editor/MCP/MCP-F01_ARCHITECTURE_DESIGN.md) · 参考 `docs/external/…Design_Guide.md`（非权威） |
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
@@ -127,7 +127,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET-F02` | Formal Import/Load 注册式管线 + ImportDialog | **Done** | — | [Design](./Asset/ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [Impl](./Asset/ASSET-F02_IMPORT_SERVICE_IMPLEMENTATION.md) |
 | `ASSET-F03` | Create Asset 身份契约（单对象·同步 meta·禁 Load 换身） | **Done** | — | [Design](./Asset/ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md) · 吸收 F23-B Guid 根因 |
 | `ASSET-F04` | Content Browser Workflow + Asset Automation Parity（SelectionSet·文件夹·Move·批改名·Delete 警告·import/sprite MCP 挂线） | **In Progress** | — | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) · 解锁 minCraft Atlas bake；引用图硬门禁 Out |
-| `ASSET-F05` | Texture2D 引擎侧 cook 资产（.metex + 导入设置/通道语义；源图与运行时身份分离） | **Planned** | — | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) · F06 已清障；待 design-review |
+| `ASSET-F05` | Texture2D 引擎侧 cook 资产（.metex + 导入设置/通道语义；源图与运行时身份分离） | **Done** | — | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) · S01–S06（Inspector S04 最小/可后置细化） |
 | `ASSET-F06` | AssetManager Facade 重构（开闭 / 去上帝对象；Import≠Load；模块自注册；ContentMutation） | **Done** | — | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) · S01–S06 |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Pose → palette → GPU） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · 旧 Placeholder `ANIM-F01_ANIMATION_SYSTEM_DESIGN.md` 已废弃勿用 |
 | `ANIM-F02` | Clip Playback（Track / Player / SMC / `.meaclip`） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |

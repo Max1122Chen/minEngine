@@ -209,15 +209,13 @@ namespace minEngine
             return false;
         }
 
-        const std::string absolutePath =
-            AssetManager::Get().ResolveAssetAbsolutePath(meta->AssetPath).string();
         std::string loadError;
-        // Match Texture2DLoader: flipVertical=true so row 0 is image bottom (GL).
-        if (!ImageLoader::Load(absolutePath, outPixels, true, &loadError))
+        // Prefer cooked .metex (ASSET-F05); legacy PNG path remains for migration only.
+        if (!Texture2DLoader::TryGetCookedPixels(*meta, outPixels, &loadError))
         {
             if (outError)
             {
-                *outError = loadError.empty() ? "ImageLoader::Load failed." : loadError;
+                *outError = loadError.empty() ? "TryGetCookedPixels failed." : loadError;
             }
             return false;
         }

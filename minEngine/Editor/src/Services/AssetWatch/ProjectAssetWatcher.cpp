@@ -1,5 +1,8 @@
 #include "Services/AssetWatch/ProjectAssetWatcher.h"
 
+#include "Services/Asset/AssetEditorServices.h"
+#include "Shell/IEditorContext.h"
+
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -7,6 +10,7 @@
 #include "Runtime/Resource/EditorFilesystemMutationPass.h"
 
 #include <algorithm>
+#include <cctype>
 
 namespace minEngine
 {
@@ -322,6 +326,119 @@ namespace minEngine
         return false;
     }
 
+    bool ProjectAssetWatcher::IsRawTextureSourceExtension(std::string_view extension) const
+    {
+        std::string normalized(extension);
+        for (char& ch : normalized)
+        {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+        return normalized == ".png" || normalized == ".jpg" || normalized == ".jpeg";
+    }
+
+    bool ProjectAssetWatcher::TryAutoImportTexture2D(const std::filesystem::path& absolutePath)
+    {
+        if (m_Context == nullptr || !m_AutoImportTextures)
+        {
+            return false;
+        }
+
+        if (!IsRawTextureSourceExtension(absolutePath.extension().string()))
+        {
+            return false;
+        }
+
+        // Skip if this file is already SourcePath of a registered Texture2D.
+        if (AssetManager::HasInstance())
+        {
+            AssetManager& assets = AssetManager::Get();
+            const std::vector<const AssetMeta*> textures = assets.FindAssetMetasByType("Texture2D");
+            for (const AssetMeta* meta : textures)
+            {
+                if (meta == nullptr || meta->SourcePath.empty())
+                {
+                    continue;
+                }
+                std::error_code eqError;
+                if (std::filesystem::equivalent(
+                        assets.ResolveAssetAbsolutePath(meta->SourcePath),
+                        absolutePath,
+                        eqError)
+                    && !eqError)
+                {
+                    return true; // already imported; treat as handled
+                }
+            }
+
+            // Skip if sibling .metex already exists and is registered.
+            const std::filesystem::path metexPath =
+                absolutePath.parent_path() / (absolutePath.stem().string() + ".metex");
+            if (std::filesystem::exists(metexPath))
+            {
+                std::error_code relativeError;
+                const std::filesystem::path relativeMetex =
+                    std::filesystem::relative(metexPath, m_WatchedRoot, relativeError);
+                if (!relativeError)
+                {
+                    const AssetMeta* existing = assets.FindAssetMetaByPath(
+                        relativeMetex.lexically_normal().generic_string());
+                    if (existing != nullptr)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        std::error_code relativeError;
+        const std::filesystem::path relativeDir =
+            std::filesystem::relative(absolutePath.parent_path(), m_WatchedRoot, relativeError);
+        if (relativeError)
+        {
+            ME_LOG(
+                LogEditor,
+                Warn,
+                "ProjectAssetWatcher: cannot relativize '{}' for Texture2D auto-import.",
+                absolutePath.string());
+            return false;
+        }
+
+        const std::string destDirectoryRel =
+            relativeDir.empty() || relativeDir == "." ? std::string(".")
+                                                      : relativeDir.lexically_normal().generic_string();
+
+        std::vector<AssetImportProductSpec> products;
+        AssetImportProductSpec textureProduct;
+        textureProduct.ProductId = "Texture2D";
+        products.push_back(std::move(textureProduct));
+
+        std::vector<AssetImportCreatedInfo> created;
+        std::vector<std::string> warnings;
+        const AssetEditorResult result = m_Context->GetAssetEditorServices().Import(
+            absolutePath.string(),
+            destDirectoryRel,
+            products,
+            false,
+            created,
+            warnings);
+        if (!result.Ok)
+        {
+            ME_LOG(
+                LogEditor,
+                Warn,
+                "ProjectAssetWatcher: Texture2D auto-import failed for '{}': {}",
+                absolutePath.string(),
+                result.Message);
+            return true; // handled (avoid RegisterAsset fallback on raw png)
+        }
+
+        for (const std::string& warning : warnings)
+        {
+            ME_LOG(LogEditor, Warn, "ProjectAssetWatcher: Texture2D auto-import warning: {}", warning);
+        }
+        return true;
+    }
+
     bool ProjectAssetWatcher::ShouldIgnoreMetaOnly(const std::filesystem::path& filename) const
     {
         return filename.extension() == ".meta";
@@ -378,6 +495,11 @@ namespace minEngine
             {
                 return;
             }
+        }
+
+        if (TryAutoImportTexture2D(absolutePath))
+        {
+            return;
         }
 
         const std::string assetTypeId = AssetTypeRegistry::Get().InferAssetTypeFromExtension(absolutePath);

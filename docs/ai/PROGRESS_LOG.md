@@ -1,3 +1,10 @@
+## 2026-10-01 — ED-F24 Done + ASSET-F05 Texture2D .metex cook
+
+- **ED-F24 S04–S06:** CB Move/Rename/RenameFolder/CreateFolder、Delete/Reimport → AES；grep 门禁（GUI 库 mutate 仅 AES 调 AM）；Design/Registry Done
+- **ASSET-F05:** `.metex` 单文件 cook；`Texture2DImporter` Product；NativeCopy 拒 png/jpg/jpeg；Load/Save/Create handlers；Reimport；Atlas `TryGetCookedPixels`；Watcher 自动 Import 经 AES；AES Create allowlist + channelSemantics options
+- **测试:** `Texture2DCookTest`（suite `texture2d-cook`）；smoke from `minEngine/bin`
+- **Next:** 两 commit 待批；F04 验收；Inspector 设置 UI 可后置细化
+
 ## 2026-10-01 — ED-F24 S01–S03（Create allowlist + GUI Create/Import→AES）
 
 - **S01:** `AssetEditorServices::Create` → allowlist + `CreateAssetByTypeId`；白名单含 MaterialInstance

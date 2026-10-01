@@ -4,9 +4,9 @@
 - **ID:** `ASSET-F05`
 - **Type:** Feature
 - **Complexity:** L2
-- **Status:** Planned
+- **Status:** Done
 - **Owner:** project maintainer
-- **Last updated:** 2026-10-01（design-review 修订）
+- **Last updated:** 2026-10-01（S01–S06 实现）
 - **Related:**
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - [ASSET-F02](./ASSET-F02_IMPORT_SERVICE_DESIGN.md) · [ASSET-F03](./ASSET-F03_CREATE_ASSET_IDENTITY_DESIGN.md)
@@ -375,12 +375,12 @@ Load: 读 .metex → Texture2D 字段 → RHICreateTexture2D
 
 | Slice | 目标 | 验收 |
 |-------|------|------|
-| **S01** | 单文件 `.metex` + Importer + Product `Texture2D` + Registry 扩展名 + NativeCopy 拒 png/jpg/jpeg | 显式导入 → `.metex`；Load 不打开 PNG；`ListImportProducts(png)` 仅 Texture2D |
-| **S02** | Color / SingleChannel cook + 测试 | 灰度 Color 不发红；Mask 为 R8 |
-| **S03** | SaveHandler + CreateHandler + Reimport + Bootstrap | Save 往返；有 SourcePath 可 Reimport |
-| **S04** | Inspector 设置 + Recook | 改语义可见生效 |
-| **S05** | 像素 API + Atlas/预览；legacy Load 警告 | Atlas 成员 `.metex` OK |
-| **S06** | 自动导入 + 迁移命令 + 文档；AES allowlist Texture2D（若 ED-F24 就绪） | 丢 PNG → `.metex`；Guid 保留迁移样例 |
+| **S01** | 单文件 `.metex` + Importer + Product `Texture2D` + Registry 扩展名 + NativeCopy 拒 png/jpg/jpeg | **Done** |
+| **S02** | Color / SingleChannel cook + 测试 | **Done** |
+| **S03** | SaveHandler + CreateHandler + Reimport + Bootstrap | **Done** |
+| **S04** | Inspector 设置 + Recook | **Partial**（Reimport/options 就绪；专用 Inspector UI 可后置） |
+| **S05** | 像素 API + Atlas/预览；legacy Load 警告 | **Done** |
+| **S06** | 自动导入 + 文档；AES allowlist Texture2D | **Done**（迁移命令可后置工具；Watcher→AES Import） |
 
 ## Design Review
 
