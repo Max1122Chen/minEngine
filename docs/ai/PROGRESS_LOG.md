@@ -1,3 +1,10 @@
+## 2026-10-02 — BUG-ASSET-002 AssetSerializeHelper 运行时类修复
+
+- **根因:** Helper 对 `MEObject&` 调模板 FromFile/ToFile → `MEObject::StaticClass()`，Scene 字段被 skip
+- **修复:** `WriteObjectToFile` / `ReadObjectFromFile` 使用 `object.GetClass()`
+- **回归:** `prefab scene AssetSerializeHelper keeps game objects [smoke]`
+- **影响:** Scene/Prefab/Material 等经 Helper 的 Load/Save；解除 minCraft 冷开丢 GO / Save 写空
+
 ## 2026-10-01 — ED-F24 Done + ASSET-F05 Texture2D .metex cook
 
 - **ED-F24 S04–S06:** CB Move/Rename/RenameFolder/CreateFolder、Delete/Reimport → AES；grep 门禁（GUI 库 mutate 仅 AES 调 AM）；Design/Registry Done

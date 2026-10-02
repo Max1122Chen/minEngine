@@ -21,9 +21,11 @@
 #include "Runtime/Function/Framework/Scene/SceneDuplicator.h"
 #include "Runtime/Function/Framework/Scene/SceneCloneContext.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Resource/AssetSerializeHelper.h"
 
 #include <doctest.h>
 #include <filesystem>
+#include <fstream>
 
 namespace minEngine
 {
@@ -189,7 +191,62 @@ namespace minEngine
         std::filesystem::remove(tempPath, removeError);
     }
 
-    TEST_CASE("prefab pie clears instance records [smoke]")
+    
+    // BUG-ASSET-002: AssetSerializeHelper must use object.GetClass(), not MEObject::StaticClass().
+    TEST_CASE("prefab scene AssetSerializeHelper keeps game objects [smoke]")
+    {
+        PrefabTestScope scope;
+
+        const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("asset-serialize-scene");
+        REQUIRE(static_cast<bool>(scene));
+        scene->SetSceneType(ESceneType::Editor);
+        scene->SetSceneName("AssetSerializeScene");
+
+        const std::shared_ptr<GameObject> root = scene->CreateGameObject();
+        root->Rename("SerializeRoot");
+        root->AddComponent<SceneComponent>();
+        REQUIRE(scene->GetAllGameObjects().size() == 1);
+
+        const std::filesystem::path tempPath =
+            std::filesystem::temp_directory_path() / "minEngine_scene_serialize_helper.mescene";
+
+        std::string writeError;
+        REQUIRE(AssetSerializeHelper::WriteObjectToFile(tempPath.string(), *scene, &writeError));
+
+        {
+            std::ifstream in(tempPath);
+            REQUIRE(static_cast<bool>(in));
+            const std::string contents((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            const bool hasGameObjectsField = contents.find("m_GameObjects") != std::string::npos;
+            const bool hasRootName = contents.find("SerializeRoot") != std::string::npos;
+            CHECK(hasGameObjectsField);
+            CHECK(hasRootName);
+        }
+
+        std::shared_ptr<Scene> loaded = NewObject<Scene>("LoadedScene");
+        REQUIRE(static_cast<bool>(loaded));
+        loaded->Reset();
+        std::string readError;
+        REQUIRE(AssetSerializeHelper::ReadObjectFromFile(tempPath.string(), *loaded, &readError));
+        CHECK(loaded->GetAllGameObjects().size() == 1);
+
+        std::string rewriteError;
+        REQUIRE(AssetSerializeHelper::WriteObjectToFile(tempPath.string(), *loaded, &rewriteError));
+        {
+            std::ifstream in(tempPath);
+            REQUIRE(static_cast<bool>(in));
+            const std::string contents((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            const bool hasGameObjectsField = contents.find("m_GameObjects") != std::string::npos;
+            const bool hasRootName = contents.find("SerializeRoot") != std::string::npos;
+            CHECK(hasGameObjectsField);
+            CHECK(hasRootName);
+        }
+
+        std::error_code removeError;
+        std::filesystem::remove(tempPath, removeError);
+    }
+
+TEST_CASE("prefab pie clears instance records [smoke]")
     {
         PrefabTestScope scope;
 
