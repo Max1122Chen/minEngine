@@ -384,4 +384,15 @@ namespace minEngine
         ME_LOG(LogEditor, Info, "Prefab Stage saved '{}'.", stage->AssetKey);
         return true;
     }
+
+    void PrefabStageController::Shutdown()
+    {
+        m_ActiveAssetKey.clear();
+        for (auto& [key, stage] : m_StagesByKey)
+        {
+            (void)key;
+            DestroyStage(stage);
+        }
+        m_StagesByKey.clear();
+    }
 }

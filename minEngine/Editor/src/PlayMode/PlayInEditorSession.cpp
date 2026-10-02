@@ -241,6 +241,8 @@ namespace minEngine
             }
         }
 
+        // Do not retain a Scene strong ref after handoff — Editor lives past InputSystem Shutdown.
+        m_EditorContext = {};
         m_State = PlayState::Editing;
         ApplyInspectingSceneForPlayState();
 
@@ -256,6 +258,21 @@ namespace minEngine
         {
             InputSystem::Get().SetEditorGameplayCaptureActive(true);
         }
+    }
+
+    void PlayInEditorSession::Shutdown()
+    {
+        if (m_State == PlayState::Playing)
+        {
+            Stop();
+        }
+
+        m_PIEContexts.clear();
+        m_EditorContext = {};
+        m_ObjectMapping.Clear();
+        m_CloneContext = {};
+        m_HostContext = nullptr;
+        m_State = PlayState::Editing;
     }
 
     void PlayInEditorSession::TickPIE(float deltaTime)

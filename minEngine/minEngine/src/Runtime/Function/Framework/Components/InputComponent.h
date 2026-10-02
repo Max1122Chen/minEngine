@@ -23,12 +23,18 @@ namespace minEngine
         InputComponent() = default;
         virtual ~InputComponent() override
         {
-            InputSystem::Get().RemoveInputComponent(this);
+            if (InputSystem::HasInstance())
+            {
+                InputSystem::Get().RemoveInputComponent(this);
+            }
         }
 
         void RegisterInputComponent()
         {
-            InputSystem::Get().AddInputComponent(this);
+            if (InputSystem::HasInstance())
+            {
+                InputSystem::Get().AddInputComponent(this);
+            }
         }
 
 

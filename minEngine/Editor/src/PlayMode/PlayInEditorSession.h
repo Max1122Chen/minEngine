@@ -23,6 +23,8 @@ namespace minEngine
         bool IsPlaying() const override { return m_State == PlayState::Playing; }
         bool EnterPlay() override;
         void Stop() override;
+        /** Stop play if needed and release any Scene shared_ptrs before Engine shutdown. */
+        void Shutdown();
         void TickPIE(float deltaTime) override;
 
         Scene* GetEditorScene() const override;

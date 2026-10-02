@@ -64,6 +64,9 @@ namespace minEngine
 
     void SceneEditor::Shutdown()
     {
+        m_PrefabStages.Shutdown();
+        m_SelectedGameObject = nullptr;
+        m_SelectedGameObjectId = std::numeric_limits<uint64_t>::max();
         m_Context = nullptr;
     }
 

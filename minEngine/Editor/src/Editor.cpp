@@ -559,6 +559,8 @@ namespace minEngine
         m_AnimationGraphEditor.reset();
 
         m_InputHub.Shutdown();
+        // Release Editor-owned Scene shared_ptrs before Engine tears down InputSystem.
+        m_PlayInEditorSession.Shutdown();
         m_SceneEditor.Shutdown();
         m_MainMenuModule.Shutdown();
         m_InspectorModule.Shutdown();

@@ -5,6 +5,8 @@
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Function/Framework/Components/InputComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
@@ -162,6 +164,30 @@ namespace minEngine
             SceneManager::Get().SetEditorSceneViewport(nullptr);
             return true;
         }
+
+        bool RunInputComponentDtorAfterInputShutdown()
+        {
+            GameplayInputGateTestScope scope;
+
+            const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("input-dtor-shutdown");
+            const std::shared_ptr<GameObject> go = scene->CreateGameObject();
+            const std::shared_ptr<InputComponent> inputComponent = go->AddComponent<InputComponent>();
+            if (!inputComponent)
+            {
+                ME_LOG(LogTest, Error, "InputComponent dtor: failed to add InputComponent.");
+                return false;
+            }
+
+            inputComponent->RegisterInputComponent();
+
+            // Mimic Engine shutdown order: InputSystem dies while Scene/GO still held.
+            scope.GetInput().Shutdown();
+            Testing::TestAccess<InputSystem>::SetInstance(nullptr);
+
+            // Drop Scene after Input is gone — InputComponent dtor must not assert.
+            SceneManager::Get().UnloadActiveScene();
+            return true;
+        }
     }
 
     bool RunGameplayInputGateTests()
@@ -169,7 +195,8 @@ namespace minEngine
         return RunStandaloneEnabledWithoutEditorViewport()
             && RunEditorViewportBlocksUntilBeginPlay()
             && RunGatedTickStillClearsMouseScroll()
-            && RunCaptureFlagGatesWhilePlaying();
+            && RunCaptureFlagGatesWhilePlaying()
+            && RunInputComponentDtorAfterInputShutdown();
     }
 }
 

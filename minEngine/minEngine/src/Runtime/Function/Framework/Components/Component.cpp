@@ -209,6 +209,9 @@ namespace minEngine
 
     void Component::MarkForNeededEndOfFrameUpdate()
     {
-        SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(this);
+        if (SceneManager::HasInstance())
+        {
+            SceneManager::Get().MarkComponentForNeededEndOfFrameUpdate(this);
+        }
     }
 }

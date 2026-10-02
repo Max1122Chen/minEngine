@@ -38,6 +38,9 @@ namespace minEngine
         /** S03: write Stage tree back to Prefab asset (Guid-preserving). Stub until Save slice. */
         bool SaveActive(IEditorContext& context, std::string* outError = nullptr);
 
+        /** Drop all stage Scene strong refs (Editor shutdown before Engine). */
+        void Shutdown();
+
     private:
         bool BuildStage(const AssetMeta& meta, PrefabEditorStage& outStage, std::string* outError);
         void DestroyStage(PrefabEditorStage& stage);

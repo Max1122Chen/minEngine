@@ -74,6 +74,14 @@ namespace minEngine
             }
         }
 
+        // Drop editor-context ownership of the same Scene so unload actually releases it.
+        // (LoadScene keeps both m_CurrentActiveScene and m_EditorSceneContext sharing one instance.)
+        if (m_EditorSceneContext.Scene && m_CurrentActiveScene
+            && m_EditorSceneContext.Scene.get() == m_CurrentActiveScene.get())
+        {
+            m_EditorSceneContext = {};
+        }
+
         m_CurrentActiveScene.reset();
 
         if (ObjectManager::HasInstance())

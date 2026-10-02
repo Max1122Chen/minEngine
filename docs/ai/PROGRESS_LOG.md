@@ -1,3 +1,10 @@
+## 2026-10-02 — BUG-CORE-005 InputComponent 析构 / Scene 晚释放
+
+- **Review:** OM 强引用拖死 GO 已过时（`m_ObjectsByGuid` = weak）；真因是 `InputComponent` 无 `HasInstance` + Editor/PIE/Unload 对 Scene 的额外 `shared_ptr`
+- **Fix:** InputComponent / MarkForNeededEOF 守卫；Unload 清同实例 editor context；PIE Stop 后丢 Scene 持有；Editor Shutdown 先 `PlayInEditorSession` + PrefabStage
+- **回归:** `gameplay-input-gate` 增 `RunInputComponentDtorAfterInputShutdown`
+- **Docs:** [BUG-CORE-005](./bugs/BUG-CORE-005.md)
+
 ## 2026-10-02 — BUG-ASSET-002 AssetSerializeHelper 运行时类修复
 
 - **根因:** Helper 对 `MEObject&` 调模板 FromFile/ToFile → `MEObject::StaticClass()`，Scene 字段被 skip
