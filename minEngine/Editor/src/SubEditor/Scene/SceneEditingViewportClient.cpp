@@ -292,7 +292,14 @@ namespace minEngine
 
         viewportCamera->SetPosition(sceneCamera->GetPosition());
         viewportCamera->SetRotation(sceneCamera->GetRotation());
+        // Lens: Play draws SceneViewport's own RenderCamera (default near=1). Copy Main camera lens.
+        // Aspect is refreshed after this by SyncSceneViewportCameraAspect from buffer size.
+        viewportCamera->m_FOV = sceneCamera->m_FOV;
+        viewportCamera->m_zNear = sceneCamera->m_zNear;
+        viewportCamera->m_zFar = sceneCamera->m_zFar;
         viewportCamera->UpdateViewMatrix();
+        viewportCamera->UpdateProjectionMatrix();
+        viewportCamera->UpdateViewProjMatrix();
     }
 
     bool SceneEditingViewportClient::IsPlayPointerCaptured() const

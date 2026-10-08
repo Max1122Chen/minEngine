@@ -9,6 +9,9 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
+#include "Runtime/Function/Render/RenderCamera.h"
+
+#include <cmath>
 
 namespace minEngine
 {
@@ -98,13 +101,50 @@ namespace minEngine
             }
             return true;
         }
+
+        bool RunLensParamsPushToRenderCamera()
+        {
+            PlayMainCameraTestScope scope;
+            const std::shared_ptr<Scene> scene = SceneManager::Get().CreateNewScene("cam-lens");
+            const std::shared_ptr<GameObject> go = scene->CreateGameObject();
+            const std::shared_ptr<CameraComponent> camera = go->AddComponent<CameraComponent>();
+            RenderCamera* renderCamera = camera->GetRenderCamera();
+            if (renderCamera == nullptr)
+            {
+                ME_LOG(LogTest, Error, "PlayMainCamera: RenderCamera missing.");
+                return false;
+            }
+
+            // Constructor ApplyLens should already leave component default (0.1), not RenderCamera ctor 1.0.
+            if (renderCamera->m_zNear > 0.11f)
+            {
+                ME_LOG(LogTest, Error, "PlayMainCamera: ctor should push component near (0.1), got {}.",
+                       renderCamera->m_zNear);
+                return false;
+            }
+
+            constexpr float kVoxelNear = 0.05f;
+            camera->SetNearPlane(kVoxelNear);
+            camera->SetFieldOfView(70.0f);
+            if (std::abs(renderCamera->m_zNear - kVoxelNear) > 0.0001f
+                || std::abs(renderCamera->m_FOV - 70.0f) > 0.0001f)
+            {
+                ME_LOG(LogTest, Error,
+                       "PlayMainCamera: SetNearPlane/SetFieldOfView must push to RenderCamera (near={} fov={}).",
+                       renderCamera->m_zNear,
+                       renderCamera->m_FOV);
+                return false;
+            }
+            return true;
+        }
     }
 
     bool RunPlayMainCameraTests()
     {
         return RunSoleCameraAutoMainOnBeginPlay()
             && RunBoolForcesMainAmongMany()
-            && RunManualSetClearsOtherMain();
+            && RunManualSetClearsOtherMain()
+            && RunLensParamsPushToRenderCamera();
     }
 }
 

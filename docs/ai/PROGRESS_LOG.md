@@ -1,3 +1,10 @@
+## 2026-10-08 — BUG-EDITOR-005 PIE viewport 同步 Main Camera 近平面
+
+- **根因:** SyncPlayModeCamera 只拷位姿；viewport RenderCamera 默认 near=1；CameraComponent 镜头未推内部相机
+- **修复:** ApplyLensToRenderCamera + SetNear/FOV/Far；PIE sync 拷贝 FOV/near/far
+- **回归:** `play-main-camera` lens push；手动贴墙待 minCraft 验
+- **Docs:** [BUG-EDITOR-005](./bugs/BUG-EDITOR-005.md)
+
 ## 2026-10-02 — BUG-CORE-005 InputComponent 析构 / Scene 晚释放
 
 - **Review:** OM 强引用拖死 GO 已过时（`m_ObjectsByGuid` = weak）；真因是 `InputComponent` 无 `HasInstance` + Editor/PIE/Unload 对 Scene 的额外 `shared_ptr`

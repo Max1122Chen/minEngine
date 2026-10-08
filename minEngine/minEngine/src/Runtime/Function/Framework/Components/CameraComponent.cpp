@@ -12,10 +12,47 @@ namespace minEngine
     {
         m_RenderCamera = std::make_shared<RenderCamera>();
         m_RenderCamera->Initialize();
+        ApplyLensToRenderCamera();
     }
 
     CameraComponent::~CameraComponent()
     {
+    }
+
+    void CameraComponent::SetFieldOfView(float degrees)
+    {
+        m_FOV = degrees;
+        ApplyLensToRenderCamera();
+        MarkRenderStateDirty();
+    }
+
+    void CameraComponent::SetNearPlane(float nearPlane)
+    {
+        m_zNear = nearPlane;
+        ApplyLensToRenderCamera();
+        MarkRenderStateDirty();
+    }
+
+    void CameraComponent::SetFarPlane(float farPlane)
+    {
+        m_zFar = farPlane;
+        ApplyLensToRenderCamera();
+        MarkRenderStateDirty();
+    }
+
+    void CameraComponent::ApplyLensToRenderCamera()
+    {
+        if (!m_RenderCamera)
+        {
+            return;
+        }
+
+        m_RenderCamera->m_FOV = m_FOV;
+        m_RenderCamera->m_zNear = m_zNear;
+        m_RenderCamera->m_zFar = m_zFar;
+        // Aspect is owned by the presenting SceneViewport (buffer size); leave m_AspectRatio.
+        m_RenderCamera->UpdateProjectionMatrix();
+        m_RenderCamera->UpdateViewProjMatrix();
     }
 
     void CameraComponent::ClearOtherMainCamerasInScene()
@@ -107,16 +144,18 @@ namespace minEngine
 
     void CameraComponent::DoEndOfFrameUpdate()
     {
-        if(m_bRenderStateDirty)
+        ME_ASSERT(m_RenderCamera, "RenderCamera is null!");
+
+        if (m_bRenderStateDirty)
         {
-            ME_ASSERT(m_RenderCamera, "RenderCamera is null!");
-            
             const Transform worldTransform = GetWorldTransform();
             m_RenderCamera->SetPosition(worldTransform.Position);
             m_RenderCamera->SetRotation(worldTransform.Rotation);
-
             m_RenderCamera->UpdateViewMatrix();
         }
+
+        // Keep lens params authoritative even if only FOV/near/far changed.
+        ApplyLensToRenderCamera();
         m_bRenderStateDirty = false;
     }
 }

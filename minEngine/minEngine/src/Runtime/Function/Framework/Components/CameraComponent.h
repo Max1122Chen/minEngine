@@ -24,6 +24,15 @@ namespace minEngine
         void SetSetAsMainCameraOnBeginPlay(bool value) { m_bSetAsMainCameraOnBeginPlay = value; }
         bool GetSetAsMainCameraOnBeginPlay() const { return m_bSetAsMainCameraOnBeginPlay; }
 
+        float GetFieldOfView() const { return m_FOV; }
+        void SetFieldOfView(float degrees);
+
+        float GetNearPlane() const { return m_zNear; }
+        void SetNearPlane(float nearPlane);
+
+        float GetFarPlane() const { return m_zFar; }
+        void SetFarPlane(float farPlane);
+
         virtual void DoEndOfFrameUpdate() override;
 
     protected:
@@ -32,6 +41,8 @@ namespace minEngine
         void ClearOtherMainCamerasInScene();
         bool IsSoleActiveCameraInOwningScene() const;
         void TryPushEditViewportPreview();
+        /** Push FOV / near / far from component fields onto m_RenderCamera. */
+        void ApplyLensToRenderCamera();
 
         std::shared_ptr<RenderCamera> m_RenderCamera;
 
