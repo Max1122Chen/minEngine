@@ -100,7 +100,8 @@ namespace minEngine
         }
 
         m_StopRequested = true;
-        m_PipeServer.Close();
+        // Unblock ConnectNamedPipe / ReadFile without destroying stop events yet.
+        m_PipeServer.InterruptIo();
 
         {
             std::lock_guard<std::mutex> lock(m_Mutex);
@@ -114,9 +115,23 @@ namespace minEngine
 
         if (m_IoThread.joinable())
         {
+#if defined(_WIN32)
+            const HANDLE threadHandle = static_cast<HANDLE>(m_IoThread.native_handle());
+            const DWORD waitResult = WaitForSingleObject(threadHandle, 2000);
+            if (waitResult == WAIT_TIMEOUT)
+            {
+                ME_LOG(
+                    LogEditor,
+                    Error,
+                    "AutomationHost: IO thread did not exit within 2s after InterruptIo; "
+                    "retrying cancel then joining (shutdown may stall).");
+                m_PipeServer.InterruptIo();
+            }
+#endif
             m_IoThread.join();
         }
 
+        m_PipeServer.Close();
         m_Running = false;
         ME_LOG(LogEditor, Info, "AutomationHost: stopped.");
     }

@@ -1,3 +1,10 @@
+## 2026-10-08 — BUG-EDITOR-006 AutomationHost Stop 挂死
+
+- **根因:** 同步 named-pipe Connect/Read；CancelIoEx 无法可靠打断 → Shutdown join 堵死
+- **修复:** overlapped IO + stop event；InterruptIo 后 join 再 Close；2s 超时诊断
+- **回归:** suite `automation-pipe-interrupt`
+- **Docs:** [BUG-EDITOR-006](./bugs/BUG-EDITOR-006.md)
+
 ## 2026-10-08 — BUG-EDITOR-005 PIE viewport 同步 Main Camera 近平面
 
 - **根因:** SyncPlayModeCamera 只拷位姿；viewport RenderCamera 默认 near=1；CameraComponent 镜头未推内部相机

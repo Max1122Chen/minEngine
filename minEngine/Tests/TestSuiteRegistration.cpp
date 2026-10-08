@@ -33,6 +33,7 @@
 #include "Suites/GameplayInputGateTest.h"
 #include "Suites/InputTriggerDownTest.h"
 #include "Suites/PlayMainCameraTest.h"
+#include "Suites/AutomationPipeInterruptTest.h"
 #include "Suites/MeshDrawSortTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
@@ -515,6 +516,23 @@ namespace minEngine
             }
         };
 
+        struct AutomationPipeInterruptTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"automation-pipe-interrupt", "Automation Pipe Interrupt", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'automation-pipe-interrupt'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "automation-pipe-interrupt",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MeshDrawSortTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -897,6 +915,7 @@ namespace minEngine
         using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
         using InputTriggerDownSuite = TypedTestSuite<InputTriggerDownTestSuiteTraits>;
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
+        using AutomationPipeInterruptSuite = TypedTestSuite<AutomationPipeInterruptTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using Texture2DCookSuite = TypedTestSuite<Texture2DCookTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
@@ -956,6 +975,7 @@ namespace minEngine
             registry.Register(GameplayInputGateSuite::Get());
             registry.Register(InputTriggerDownSuite::Get());
             registry.Register(PlayMainCameraSuite::Get());
+            registry.Register(AutomationPipeInterruptSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(Texture2DCookSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());

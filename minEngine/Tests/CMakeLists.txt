@@ -20,6 +20,11 @@ set(SPRITE_AUTHORING_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Asset/AssetEditorServices.cpp
 )
 
+# BUG-EDITOR-006: overlapped named-pipe interrupt (Editor source linked into tests).
+set(AUTOMATION_PIPE_EDITOR_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Automation/AutomationPipeServer.cpp
+)
+
 # TEST-F05: optional external / extra suite sources (off by default).
 set(_MINENGINE_EXTRA_TEST_SOURCES "${MINENGINE_EXTRA_TEST_SOURCES}")
 if(NOT "${MINENGINE_EXTRA_TEST_DIR}" STREQUAL "")
@@ -46,6 +51,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     ${TEST_SUITE_SOURCES}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
     ${SPRITE_AUTHORING_EDITOR_SOURCES}
+    ${AUTOMATION_PIPE_EDITOR_SOURCES}
     ${_MINENGINE_EXTRA_TEST_SOURCES}
 )
 
