@@ -17,6 +17,8 @@
 #include "Runtime/Resource/Loaders/SceneLoader.h"
 #include "Runtime/Resource/Loaders/SkeletalMeshLoader.h"
 #include "Runtime/Resource/Loaders/SkeletonLoader.h"
+#include "Runtime/Resource/DataAsset.h"
+#include "Runtime/Resource/Loaders/DataAssetLoader.h"
 #include "Runtime/Resource/Loaders/SpriteLoader.h"
 #include "Runtime/Resource/Loaders/StaticMeshLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
@@ -1254,6 +1256,15 @@ namespace minEngine
             SpriteAtlasLoader::Load(meta, &outErrorMessage),
             outErrorMessage,
             "failed to load SpriteAtlas");
+    }
+
+    std::shared_ptr<Asset> AssetManager::LoadHandler_DataAsset(
+        AssetManager& /*manager*/, const AssetMeta& meta, std::string& outErrorMessage)
+    {
+        return WrapLoadedAsset(
+            DataAssetLoader::Load(meta, &outErrorMessage),
+            outErrorMessage,
+            "failed to load DataAsset");
     }
 
     std::shared_ptr<Asset> AssetManager::LoadHandler_Font(

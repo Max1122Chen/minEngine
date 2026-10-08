@@ -229,7 +229,7 @@ namespace minEngine
         }
 
         std::shared_ptr<AnimationGraph> graph =
-            AssetManager::Get().LoadAsset<AnimationGraph>(meta->AssetPath);
+            ([&]() -> std::shared_ptr<AnimationGraph> { std::string _loadAssetError; return std::dynamic_pointer_cast<AnimationGraph>(AssetManager::Get().LoadAssetByPath(meta->AssetPath, _loadAssetError)); })();
         if (!graph)
         {
             ME_LOG(LogEditor, Error, "AnimationGraphEditor: failed to load '{}'.", meta->AssetPath);

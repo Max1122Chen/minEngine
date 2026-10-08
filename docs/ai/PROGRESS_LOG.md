@@ -1,3 +1,24 @@
+## 2026-10-08 — ASSET-F08 + ASSET-F07 Done（feat/asset-load-api）
+
+- **F08 Done:** 删除 AM `LoadAsset<T>` / `CreateAsset<T>`；调用点 → ByPath/ByTypeId；`ObjectCast.h` `Cast<T>`；minCraft 改用 Cast
+- **F07 Done:** `DataAsset` + `.medata` + Loader/Bootstrap/AES/CB Create + CB Inspector 反射编辑+Save；suite `data-asset` / `asset-manager` / `smoke` 通过
+- **Docs:** F07 Design 误清空后已按 Review+实现重建；Registry/ACTIVE_WORK 同步 Done
+- **Branch:** `feat/asset-load-api` — **Next:** 准备 commit（等维护者批准）
+
+## 2026-10-08 — ASSET-F08 / F07 拆轨：先去 LoadAsset<T> 糖衣
+
+- **决定:** 分两个 Feature：先 [ASSET-F08](./Asset/ASSET-F08_LOADASSET_TYPED_SUGAR_REMOVAL_DESIGN.md) 删除 `LoadAsset<T>`（默认含 `CreateAsset<T>`），再 [ASSET-F07](./Asset/ASSET-F07_DATA_ASSET_DESIGN.md) DataAsset
+- **F08:** Design + Review Planned；真源 = `ByPath`/`ByMeta`/`CreateAssetByTypeId`
+- **F07:** Design 修订为依赖 F08；Runtime 合同不再推荐 typed Load 糖衣
+- **Next:** 维护者审批 F08（及 Create 默认）→ `feat/asset-load-api`；F07 暂缓
+
+## 2026-10-08 — ASSET-F07 Thin DataAsset Design + self-review
+
+- **Design:** [ASSET-F07](./Asset/ASSET-F07_DATA_ASSET_DESIGN.md) — 薄 `DataAsset`：`.medata`、F06 Create/Load/Save、AES/CB Create、CB Inspector 反射编辑+Save；Import/Cook/Primary Out
+- **Review:** [Review](./Asset/ASSET-F07_DATA_ASSET_DESIGN_REVIEW.md) — **Ready with deferred**（游戏 AES creatable 动态注册 / Undo / 外部 Import）
+- **Registry:** ASSET-F07 **Planned**；next free ASSET **F08**
+- **Next:** 维护者审批 Open Questions 默认倾向 → 从当前 master 开 `feat/asset-dataasset` → S01
+
 ## 2026-10-08 — BUG-EDITOR-006 AutomationHost Stop 挂死
 
 - **根因:** 同步 named-pipe Connect/Read；CancelIoEx 无法可靠打断 → Shutdown join 堵死

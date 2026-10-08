@@ -310,7 +310,7 @@ namespace minEngine
             return;
         }
 
-        std::shared_ptr<Material> material = AssetManager::Get().LoadAsset<Material>(meta->AssetPath);
+        std::shared_ptr<Material> material = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(AssetManager::Get().LoadAssetByPath(meta->AssetPath, _loadAssetError)); })();
         if (!material)
         {
             ME_LOG(LogEditor, Error, "MaterialEditor: failed to load material '{}'.", meta->AssetPath);

@@ -11,6 +11,7 @@
 
 #include "Suites/SerializationArchiveTest.h"
 #include "Suites/AssetManagerTest.h"
+#include "Suites/DataAssetTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
 #include "Suites/LuaScriptMvpTest.h"
@@ -114,6 +115,21 @@ namespace minEngine
                 ME_LOG(LogTest, Info, "TestRunner: starting suite 'asset-manager'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("asset-manager", context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct DataAssetTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"data-asset", "Data Asset", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'data-asset'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("data-asset", context.GetCommandLine().TestKind);
             }
         };
 
@@ -890,6 +906,7 @@ namespace minEngine
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
+        using DataAssetSuite = TypedTestSuite<DataAssetTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
         using RenderGraphSuite = TypedTestSuite<RenderGraphTestSuiteTraits>;
@@ -950,6 +967,7 @@ namespace minEngine
             registry.Register(ObjectManagerSuite::Get());
             registry.Register(SerializationArchiveSuite::Get());
             registry.Register(AssetManagerSuite::Get());
+            registry.Register(DataAssetSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
             registry.Register(RenderGraphSuite::Get());

@@ -164,7 +164,7 @@ namespace minEngine
                 {
                     m_AddSpritePickerIndex = static_cast<int>(i);
                     std::shared_ptr<Sprite> sprite =
-                        AssetManager::Get().LoadAsset<Sprite>(spriteMetas[i]->AssetPath);
+                        ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(spriteMetas[i]->AssetPath, _loadAssetError)); })();
                     if (sprite)
                     {
                         editor->SubmitAddMembers({ sprite });

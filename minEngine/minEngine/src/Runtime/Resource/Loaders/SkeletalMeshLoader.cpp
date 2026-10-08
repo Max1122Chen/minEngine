@@ -696,7 +696,9 @@ namespace minEngine
             return false;
         }
 
-        std::shared_ptr<Skeleton> registeredSkeleton = assetManager.LoadAsset<Skeleton>(skeletonMeta.AssetPath);
+        std::string loadError;
+        std::shared_ptr<Skeleton> registeredSkeleton = std::dynamic_pointer_cast<Skeleton>(
+            assetManager.LoadAssetByPath(skeletonMeta.AssetPath, loadError));
         if (!registeredSkeleton)
         {
             if (outError != nullptr)

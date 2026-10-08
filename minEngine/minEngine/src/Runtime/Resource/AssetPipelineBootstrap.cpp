@@ -10,6 +10,7 @@
 #include "Runtime/Resource/Loaders/MaterialLoader.h"
 #include "Runtime/Resource/Loaders/PrefabLoader.h"
 #include "Runtime/Resource/Loaders/SceneLoader.h"
+#include "Runtime/Resource/Loaders/DataAssetLoader.h"
 #include "Runtime/Resource/Loaders/SpriteLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
 
@@ -29,6 +30,7 @@ namespace minEngine
         assetManager.RegisterLoadHandler("MaterialInstance", &AssetManager::LoadHandler_MaterialInstance);
         assetManager.RegisterLoadHandler("Sprite", &AssetManager::LoadHandler_Sprite);
         assetManager.RegisterLoadHandler("SpriteAtlas", &AssetManager::LoadHandler_SpriteAtlas);
+        assetManager.RegisterLoadHandler("DataAsset", &AssetManager::LoadHandler_DataAsset);
         assetManager.RegisterLoadHandler("Font", &AssetManager::LoadHandler_Font);
         assetManager.RegisterLoadHandler("LuaScript", &AssetManager::LoadHandler_LuaScript);
         assetManager.RegisterLoadHandler("EnvironmentMap", &AssetManager::LoadHandler_EnvironmentMap);
@@ -41,6 +43,7 @@ namespace minEngine
         assetManager.RegisterSaveHandler("MaterialInstance", &MaterialInstanceLoader::SaveHandler);
         assetManager.RegisterSaveHandler("Sprite", &SpriteLoader::SaveHandler);
         assetManager.RegisterSaveHandler("SpriteAtlas", &SpriteAtlasLoader::SaveHandler);
+        assetManager.RegisterSaveHandler("DataAsset", &DataAssetLoader::SaveHandler);
         assetManager.RegisterSaveHandler("AnimationGraph", &AnimationGraphLoader::SaveHandler);
         assetManager.RegisterSaveHandler("Texture2D", &Texture2DLoader::SaveHandler);
 
@@ -50,6 +53,7 @@ namespace minEngine
         assetManager.RegisterCreateHandler("MaterialInstance", &MaterialInstanceLoader::CreateHandler);
         assetManager.RegisterCreateHandler("Sprite", &SpriteLoader::CreateHandler);
         assetManager.RegisterCreateHandler("SpriteAtlas", &SpriteAtlasLoader::CreateHandler);
+        assetManager.RegisterCreateHandler("DataAsset", &DataAssetLoader::CreateHandler);
         assetManager.RegisterCreateHandler("AnimationGraph", &AnimationGraphLoader::CreateHandler);
         assetManager.RegisterCreateHandler("Texture2D", &Texture2DLoader::CreateHandler);
 

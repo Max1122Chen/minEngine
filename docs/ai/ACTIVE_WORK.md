@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-01 (ED-F24 Done; ASSET-F05 Done)
+Last updated: 2026-10-08 (ASSET-F08 / F07 Done on feat/asset-load-api)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -23,7 +23,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 5 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | 6 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）ASSET-F04 人手验收；（2）Texture Inspector 设置 UI 细化（F05-S04 余量，可选）。
+**下一动作：**（1）`feat/asset-load-api`：**准备 commit**（F08+F07）；（2）ASSET-F04 人手验收；（3）Texture Inspector 设置 UI 细化（可选）。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 
@@ -37,6 +37,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | Prefab 后置 | Nested / Apply→Prefab / 并排预览 |
 | — | `ED-F10` | EditorSettings 占位 |
 | render | `RND-F21` | 光视锥 / CSM — Deferred |
+| asset | `ASSET-F08` | 去 `LoadAsset<T>` / `CreateAsset<T>` + `Cast<T>` — **Done** |
+| asset | `ASSET-F07` | Thin DataAsset `.medata` — **Done**（待同分支 commit） |
 
 <details>
 <summary>历史焦点（MCP / ED-F19 / RND-F20 等，折叠）</summary>

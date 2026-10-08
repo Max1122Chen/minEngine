@@ -161,10 +161,10 @@ namespace minEngine
 
             const std::string directoryRel = "Assets/_P2UnitTest";
             std::shared_ptr<Material> created =
-                assetManager.CreateAsset<Material>("CreateIdentityMat", directoryRel);
+                ([&]() -> std::shared_ptr<Material> { std::string _createAssetError; return std::dynamic_pointer_cast<Material>(assetManager.CreateAssetByTypeId("Material", "CreateIdentityMat", directoryRel, _createAssetError)); })();
             if (!created)
             {
-                ME_LOG(LogTest, Error, "AssetManagerTest: CreateAsset<Material> returned null.");
+                ME_LOG(LogTest, Error, "AssetManagerTest: CreateAssetByTypeId(Material) returned null.");
                 return false;
             }
 
@@ -201,7 +201,9 @@ namespace minEngine
                 return false;
             }
 
-            std::shared_ptr<Material> loaded = assetManager.LoadAsset<Material>(meta->AssetPath);
+            std::string loadError;
+            std::shared_ptr<Material> loaded = std::dynamic_pointer_cast<Material>(
+                assetManager.LoadAssetByPath(meta->AssetPath, loadError));
             if (loaded.get() != created.get())
             {
                 ME_LOG(LogTest, Error, 

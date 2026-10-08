@@ -225,10 +225,10 @@ me.log("probe ok")
                 return false;
             }
 
-            std::shared_ptr<LuaScript> script = AssetManager::Get().LoadAsset<LuaScript>(meta.AssetPath);
+            std::shared_ptr<LuaScript> script = ([&]() -> std::shared_ptr<LuaScript> { std::string _loadAssetError; return std::dynamic_pointer_cast<LuaScript>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
             if (script == nullptr || !script->IsValid())
             {
-                ME_LOG(LogTest, Error, "LuaScriptMvpTest: LoadAsset<LuaScript> failed.");
+                ME_LOG(LogTest, Error, "LuaScriptMvpTest: LoadAssetByPath(LuaScript) failed.");
                 return false;
             }
 

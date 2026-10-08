@@ -395,7 +395,7 @@ namespace minEngine
 
     bool SceneManager::LoadSceneByPath(const std::string& path)
     {
-        std::shared_ptr<Scene> scene = AssetManager::Get().LoadAsset<Scene>(path);
+        std::shared_ptr<Scene> scene = ([&]() -> std::shared_ptr<Scene> { std::string _loadAssetError; return std::dynamic_pointer_cast<Scene>(AssetManager::Get().LoadAssetByPath(path, _loadAssetError)); })();
         if (scene)
         {
             UnloadActiveScene();

@@ -115,7 +115,7 @@ namespace minEngine
         m_InspectorPreviewScene.Shutdown();
         ShutdownSceneViewport();
 
-        m_TextureAsset = AssetManager::Get().LoadAsset<Texture2D>(meta.AssetPath);
+        m_TextureAsset = ([&]() -> std::shared_ptr<Texture2D> { std::string _loadAssetError; return std::dynamic_pointer_cast<Texture2D>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
         if (!m_TextureAsset)
         {
             ME_LOG(LogEditor, Warn, "AssetThumbnailService: failed to load texture '{}'.", meta.AssetPath);
@@ -137,7 +137,7 @@ namespace minEngine
 
         if (meta.AssetType == "Material")
         {
-            m_MaterialAsset = AssetManager::Get().LoadAsset<Material>(meta.AssetPath);
+            m_MaterialAsset = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
             if (!m_MaterialAsset)
             {
                 ME_LOG(LogEditor, Warn, "AssetThumbnailService: failed to load material '{}'.", meta.AssetPath);
@@ -152,7 +152,7 @@ namespace minEngine
 
         if (meta.AssetType == "StaticMesh")
         {
-            std::shared_ptr<StaticMesh> mesh = AssetManager::Get().LoadAsset<StaticMesh>(meta.AssetPath);
+            std::shared_ptr<StaticMesh> mesh = ([&]() -> std::shared_ptr<StaticMesh> { std::string _loadAssetError; return std::dynamic_pointer_cast<StaticMesh>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
             if (!mesh)
             {
                 ME_LOG(LogEditor, Warn, 
@@ -366,7 +366,7 @@ namespace minEngine
         }
         else
         {
-            textureAsset = AssetManager::Get().LoadAsset<Texture2D>(std::string(assetPath));
+            textureAsset = ([&]() -> std::shared_ptr<Texture2D> { std::string _loadAssetError; return std::dynamic_pointer_cast<Texture2D>(AssetManager::Get().LoadAssetByPath(std::string(assetPath), _loadAssetError)); })();
             m_TextureThumbnailCache.emplace(std::string(assetPath), textureAsset);
         }
 
@@ -490,7 +490,7 @@ namespace minEngine
 
         if (meta.AssetType == "Material")
         {
-            entry.MaterialAsset = AssetManager::Get().LoadAsset<Material>(meta.AssetPath);
+            entry.MaterialAsset = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
             if (!entry.MaterialAsset)
             {
                 return ThumbnailView{};
@@ -501,7 +501,7 @@ namespace minEngine
         }
         else if (meta.AssetType == "StaticMesh")
         {
-            entry.MeshAsset = AssetManager::Get().LoadAsset<StaticMesh>(meta.AssetPath);
+            entry.MeshAsset = ([&]() -> std::shared_ptr<StaticMesh> { std::string _loadAssetError; return std::dynamic_pointer_cast<StaticMesh>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
             if (!entry.MeshAsset)
             {
                 return ThumbnailView{};

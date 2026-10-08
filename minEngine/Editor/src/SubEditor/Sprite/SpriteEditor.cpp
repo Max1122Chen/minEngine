@@ -146,7 +146,7 @@ namespace minEngine
             return;
         }
 
-        std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(meta->AssetPath);
+        std::shared_ptr<Sprite> sprite = ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(meta->AssetPath, _loadAssetError)); })();
         if (!sprite)
         {
             ME_LOG(LogEditor, Error, "SpriteEditor: failed to load '{}'.", meta->AssetPath);

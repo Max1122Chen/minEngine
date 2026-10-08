@@ -212,7 +212,7 @@ namespace minEngine
                                 return false;
                             }
 
-                            mutableState->Clip = AssetManager::Get().LoadAsset<AnimationClip>(assetPath);
+                            mutableState->Clip = ([&]() -> std::shared_ptr<AnimationClip> { std::string _loadAssetError; return std::dynamic_pointer_cast<AnimationClip>(AssetManager::Get().LoadAssetByPath(assetPath, _loadAssetError)); })();
                             m_AnimGraphEditor.NotifyGraphChanged();
                             return true;
                         });

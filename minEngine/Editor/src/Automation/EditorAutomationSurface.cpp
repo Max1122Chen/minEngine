@@ -1346,7 +1346,7 @@ namespace minEngine
             return errorResponse;
         }
 
-        std::shared_ptr<Prefab> prefab = AssetManager::Get().LoadAsset<Prefab>(assetPath);
+        std::shared_ptr<Prefab> prefab = ([&]() -> std::shared_ptr<Prefab> { std::string _loadAssetError; return std::dynamic_pointer_cast<Prefab>(AssetManager::Get().LoadAssetByPath(assetPath, _loadAssetError)); })();
         if (!prefab)
         {
             return MakeError(request, "InvalidPayload", "Failed to load prefab.");
@@ -1822,7 +1822,7 @@ namespace minEngine
     {
         const std::string texturePath = request.Payload.value("texturePath", "");
         std::string loadError;
-        std::shared_ptr<Texture2D> texture = AssetManager::Get().LoadAsset<Texture2D>(texturePath);
+        std::shared_ptr<Texture2D> texture = ([&]() -> std::shared_ptr<Texture2D> { std::string _loadAssetError; return std::dynamic_pointer_cast<Texture2D>(AssetManager::Get().LoadAssetByPath(texturePath, _loadAssetError)); })();
         if (texture == nullptr)
         {
             return MakeError(request, "InvalidPayload", "Failed to load Texture2D: " + texturePath);
@@ -1862,7 +1862,7 @@ namespace minEngine
         const AutomationRequest& request)
     {
         const std::string path = request.Payload.value("path", "");
-        std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(path);
+        std::shared_ptr<Sprite> sprite = ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(path, _loadAssetError)); })();
         if (sprite == nullptr)
         {
             return MakeError(request, "InvalidPayload", "Failed to load Sprite: " + path);
@@ -1901,7 +1901,7 @@ namespace minEngine
         const AutomationRequest& request)
     {
         const std::string atlasPath = request.Payload.value("atlasPath", "");
-        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
         if (atlas == nullptr)
         {
             return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
@@ -1916,7 +1916,7 @@ namespace minEngine
                 {
                     continue;
                 }
-                std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(item.get<std::string>());
+                std::shared_ptr<Sprite> sprite = ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(item.get<std::string>(), _loadAssetError)); })();
                 if (sprite != nullptr)
                 {
                     sprites.push_back(sprite);
@@ -1940,7 +1940,7 @@ namespace minEngine
         const AutomationRequest& request)
     {
         const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
         if (atlas == nullptr)
         {
             return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
@@ -1976,7 +1976,7 @@ namespace minEngine
     {
         (void)context;
         const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
         if (atlas == nullptr)
         {
             return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
@@ -1999,7 +1999,7 @@ namespace minEngine
         const AutomationRequest& request)
     {
         const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(atlasPath);
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
         if (atlas == nullptr)
         {
             return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);

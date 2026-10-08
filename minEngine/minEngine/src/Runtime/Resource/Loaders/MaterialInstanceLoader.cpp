@@ -74,7 +74,7 @@ namespace minEngine
         std::shared_ptr<Material> parent;
         if (const AssetMeta* defaultMeta = manager.FindAssetMetaByPath("Materials/DefaultMaterial.memtl"))
         {
-            parent = manager.LoadAsset<Material>(defaultMeta->AssetPath);
+            parent = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(manager.LoadAssetByPath(defaultMeta->AssetPath, _loadAssetError)); })();
         }
         if (!parent)
         {
@@ -85,7 +85,7 @@ namespace minEngine
                 {
                     continue;
                 }
-                parent = manager.LoadAsset<Material>(materialMeta->AssetPath);
+                parent = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(manager.LoadAssetByPath(materialMeta->AssetPath, _loadAssetError)); })();
                 if (parent)
                 {
                     break;

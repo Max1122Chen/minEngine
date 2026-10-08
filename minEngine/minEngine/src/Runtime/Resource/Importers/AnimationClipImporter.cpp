@@ -284,7 +284,9 @@ namespace minEngine
             return result;
         }
 
-        std::shared_ptr<Skeleton> skeleton = manager.LoadAsset<Skeleton>(std::string(skeletonAssetPath));
+        std::string loadError;
+        std::shared_ptr<Skeleton> skeleton = std::dynamic_pointer_cast<Skeleton>(
+            manager.LoadAssetByPath(std::string(skeletonAssetPath), loadError));
         if (skeleton == nullptr)
         {
             result.ErrorMessage = "failed to load Skeleton: " + std::string(skeletonAssetPath);
