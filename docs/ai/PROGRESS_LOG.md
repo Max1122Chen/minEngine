@@ -1,3 +1,31 @@
+## 2026-10-09 — UI-F05 / UI-F06 实现 Done（feat/ui）
+
+- **Scope:** ScreenUI Drag-Drop + Image Sprite/Raw（工作树 `minEngine-ui` / `feat/ui`）
+- **Completed:**
+  - **UI-F05：** `UISystem` Pending→Dragging session；`DragSourceComponent` / `DropTargetComponent`；阈值；Click 抑制；Destroy→Cancel
+  - 委托落地为**无参** Multicast（上下文 `GetDragSession` / `ConsumeLastEndSuccess`）；规避 OneParam 结构体 Broadcast AV
+  - **UI-F06：** `EUIImageSourceMode` Raw/Sprite；Resolve texture/UV；Widget proxy + `ScreenUIMaterialFactory` UV
+  - Suites：`screen-ui-drag`、`screen-ui-image`
+- **Verification:** `minEngineTests.exe test screen-ui-drag` PASS（4）；`test screen-ui-image` PASS（3）
+- **Next:** 合入 master；minCraft `TD-015` 联调；可选 UI-F07 FillAmount Design
+
+## 2026-10-09 — UI-F05 / UI-F06 Design 改中文
+
+- **Scope:** 同一 Draft；正文改为中文（API/类型名保持英文）
+- **Completed:** 重写 [UI-F05](./Platform/UI/UI-F05_SCREENUI_DRAG_DROP_DESIGN.md) · [UI-F06](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md)
+- **Verification:** N/A（文档）
+- **Next:** 审阅 Open Questions → Design Review / readiness
+
+## 2026-10-08 — UI-F05 / UI-F06 Design Draft（feat/ui）
+
+- **Scope:** ScreenUI 下一波设计（工作树 `minEngine-ui`，分支 `feat/ui` 已 FF master）
+- **Completed:**
+  - 登记 `UI-F05` Drag-Drop、`UI-F06` Image Sprite/Raw、`UI-F07` FillAmount（Planned 占位）
+  - Design：[UI-F05](./Platform/UI/UI-F05_SCREENUI_DRAG_DROP_DESIGN.md) · [UI-F06](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md)
+  - ACTIVE_WORK 并行轨指向本波；驱动 minCraft `TD-015` + 图集图标
+- **Verification:** N/A（文档 Draft；待审阅）
+- **Next:** 你审阅 Open Questions → Design Review / readiness → 实现 S01
+
 ## 2026-10-08 — BUG-EDITOR-006 AutomationHost Stop 挂死
 
 - **根因:** 同步 named-pipe Connect/Read；CancelIoEx 无法可靠打断 → Shutdown join 堵死

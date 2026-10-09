@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Math/Color.h"
+#include "Runtime/Core/Math/Math.h"
 #include "Runtime/Function/Render/Material.h"
 
 #include <memory>
@@ -20,6 +21,13 @@ namespace minEngine
             Material& material,
             const LinearColor& color,
             const std::shared_ptr<Texture2D>& texture,
+            RHI& rhi);
+
+        static void ApplyColorTextureAndUVRect(
+            Material& material,
+            const LinearColor& color,
+            const std::shared_ptr<Texture2D>& texture,
+            const Vector4& uvRect,
             RHI& rhi);
 
         static std::shared_ptr<Texture2D> GetOrCreateWhiteTexture(RHI& rhi);

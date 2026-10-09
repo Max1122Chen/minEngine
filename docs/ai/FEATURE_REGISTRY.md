@@ -138,6 +138,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI-F02` | ScreenUI Hit-test + Play pointer routing | **Done** | — | [Design](./Platform/UI/UI-F02_SCREENUI_HITTEST_DESIGN.md) |
 | `UI-F03` | ScreenUI Button（OnClicked + tint） | **Done** | — | [Design](./Platform/UI/UI-F03_SCREENUI_BUTTON_DESIGN.md) |
 | `UI-F04` | ScreenUI Text / Font | **Done** | — | [Design](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_DESIGN.md) · [Impl](./Platform/UI/UI-F04_SCREENUI_TEXT_FONT_IMPLEMENTATION.md) |
+| `UI-F05` | ScreenUI Drag-Drop（session + Source/Target；Click 互斥） | **Done** | — | [Design](./Platform/UI/UI-F05_SCREENUI_DRAG_DROP_DESIGN.md) · `test screen-ui-drag` · minCraft `TD-015` |
+| `UI-F06` | ScreenUI Image Sprite / Raw source + UV | **Done** | — | [Design](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md) · `test screen-ui-image` |
+| `UI-F07` | ScreenUI Image FillAmount（进度条） | **Planned** | — | Design 未开；依赖 UI-F06；炉进度等 |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |
@@ -187,7 +190,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |
-| `UI` | **F04** | F01–F03 Done |
+| `UI` | **F08** | F01–F04 Done；**F05/F06 Draft**；F07 Planned |
 | `PHYS` | F05 | F04 Done；F03 Deferred |
 | `GP` | **F03** | F01–F02 Done |
 | `MAT` | **F07** | **F01–F06 Done** |

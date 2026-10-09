@@ -38,6 +38,8 @@
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
+#include "Suites/ScreenUIDragTest.h"
+#include "Suites/ScreenUIImageTest.h"
 #include "Suites/ScreenUITextTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/CommandSystemTest.h"
@@ -688,6 +690,40 @@ namespace minEngine
             }
         };
 
+        struct ScreenUIDragTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-drag", "Screen UI Drag-Drop", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-drag'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-drag",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScreenUIImageTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-image", "Screen UI Image Sprite/Raw", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-image'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-image",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct ScreenUITextTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -925,6 +961,8 @@ namespace minEngine
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
+        using ScreenUIDragSuite = TypedTestSuite<ScreenUIDragTestSuiteTraits>;
+        using ScreenUIImageSuite = TypedTestSuite<ScreenUIImageTestSuiteTraits>;
         using ScreenUITextSuite = TypedTestSuite<ScreenUITextTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
@@ -985,6 +1023,8 @@ namespace minEngine
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());
             registry.Register(ScreenUIButtonSuite::Get());
+            registry.Register(ScreenUIDragSuite::Get());
+            registry.Register(ScreenUIImageSuite::Get());
             registry.Register(ScreenUITextSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(CommandSystemSuite::Get());

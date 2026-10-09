@@ -4,9 +4,15 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ImageComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ImageComponent, m_SourceMode)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ImageComponent, m_SourceMode, GetSourceMode)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ImageComponent, m_SourceMode, SetSourceMode)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ImageComponent, m_Texture)
     ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ImageComponent, m_Texture, GetTextureShared)
     ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ImageComponent, m_Texture, SetTexture)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ImageComponent, m_Sprite)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ImageComponent, m_Sprite, GetSpriteShared)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ImageComponent, m_Sprite, SetSprite)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ImageComponent, m_Color)
     ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::ImageComponent, m_Color, GetColor)
     ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::ImageComponent, m_Color, SetColor)

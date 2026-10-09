@@ -10,3 +10,5 @@ ME_REFLECTION_ENUM_DECLARE(minEngine::EUICanvasScaleMode, GReflectionEnumRegiste
 ME_REFLECTION_ENUM_DECLARE(minEngine::EUIAnchorPreset, GReflectionEnumRegister_EUIAnchorPreset_9ebd25f0)
 
 ME_REFLECTION_ENUM_DECLARE(minEngine::EUITextHorizontalAlignment, GReflectionEnumRegister_EUITextHorizontalAlignment_6f6d681f)
+
+ME_REFLECTION_ENUM_DECLARE(minEngine::EUIImageSourceMode, GReflectionEnumRegister_EUIImageSourceMode_a1ce249c)

@@ -26,8 +26,23 @@ namespace minEngine
         const std::shared_ptr<Texture2D>& texture,
         RHI& rhi)
     {
+        ApplyColorTextureAndUVRect(
+            material,
+            color,
+            texture,
+            Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+            rhi);
+    }
+
+    void ScreenUIMaterialFactory::ApplyColorTextureAndUVRect(
+        Material& material,
+        const LinearColor& color,
+        const std::shared_ptr<Texture2D>& texture,
+        const Vector4& uvRect,
+        RHI& rhi)
+    {
         const std::shared_ptr<Texture2D> resolved =
             texture ? texture : GetOrCreateWhiteTexture(rhi);
-        SpriteMaterialFactory::ApplyColorAndTexture(material, color, resolved);
+        SpriteMaterialFactory::ApplyColorTextureAndUVRect(material, color, resolved, uvRect);
     }
 }

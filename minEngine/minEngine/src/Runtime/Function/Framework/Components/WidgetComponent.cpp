@@ -287,10 +287,11 @@ namespace minEngine
             return;
         }
 
-        ScreenUIMaterialFactory::ApplyColorAndTexture(
+        ScreenUIMaterialFactory::ApplyColorTextureAndUVRect(
             *m_RuntimeMaterial,
             image->GetColor(),
-            image->GetTextureShared(),
+            image->ResolveDrawTextureShared(),
+            image->ResolveDrawUVRect(),
             *rhi);
     }
 
@@ -328,10 +329,12 @@ namespace minEngine
         }
 
         ImageComponent* image = FindSiblingImage();
-        if (image != nullptr)
+        const bool bImageDrawable = image != nullptr && image->CanDraw();
+        if (bImageDrawable)
         {
             proxy.m_Color = image->GetColor().ToVector4();
-            proxy.m_Texture = image->GetTexture();
+            proxy.m_Texture = image->ResolveDrawTexture();
+            proxy.m_UVRect = image->ResolveDrawUVRect();
             EnsureRuntimeMaterial();
             SyncMaterialParameters(image);
             proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
@@ -340,6 +343,7 @@ namespace minEngine
         {
             proxy.m_Color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
             proxy.m_Texture = nullptr;
+            proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
             proxy.m_MaterialProxy = nullptr;
         }
 
@@ -354,7 +358,7 @@ namespace minEngine
         proxy.m_IndexBuffer = quad.GetIndexBuffer();
         proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
 
-        proxy.m_bVisible = image != nullptr && proxy.m_MaterialProxy != nullptr
+        proxy.m_bVisible = bImageDrawable && proxy.m_MaterialProxy != nullptr
             && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
             && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
             && proxy.m_SizePx.y > 0.0f;

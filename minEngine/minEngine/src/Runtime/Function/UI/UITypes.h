@@ -62,6 +62,17 @@ namespace minEngine
         Right,
     };
 
+    /**
+     * ScreenUI ImageComponent source mode (UI-F06).
+     * Raw = full Texture2D; Sprite = Sprite runtime texture + UV rect.
+     */
+    ME_ENUM()
+    enum class EUIImageSourceMode : uint8_t
+    {
+        Raw = 0,
+        Sprite = 1,
+    };
+
     /** Axis-aligned rect in Canvas reference pixels (top-left origin, +Y down). */
     struct UIRect
     {

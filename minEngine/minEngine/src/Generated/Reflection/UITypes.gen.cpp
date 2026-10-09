@@ -36,3 +36,8 @@ ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::EUITextHorizontalAlignment, GReflecti
     ME_REFLECTION_ENUM_VALUE(Center, minEngine::EUITextHorizontalAlignment::Center)
     ME_REFLECTION_ENUM_VALUE(Right, minEngine::EUITextHorizontalAlignment::Right)
 ME_REFLECTION_ENUM_DEFINE_END(minEngine::EUITextHorizontalAlignment)
+
+ME_REFLECTION_ENUM_DEFINE_BEGIN(minEngine::EUIImageSourceMode, GReflectionEnumRegister_EUIImageSourceMode_a1ce249c)
+    ME_REFLECTION_ENUM_VALUE(Raw, 0)
+    ME_REFLECTION_ENUM_VALUE(Sprite, 1)
+ME_REFLECTION_ENUM_DEFINE_END(minEngine::EUIImageSourceMode)
