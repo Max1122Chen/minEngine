@@ -23,7 +23,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 5 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | 6 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）`feat/ui`：合入 master（UI-F05/F06 Done）或开 UI-F07 / minCraft 拖拽联调；（2）ASSET-F04 人手验收（主仓另轨）；（3）Texture Inspector 设置 UI 细化（可选）。
+**下一动作：**（1）minCraft 拖拽联调（`TD-015`）或开 UI-F07 FillAmount Design；（2）ASSET-F04 人手验收（主仓另轨）；（3）Texture Inspector 设置 UI 细化（可选）。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 
@@ -32,7 +32,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| ui | `UI-F05` / `UI-F06` | **Done** on `feat/ui` @ `minEngine-ui`；待合入；解锁 minCraft 拖拽 + 图集图标 |
+| ui | `UI-F05` / `UI-F06` | **Done**；已合入 `master`（`6c06c9e0`）；解锁 minCraft 拖拽 + 图集图标 |
 | ui | `UI-F07` | FillAmount Planned；F06 后可开 Design |
 | editor | `ED-F11` | Tab Host 余量（可选） |
 | editor | `ED-F02` | S03/S05 余量（低优） |
@@ -147,7 +147,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `D:/Dev/GitRepo/minEngine-lua-script` | **`feat/lua-script`** | 可对齐 master 后归档 |
 | `D:/Dev/GitRepo/minEngine-prefab` | **`feat/prefab`** | 可对齐 master 后归档 |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
-| `D:/Dev/GitRepo/minEngine-ui` | **`feat/ui`** | UI-F05/F06 **Done**；待合入 master |
+| `D:/Dev/GitRepo/minEngine-ui` | **`feat/ui`** | UI-F05/F06 **Done**；已 FF 合入 `master` |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 原 RND + Sprite MVP；族完成后可对齐 master |
