@@ -53,6 +53,7 @@ namespace minEngine
         bool TryCreateSpriteInDirectory(std::string_view directoryRel);
         bool TryCreateSpriteAtlasInDirectory(std::string_view directoryRel);
         bool TryCreateSpriteAtlasFromSelection(const std::vector<const AssetMeta*>& selectedSprites);
+        bool TryCreateDataAssetInDirectory(std::string_view directoryRel);
         bool TryRequestExit(IEditorContext& context);
 
         bool OpenAsset(const AssetMeta& meta);
@@ -106,6 +107,7 @@ namespace minEngine
         bool SaveSpriteAtlasDocument();
         bool SavePrefabDocument();
         void DrawMaterialInstanceInspector(const AssetMeta& meta);
+        void DrawDataAssetInspector(const AssetMeta& meta);
 
         bool RunWithUnsavedCheck(
             const char* message,

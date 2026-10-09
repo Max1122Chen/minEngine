@@ -249,7 +249,7 @@ namespace minEngine
             {
                 std::string loadError;
                 std::shared_ptr<Texture2D> loaded =
-                    AssetManager::Get().LoadAsset<Texture2D>(m_BrdfLUT->GetMeta()->AssetPath);
+                    ([&]() -> std::shared_ptr<Texture2D> { std::string _loadAssetError; return std::dynamic_pointer_cast<Texture2D>(AssetManager::Get().LoadAssetByPath(m_BrdfLUT->GetMeta()->AssetPath, _loadAssetError)); })();
                 if (loaded)
                 {
                     m_BrdfLUT = loaded;

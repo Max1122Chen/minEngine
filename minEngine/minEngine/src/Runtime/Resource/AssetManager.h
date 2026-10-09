@@ -216,41 +216,7 @@ namespace minEngine
 
         void MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const;
 
-        template<typename T>
-        std::shared_ptr<T> LoadAsset(const std::string& path)
-        {
-            if constexpr (!std::is_base_of_v<Asset, T>)
-            {
-                static_assert(AlwaysFalse<T>::value, "LoadAsset<T> is only implemented for types derived from Asset");
-                return nullptr;
-            }
-
-            const std::string registryKey = NormalizeProjectRelativeAssetPath(path);
-            if (registryKey.empty())
-            {
-                return nullptr;
-            }
-
-            if (m_LoadedAssetCache.find(registryKey) != m_LoadedAssetCache.end())
-            {
-                std::shared_ptr<MEObject> cachedAsset = std::static_pointer_cast<MEObject>(m_LoadedAssetCache[registryKey].lock());
-                if (cachedAsset)
-                {
-                    return std::dynamic_pointer_cast<T>(cachedAsset);
-                }
-            }
-
-            const AssetMeta* meta = FindAssetMetaByPath(registryKey);
-            if (meta == nullptr)
-            {
-                return nullptr;
-            }
-
-            std::string loadError;
-            std::shared_ptr<Asset> loaded = LoadAssetByMeta_Internal(*meta, loadError);
-            (void)loadError;
-            return std::dynamic_pointer_cast<T>(loaded);
-        }
+        // ASSET-F08: LoadAsset<T> removed — use LoadAssetByPath/ByGUID/ByMeta + cast.
 
         template<typename T>
         bool SaveAsset(const std::string& path, const T& asset) const
@@ -273,9 +239,7 @@ namespace minEngine
             const std::string& directoryRel,
             std::string& outError);
 
-        /** Thin sugar: typeId from AssetTypeRegistry, then CreateAssetByTypeId. */
-        template<typename T>
-        std::shared_ptr<T> CreateAsset(const std::string& assetName, const std::string& directoryRel);
+        // ASSET-F08: CreateAsset<T> removed — use CreateAssetByTypeId.
 
         /** Helper for Saver Create implementations (unique Content-relative path). */
         std::string AllocateUniqueAssetRelativePath(
@@ -344,6 +308,8 @@ namespace minEngine
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_SpriteAtlas(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
+        static std::shared_ptr<Asset> LoadHandler_DataAsset(
+            AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_Font(
             AssetManager& manager, const AssetMeta& meta, std::string& outErrorMessage);
         static std::shared_ptr<Asset> LoadHandler_LuaScript(
@@ -363,6 +329,7 @@ namespace minEngine
         friend class MaterialInstanceLoader;
         friend class SpriteLoader;
         friend class SpriteAtlasLoader;
+        friend class DataAssetLoader;
         friend class AnimationGraphLoader;
         friend class NativeCopyImporter;
         friend class Texture2DImporter;
@@ -405,25 +372,6 @@ namespace minEngine
         std::vector<ImportProductDescriptor> m_ImportProducts;
         int m_RegistryBroadcastBatchDepth = 0;
     };
-
-    template<typename T>
-    std::shared_ptr<T> AssetManager::CreateAsset(const std::string& assetName, const std::string& directoryRel)
-    {
-        static_assert(std::is_base_of_v<Asset, T>, "CreateAsset<T> requires T derived from Asset");
-
-        const std::string_view typeIdView =
-            AssetTypeRegistry::Get().GetAssetTypeIdForClass(T::StaticClass());
-        if (typeIdView.empty())
-        {
-            return nullptr;
-        }
-
-        std::string error;
-        std::shared_ptr<Asset> created =
-            CreateAssetByTypeId(typeIdView, assetName, directoryRel, error);
-        (void)error;
-        return std::dynamic_pointer_cast<T>(created);
-    }
 
 } // namespace minEngine
 

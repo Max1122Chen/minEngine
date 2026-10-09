@@ -77,7 +77,7 @@ namespace minEngine
                 createResult.Message.empty() ? "Create Sprite failed." : createResult.Message);
         }
 
-        std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(createdPath);
+        std::shared_ptr<Sprite> sprite = ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(createdPath, _loadAssetError)); })();
         if (!sprite)
         {
             return Fail(GraphEditorError::Internal, "Failed to load created Sprite.");
@@ -170,7 +170,7 @@ namespace minEngine
                 createResult.Message.empty() ? "Create SpriteAtlas failed." : createResult.Message);
         }
 
-        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(createdPath);
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(createdPath, _loadAssetError)); })();
         if (!atlas)
         {
             return Fail(GraphEditorError::Internal, "Failed to load created SpriteAtlas.");

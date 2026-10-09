@@ -79,6 +79,7 @@ namespace minEngine
             "AnimationGraph",
             "Sprite",
             "SpriteAtlas",
+            "DataAsset",
             "Texture2D",
         };
 

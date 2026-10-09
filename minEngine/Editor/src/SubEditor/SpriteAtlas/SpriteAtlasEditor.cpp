@@ -148,7 +148,7 @@ namespace minEngine
             return;
         }
 
-        std::shared_ptr<SpriteAtlas> atlas = AssetManager::Get().LoadAsset<SpriteAtlas>(meta->AssetPath);
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(meta->AssetPath, _loadAssetError)); })();
         if (!atlas)
         {
             ME_LOG(LogEditor, Error, "SpriteAtlasEditor: failed to load '{}'.", meta->AssetPath);

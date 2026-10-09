@@ -32,11 +32,18 @@
 #include "Runtime/Function/Render/Sprite/Sprite.h"
 #include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 #include "Runtime/Platform/FileDialog/IFileDialogService.h"
+#include "Runtime/Core/Object/ObjectCast.h"
+#include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetTypeRegistry.h"
+#include "Runtime/Resource/DataAsset.h"
 #include "Runtime/Resource/EditorFilesystemMutationPass.h"
 
 #include "Runtime/Resource/AssetMeta.h"
+
+#include "UI/Property/PropertyEditPolicy.h"
+#include "UI/Property/PropertyEditTypes.h"
+#include "UI/Property/PropertyValueWidget.h"
 
 #include "imgui.h"
 
@@ -133,6 +140,10 @@ namespace minEngine
         if (selected->AssetType == "MaterialInstance")
         {
             m_Owner.DrawMaterialInstanceInspector(*selected);
+        }
+        else if (selected->AssetType == "DataAsset")
+        {
+            m_Owner.DrawDataAssetInspector(*selected);
         }
         ImGui::End();
     }
@@ -378,7 +389,7 @@ namespace minEngine
             }
 
             const std::shared_ptr<MaterialInstance> instance =
-                AssetManager::Get().LoadAsset<MaterialInstance>(meta.AssetPath);
+                ([&]() -> std::shared_ptr<MaterialInstance> { std::string _loadAssetError; return std::dynamic_pointer_cast<MaterialInstance>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
             if (!instance)
             {
                 ME_LOG(LogEditor, Warn, "AssetWorkflow: failed to load material instance '{}'.", meta.AssetPath);
@@ -794,7 +805,7 @@ namespace minEngine
                 members.reserve(spritesOnly.size());
                 for (const AssetMeta* meta : spritesOnly)
                 {
-                    std::shared_ptr<Sprite> sprite = AssetManager::Get().LoadAsset<Sprite>(meta->AssetPath);
+                    std::shared_ptr<Sprite> sprite = ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(meta->AssetPath, _loadAssetError)); })();
                     if (sprite)
                     {
                         members.push_back(sprite);
@@ -849,6 +860,40 @@ namespace minEngine
             });
     }
 
+    bool AssetWorkflowModule::TryCreateDataAssetInDirectory(std::string_view directoryRel)
+    {
+        if (!m_Context || !AssetManager::HasInstance())
+        {
+            return false;
+        }
+
+        const std::string directory = std::string(directoryRel);
+        std::string createdPath;
+        std::string createdGuid;
+        const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
+            "DataAsset",
+            directory,
+            "NewDataAsset",
+            createdPath,
+            createdGuid);
+        if (!createResult.Ok)
+        {
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: Create DataAsset failed — {}", createResult.Message);
+            return false;
+        }
+
+        const AssetMeta* createdMeta = AssetManager::Get().FindAssetMetaByPath(createdPath);
+        if (createdMeta == nullptr)
+        {
+            ME_LOG(LogEditor, Warn, "AssetWorkflow: created DataAsset has no registry meta.");
+            return false;
+        }
+
+        RefreshContentBrowser();
+        SetSelectedAsset(createdMeta);
+        return true;
+    }
+
     bool AssetWorkflowModule::TryCreateMaterialInstanceInDirectory(std::string_view directoryRel)
     {
         if (!m_Context || !AssetManager::HasInstance())
@@ -883,6 +928,91 @@ namespace minEngine
         return true;
     }
 
+    void AssetWorkflowModule::DrawDataAssetInspector(const AssetMeta& meta)
+    {
+        if (!AssetManager::HasInstance())
+        {
+            return;
+        }
+
+        std::string loadError;
+        std::shared_ptr<Asset> loaded = AssetManager::Get().LoadAssetByPath(meta.AssetPath, loadError);
+        std::shared_ptr<DataAsset> dataAsset = Cast<DataAsset>(loaded);
+        if (!dataAsset)
+        {
+            ImGui::TextUnformatted("Failed to load DataAsset.");
+            if (!loadError.empty())
+            {
+                ImGui::TextWrapped("%s", loadError.c_str());
+            }
+            return;
+        }
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("DataAsset");
+
+        const Reflection::MEClass* assetClass = dataAsset->GetClass();
+        if (assetClass == nullptr)
+        {
+            return;
+        }
+
+        Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            assetClass->GetName(),
+            [&](const Reflection::MEProperty& property) -> bool
+            {
+                if (!PropertyEditPolicy::ShouldShow(
+                        property, EditorPropertyEditContextKind::AssetDefaults))
+                {
+                    return true;
+                }
+
+                void* valuePtr = property.GetMutable(static_cast<void*>(dataAsset.get()));
+                if (valuePtr == nullptr)
+                {
+                    return true;
+                }
+
+                ImGui::PushID(property.GetName().c_str());
+                ImGui::TextUnformatted(PropertyEditPolicy::GetDisplayName(property));
+                const bool readOnly = PropertyEditPolicy::IsReadOnly(
+                    property, EditorPropertyEditContextKind::AssetDefaults);
+                if (readOnly)
+                {
+                    ImGui::BeginDisabled();
+                }
+
+                if (property.GetCategory() == Reflection::MEPropertyCategory::Primitive
+                    || property.GetCategory() == Reflection::MEPropertyCategory::Object)
+                {
+                    PropertyValueWidget::Draw(property, valuePtr, -FLT_MIN);
+                }
+                else
+                {
+                    ImGui::TextDisabled("(unsupported property category)");
+                }
+
+                if (readOnly)
+                {
+                    ImGui::EndDisabled();
+                }
+                ImGui::PopID();
+                return true;
+            });
+
+        if (ImGui::Button("Save"))
+        {
+            if (!AssetManager::Get().SaveAsset(meta.AssetPath, *dataAsset))
+            {
+                ME_LOG(LogEditor, Error, "AssetWorkflow: failed to save DataAsset '{}'.", meta.AssetPath);
+            }
+            else
+            {
+                ME_LOG(LogEditor, Info, "AssetWorkflow: saved DataAsset '{}'.", meta.AssetPath);
+            }
+        }
+    }
+
     void AssetWorkflowModule::DrawMaterialInstanceInspector(const AssetMeta& meta)
     {
         if (!AssetManager::HasInstance())
@@ -890,8 +1020,9 @@ namespace minEngine
             return;
         }
 
-        const std::shared_ptr<MaterialInstance> instance =
-            AssetManager::Get().LoadAsset<MaterialInstance>(meta.AssetPath);
+        std::string loadError;
+        std::shared_ptr<MaterialInstance> instance = Cast<MaterialInstance>(
+            AssetManager::Get().LoadAssetByPath(meta.AssetPath, loadError));
         if (!instance)
         {
             ImGui::TextUnformatted("Failed to load material instance.");

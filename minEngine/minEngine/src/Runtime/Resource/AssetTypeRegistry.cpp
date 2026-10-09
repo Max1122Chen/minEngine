@@ -13,6 +13,7 @@
 #include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
+#include "Runtime/Resource/DataAsset.h"
 #include "Runtime/Resource/Font.h"
 #include "Runtime/Resource/LuaScript.h"
 #include "Runtime/Resource/AudioClip.h"
@@ -131,6 +132,13 @@ namespace minEngine
             .Extensions = {".mespriteatlas"},
             .FileDialogFilterLabel = "Sprite Atlas (*.mespriteatlas)"});
         m_AssetTypeIdByClass[SpriteAtlas::StaticClass()] = "SpriteAtlas";
+
+        RegisterType(AssetTypeDescriptor{
+            .AssetTypeId = "DataAsset",
+            .RuntimeClassName = GetClassName<DataAsset>(),
+            .Extensions = {".medata"},
+            .FileDialogFilterLabel = "Data Asset (*.medata)"});
+        m_AssetTypeIdByClass[DataAsset::StaticClass()] = "DataAsset";
 
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "Scene",

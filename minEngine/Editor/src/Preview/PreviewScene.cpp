@@ -192,7 +192,7 @@ namespace minEngine
         }
 
         m_StaticMeshPreviewMaterial =
-            AssetManager::Get().LoadAsset<Material>(kStaticMeshPreviewMaterialPath);
+            ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(AssetManager::Get().LoadAssetByPath(kStaticMeshPreviewMaterialPath, _loadAssetError)); })();
         if (!m_StaticMeshPreviewMaterial)
         {
             ME_LOG(LogEditor, Warn, 

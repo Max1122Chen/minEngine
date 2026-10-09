@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-09 (UI-F05/F06 Done on feat/ui)
+Last updated: 2026-10-09 (UI-F05/F06 + ASSET-F08/F07 merged to master)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -23,17 +23,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 5 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | 6 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）minCraft 拖拽联调（`TD-015`）或开 UI-F07 FillAmount Design；（2）ASSET-F04 人手验收（主仓另轨）；（3）Texture Inspector 设置 UI 细化（可选）。
+**下一动作：**（1）minCraft 拖拽联调（`TD-015`）或开 UI-F07 FillAmount Design；（2）ASSET-F04 人手验收；（3）Texture Inspector 设置 UI 细化（可选）。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 
-**本波已收口（勿当 WIP）：** UI-F05；UI-F06；CORE-F32；ED-F23；UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
+**本波已收口（勿当 WIP）：** UI-F05；UI-F06；ASSET-F08；ASSET-F07；CORE-F32；ED-F23；UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |
 |----|-----|------|
-| ui | `UI-F05` / `UI-F06` | **Done**；已合入 `master`（`6c06c9e0`）；解锁 minCraft 拖拽 + 图集图标 |
+| ui | `UI-F05` / `UI-F06` | **Done**；已合入 `master`；解锁 minCraft 拖拽 + 图集图标 |
 | ui | `UI-F07` | FillAmount Planned；F06 后可开 Design |
+| asset | `ASSET-F08` / `ASSET-F07` | **Done**；已合入 `master`（去 typed Load 糖衣 + DataAsset） |
 | editor | `ED-F11` | Tab Host 余量（可选） |
 | editor | `ED-F02` | S03/S05 余量（低优） |
 | — | Prefab 后置 | Nested / Apply→Prefab / 并排预览 |
@@ -143,11 +144,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | **`master`**（合入后） | lua + prefab + CORE-F20/F22 + editor ED-F11–F15 |
+| `D:/Dev/GitRepo/minEngine` | **`feat/asset-load-api`** | ASSET-F08/F07 已合入 master；可对齐或归档；可能仍有本地 WIP |
+| `D:/Dev/GitRepo/minEngine-ui` | **`master`** | 主协作树（UI-F05/F06 + ASSET-F08/F07 已合入） |
 | `D:/Dev/GitRepo/minEngine-lua-script` | **`feat/lua-script`** | 可对齐 master 后归档 |
 | `D:/Dev/GitRepo/minEngine-prefab` | **`feat/prefab`** | 可对齐 master 后归档 |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
-| `D:/Dev/GitRepo/minEngine-ui` | **`feat/ui`** | UI-F05/F06 **Done**；已 FF 合入 `master` |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
 | `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 原 RND + Sprite MVP；族完成后可对齐 master |

@@ -349,7 +349,7 @@ namespace minEngine
         const AssetMeta* meta = assetManager.FindAssetMetaByPath(projectRelativePath);
         if (meta != nullptr)
         {
-            return assetManager.LoadAsset<Font>(meta->AssetPath);
+            return ([&]() -> std::shared_ptr<Font> { std::string _loadAssetError; return std::dynamic_pointer_cast<Font>(assetManager.LoadAssetByPath(meta->AssetPath, _loadAssetError)); })();
         }
 
         if (role != EditorTypographyRole::Body)

@@ -330,6 +330,49 @@ namespace minEngine
             }
         };
 
+        class ContentBrowserCreateDataAssetAction final : public ContentBrowserScopedAction
+        {
+        public:
+            EditorActionId GetId() const override { return EditorActionId::CreateEmptyGameObject; }
+            const char* GetLabel(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "Data Asset";
+            }
+            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
+            int GetSortOrder() const override { return 24; }
+
+            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                if (cbCtx == nullptr)
+                {
+                    return false;
+                }
+
+                return cbCtx->HitKind == ContentBrowserHitKind::TreeDirectory
+                    || cbCtx->HitKind == ContentBrowserHitKind::ListBackground;
+            }
+
+            bool CanExecute(const EditorMenuContext& ctx) const override
+            {
+                return IsVisibleInMenu(ctx);
+            }
+
+            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
+            {
+                (void)ctx;
+                return "";
+            }
+
+            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
+            {
+                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
+                const std::string_view destDir = cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string_view{};
+                editor.GetAssetWorkflow().TryCreateDataAssetInDirectory(destDir);
+            }
+        };
+
         class ContentBrowserCreateAtlasFromSpritesAction final : public ContentBrowserScopedAction
         {
         public:
@@ -340,7 +383,7 @@ namespace minEngine
                 return "Create Sprite Atlas From Selection";
             }
             EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
-            int GetSortOrder() const override { return 24; }
+            int GetSortOrder() const override { return 25; }
 
             bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
             {
@@ -436,6 +479,7 @@ namespace minEngine
         registry.Register(std::make_unique<ContentBrowserCreateMaterialInstanceAction>());
         registry.Register(std::make_unique<ContentBrowserCreateSpriteAction>());
         registry.Register(std::make_unique<ContentBrowserCreateSpriteAtlasAction>());
+        registry.Register(std::make_unique<ContentBrowserCreateDataAssetAction>());
         registry.Register(std::make_unique<ContentBrowserCreateAtlasFromSpritesAction>());
     }
 

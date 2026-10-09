@@ -107,7 +107,7 @@ namespace minEngine
             return false;
         }
 
-        std::shared_ptr<Prefab> prefab = AssetManager::Get().LoadAsset<Prefab>(meta.AssetPath);
+        std::shared_ptr<Prefab> prefab = ([&]() -> std::shared_ptr<Prefab> { std::string _loadAssetError; return std::dynamic_pointer_cast<Prefab>(AssetManager::Get().LoadAssetByPath(meta.AssetPath, _loadAssetError)); })();
         if (!prefab)
         {
             if (outError)

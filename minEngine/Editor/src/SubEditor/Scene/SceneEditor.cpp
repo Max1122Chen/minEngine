@@ -1314,7 +1314,7 @@ namespace minEngine
         }
 
         const std::string projectRelativePath = relativePath.generic_string();
-        std::shared_ptr<Prefab> prefab = AssetManager::Get().LoadAsset<Prefab>(projectRelativePath);
+        std::shared_ptr<Prefab> prefab = ([&]() -> std::shared_ptr<Prefab> { std::string _loadAssetError; return std::dynamic_pointer_cast<Prefab>(AssetManager::Get().LoadAssetByPath(projectRelativePath, _loadAssetError)); })();
         if (!prefab)
         {
             ME_LOG(LogEditor, Error, "Instantiate Prefab: failed to load '{}'.", projectRelativePath);
