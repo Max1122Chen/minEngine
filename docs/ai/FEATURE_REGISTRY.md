@@ -59,6 +59,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F30` | Play main Camera（`bSetAsMainCameraOnBeginPlay` + 手动 SetSelfAsMainCamera） | **Draft** | — | [Design](./Platform/Core/CORE-F30_PLAY_MAIN_CAMERA_BINDING_DESIGN.md) · Depends `CORE-F31` · minCraft TD-008 |
 | `CORE-F31` | GameObject / Component BeginPlay · EndPlay（UE Actor→Comp 转发；Scene Dispatch） | **Done** | — | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_IMPLEMENTATION.md) · suite `begin-play` · 解锁 F29/F30 |
 | `CORE-F32` | Enhanced Input hold / InputTriggerDown Started·Canceled | **Done** | — | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) · suite `input-trigger-down` |
+| `CORE-F33` | 运行期结构变更（Spawn 即时入世 · Destroy 延迟 · EOF swap） | **In Progress** | — | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) · `feat/core` · Depends `CORE-F31` |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
 | `RND-F02` | Modern RHI | Done | — | [RND-F02_MODERN_RHI_DESIGN](./Render/RND-F02_MODERN_RHI_DESIGN.md) |
@@ -184,7 +185,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F33** | F27–F32 Done（含 EI hold/Down）；F29/F30 Done；F23–F26 Prefab MVP **Done** |
+| `CORE` | **F34** | F27–F32 Done；**F33** Draft（Deferred Spawn/Destroy）；F29/F30；F23–F26 Prefab MVP **Done** |
 | `ASSET` | **F09** | F01–F03/F05–F08 Done；**F04** In Progress；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |

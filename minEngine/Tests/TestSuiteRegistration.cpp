@@ -31,6 +31,7 @@
 #include "Suites/FrustumTest.h"
 #include "Suites/NoiseTest.h"
 #include "Suites/BeginPlayTest.h"
+#include "Suites/DeferredStructuralEditTest.h"
 #include "Suites/GameplayInputGateTest.h"
 #include "Suites/InputTriggerDownTest.h"
 #include "Suites/PlayMainCameraTest.h"
@@ -479,6 +480,28 @@ namespace minEngine
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "begin-play",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct DeferredStructuralEditTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "deferred-structural-edit",
+                    "Deferred Structural Edit",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'deferred-structural-edit'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "deferred-structural-edit",
                     context.GetCommandLine().TestKind);
             }
         };
@@ -965,6 +988,7 @@ namespace minEngine
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
         using BeginPlaySuite = TypedTestSuite<BeginPlayTestSuiteTraits>;
+        using DeferredStructuralEditSuite = TypedTestSuite<DeferredStructuralEditTestSuiteTraits>;
         using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
         using InputTriggerDownSuite = TypedTestSuite<InputTriggerDownTestSuiteTraits>;
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
@@ -1028,6 +1052,7 @@ namespace minEngine
             registry.Register(FrustumSuite::Get());
             registry.Register(NoiseSuite::Get());
             registry.Register(BeginPlaySuite::Get());
+            registry.Register(DeferredStructuralEditSuite::Get());
             registry.Register(GameplayInputGateSuite::Get());
             registry.Register(InputTriggerDownSuite::Get());
             registry.Register(PlayMainCameraSuite::Get());

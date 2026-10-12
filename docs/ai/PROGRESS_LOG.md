@@ -1,3 +1,35 @@
+## 2026-10-12 — CORE-F33 S01+S02 实现（feat/core）
+
+- **Scope:** Spawn 即时入世 + Tick/Dispatch 定长；Destroy 延迟；EOF swap；Engine Flush
+- **Completed:**
+  - `Scene::{Spawn,Destroy,FlushDeferredDestroys}`；定长 `Tick`/`Dispatch*`；遍历中 `Remove` Error
+  - `SceneManager::SendAllEndOfFrameUpdates` swap 快照；`FlushDeferredStructuralEdits`
+  - `Engine::LogicalTick`：EOF 后 Flush
+  - Suite `deferred-structural-edit`（Find 即时 / 同帧不 Tick / Destroy Flush / EOF 下帧 / BeginPlay Destroy）
+- **Verification:** `minEngineTests.exe test deferred-structural-edit` PASS；`test begin-play` PASS
+- **Next:** 你个人 code review → Doc DoD / commit；S03 Prefab 可选后置
+
+## 2026-10-12 — CORE-F33 本机 UE/Godot 源码核对
+
+- **Scope:** 对照 `D:/Dev/GitRepo/UnrealEngine` · `D:/Dev/GitRepo/Godot` 核 Spawn/Destroy/Ready/Flush
+- **Completed:** Design 写入锚点表；确认即时入世 + 延迟销毁；补 BeginPlay 中 Destroy 推迟；标明定长不 Tick 相对 UE 更保守
+- **Verification:** 只读源码（`LevelActor.cpp` / `Actor.cpp` / `node.cpp` / `scene_tree.cpp`）
+- **Next:** 你终审 Open Questions（dying∈GetAll？同帧不 Tick？）→ Planned / Review
+
+## 2026-10-12 — CORE-F33 Design 中文 + 业界 BeginPlay 对照
+
+- **Scope:** 同一 Draft；正文改中文；补 Destroy/Spawn/BeginPlay 业界时机表
+- **Completed:** [CORE-F33](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) 默认锁定「Flush 当帧 BeginPlay、次帧 Tick」
+- **Verification:** N/A（文档；待审批）
+- **Next:** 你确认 Open Questions（尤其是否下一帧 BeginPlay）→ Design Review
+
+## 2026-10-12 — CORE-F33 Design Draft（Deferred Structural Edit）
+
+- **Scope:** minCraft 反哺：运行期 Scene 结构变更契约（Spawn/Destroy 队列 + EOF swap-drain）
+- **Completed:** 登记 `CORE-F33`；Design Draft [CORE-F33](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)；ACTIVE_WORK 提议 Primary
+- **Verification:** N/A（文档 Draft；待审批）
+- **Next:** 你审批 Open Questions 默认值 → Design Review / readiness → S01 EOF harden
+
 ## 2026-10-09 — UI-F05 / UI-F06 实现 Done（feat/ui）
 
 - **Scope:** ScreenUI Drag-Drop + Image Sprite/Raw（工作树 `minEngine-ui` / `feat/ui`）

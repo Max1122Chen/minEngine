@@ -391,6 +391,7 @@ namespace minEngine
             m_UISystem->Tick(deltaTime);
         }
         m_SceneManager->SendAllEndOfFrameUpdates();
+        m_SceneManager->FlushDeferredStructuralEdits();
     }
 
     void Engine::RendererTick(float deltaTime)

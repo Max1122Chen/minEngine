@@ -39,7 +39,6 @@ namespace minEngine
         void SetPIEPlayActive(bool active) { m_PIEPlayActive = active; }
         bool IsPIEPlayActive() const { return m_PIEPlayActive; }
 
-        /** True if any managed Scene has begun play (PIE or standalone Dispatch). CORE-F31. */
         bool HasBegunPlayWorld() const;
 
         void SetActiveSceneOverride(Scene* scene) { m_ActiveSceneOverride = scene; }
@@ -63,7 +62,11 @@ namespace minEngine
         void MarkComponentForNeededEndOfFrameUpdate(Component* component);
         /** Drop a destroyed/removed component from the pending EOF list (no-op if unmarked). */
         void UnmarkComponentForNeededEndOfFrameUpdate(Component* component);
+        /** Swap snapshot: process only components dirty before this call; new Marks wait for next SendAll. */
         void SendAllEndOfFrameUpdates();
+        /** Erase GameObjects marked by DestroyGameObject (after EOF). */
+        void FlushDeferredStructuralEdits();
+        bool IsInStructuralTraversal() const { return m_StructuralTraversalDepth > 0; }
 
         void ResolvePendingActivationsForScene(Scene* scene);
 
@@ -75,6 +78,27 @@ namespace minEngine
         friend class Engine;
         friend class Testing::TestAccess<SceneManager>;
 
+        class StructuralTraversalScope
+        {
+        public:
+            explicit StructuralTraversalScope(SceneManager& manager)
+                : m_Manager(manager)
+            {
+                ++m_Manager.m_StructuralTraversalDepth;
+            }
+
+            ~StructuralTraversalScope()
+            {
+                --m_Manager.m_StructuralTraversalDepth;
+            }
+
+            StructuralTraversalScope(const StructuralTraversalScope&) = delete;
+            StructuralTraversalScope& operator=(const StructuralTraversalScope&) = delete;
+
+        private:
+            SceneManager& m_Manager;
+        };
+
         static void SetInstance(SceneManager* instance);
         static SceneManager* s_Instance;
 
@@ -85,6 +109,7 @@ namespace minEngine
         bool m_PIEPlayActive = false;
         Scene* m_ActiveSceneOverride = nullptr;
         mutable std::vector<SceneContext> m_CachedSceneContexts;
+        int32_t m_StructuralTraversalDepth{ 0 };
 
         std::unordered_map<std::string, std::string> m_RegisteredScenes;
         SceneViewport* m_EditorSceneViewport = nullptr;

@@ -24,10 +24,13 @@ namespace minEngine
 
         void Tick(float deltaTime);
 
-        /** Simulation lifecycle (CORE-F31). Routes to Components then OnBeginPlay (UE order). */
+        /** Routes to Components then OnBeginPlay. */
         void BeginPlay();
         void EndPlay(EEndPlayReason reason);
         bool HasBegunPlay() const { return m_bHasBegunPlay; }
+
+        bool IsPendingDestroy() const { return m_bPendingDestroy; }
+        void MarkPendingDestroy() { m_bPendingDestroy = true; }
 
         uint64_t GetID() const { return m_ID; }
         void SetID(uint64_t id) { m_ID = id; }
@@ -146,6 +149,7 @@ namespace minEngine
         std::vector<std::shared_ptr<Component>> m_Components;
 
         bool m_bHasBegunPlay{ false };
+        bool m_bPendingDestroy{ false };
 
     };
 }

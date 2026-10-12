@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-09 (UI-F05/F06 + ASSET-F08/F07 merged to master)
+Last updated: 2026-10-12 (CORE-F33 S01+S02 implementing on feat/core)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,19 +11,20 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** F04 人手验收可并行。`ED-F24` / `ASSET-F05` / `ASSET-F06` **Done**。
+**Primary：** `CORE-F33` 运行期结构变更 — **In Progress** on `feat/core`（OQ 已接受；S01+S02）。ASSET-F04 人手验收可并行。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
-| 1 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
-| 2 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
-| 3 | ED-F24 | AES GUI 收敛（Import/Create/Mutation 同源） | **Done** | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
-| 4 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
-| 5 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
-| 6 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
+| 0 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress** | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
+| 1 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
+| 2 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
+| 3 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
+| 4 | ED-F24 | AES GUI 收敛（Import/Create/Mutation 同源） | **Done** | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
+| 5 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
+| 6 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
+| 7 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）minCraft 拖拽联调（`TD-015`）或开 UI-F07 FillAmount Design；（2）ASSET-F04 人手验收；（3）Texture Inspector 设置 UI 细化（可选）。
+**下一动作：**（1）`CORE-F33` S01+S02 编测收口（`deferred-structural-edit` suite）→ 你个人 review；（2）ASSET-F04 人手验收；（3）minCraft 拖拽联调（`TD-015`）可并行。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

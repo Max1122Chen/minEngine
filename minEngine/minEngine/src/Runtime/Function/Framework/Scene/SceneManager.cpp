@@ -8,6 +8,7 @@
 #include "Runtime/Resource/AssetManager.h"
 
 #include <algorithm>
+#include <vector>
 
 namespace minEngine
 {
@@ -507,7 +508,12 @@ namespace minEngine
 
     void SceneManager::SendAllEndOfFrameUpdates()
     {
-        for (Component* component : m_ComponentsThatNeedEndOfFrameUpdate)
+        StructuralTraversalScope scope(*this);
+
+        std::vector<Component*> snapshot;
+        snapshot.swap(m_ComponentsThatNeedEndOfFrameUpdate);
+
+        for (Component* component : snapshot)
         {
             if (component)
             {
@@ -515,7 +521,26 @@ namespace minEngine
                 component->DoEndOfFrameUpdate();
             }
         }
-        m_ComponentsThatNeedEndOfFrameUpdate.clear();
+        // Intentionally do not clear m_ComponentsThatNeedEndOfFrameUpdate:
+        // Marks during DoEndOfFrameUpdate stay for the next SendAll (next frame).
+    }
+
+    void SceneManager::FlushDeferredStructuralEdits()
+    {
+        auto flushScene = [](Scene* scene)
+        {
+            if (scene)
+            {
+                scene->FlushDeferredDestroys();
+            }
+        };
+
+        flushScene(m_CurrentActiveScene.get());
+        flushScene(m_EditorSceneContext.Scene.get());
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            flushScene(pieContext.Scene.get());
+        }
     }
 
     void SceneManager::ResolvePendingActivationsForScene(Scene* scene)
@@ -525,15 +550,22 @@ namespace minEngine
             return;
         }
 
-        for (const std::shared_ptr<GameObject>& gameObject : scene->GetAllGameObjects())
+        StructuralTraversalScope scope(*this);
+        const std::vector<std::shared_ptr<GameObject>>& gameObjects = scene->GetAllGameObjects();
+        const size_t goCount = gameObjects.size();
+        for (size_t goIndex = 0; goIndex < goCount; ++goIndex)
         {
+            const std::shared_ptr<GameObject>& gameObject = gameObjects[goIndex];
             if (!gameObject)
             {
                 continue;
             }
 
-            for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
+            std::vector<std::shared_ptr<Component>>& components = gameObject->GetAllComponents();
+            const size_t componentCount = components.size();
+            for (size_t componentIndex = 0; componentIndex < componentCount; ++componentIndex)
             {
+                const std::shared_ptr<Component>& component = components[componentIndex];
                 if (component)
                 {
                     // Reconcile runtime activation with m_bActive after deserialize.

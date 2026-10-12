@@ -7,6 +7,7 @@
 #include "Runtime/Resource/Asset.h"
 
 #include <functional>
+#include <unordered_set>
 
 namespace minEngine
 {
@@ -26,6 +27,8 @@ namespace minEngine
         void Tick(float deltaTime);
 
         std::shared_ptr<GameObject> CreateGameObject();
+        /** Immediate membership; BeginPlay if HasBegunPlay; same-frame Tick skipped via fixed-count Tick. */
+        std::shared_ptr<GameObject> SpawnGameObject();
         std::shared_ptr<GameObject> InsertRestoredGameObject(std::shared_ptr<GameObject> gameObject);
         void Reset();
         void RebuildRuntimeGameObjectIndex();
@@ -34,8 +37,14 @@ namespace minEngine
         const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() const { return m_GameObjects; }
         const std::unordered_map<uint64_t, GameObject*>& GetGameObjectsById() const { return m_GameObjectsById; }
         GameObject* FindGameObjectById(uint64_t id) const;
+        /** Immediate erase — forbidden during Tick / Dispatch / EOF traversal. */
         bool RemoveGameObjectById(uint64_t id);
+        /** Mark pending (incl. subtree); Tick skips; FlushDeferredDestroys erases. */
+        bool DestroyGameObject(uint64_t id);
+        bool IsPendingDestroy(uint64_t id) const;
+        void FlushDeferredDestroys();
         uint64_t IncrementNextGOId() { return m_NextGOId++; }
+        bool IsInStructuralTraversal() const { return m_StructuralTraversalDepth > 0; }
 
         /** Rebuild m_Children from serialized m_Parent and ensure root SceneComponent attach. */
         void ResolveGameObjectHierarchy();
@@ -81,7 +90,6 @@ namespace minEngine
         bool IsEditorScene() const { return m_SceneType == ESceneType::Editor; }
         bool IsPIEScene() const { return m_SceneType == ESceneType::PIE; }
 
-        /** Simulation lifecycle (CORE-F31). */
         void DispatchBeginPlay();
         void DispatchEndPlay(EEndPlayReason reason);
         bool HasBegunPlay() const { return m_bHasBegunPlay; }
@@ -103,6 +111,29 @@ namespace minEngine
             std::string* outError = nullptr);
 
     private:
+        class StructuralTraversalScope
+        {
+        public:
+            explicit StructuralTraversalScope(Scene& scene)
+                : m_Scene(scene)
+            {
+                ++m_Scene.m_StructuralTraversalDepth;
+            }
+
+            ~StructuralTraversalScope()
+            {
+                --m_Scene.m_StructuralTraversalDepth;
+            }
+
+            StructuralTraversalScope(const StructuralTraversalScope&) = delete;
+            StructuralTraversalScope& operator=(const StructuralTraversalScope&) = delete;
+
+        private:
+            Scene& m_Scene;
+        };
+
+        void CollectSubtreeIds(GameObject* root, std::vector<uint64_t>& outIds) const;
+
         ME_PROPERTY()
         std::string m_SceneName;
 
@@ -113,8 +144,10 @@ namespace minEngine
         std::vector<PrefabInstanceRecord> m_PrefabInstances;
 
         std::unordered_map<uint64_t, GameObject*> m_GameObjectsById;
+        std::unordered_set<uint64_t> m_PendingDestroyIds;
 
         uint64_t m_NextGOId{ 0 };
+        int32_t m_StructuralTraversalDepth{ 0 };
         std::shared_ptr<RenderScene> m_RenderScene;
         ESceneType m_SceneType{ ESceneType::None };
         ESceneTickPolicy m_TickPolicy{ ESceneTickPolicy::Gameplay };

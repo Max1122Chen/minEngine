@@ -3,6 +3,7 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/GameplayFramework/Events/GameplayEventSystemComponent.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Render/RenderScene.h"
@@ -10,6 +11,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <unordered_set>
 
 namespace minEngine
 {
@@ -155,12 +157,17 @@ namespace minEngine
 
     void Scene::Tick(float deltaTime)
     {
-        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        StructuralTraversalScope scope(*this);
+        const size_t count = m_GameObjects.size();
+        for (size_t i = 0; i < count; ++i)
         {
-            if (gameObject)
+            GameObject* gameObject = m_GameObjects[i].get();
+            if (gameObject == nullptr || gameObject->IsPendingDestroy())
             {
-                gameObject->Tick(deltaTime);
+                continue;
             }
+
+            gameObject->Tick(deltaTime);
         }
     }
 
@@ -171,15 +178,21 @@ namespace minEngine
             return;
         }
 
-        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
-        {
-            if (gameObject)
-            {
-                gameObject->BeginPlay();
-            }
-        }
-
+        // Set before the loop so SpawnGameObject during BeginPlay also BeginPlays.
         m_bHasBegunPlay = true;
+
+        StructuralTraversalScope scope(*this);
+        const size_t count = m_GameObjects.size();
+        for (size_t i = 0; i < count; ++i)
+        {
+            GameObject* gameObject = m_GameObjects[i].get();
+            if (gameObject == nullptr || gameObject->IsPendingDestroy())
+            {
+                continue;
+            }
+
+            gameObject->BeginPlay();
+        }
     }
 
     void Scene::DispatchEndPlay(EEndPlayReason reason)
@@ -189,8 +202,11 @@ namespace minEngine
             return;
         }
 
-        for (const std::shared_ptr<GameObject>& gameObject : m_GameObjects)
+        StructuralTraversalScope scope(*this);
+        const size_t count = m_GameObjects.size();
+        for (size_t i = 0; i < count; ++i)
         {
+            GameObject* gameObject = m_GameObjects[i].get();
             if (gameObject)
             {
                 gameObject->EndPlay(reason);
@@ -201,6 +217,11 @@ namespace minEngine
     }
 
     std::shared_ptr<GameObject> Scene::CreateGameObject()
+    {
+        return SpawnGameObject();
+    }
+
+    std::shared_ptr<GameObject> Scene::SpawnGameObject()
     {
         const uint64_t id = m_NextGOId++;
         auto gameObject = NewObject<GameObject>("", this);
@@ -214,6 +235,77 @@ namespace minEngine
         }
 
         return gameObject;
+    }
+
+    void Scene::CollectSubtreeIds(GameObject* root, std::vector<uint64_t>& outIds) const
+    {
+        if (root == nullptr)
+        {
+            return;
+        }
+
+        for (GameObject* child : root->GetChildren())
+        {
+            CollectSubtreeIds(child, outIds);
+        }
+
+        outIds.push_back(root->GetID());
+    }
+
+    bool Scene::DestroyGameObject(uint64_t id)
+    {
+        GameObject* gameObject = FindGameObjectById(id);
+        if (gameObject == nullptr)
+        {
+            return false;
+        }
+
+        if (gameObject->IsPendingDestroy())
+        {
+            return true;
+        }
+
+        std::vector<uint64_t> subtreeIds;
+        CollectSubtreeIds(gameObject, subtreeIds);
+        for (uint64_t destroyId : subtreeIds)
+        {
+            GameObject* node = FindGameObjectById(destroyId);
+            if (node == nullptr || node->IsPendingDestroy())
+            {
+                continue;
+            }
+
+            node->MarkPendingDestroy();
+            m_PendingDestroyIds.insert(destroyId);
+        }
+
+        return true;
+    }
+
+    bool Scene::IsPendingDestroy(uint64_t id) const
+    {
+        return m_PendingDestroyIds.find(id) != m_PendingDestroyIds.end();
+    }
+
+    void Scene::FlushDeferredDestroys()
+    {
+        if (m_PendingDestroyIds.empty())
+        {
+            return;
+        }
+
+        std::vector<uint64_t> pendingIds(m_PendingDestroyIds.begin(), m_PendingDestroyIds.end());
+        m_PendingDestroyIds.clear();
+
+        for (uint64_t pendingId : pendingIds)
+        {
+            if (FindGameObjectById(pendingId) == nullptr)
+            {
+                continue;
+            }
+
+            RemoveGameObjectById(pendingId);
+        }
     }
 
     std::shared_ptr<GameObject> Scene::Instantiate(
@@ -243,6 +335,7 @@ namespace minEngine
     {
         m_GameObjects.clear();
         m_GameObjectsById.clear();
+        m_PendingDestroyIds.clear();
         m_PrefabInstances.clear();
         m_NextGOId = 0;
     }
@@ -287,6 +380,17 @@ namespace minEngine
 
     bool Scene::RemoveGameObjectById(uint64_t id)
     {
+        if (m_StructuralTraversalDepth > 0
+            || (SceneManager::HasInstance() && SceneManager::Get().IsInStructuralTraversal()))
+        {
+            ME_LOG(
+                LogCore,
+                Error,
+                "RemoveGameObjectById({}) while structural traversal is active; use DestroyGameObject.",
+                id);
+            return false;
+        }
+
         GameObject* gameObject = FindGameObjectById(id);
         if (!gameObject)
         {
@@ -294,19 +398,7 @@ namespace minEngine
         }
 
         std::vector<uint64_t> toRemove;
-        std::function<void(GameObject*)> collectSubtree = [&](GameObject* node)
-        {
-            if (node == nullptr)
-            {
-                return;
-            }
-            for (GameObject* child : node->GetChildren())
-            {
-                collectSubtree(child);
-            }
-            toRemove.push_back(node->GetID());
-        };
-        collectSubtree(gameObject);
+        CollectSubtreeIds(gameObject, toRemove);
 
         for (uint64_t removeId : toRemove)
         {
@@ -315,6 +407,7 @@ namespace minEngine
             {
                 continue;
             }
+            m_PendingDestroyIds.erase(removeId);
             node->DetachFromParent(AttachmentTransformRules::KeepWorldTransform);
             m_GameObjects.erase(
                 std::remove_if(
