@@ -4,6 +4,7 @@ bin/
 bin-asan/
 build/
 build-asan/
+Staging/
 
 # Local editor layout state
 minEngine/imgui.ini

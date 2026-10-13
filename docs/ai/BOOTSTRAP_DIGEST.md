@@ -94,7 +94,7 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) section 7.
 | Run tests | `minEngineTests.exe test smoke` from `minEngine/bin` |
 | Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
-**Product / sample hosts (in progress):** project roots own **Editor + Game** executables and link the game SHARED explicitly. In-tree sample (default ON): `BUILD_GAME_MODULE_SAMPLE` → `SampleGame.exe` / `SampleEditor.exe` + `GameModuleStub`. Design: [BUILD-F01](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md). Engine CMake no longer reverse-pulls external games.
+**Product / sample hosts:** project roots own **Editor + Game** executables and link the game SHARED explicitly. In-tree sample (default ON): `BUILD_GAME_MODULE_SAMPLE` → `SampleGame` / `SampleEditor` + `package-SampleGame`. Launcher template: `GameProject` (`minlauncher create <Name> --template GameProject`). Design: [BUILD-F01](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md).
 
 Prove external `ME_CLASS` + `AddComponent<T>()` (with sample enabled):
 

@@ -1,3 +1,14 @@
+## 2026-10-13 — BUILD S03/S04：GameProject 模板 + package-game
+
+- **Scope:** 引擎侧产品构建余量（不含 minCraft 迁根）
+- **Completed:**
+  - `Launcher/Templates/GameProject` + 占位符替换；cwd/settings 解析 `ENGINE_ROOT`
+  - `minengine_add_package_game`；Sample `package-SampleGame` → Staging
+  - `EXECUTABLE_PATH` CACHE；MSVC `/utf-8`；`.gitignore` Staging/
+  - ACTIVE Primary → CORE-F34；BUILD S05 Deferred
+- **Verification:** `cargo test` create_*；Launcher create + MinGW configure；`package-SampleGame`
+- **Next:** CORE-F34 S00 ObjectManager 进程单例
+
 ## 2026-10-13 — 移除反向 GAME_DIR；注释去 Feature ID
 
 - **Scope:** 产品构建清理

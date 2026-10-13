@@ -4,7 +4,7 @@
 - **ID:** `CORE-F34`
 - **Type:** Feature
 - **Complexity:** `L3`
-- **Status:** `Review`
+- **Status:** `In Progress`
 - **Owner:** project maintainer
 - **Last updated:** `2026-10-12`（ObjectManager 进程单例；与 BUILD-F01 分轨）
 - **Related:**

@@ -6,7 +6,7 @@
 - **Complexity:** `L3`
 - **Status:** `In Progress`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-13`（移除 `MINENGINE_GAME_DIR`；代码注释不写 Feature ID）
+- **Last updated:** `2026-10-13`（S03 模板 + S04 package-game；S05 minCraft Deferred）
 - **Related:**
   - 取代/收敛权宜：[ED-F20](../../Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md)（引擎反向 add 游戏）、KeepAlive/Marker
   - 对称链接文档：[ED-F21](../../Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)
@@ -241,11 +241,11 @@ Launcher `create`：复制 + 替换 → configure/build 两个 exe；文档写�
 | Slice | 范围 | 验证 |
 |-------|------|------|
 | **S01** | 本节定稿；变量表；废弃声明；Handbook 草图 | 文档 Review — **Done** |
-| **S02** | EditorLib + Sample：SampleEditor **与** SampleGame；无反向拉取 | 两 exe 已产出；`game-module-stub` 绿 — **Done**（KeepAlive TU 仍在 EditorLib，S05/S06 删） |
-| **S03** | `Templates/GameProject` + Launcher create 填变量 | 新目录 cmake 配置成功；两目标存在 |
-| **S04** | 引擎 CMake 分层 + `package-game` Stage 最小拷贝 | 默认无外仓 verify 绿；Stage 目录有 exe+dll |
-| **S05** | minCraft 迁项目根；双 exe；删 Marker | 文档路径；反射在 Editor/Game 均可 |
-| **S06** | 移除 `MINENGINE_GAME_DIR` / KeepAlive | **Done**（S02 后直接删除，无双轨窗口） |
+| **S02** | EditorLib + Sample：SampleEditor **与** SampleGame；无反向拉取 | **Done** |
+| **S03** | `Templates/GameProject` + Launcher create 填变量 | **Done**（create 单测 + MinGW configure） |
+| **S04** | `package-game` Stage 最小拷贝（Sample + 模板） | **Done**（`package-SampleGame` → Staging） |
+| **S05** | minCraft 迁项目根；双 exe | **Deferred**（外仓；模板就绪后另开） |
+| **S06** | 移除 `MINENGINE_GAME_DIR` / KeepAlive | **Done** |
 
 ## Verification Strategy
 
@@ -289,4 +289,4 @@ Launcher `create`：复制 + 替换 → configure/build 两个 exe；文档写�
 - [ ] Launcher 可从模板生成可配置工程  
 - [ ] KeepAlive/Marker 从推荐路径消失  
 - [ ] Handbook / BOOTSTRAP 更新  
-- [ ] CORE-F34 开工前本 Feature 主链（至少 S02–S04）可用  
+- [x] CORE-F34 开工前本 Feature 主链（至少 S02–S04）可用  

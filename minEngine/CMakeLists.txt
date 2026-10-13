@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Nested product projects may pick MSVC; spdlog/fmt require UTF-8 source charset.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 # Application targets
 option(BUILD_PLAYGROUND "Build the Playground game target" OFF)
 option(BUILD_EDITOR "Build the Editor target" ON)
@@ -41,11 +46,13 @@ if(MINENGINE_ENABLE_ASAN)
     endif()
 endif()
 
-if(DEFINED MINENGINE_OUTPUT_DIR)
+if(DEFINED MINENGINE_OUTPUT_DIR AND NOT "${MINENGINE_OUTPUT_DIR}" STREQUAL "")
     set(EXECUTABLE_PATH "${MINENGINE_OUTPUT_DIR}")
 else()
-    set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
+    set(EXECUTABLE_PATH "${PROJECT_SOURCE_DIR}/bin")
 endif()
+# CACHE so a parent project (GameProject template) can see it after add_subdirectory.
+set(EXECUTABLE_PATH "${EXECUTABLE_PATH}" CACHE PATH "Runtime output directory for engine/app binaries" FORCE)
 
 # Extra suites compiled into minEngineTests (empty = off).
 set(MINENGINE_EXTRA_TEST_SOURCES "" CACHE STRING

@@ -16,6 +16,11 @@ minengine_add_game_executable(SampleGame
     OUTPUT_NAME SampleGame
 )
 
+minengine_add_package_game(SampleGame
+    STAGE_DIR "${CMAKE_SOURCE_DIR}/Staging/SampleGame"
+    RUNTIME_TARGETS GameModuleStub minEngine
+)
+
 if(TARGET MaximumEditorLib)
     minengine_add_editor_executable(SampleEditor
         MAIN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../../Editor/src/EditorMain.cpp"
