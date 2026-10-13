@@ -94,25 +94,15 @@ Full checklist: [DOC_GOVERNANCE.md](./templates/DOC_GOVERNANCE.md) section 7.
 | Run tests | `minEngineTests.exe test smoke` from `minEngine/bin` |
 | Engine config | `--engine-config=`, `--engine-root=` (or space form); env `MINENGINE_ENGINE_*` |
 
-**Optional game Dev host (`ED-F20` + `CORE-F27` / `ED-F21`, off by default):**
+**Product / sample hosts (in progress):** project roots own **Editor + Game** executables and link the game SHARED explicitly. In-tree sample (default ON): `BUILD_GAME_MODULE_SAMPLE` → `SampleGame.exe` / `SampleEditor.exe` + `GameModuleStub`. Design: [BUILD-F01](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md). Engine CMake no longer reverse-pulls external games.
 
-```powershell
-cmake -S minEngine -B minEngine/build `
-  -DMINENGINE_GAME_DIR=<abs-path-to-game-or-Examples/GameModuleStub> `
-  -DMINENGINE_GAME_TARGET=<SHARED-target-name>
-```
-
-Example stub: `minEngine/Examples/GameModuleStub` with target `GameModuleStub` — **always** `target_link_libraries(... minEngine)` and runs `minengine_add_reflection_codegen` on its own `src/` (see [CORE-F27](./Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md), [ED-F21](./Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)).
-
-Prove external `ME_CLASS` + `AddComponent<T>()`:
+Prove external `ME_CLASS` + `AddComponent<T>()` (with sample enabled):
 
 ```powershell
 .\minEngine\bin\minEngineTests.exe test game-module-stub
 ```
 
-(Requires the configure above so tests link `GameModuleStub`.)
-
-Do **not** copy engine math types or maintain a no-engine dual build; use TEST-F05 for domain suites. World setup = game/default scene (no official C Startup — `ED-F22` Cancelled).
+Do **not** copy engine math types or maintain a no-engine dual build; use TEST-F05 for domain suites. World setup = game/default scene (no official C Startup).
 
 **Optional extra test suites (`TEST-F05`, off by default):**
 

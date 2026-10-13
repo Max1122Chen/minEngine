@@ -3,15 +3,17 @@
 ## Meta
 - **ID:** `ED-F20`
 - **Type:** Feature
-- **Status:** Done
+- **Status:** Done（**Superseded** — 反向拉取已从引擎 CMake 移除）
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-21
+- **Last updated:** 2026-10-13
 - **Related:**
-  - [Implementation](./ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md)
-  - [TEST-F05](../Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md)（独立验收；可并行）
+  - **继任：** [BUILD-F01](../Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)（项目根 Editor+Game；`MINENGINE_GAME_DIR` 已删除）
+  - [Implementation](./ED-F20_OPTIONAL_GAME_MODULE_LINK_IMPLEMENTATION.md)（历史）
+  - [TEST-F05](../Platform/Test/TEST-F05_EXTERNAL_TEST_HARNESS_DESIGN.md)
   - [ENGINE_DESIGN_PHILOSOPHY.md](../ENGINE_DESIGN_PHILOSOPHY.md)
-  - 发现场景（只读）：minCraft `INFRA-F01` / `ENG-GAP-001`
-- **Branch:** `master`（实现切片待确认后开）
+- **Branch:** `master`
+
+> **Removed:** 引擎根不再支持 `MINENGINE_GAME_DIR` / KeepAlive。游戏仓应自建 Editor/Game 可执行目标并显式 link 游戏模块。
 
 ## TL;DR
 

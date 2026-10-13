@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-12 (CORE-F33 S01+S02 implementing on feat/core)
+Last updated: 2026-10-13 (Primary：BUILD-F01 → 其后 CORE-F34)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,20 +11,22 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** `CORE-F33` 运行期结构变更 — **In Progress** on `feat/core`（OQ 已接受；S01+S02）。ASSET-F04 人手验收可并行。
+**Primary：** `BUILD-F01` 产品构建链（Editor + Game/Shipping 预留）。**其后**再开 `CORE-F34`（勿并行抢主链）。ASSET-F04 人手验收可并行。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress** | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
-| 1 | ASSET-F04 | CB Workflow + Automation（Selection·Folder·Move·批改名·Delete 警告·import/sprite 挂线） | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
-| 2 | ASSET-F06 | AssetManager Facade 重构（开闭；Import≠Load；自注册；Mutation） | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
-| 3 | ASSET-F05 | Texture2D cook 资产（.metex + 通道语义） | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
-| 4 | ED-F24 | AES GUI 收敛（Import/Create/Mutation 同源） | **Done** | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
-| 5 | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
-| 6 | ED-F23 | Viewport Pointer Capture（Navigate + PIE） | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
-| 7 | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
+| 0 | BUILD-F01 | 产品构建链 · Editor/Game 双目标 · 退役 ED-F20 | **In Progress**（S02） | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) |
+| 1 | CORE-F34 | GameInstance · Subsystem · OM 进程单例 | **Review**（**queued**：BUILD 后） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
+| 2 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
+| 3 | ASSET-F04 | CB Workflow + Automation | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
+| — | ASSET-F06 | AssetManager Facade 重构 | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
+| — | ASSET-F05 | Texture2D cook 资产 | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
+| — | ED-F24 | AES GUI 收敛 | **Done** | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
+| — | CORE-F32 | EI hold Down Started·Canceled | **Done** | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) |
+| — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
+| — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）`CORE-F33` S01+S02 编测收口（`deferred-structural-edit` suite）→ 你个人 review；（2）ASSET-F04 人手验收；（3）minCraft 拖拽联调（`TD-015`）可并行。
+**下一动作：**（1）`BUILD-F01` **S03** 项目模板 + Launcher；（2）S04 `package-game` Stage；（3）BUILD 主链后再开 F34 S00。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

@@ -1,3 +1,62 @@
+## 2026-10-13 — 移除反向 GAME_DIR；注释去 Feature ID
+
+- **Scope:** 产品构建清理
+- **Completed:** 删除 `MINENGINE_GAME_DIR` / KeepAlive；CMake/示例注释改为机制描述（不写 Feature 编号）
+- **Verification:** 无外仓 EXTRA 时 Sample* + Editor + `game-module-stub` 可编
+- **Next:** S03 模板；minCraft 改项目根自建 Editor/Game
+
+## 2026-10-13 — BUILD-F01 S02：EditorLib + Sample 双 exe
+
+- **Scope:** 产品构建 S02（设计补 Game/Shipping 后开工）
+- **Completed:**
+  - Design：R8 Game/Shipping/Stage 预留；OQ2 EditorLib；顺序 BUILD→F34；Ready
+  - `MaximumEditorLib` STATIC + 薄 `EditorMain.cpp`；`MinEngineTargets.cmake`（add_editor / add_game）
+  - 默认 `BUILD_GAME_MODULE_SAMPLE`：`SampleGame.exe` + `SampleEditor.exe` link `GameModuleStub`（无反向拉取）
+  - ED-F20 / `MINENGINE_GAME_DIR` Deprecated + WARNING
+- **Verification:** configure+build Sample* / EditorLib / tests；`minEngineTests test smoke` + `game-module-stub`；`SampleGame --version`
+- **Next:** S03 模板 + Launcher；S04 `package-game` Stage；再 S05 minCraft 迁根
+
+## 2026-10-13 — BUILD-F01：Game/Shipping 预留 + Ready；主线先 BUILD
+
+- **Scope:** 完善产品构建设计；实施顺序改为 BUILD → CORE-F34
+- **Completed:**
+  - BUILD-F01：R8 Game exe + Development/Shipping 挂点 + `package-game` Stage；OQ2 EditorLib 钉死；Verdict Ready w/ deferred Cook
+  - ED-F20 / CMake：`MINENGINE_GAME_DIR` 标 Deprecated + WARNING
+  - ACTIVE：Primary 仅 BUILD-F01；F34 queued
+- **Verification:** N/A（已并入 S02 条目）
+- **Next:**（见上）
+
+## 2026-10-12 — 双轨定稿：BUILD-F01 + F34（OM 单例）
+
+- **Scope:** 构建产品化独立 Feature；F34 锁定 ObjectManager 进程单例；F34 Design Review
+- **Completed:**
+  - 登记 [BUILD-F01](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)（项目根编辑器、模板、退役 ED-F20）
+  - F34：OM 升至 Log/Reflection 级；S00 切片；Verdict **Ready with deferred**（BUILD 不挡 S00–S05）
+  - ACTIVE 双轨 Primary
+- **Verification:** N/A（文档）
+- **Next:** 你审 BUILD-F01 OQ2；批准后 F34 开 S00 或先深化 BUILD 模板变量
+
+## 2026-10-12 — CORE-F34：模块链接溯源 + Engine:MEObject
+
+- **Scope:** 澄清 Stub/KeepAlive/ED-F20 痛点链；OQ6 锁定 Engine 继承 MEObject
+- **Completed:** Design 写入「引擎↔游戏模块」专节与 Engine MEObject bootstrap 阻碍表；否决代理 Outer；弱化未经设计的 GameModuleHost 类名
+- **Verification:** N/A（文档）
+- **Next:** Design Review；S01 可与「模块契约」短 Design 并行；Engine:MEObject 放在含 Engine 集合的切片
+
+## 2026-10-12 — CORE-F34 Design 展开（反射·单 Tick·退役 KeepAlive·接口面）
+
+- **Scope:** 同 F34；回应审阅点
+- **Completed:** 锁定反射 `GetDerivedClasses`；否决对外 PreSim/PostSim（对照 UE `ETickingGroup` / Godot process）；写清 KeepAlive/Stub 真相与 `GameModuleHost` 替换；展开 Collection/GI/Scene/Engine/Play/Module API
+- **Verification:** N/A（文档）
+- **Next:** 钉 OQ6（Engine 作 Outer）→ Design Review → S01
+
+## 2026-10-12 — CORE-F34 Design Draft（GI + Subsystem 生命周期升格）
+
+- **Scope:** 引擎系统 + 游戏 App 生命周期契约；对齐 UE GameInstance/SubsystemCollection；非保守 MVP
+- **Completed:** 登记 `CORE-F34` L3 Draft；[Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md)；ACTIVE Primary 切换；显式划掉反哺稿无 GI / 错层 EngineSubsystem / PostFrame-only Spawn
+- **Verification:** N/A（文档 Draft；待 Design Review）
+- **Next:** 接口展开（本轮已做）→ Review → S01
+
 ## 2026-10-12 — CORE-F33 S01+S02 实现（feat/core）
 
 - **Scope:** Spawn 即时入世 + Tick/Dispatch 定长；Destroy 延迟；EOF swap；Engine Flush

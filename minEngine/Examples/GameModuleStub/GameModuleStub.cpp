@@ -1,5 +1,4 @@
-// ED-F20 marker + CORE-F27 external ME_CLASS keep-alive.
-// Load-time link keeps GameModuleStub.dll; .gen.cpp static registration runs before Finalize.
+// Sample module entry + touch reflected type so aggressive LTO/GC keeps registration TUs.
 
 #include "StubGamePrimitiveComponent.h"
 
@@ -13,7 +12,6 @@
 
 extern "C" GAMEMODULESTUB_API int MinEngine_GameModuleStub_Marker(void)
 {
-    // Touch the reflected type so linkers keep registration TU when LTO/GC is aggressive.
     (void)sizeof(GameModuleStub::StubGamePrimitiveComponent);
     return 1;
 }

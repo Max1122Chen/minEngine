@@ -6,7 +6,7 @@
 namespace GameModuleStub
 {
     /**
-     * Minimal external-module PrimitiveComponent for CORE-F27 / ED-F20 smoke.
+     * Minimal external-module PrimitiveComponent for multi-module reflection smoke.
      * Proves game SHARED can ME_CLASS + AddComponent<T>() without engine-side scan of game src.
      */
     ME_CLASS()

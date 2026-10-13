@@ -6,9 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Build options for application targets.
+# Application targets
 option(BUILD_PLAYGROUND "Build the Playground game target" OFF)
 option(BUILD_EDITOR "Build the Editor target" ON)
+option(BUILD_GAME_MODULE_SAMPLE "Build Examples GameModuleStub + SampleGame/SampleEditor" ON)
+option(BUILD_TESTS "Build minEngineTests headless test executable" ON)
 
 # AddressSanitizer (Clang/GCC with ASan runtime). Use a separate build dir (build-asan).
 # Current MinGW-Builds GCC 15 lacks libasan — use LLVM-MinGW (UCRT) clang++ instead.
@@ -45,15 +47,7 @@ else()
     set(EXECUTABLE_PATH ${PROJECT_SOURCE_DIR}/bin)
 endif()
 
-# ED-F20: optional link-time game SHARED into MaximumEditor (Dev host). Empty = off.
-set(MINENGINE_GAME_DIR "" CACHE PATH
-    "External game CMake root (directory with CMakeLists.txt). Empty disables game module link.")
-set(MINENGINE_GAME_TARGET "" CACHE STRING
-    "CMake SHARED target name to link into Editor when MINENGINE_GAME_DIR is set.")
-option(MINENGINE_GAME_COPY_RUNTIME
-    "Copy game SHARED runtime next to MaximumEditor when a game module is linked" ON)
-
-# TEST-F05: optional extra suite sources compiled into minEngineTests. Empty = off.
+# Extra suites compiled into minEngineTests (empty = off).
 set(MINENGINE_EXTRA_TEST_SOURCES "" CACHE STRING
     "Semicolon-separated extra .cpp files compiled into minEngineTests (must define RegisterExtraTestSuites).")
 set(MINENGINE_EXTRA_TEST_DIR "" CACHE PATH
@@ -63,7 +57,7 @@ set(MINENGINE_EXTRA_TEST_INCLUDE_DIRS "" CACHE STRING
 set(MINENGINE_EXTRA_TEST_LINK_LIBRARIES "" CACHE STRING
     "Semicolon-separated CMake targets/libs to link into minEngineTests for EXTRA suites.")
 
-# ED-F20 / CORE-F27: paths for optional game modules that call minengine_add_reflection_codegen.
+# Shared by engine modules and external game SHARED targets (reflection codegen helpers).
 set(MINENGINE_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH
     "Directory containing MinEngineReflection.cmake and related helpers.")
 set(MINENGINE_HEADER_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/minEngine_header_tool.py" CACHE FILEPATH
@@ -71,38 +65,18 @@ set(MINENGINE_HEADER_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/minEngine_head
 
 add_subdirectory(${ENGINE_NAME})
 
-# Resolve optional game module after the engine target exists (game may link minEngine).
-set(MINENGINE_HAS_GAME_MODULE OFF)
-if(NOT "${MINENGINE_GAME_DIR}" STREQUAL "")
-    if("${MINENGINE_GAME_TARGET}" STREQUAL "")
-        message(FATAL_ERROR
-            "MINENGINE_GAME_DIR is set (${MINENGINE_GAME_DIR}) but MINENGINE_GAME_TARGET is empty. "
-            "Pass -DMINENGINE_GAME_TARGET=<SHARED target name> (see docs/ai/Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md).")
-    endif()
-    if(NOT EXISTS "${MINENGINE_GAME_DIR}/CMakeLists.txt")
-        message(FATAL_ERROR
-            "MINENGINE_GAME_DIR does not contain CMakeLists.txt: ${MINENGINE_GAME_DIR}")
-    endif()
-
-    add_subdirectory("${MINENGINE_GAME_DIR}" "${CMAKE_BINARY_DIR}/external_game" EXCLUDE_FROM_ALL)
-
-    if(NOT TARGET "${MINENGINE_GAME_TARGET}")
-        message(FATAL_ERROR
-            "MINENGINE_GAME_TARGET '${MINENGINE_GAME_TARGET}' was not defined by "
-            "add_subdirectory(${MINENGINE_GAME_DIR}).")
-    endif()
-
-    set(MINENGINE_HAS_GAME_MODULE ON)
-    message(STATUS "ED-F20: Editor will link game module target '${MINENGINE_GAME_TARGET}' from ${MINENGINE_GAME_DIR}")
+if(BUILD_GAME_MODULE_SAMPLE)
+    add_subdirectory(Examples/GameModuleStub)
 endif()
 
-if(BUILD_EDITOR) 
-	add_subdirectory(Editor)
+if(BUILD_EDITOR)
+    add_subdirectory(Editor)
 endif()
 
-option(BUILD_TESTS "Build minEngineTests headless test executable" ON)
+if(BUILD_GAME_MODULE_SAMPLE)
+    add_subdirectory(Examples/SampleGameHost)
+endif()
+
 if(BUILD_TESTS)
     add_subdirectory(Tests)
 endif()
-
-

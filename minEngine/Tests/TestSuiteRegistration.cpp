@@ -664,7 +664,7 @@ namespace minEngine
         {
             static TestSuiteMetadata BuildMetadata()
             {
-                // Not in default smoke: requires ED-F20 GameModuleStub link for the real assert path.
+                // Not in default smoke: needs GameModuleStub linked (BUILD_GAME_MODULE_SAMPLE).
                 return TestSuiteMetadata{"game-module-stub", "Game Module Stub Reflection", false, true, false};
             }
 

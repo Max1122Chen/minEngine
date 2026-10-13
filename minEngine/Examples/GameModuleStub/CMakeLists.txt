@@ -1,17 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Dev-host game SHARED for ED-F20 + CORE-F27 multi-module reflection smoke.
-# Configure the engine with:
-#   -DMINENGINE_GAME_DIR=<path-to-this-directory>
-#   -DMINENGINE_GAME_TARGET=GameModuleStub
-#
-# Always links minEngine (ED-F21). Runs header tool on this module's src only (CORE-F27).
+# Sample game SHARED for in-tree SampleGame/SampleEditor and reflection smoke tests.
+# Enabled with BUILD_GAME_MODULE_SAMPLE (default ON).
 
 if(NOT DEFINED MINENGINE_CMAKE_DIR OR NOT EXISTS "${MINENGINE_CMAKE_DIR}/MinEngineReflection.cmake")
     message(FATAL_ERROR
         "GameModuleStub requires MinEngineReflection.cmake. "
-        "Configure via the engine tree so MINENGINE_CMAKE_DIR is set "
-        "(see docs/ai/Platform/Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md).")
+        "Configure via the engine tree so MINENGINE_CMAKE_DIR is set.")
 endif()
 include("${MINENGINE_CMAKE_DIR}/MinEngineReflection.cmake")
 
@@ -37,9 +32,8 @@ endif()
 target_compile_definitions(GameModuleStub PRIVATE GAMEMODULESTUB_BUILD=1)
 target_include_directories(GameModuleStub PUBLIC "${GAMEMODULESTUB_SRC_ROOT}")
 
-# ED-F21: game module always links the same minEngine SHARED from this configure.
 if(NOT TARGET minEngine)
-    message(FATAL_ERROR "GameModuleStub expects target 'minEngine' (add_subdirectory after engine).")
+    message(FATAL_ERROR "GameModuleStub expects target 'minEngine' (add after the engine subdirectory).")
 endif()
 target_link_libraries(GameModuleStub PRIVATE minEngine)
 

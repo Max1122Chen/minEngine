@@ -96,7 +96,7 @@ if(NOT "${MINENGINE_EXTRA_TEST_LINK_LIBRARIES}" STREQUAL "")
     target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE ${MINENGINE_EXTRA_TEST_LINK_LIBRARIES})
 endif()
 
-# CORE-F27: when ED-F20 points at GameModuleStub, prove external ME_CLASS AddComponent in tests.
+# When the in-tree sample module is built, prove external ME_CLASS AddComponent in tests.
 if(TARGET GameModuleStub)
     target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE GameModuleStub)
     target_include_directories(${MINENGINE_TESTS_NAME} PRIVATE
@@ -104,7 +104,7 @@ if(TARGET GameModuleStub)
         ${CMAKE_CURRENT_SOURCE_DIR}/../Examples/GameModuleStub/Generated/Reflection
     )
     target_compile_definitions(${MINENGINE_TESTS_NAME} PRIVATE MINENGINE_LINK_GAME_MODULE_STUB=1)
-    message(STATUS "CORE-F27: minEngineTests links GameModuleStub for reflection smoke")
+    message(STATUS "minEngineTests links GameModuleStub for reflection smoke")
 endif()
 
 add_dependencies(${MINENGINE_TESTS_NAME} ${ENGINE_NAME})

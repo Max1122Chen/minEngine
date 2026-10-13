@@ -6,8 +6,6 @@
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
 #include "SubEditor/AnimationGraph/AnimationGraphEditorSession.h"
 
-#include "main.h"
-
 #include "imgui.h"
 
 #include "Runtime/Core/CLI/ApplicationCommandLine.h"
