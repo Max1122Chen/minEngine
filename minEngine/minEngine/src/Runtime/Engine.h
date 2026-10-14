@@ -10,6 +10,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace minEngine
 {
@@ -26,6 +27,7 @@ namespace minEngine
     class LuaScriptSystem;
     class GameplayTagManager;
     class GameInstance;
+    class Scene;
 
     ME_CLASS()
     class Engine : public MEObject
@@ -71,14 +73,21 @@ namespace minEngine
             return m_EngineSubsystems.GetSubsystem<T>();
         }
 
-        GameInstance* GetGameInstance() const { return m_GameInstance.get(); }
+        /** Standalone GI, or primary PIE (id 0) when Standalone is absent. */
+        GameInstance* GetGameInstance() const;
+        GameInstance* GetGameInstanceForPIE(int32_t pieInstanceId) const;
+        /** pieId == -1 → Standalone; otherwise PIE map. */
         GameInstance* FindGameInstance(int32_t pieId) const;
 
         void InitializeEngineSubsystems();
         void DeinitializeEngineSubsystems();
 
-        std::shared_ptr<GameInstance> CreateGameInstance();
+        std::shared_ptr<GameInstance> CreateGameInstance(Scene* primaryScene = nullptr);
         void DestroyGameInstance();
+
+        std::shared_ptr<GameInstance> CreateGameInstanceForPIE(int32_t pieInstanceId, Scene* primaryScene = nullptr);
+        void DestroyGameInstanceForPIE(int32_t pieInstanceId);
+        void DestroyAllPIEGameInstances();
 
     private:
         void FinializeReflection();
@@ -95,6 +104,7 @@ namespace minEngine
 
         SubsystemCollection<EngineSubsystem> m_EngineSubsystems;
         std::shared_ptr<GameInstance> m_GameInstance;
+        std::unordered_map<int32_t, std::shared_ptr<GameInstance>> m_PIEGameInstances;
 
         std::shared_ptr<ProjectManager> m_ProjectManager;
         std::shared_ptr<AssetManager> m_AssetManager;

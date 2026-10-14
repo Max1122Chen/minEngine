@@ -45,6 +45,9 @@ namespace minEngine
         Scene* GetActiveSceneOverride() const { return m_ActiveSceneOverride; }
 
         static void RebuildSceneComponentAttachHierarchy(Scene* scene);
+        /** Hierarchy / attach / activation only — no WorldSubsystem collection. */
+        static void FinalizeSceneStructure(Scene* scene);
+        /** Structure + InitializeWorldSubsystems + PostInitialize (Editor load / CreateNewScene). */
         static void FinalizeLoadedScene(Scene* scene);
 
         RenderScene* GetRenderScene();

@@ -5,6 +5,8 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Engine.h"
 #include "Runtime/Function/Framework/GameInstance/GameInstance.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
+#include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Framework/Subsystems/SubsystemTestFixtures.h"
 
 #include "doctest.h"
@@ -30,6 +32,9 @@ namespace minEngine
             TestGameInstanceSubsystem::s_InitCount = 0;
             TestGameInstanceSubsystem::s_DeinitCount = 0;
             TestWorldSubsystem::s_AllowCreate = false;
+            TestWorldSubsystem::s_InitCount = 0;
+            TestWorldSubsystem::s_DeinitCount = 0;
+            TestWorldSubsystem::s_PostInitCount = 0;
         }
 
         ~GameInstanceSubsystemTestScope()
@@ -158,13 +163,93 @@ namespace minEngine
             engine.DeinitializeEngineSubsystems();
             return true;
         }
+
+        bool RunPieGameInstanceIsolationAndOrderTest()
+        {
+            GameInstanceSubsystemTestScope scope;
+
+            TestGameInstanceSubsystem::s_AllowCreate = true;
+            TestWorldSubsystem::s_AllowCreate = true;
+
+            Engine engine;
+            engine.InitializeEngineSubsystems();
+
+            std::shared_ptr<Scene> pieScene0 = NewObject<Scene>("PIE_0");
+            pieScene0->SetSceneType(ESceneType::PIE);
+            pieScene0->SetPIEInstanceId(0);
+            SceneManager::FinalizeSceneStructure(pieScene0.get());
+
+            std::shared_ptr<GameInstance> gi0 =
+                engine.CreateGameInstanceForPIE(0, pieScene0.get());
+            if (!gi0 || engine.GetGameInstanceForPIE(0) != gi0.get())
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: PIE0 Create/Get failed.");
+                return false;
+            }
+            if (gi0->GetPrimaryScene() != pieScene0.get() || gi0->GetPIEInstanceId() != 0)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: PIE0 binding mismatch.");
+                return false;
+            }
+            if (TestGameInstanceSubsystem::s_InitCount < 1)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: GI Init before World missing.");
+                return false;
+            }
+            if (TestWorldSubsystem::s_InitCount != 0)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: World Init ran before Play wiring.");
+                return false;
+            }
+
+            pieScene0->InitializeWorldSubsystems();
+            pieScene0->PostInitializeWorldSubsystems();
+            if (TestWorldSubsystem::s_InitCount < 1 || TestWorldSubsystem::s_PostInitCount < 1)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: World Init/PostInit after GI failed.");
+                return false;
+            }
+
+            std::shared_ptr<Scene> pieScene1 = NewObject<Scene>("PIE_1");
+            pieScene1->SetSceneType(ESceneType::PIE);
+            pieScene1->SetPIEInstanceId(1);
+            SceneManager::FinalizeSceneStructure(pieScene1.get());
+
+            std::shared_ptr<GameInstance> gi1 =
+                engine.CreateGameInstanceForPIE(1, pieScene1.get());
+            if (!gi1 || gi1 == gi0 || engine.GetGameInstanceForPIE(1) != gi1.get())
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: PIE1 isolation failed.");
+                return false;
+            }
+
+            pieScene0->DeinitializeWorldSubsystems();
+            engine.DestroyGameInstanceForPIE(0);
+            if (engine.GetGameInstanceForPIE(0) != nullptr || engine.GetGameInstanceForPIE(1) == nullptr)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: Destroy PIE0 leaked or wiped PIE1.");
+                return false;
+            }
+
+            pieScene1->DeinitializeWorldSubsystems();
+            engine.DestroyAllPIEGameInstances();
+            if (engine.GetGameInstanceForPIE(1) != nullptr)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: DestroyAllPIE left instances.");
+                return false;
+            }
+
+            engine.DeinitializeEngineSubsystems();
+            return true;
+        }
     }
 
     bool RunGameInstanceSubsystemTests()
     {
         return RunEngineSubsystemInitDeinitTest()
             && RunGameInstanceCreateShutdownTest()
-            && RunGatedFixtureSkippedInDefaultDiscoveryTest();
+            && RunGatedFixtureSkippedInDefaultDiscoveryTest()
+            && RunPieGameInstanceIsolationAndOrderTest();
     }
 }
 

@@ -1,3 +1,14 @@
+## 2026-10-14 — CORE-F34 S04：Play Mode 每 PIE 一 GI
+
+- **Scope:** PIE 会话宿主；Enter/Exit 顺序对齐 UE（GI → World → BeginPlay）
+- **Completed:**
+  - `Engine::Create/DestroyGameInstanceForPIE` + `m_PIEGameInstances`；`GetGameInstanceForPIE`
+  - `FinalizeSceneStructure` 与 World Init 分离；PIE Duplicate 只做结构
+  - `PlayInEditorSession` Enter/Stop 接线 GI；World Init 移到 GI.Init 之后
+  - suite `game-instance-subsystem` 扩 PIE isolation + 顺序断言
+- **Verification:** clean rebuild minEngine/Tests/Editor；`game-instance-subsystem` / `world-subsystem` / `begin-play`
+- **Next:** S05 Tickable 相位
+
 ## 2026-10-14 — CORE-F34 S03：Scene WorldSubsystem 集合
 
 - **Scope:** 每 Scene 一份 World 子系统；Finalize / 卸载 / Play 相位转发

@@ -22,6 +22,8 @@
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTagManager.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 
+#include <vector>
+
 namespace minEngine
 {
     Engine* Engine::s_Instance = nullptr;
@@ -245,26 +247,46 @@ namespace minEngine
         }
     }
 
-    GameInstance* Engine::FindGameInstance(int32_t pieId) const
+    GameInstance* Engine::GetGameInstance() const
     {
-        if (m_GameInstance == nullptr)
+        if (m_GameInstance)
         {
-            return nullptr;
+            return m_GameInstance.get();
         }
-        if (m_GameInstance->GetPIEInstanceId() != pieId)
-        {
-            return nullptr;
-        }
-        return m_GameInstance.get();
+        return GetGameInstanceForPIE(0);
     }
 
-    std::shared_ptr<GameInstance> Engine::CreateGameInstance()
+    GameInstance* Engine::GetGameInstanceForPIE(int32_t pieInstanceId) const
+    {
+        const auto it = m_PIEGameInstances.find(pieInstanceId);
+        if (it == m_PIEGameInstances.end())
+        {
+            return nullptr;
+        }
+        return it->second.get();
+    }
+
+    GameInstance* Engine::FindGameInstance(int32_t pieId) const
+    {
+        if (pieId < 0)
+        {
+            return m_GameInstance.get();
+        }
+        return GetGameInstanceForPIE(pieId);
+    }
+
+    std::shared_ptr<GameInstance> Engine::CreateGameInstance(Scene* primaryScene)
     {
         ME_ASSERT(ObjectManager::HasInstance(), "CreateGameInstance requires ObjectManager");
         ME_ASSERT(m_GameInstance == nullptr, "Standalone GameInstance already exists");
 
         m_GameInstance = NewObject<GameInstance>("GameInstance", this);
         ME_ASSERT(m_GameInstance != nullptr, "Failed to NewObject GameInstance");
+        m_GameInstance->SetPIEInstanceId(-1);
+        if (primaryScene != nullptr)
+        {
+            m_GameInstance->SetPrimaryScene(primaryScene);
+        }
         m_GameInstance->Init();
         return m_GameInstance;
     }
@@ -279,6 +301,57 @@ namespace minEngine
         m_GameInstance->Shutdown();
         ObjectManager::Get().UnregisterObject(m_GameInstance.get());
         m_GameInstance.reset();
+    }
+
+    std::shared_ptr<GameInstance> Engine::CreateGameInstanceForPIE(int32_t pieInstanceId, Scene* primaryScene)
+    {
+        ME_ASSERT(ObjectManager::HasInstance(), "CreateGameInstanceForPIE requires ObjectManager");
+        ME_ASSERT(pieInstanceId >= 0, "PIE instance id must be >= 0");
+        ME_ASSERT(m_PIEGameInstances.find(pieInstanceId) == m_PIEGameInstances.end(),
+            "GameInstance already exists for this PIE instance");
+
+        std::shared_ptr<GameInstance> gameInstance =
+            NewObject<GameInstance>("GameInstance_PIE_" + std::to_string(pieInstanceId), this);
+        ME_ASSERT(gameInstance != nullptr, "Failed to NewObject PIE GameInstance");
+        gameInstance->SetPIEInstanceId(pieInstanceId);
+        if (primaryScene != nullptr)
+        {
+            gameInstance->SetPrimaryScene(primaryScene);
+        }
+        gameInstance->Init();
+        m_PIEGameInstances[pieInstanceId] = gameInstance;
+        return gameInstance;
+    }
+
+    void Engine::DestroyGameInstanceForPIE(int32_t pieInstanceId)
+    {
+        const auto it = m_PIEGameInstances.find(pieInstanceId);
+        if (it == m_PIEGameInstances.end())
+        {
+            return;
+        }
+
+        if (it->second)
+        {
+            it->second->Shutdown();
+            ObjectManager::Get().UnregisterObject(it->second.get());
+        }
+        m_PIEGameInstances.erase(it);
+    }
+
+    void Engine::DestroyAllPIEGameInstances()
+    {
+        std::vector<int32_t> pieIds;
+        pieIds.reserve(m_PIEGameInstances.size());
+        for (const auto& [pieId, unused] : m_PIEGameInstances)
+        {
+            (void)unused;
+            pieIds.push_back(pieId);
+        }
+        for (int32_t pieId : pieIds)
+        {
+            DestroyGameInstanceForPIE(pieId);
+        }
     }
 
     void Engine::StartSystems()
@@ -338,6 +411,7 @@ namespace minEngine
 
     void Engine::ShutdownSystems()
     {
+        DestroyAllPIEGameInstances();
         DestroyGameInstance();
         DeinitializeEngineSubsystems();
 

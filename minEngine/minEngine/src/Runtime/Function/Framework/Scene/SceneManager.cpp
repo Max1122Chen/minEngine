@@ -325,7 +325,7 @@ namespace minEngine
         }
     }
 
-    void SceneManager::FinalizeLoadedScene(Scene* scene)
+    void SceneManager::FinalizeSceneStructure(Scene* scene)
     {
         if (scene == nullptr)
         {
@@ -339,6 +339,15 @@ namespace minEngine
         if (HasInstance())
         {
             Get().ResolvePendingActivationsForScene(scene);
+        }
+    }
+
+    void SceneManager::FinalizeLoadedScene(Scene* scene)
+    {
+        FinalizeSceneStructure(scene);
+        if (scene == nullptr)
+        {
+            return;
         }
 
         scene->InitializeWorldSubsystems();

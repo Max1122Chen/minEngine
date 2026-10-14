@@ -10,7 +10,7 @@ namespace minEngine
     class Scene;
 
     /**
-     * Session host: Standalone one instance; PIE one per instance (later).
+     * Session host: Standalone one instance; PIE one per instance.
      * Owns GameInstanceSubsystem collection.
      */
     ME_CLASS()

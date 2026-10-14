@@ -92,7 +92,8 @@ namespace minEngine
 
     void SceneDuplicator::FinalizePIEScene(Scene& pieScene)
     {
+        // Structure only — WorldSubsystems initialize after GameInstance::Init (Play Mode order).
         pieScene.EnsureRenderScene();
-        SceneManager::FinalizeLoadedScene(&pieScene);
+        SceneManager::FinalizeSceneStructure(&pieScene);
     }
 }

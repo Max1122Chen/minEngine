@@ -3,7 +3,9 @@
 #include "ActiveSceneScope.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Engine.h"
 #include "Runtime/Function/Audio/AudioSystem.h"
+#include "Runtime/Function/Framework/GameInstance/GameInstance.h"
 #include "Runtime/Function/Framework/Scene/SceneDuplicator.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Physics/PhysicsSystem.h"
@@ -167,6 +169,14 @@ namespace minEngine
             UISystem::Get().OnBeginPIE(pieScene.get());
         }
 
+        // UE-aligned: GI first, then World subsystems, then BeginPlay.
+        if (Engine::HasInstance())
+        {
+            Engine::Get().CreateGameInstanceForPIE(kPIEInstanceId, pieScene.get());
+        }
+
+        pieScene->InitializeWorldSubsystems();
+        pieScene->PostInitializeWorldSubsystems();
         pieScene->DispatchBeginPlay();
 
         m_State = PlayState::Playing;
@@ -212,7 +222,16 @@ namespace minEngine
 
             for (const SceneContext& pieContext : m_PIEContexts)
             {
+                // UnregisterPIEScene: EndPlay (if needed) + DeinitializeWorldSubsystems.
                 sceneManager.UnregisterPIEScene(pieContext.PIEInstanceId);
+            }
+        }
+
+        if (Engine::HasInstance())
+        {
+            for (const SceneContext& pieContext : m_PIEContexts)
+            {
+                Engine::Get().DestroyGameInstanceForPIE(pieContext.PIEInstanceId);
             }
         }
 
