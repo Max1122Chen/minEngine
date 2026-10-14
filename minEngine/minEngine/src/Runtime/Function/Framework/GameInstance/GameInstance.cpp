@@ -25,4 +25,26 @@ namespace minEngine
         m_PrimaryScene = nullptr;
         m_bInitialized = false;
     }
+
+    void GameInstance::TickSubsystems(float deltaTime)
+    {
+        if (!m_Subsystems.IsInitialized())
+        {
+            return;
+        }
+
+        m_Subsystems.ForEachSubsystem([deltaTime](Subsystem* subsystem) {
+            if (subsystem == nullptr || !subsystem->IsA(TickableGameInstanceSubsystem::StaticClass()))
+            {
+                return;
+            }
+
+            TickableGameInstanceSubsystem* tickable =
+                static_cast<TickableGameInstanceSubsystem*>(subsystem);
+            if (tickable->IsTickable())
+            {
+                tickable->Tick(deltaTime);
+            }
+        });
+    }
 }

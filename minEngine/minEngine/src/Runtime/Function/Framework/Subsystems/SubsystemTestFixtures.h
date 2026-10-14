@@ -74,6 +74,34 @@ namespace minEngine
         void OnWorldBeginPlay(Scene& scene) override;
         void OnWorldEndPlay(Scene& scene, EEndPlayReason reason) override;
     };
+
+    ME_CLASS()
+    class TestTickableWorldSubsystem : public TickableWorldSubsystem
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        static bool s_AllowCreate;
+        static int s_TickCount;
+        static float s_LastDeltaTime;
+
+        bool ShouldCreateSubsystem(MEObject* outer) const override;
+        void Tick(float deltaTime) override;
+    };
+
+    ME_CLASS()
+    class TestTickableGameInstanceSubsystem : public TickableGameInstanceSubsystem
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        static bool s_AllowCreate;
+        static int s_TickCount;
+        static float s_LastDeltaTime;
+
+        bool ShouldCreateSubsystem(MEObject* outer) const override;
+        void Tick(float deltaTime) override;
+    };
 }
 
 #include "SubsystemTestFixtures.gen.h"

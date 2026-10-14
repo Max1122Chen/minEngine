@@ -1006,6 +1006,28 @@ namespace minEngine
             }
         };
 
+        struct TickableSubsystemTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "tickable-subsystem",
+                    "Tickable World / GI Subsystems",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'tickable-subsystem'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "tickable-subsystem",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -1062,6 +1084,7 @@ namespace minEngine
         using PrefabOverridesSuite = TypedTestSuite<PrefabOverridesTestSuiteTraits>;
         using GameInstanceSubsystemSuite = TypedTestSuite<GameInstanceSubsystemTestSuiteTraits>;
         using WorldSubsystemSuite = TypedTestSuite<WorldSubsystemTestSuiteTraits>;
+        using TickableSubsystemSuite = TypedTestSuite<TickableSubsystemTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1128,6 +1151,7 @@ namespace minEngine
             registry.Register(PrefabOverridesSuite::Get());
             registry.Register(GameInstanceSubsystemSuite::Get());
             registry.Register(WorldSubsystemSuite::Get());
+            registry.Register(TickableSubsystemSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS

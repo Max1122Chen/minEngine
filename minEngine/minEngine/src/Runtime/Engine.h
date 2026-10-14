@@ -55,6 +55,8 @@ namespace minEngine
         void PollEvents();
         void TickLogicalFrame(float deltaTime);
         void TickRendererFrame(float deltaTime);
+        /** After Physics/UI, before EOF — Tickable GI + World subsystems. */
+        void TickTickableSubsystems(float deltaTime);
         float CalculateDeltaTime();
         float CalculateFPS(float deltaTime);
 

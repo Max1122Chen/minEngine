@@ -20,3 +20,13 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestWorldSubsystem, GReflectionClass
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::WorldSubsystem)
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestWorldSubsystem)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestTickableWorldSubsystem, GReflectionClassRegister_TestTickableWorldSubsystem_babb0c80)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::TickableWorldSubsystem)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestTickableWorldSubsystem)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestTickableGameInstanceSubsystem, GReflectionClassRegister_TestTickableGameInstanceSubsystem_18e060f9)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::TickableGameInstanceSubsystem)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestTickableGameInstanceSubsystem)

@@ -84,6 +84,7 @@ namespace minEngine
 
     public:
         virtual void Tick(float deltaTime) { (void)deltaTime; }
+        virtual bool IsTickable() const { return true; }
     };
 
     ME_CLASS(Abstract)
@@ -93,6 +94,7 @@ namespace minEngine
 
     public:
         virtual void Tick(float deltaTime) { (void)deltaTime; }
+        virtual bool IsTickable() const { return true; }
     };
 }
 

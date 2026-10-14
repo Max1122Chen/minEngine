@@ -55,6 +55,9 @@ namespace minEngine
         virtual void OnInit() {}
         virtual void OnShutdown() {}
 
+        /** Tick TickableGameInstanceSubsystem instances (Engine LogicalTick phase). */
+        void TickSubsystems(float deltaTime);
+
     private:
         SubsystemCollection<GameInstanceSubsystem> m_Subsystems;
         Scene* m_PrimaryScene = nullptr;

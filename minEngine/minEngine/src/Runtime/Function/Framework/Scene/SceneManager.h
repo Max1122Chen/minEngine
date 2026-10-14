@@ -26,6 +26,8 @@ namespace minEngine
         
         void Tick(float deltaTime);
         void TickScenes(float deltaTime);
+        /** Tick WorldTickable subsystems for scenes with a non-None tick policy. */
+        void TickWorldSubsystems(float deltaTime);
 
         std::shared_ptr<Scene> GetCurrentActiveScene() const { return m_CurrentActiveScene; }
         Scene* GetEditorScene() const;

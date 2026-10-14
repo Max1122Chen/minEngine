@@ -30,11 +30,15 @@ namespace minEngine
             TestWorldSubsystem::s_PostInitCount = 0;
             TestWorldSubsystem::s_BeginPlayCount = 0;
             TestWorldSubsystem::s_EndPlayCount = 0;
+            TestTickableWorldSubsystem::s_AllowCreate = false;
+            TestTickableGameInstanceSubsystem::s_AllowCreate = false;
         }
 
         ~WorldSubsystemTestScope()
         {
             TestWorldSubsystem::s_AllowCreate = false;
+            TestTickableWorldSubsystem::s_AllowCreate = false;
+            TestTickableGameInstanceSubsystem::s_AllowCreate = false;
             m_SceneManager.Shutdown();
             Testing::TestAccess<SceneManager>::SetInstance(nullptr);
 

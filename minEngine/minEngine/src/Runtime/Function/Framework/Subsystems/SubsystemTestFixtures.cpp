@@ -107,4 +107,39 @@ namespace minEngine
         (void)reason;
         ++s_EndPlayCount;
     }
+
+    bool TestTickableWorldSubsystem::s_AllowCreate = false;
+    int TestTickableWorldSubsystem::s_TickCount = 0;
+    float TestTickableWorldSubsystem::s_LastDeltaTime = 0.0f;
+
+    bool TestTickableWorldSubsystem::ShouldCreateSubsystem(MEObject* outer) const
+    {
+        if (!s_AllowCreate)
+        {
+            return false;
+        }
+        return TickableWorldSubsystem::ShouldCreateSubsystem(outer);
+    }
+
+    void TestTickableWorldSubsystem::Tick(float deltaTime)
+    {
+        ++s_TickCount;
+        s_LastDeltaTime = deltaTime;
+    }
+
+    bool TestTickableGameInstanceSubsystem::s_AllowCreate = false;
+    int TestTickableGameInstanceSubsystem::s_TickCount = 0;
+    float TestTickableGameInstanceSubsystem::s_LastDeltaTime = 0.0f;
+
+    bool TestTickableGameInstanceSubsystem::ShouldCreateSubsystem(MEObject* outer) const
+    {
+        (void)outer;
+        return s_AllowCreate;
+    }
+
+    void TestTickableGameInstanceSubsystem::Tick(float deltaTime)
+    {
+        ++s_TickCount;
+        s_LastDeltaTime = deltaTime;
+    }
 }

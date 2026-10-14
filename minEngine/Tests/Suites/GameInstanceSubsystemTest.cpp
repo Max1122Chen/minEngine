@@ -35,6 +35,8 @@ namespace minEngine
             TestWorldSubsystem::s_InitCount = 0;
             TestWorldSubsystem::s_DeinitCount = 0;
             TestWorldSubsystem::s_PostInitCount = 0;
+            TestTickableWorldSubsystem::s_AllowCreate = false;
+            TestTickableGameInstanceSubsystem::s_AllowCreate = false;
         }
 
         ~GameInstanceSubsystemTestScope()
@@ -43,6 +45,8 @@ namespace minEngine
             TestEngineSubsystemBeta::s_AllowCreate = false;
             TestGameInstanceSubsystem::s_AllowCreate = false;
             TestWorldSubsystem::s_AllowCreate = false;
+            TestTickableWorldSubsystem::s_AllowCreate = false;
+            TestTickableGameInstanceSubsystem::s_AllowCreate = false;
 
             ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);

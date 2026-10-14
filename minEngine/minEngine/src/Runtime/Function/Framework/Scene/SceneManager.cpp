@@ -146,6 +146,25 @@ namespace minEngine
         }
     }
 
+    void SceneManager::TickWorldSubsystems(float deltaTime)
+    {
+        auto tickWorldIfNeeded = [deltaTime](const SceneContext& context)
+        {
+            if (context.Scene == nullptr || context.TickPolicy == ESceneTickPolicy::None)
+            {
+                return;
+            }
+
+            context.Scene->TickWorldSubsystems(deltaTime);
+        };
+
+        tickWorldIfNeeded(m_EditorSceneContext);
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            tickWorldIfNeeded(pieContext);
+        }
+    }
+
     Scene* SceneManager::GetEditorScene() const
     {
         if (m_EditorSceneContext.Scene)

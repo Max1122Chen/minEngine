@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-14 (Primary：CORE-F34 S05；BUILD S05 Deferred)
+Last updated: 2026-10-14 (Primary：CORE-F34 S06；BUILD S05 Deferred)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -15,7 +15,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F34 | GameInstance · Subsystem · OM 进程单例 | **In Progress**（S00–S04 Done → S05 Tickable） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
+| 0 | CORE-F34 | GameInstance · Subsystem · OM 进程单例 | **In Progress**（S00–S05 Done → S06 Sample） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
 | 1 | BUILD-F01 | 产品构建链 · Editor/Game · 模板 · Stage | **In Progress**（S05 Deferred） | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) |
 | 2 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
 | 3 | ASSET-F04 | CB Workflow + Automation | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
@@ -26,7 +26,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）`CORE-F34` **S05** TickableWorld/GI 子系统插入 LogicalTick；（2）BUILD S05（minCraft）有空再迁；（3）F33 个人 review / ASSET-F04 人手验收。
+**下一动作：**（1）`CORE-F34` **S06** Sample 示范 GI/World 子系统（对齐 BUILD）；（2）BUILD S05（minCraft）有空再迁；（3）F33 个人 review / ASSET-F04 人手验收。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

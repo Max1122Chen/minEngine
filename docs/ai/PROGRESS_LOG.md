@@ -1,3 +1,13 @@
+## 2026-10-14 — CORE-F34 S05：Tickable 相位
+
+- **Scope:** TickableWorld/GI 单插入点（Physics/UI 后、EOF 前）
+- **Completed:**
+  - `IsTickable`；`Scene::TickWorldSubsystems` / `GameInstance::TickSubsystems` / `SceneManager::TickWorldSubsystems`
+  - `Engine::TickTickableSubsystems` 接入 `LogicalTick`
+  - suite `tickable-subsystem`；F33 `deferred-structural-edit` 回归
+- **Verification:** build minEngineTests；`tickable-subsystem` / `game-instance-subsystem` / `world-subsystem` / `deferred-structural-edit`
+- **Next:** S06 Sample 示范子系统
+
 ## 2026-10-14 — CORE-F34 S04：Play Mode 每 PIE 一 GI
 
 - **Scope:** PIE 会话宿主；Enter/Exit 顺序对齐 UE（GI → World → BeginPlay）

@@ -99,6 +99,8 @@ namespace minEngine
         void InitializeWorldSubsystems();
         void PostInitializeWorldSubsystems();
         void DeinitializeWorldSubsystems();
+        /** Tick TickableWorldSubsystem instances (Engine LogicalTick phase). */
+        void TickWorldSubsystems(float deltaTime);
 
         SubsystemCollection<WorldSubsystem>& GetSubsystemCollection() { return m_WorldSubsystems; }
         const SubsystemCollection<WorldSubsystem>& GetSubsystemCollection() const

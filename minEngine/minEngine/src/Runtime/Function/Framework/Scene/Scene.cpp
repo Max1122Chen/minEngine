@@ -61,6 +61,27 @@ namespace minEngine
         }
     }
 
+    void Scene::TickWorldSubsystems(float deltaTime)
+    {
+        if (!m_WorldSubsystems.IsInitialized())
+        {
+            return;
+        }
+
+        m_WorldSubsystems.ForEachSubsystem([deltaTime](Subsystem* subsystem) {
+            if (subsystem == nullptr || !subsystem->IsA(TickableWorldSubsystem::StaticClass()))
+            {
+                return;
+            }
+
+            TickableWorldSubsystem* tickable = static_cast<TickableWorldSubsystem*>(subsystem);
+            if (tickable->IsTickable())
+            {
+                tickable->Tick(deltaTime);
+            }
+        });
+    }
+
     void Scene::RegisterGameplayEventSystem(GameplayEventSystemComponent* component)
     {
         if (component == nullptr)

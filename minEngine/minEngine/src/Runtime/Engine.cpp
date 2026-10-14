@@ -502,6 +502,27 @@ namespace minEngine
         }
     }
 
+    void Engine::TickTickableSubsystems(float deltaTime)
+    {
+        if (m_GameInstance)
+        {
+            m_GameInstance->TickSubsystems(deltaTime);
+        }
+        for (const auto& [pieId, gameInstance] : m_PIEGameInstances)
+        {
+            (void)pieId;
+            if (gameInstance)
+            {
+                gameInstance->TickSubsystems(deltaTime);
+            }
+        }
+
+        if (SceneManager::HasInstance())
+        {
+            SceneManager::Get().TickWorldSubsystems(deltaTime);
+        }
+    }
+
     void Engine::LogicalTick(float deltaTime)
     {
         m_InputSystem->Tick(deltaTime);
@@ -518,6 +539,7 @@ namespace minEngine
         {
             m_UISystem->Tick(deltaTime);
         }
+        TickTickableSubsystems(deltaTime);
         m_SceneManager->SendAllEndOfFrameUpdates();
         m_SceneManager->FlushDeferredStructuralEdits();
     }

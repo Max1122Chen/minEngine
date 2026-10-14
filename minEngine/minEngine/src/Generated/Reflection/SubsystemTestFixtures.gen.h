@@ -22,3 +22,13 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestWorldSubsystem)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::TestWorldSubsystem, GReflectionClassRegister_TestWorldSubsystem_ca1aafe3)
+
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestTickableWorldSubsystem)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::TestTickableWorldSubsystem, GReflectionClassRegister_TestTickableWorldSubsystem_babb0c80)
+
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestTickableGameInstanceSubsystem)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::TestTickableGameInstanceSubsystem, GReflectionClassRegister_TestTickableGameInstanceSubsystem_18e060f9)
