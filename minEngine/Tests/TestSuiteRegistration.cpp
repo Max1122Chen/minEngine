@@ -962,6 +962,28 @@ namespace minEngine
             }
         };
 
+        struct GameInstanceSubsystemTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "game-instance-subsystem",
+                    "GameInstance / SubsystemCollection",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'game-instance-subsystem'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "game-instance-subsystem",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -1016,6 +1038,7 @@ namespace minEngine
         using ProfilerSuite = TypedTestSuite<ProfilerTestSuiteTraits>;
         using PrefabSuite = TypedTestSuite<PrefabTestSuiteTraits>;
         using PrefabOverridesSuite = TypedTestSuite<PrefabOverridesTestSuiteTraits>;
+        using GameInstanceSubsystemSuite = TypedTestSuite<GameInstanceSubsystemTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1080,6 +1103,7 @@ namespace minEngine
             registry.Register(ProfilerSuite::Get());
             registry.Register(PrefabSuite::Get());
             registry.Register(PrefabOverridesSuite::Get());
+            registry.Register(GameInstanceSubsystemSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS

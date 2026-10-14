@@ -37,11 +37,15 @@ namespace minEngine
 
     void ObjectManager::Initialize()
     {
-        if (s_Instance == nullptr)
+        // Idempotent: do not wipe an existing registry (tests may inject; Engine may
+        // have already registered objects such as Engine / GameInstance).
+        if (s_Instance != nullptr)
         {
-            s_Owned = std::make_unique<ObjectManager>();
-            s_Instance = s_Owned.get();
+            return;
         }
+
+        s_Owned = std::make_unique<ObjectManager>();
+        s_Instance = s_Owned.get();
         s_Instance->ResetRegistry();
     }
 

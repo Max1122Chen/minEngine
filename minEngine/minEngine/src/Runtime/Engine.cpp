@@ -3,6 +3,7 @@
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Profiling/Profile.h"
+#include "Runtime/Function/Framework/GameInstance/GameInstance.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
@@ -225,10 +226,66 @@ namespace minEngine
         }
     }
 
+    void Engine::InitializeEngineSubsystems()
+    {
+        if (m_EngineSubsystems.IsInitialized())
+        {
+            return;
+        }
+
+        SetClass(Engine::StaticClass());
+        m_EngineSubsystems.Initialize(this);
+    }
+
+    void Engine::DeinitializeEngineSubsystems()
+    {
+        if (m_EngineSubsystems.IsInitialized())
+        {
+            m_EngineSubsystems.Deinitialize();
+        }
+    }
+
+    GameInstance* Engine::FindGameInstance(int32_t pieId) const
+    {
+        if (m_GameInstance == nullptr)
+        {
+            return nullptr;
+        }
+        if (m_GameInstance->GetPIEInstanceId() != pieId)
+        {
+            return nullptr;
+        }
+        return m_GameInstance.get();
+    }
+
+    std::shared_ptr<GameInstance> Engine::CreateGameInstance()
+    {
+        ME_ASSERT(ObjectManager::HasInstance(), "CreateGameInstance requires ObjectManager");
+        ME_ASSERT(m_GameInstance == nullptr, "Standalone GameInstance already exists");
+
+        m_GameInstance = NewObject<GameInstance>("GameInstance", this);
+        ME_ASSERT(m_GameInstance != nullptr, "Failed to NewObject GameInstance");
+        m_GameInstance->Init();
+        return m_GameInstance;
+    }
+
+    void Engine::DestroyGameInstance()
+    {
+        if (m_GameInstance == nullptr)
+        {
+            return;
+        }
+
+        m_GameInstance->Shutdown();
+        ObjectManager::Get().UnregisterObject(m_GameInstance.get());
+        m_GameInstance.reset();
+    }
+
     void Engine::StartSystems()
     {
         // Process-level facility (not Engine-owned); safe if tests already injected an instance.
         ObjectManager::Initialize();
+        InitializeEngineSubsystems();
 
         m_GameplayTagManager = std::make_shared<GameplayTagManager>();
         GameplayTagManager::SetInstance(m_GameplayTagManager.get());
@@ -281,6 +338,9 @@ namespace minEngine
 
     void Engine::ShutdownSystems()
     {
+        DestroyGameInstance();
+        DeinitializeEngineSubsystems();
+
         if (m_FileDialogService)
         {
             m_FileDialogService->Shutdown();

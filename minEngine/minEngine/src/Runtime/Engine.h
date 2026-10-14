@@ -1,7 +1,10 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/CLI/CommandLineResult.h"
+#include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/EngineConfig.h"
+#include "Runtime/Function/Framework/Subsystems/Subsystem.h"
+#include "Runtime/Function/Framework/Subsystems/SubsystemCollection.h"
 #include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <chrono>
@@ -22,12 +25,16 @@ namespace minEngine
     class FileDialogService;
     class LuaScriptSystem;
     class GameplayTagManager;
+    class GameInstance;
 
-    class Engine
+    ME_CLASS()
+    class Engine : public MEObject
     {
+        ME_GENERATED_BODY()
+
     public:
         Engine() = default;
-        ~Engine() = default;
+        ~Engine() override = default;
 
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
@@ -40,6 +47,7 @@ namespace minEngine
         void Run();
 
         static Engine& Get();
+        static bool HasInstance() { return s_Instance != nullptr; }
 
         void TickOneFrame(float deltaTime);
         void PollEvents();
@@ -50,6 +58,27 @@ namespace minEngine
 
         bool IsEnginePathConfigLoaded() const { return m_EnginePathConfigLoaded; }
         const EngineConfig& GetEngineConfig() const { return m_EngineConfig; }
+
+        SubsystemCollection<EngineSubsystem>& GetEngineSubsystemCollection() { return m_EngineSubsystems; }
+        const SubsystemCollection<EngineSubsystem>& GetEngineSubsystemCollection() const
+        {
+            return m_EngineSubsystems;
+        }
+
+        template<typename T>
+        T* GetEngineSubsystem() const
+        {
+            return m_EngineSubsystems.GetSubsystem<T>();
+        }
+
+        GameInstance* GetGameInstance() const { return m_GameInstance.get(); }
+        GameInstance* FindGameInstance(int32_t pieId) const;
+
+        void InitializeEngineSubsystems();
+        void DeinitializeEngineSubsystems();
+
+        std::shared_ptr<GameInstance> CreateGameInstance();
+        void DestroyGameInstance();
 
     private:
         void FinializeReflection();
@@ -63,6 +92,9 @@ namespace minEngine
         void EndEngineProfileShutdown();
 
         static Engine* s_Instance;
+
+        SubsystemCollection<EngineSubsystem> m_EngineSubsystems;
+        std::shared_ptr<GameInstance> m_GameInstance;
 
         std::shared_ptr<ProjectManager> m_ProjectManager;
         std::shared_ptr<AssetManager> m_AssetManager;
@@ -84,3 +116,5 @@ namespace minEngine
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
     };
 }
+
+#include "Engine.gen.h"

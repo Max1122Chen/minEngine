@@ -1,3 +1,15 @@
+## 2026-10-14 — CORE-F34 S01+S02：Engine MEObject + GameInstance / SubsystemCollection
+
+- **Scope:** 引擎作用域子系统骨架（Engine + GameInstance；不含 World / Tick / PIE）
+- **Completed:**
+  - `Engine : MEObject`；`Subsystem` / `EngineSubsystem` / `GameInstanceSubsystem`（+ Tickable / World 抽象基类）
+  - `SubsystemCollection`：反射发现、`ShouldCreateSubsystem`、`InitializeDependency`、环检测、逆序 Deinit
+  - `GameInstance` Init/Shutdown；`Engine::CreateGameInstance` / `DestroyGameInstance` / `GetEngineSubsystem`
+  - OM `Initialize` 幂等（已有实例不 wipe registry）
+  - suite `game-instance-subsystem`（含 gated test fixtures）
+- **Verification:** build minEngine / minEngineTests；`test game-instance-subsystem`；`test object-manager`
+- **Next:** S03 Scene WorldSubsystem 集合
+
 ## 2026-10-14 — CORE-F34 S00：ObjectManager 进程单例
 
 - **Scope:** ObjectManager 脱离 Engine 拥有，对齐进程级设施
