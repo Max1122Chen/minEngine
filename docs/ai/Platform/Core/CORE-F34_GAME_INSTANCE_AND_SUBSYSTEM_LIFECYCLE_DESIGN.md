@@ -4,9 +4,9 @@
 - **ID:** `CORE-F34`
 - **Type:** Feature
 - **Complexity:** `L3`
-- **Status:** `In Progress`
+- **Status:** `Done`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-14`（S05：Tickable 相位插入 LogicalTick）
+- **Last updated:** `2026-10-14`（S06：GameModuleStub 示范 GI/World 子系统）
 - **Related:**
   - 依赖：[CORE-F05](./CORE-F05_PLAY_MODE_DESIGN.md)、[CORE-F31](./CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md)、[CORE-F33](./CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)、[CORE-F27](./CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md)
   - **先实施构建产品化：** [BUILD-F01](../ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)（Editor+Game；退役 ED-F20）→ 再开本 Feature
@@ -602,7 +602,7 @@ S06：删 KeepAlive/Marker；Sample 模块示范子系统；契约文档与 ED-F
 | **S03** | Scene World 集合；Finalize/卸载；PostInitialize + BeginPlay/EndPlay 转发 | **Done** — suite `world-subsystem`；Finalize/Unload/PIE 卸；DoesSupportWorldType |
 | **S04** | Play Mode：每 PIE 一 GI；顺序对齐 UE | **Done** — `CreateGameInstanceForPIE`；Enter: GI→World→BeginPlay；Exit 卸 World+GI |
 | **S05** | Tickable；LogicalTick 单插入点（Physics 后、EOF 前） | **Done** — `TickTickableSubsystems`；suite `tickable-subsystem`；F33 回归 |
-| **S06** | Sample 示范 GI/World 子系统；与 **BUILD-F01** 对齐删 KeepAlive | Sample suite；反射可见游戏子系统类 |
+| **S06** | Sample 示范 GI/World 子系统；与 **BUILD-F01** 对齐删 KeepAlive | **Done** — Stub GI/TickableWorld；`game-module-stub`；KeepAlive 已由 BUILD 删除 |
 | **S07** |（可选）LocalPlayer | 后置 |
 | **S08** |（游戏仓）minCraft → GI/World 子系统 | 另 Feature |
 
@@ -652,18 +652,19 @@ S06：删 KeepAlive/Marker；Sample 模块示范子系统；契约文档与 ED-F
 ## Acceptance Checklist
 
 - [x] Design review（iterative；Verdict Ready with deferred）
-- [ ] Implementation plan / slices 按上表执行（S00–S05 Done；S06 Sample 待做）
+- [x] Implementation plan / slices 按上表执行（S00–S06 主链 Done；S07 LocalPlayer 可选）
 - [x] Progress log updated
 - [x] Feature registry status synced
 - [x] Suites 证明 GI/World/Engine 三层寿命
 - [x] Play Mode PIE 接线无泄漏（MVP 单实例 id=0；多实例 API 已备）
-- [ ] 文档明确：游戏业务子系统不进 Core
+- [x] 文档明确：游戏业务子系统不进 Core（机制在引擎；示范类在 GameModuleStub）
 - [x] S00：Engine 不再拥有 ObjectManager
 - [x] S01：Engine : MEObject + EngineSubsystem 集合
 - [x] S02：GameInstance + GI 集合 Standalone Create/Init/Shutdown
 - [x] S03：Scene WorldSubsystem 集合 + Begin/EndPlay 转发
 - [x] S04：Play Mode 每 PIE 一 GI（顺序对齐）
 - [x] S05：Tickable 相位（Physics/UI 后、EOF 前）
+- [x] S06：Sample 游戏模块示范 GI/World 子系统
 
 ## 附录 A — 与反哺稿差异（显式划掉）
 

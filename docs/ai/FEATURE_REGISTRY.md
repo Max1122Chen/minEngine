@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-14（CORE-F34 S05 Done → S06）
+Last updated: 2026-10-14（CORE-F34 S00–S06 主链 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -60,7 +60,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F31` | GameObject / Component BeginPlay · EndPlay（UE Actor→Comp 转发；Scene Dispatch） | **Done** | — | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) · [Impl](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_IMPLEMENTATION.md) · suite `begin-play` · 解锁 F29/F30 |
 | `CORE-F32` | Enhanced Input hold / InputTriggerDown Started·Canceled | **Done** | — | [Design](./Platform/Core/CORE-F32_ENHANCED_INPUT_HOLD_DOWN_EVENTS_DESIGN.md) · suite `input-trigger-down` |
 | `CORE-F33` | 运行期结构变更（Spawn 即时入世 · Destroy 延迟 · EOF swap） | **In Progress** | — | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) · `feat/core` · S01+S02 已合入；待个人 review / S03 可选 |
-| `CORE-F34` | GameInstance + Subsystem 作用域生命周期（引擎机制 · 游戏 App 契约） | **In Progress** | S06 | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) · L3 · **Primary** · S00–S05 Done；下一切片 Sample 示范 |
+| `CORE-F34` | GameInstance + Subsystem 作用域生命周期（引擎机制 · 游戏 App 契约） | **Done** | — | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) · L3 · S00–S06 主链 Done；S07 LocalPlayer / S08 minCraft 后置 |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **In Progress** | S05 Deferred | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · 引擎侧 S03/S04 Done |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |

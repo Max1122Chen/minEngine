@@ -1,6 +1,8 @@
-// Sample module entry + touch reflected type so aggressive LTO/GC keeps registration TUs.
+// Sample module entry + touch reflected types so aggressive LTO/GC keeps registration TUs.
 
+#include "StubGameInstanceSubsystem.h"
 #include "StubGamePrimitiveComponent.h"
+#include "StubTickableWorldSubsystem.h"
 
 #if defined(_WIN32) && defined(GAMEMODULESTUB_BUILD)
 #    define GAMEMODULESTUB_API __declspec(dllexport)
@@ -13,5 +15,7 @@
 extern "C" GAMEMODULESTUB_API int MinEngine_GameModuleStub_Marker(void)
 {
     (void)sizeof(GameModuleStub::StubGamePrimitiveComponent);
+    (void)sizeof(GameModuleStub::StubGameInstanceSubsystem);
+    (void)sizeof(GameModuleStub::StubTickableWorldSubsystem);
     return 1;
 }

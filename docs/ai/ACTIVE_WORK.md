@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-14 (Primary：CORE-F34 S06；BUILD S05 Deferred)
+Last updated: 2026-10-14 (CORE-F34 主链 Done；BUILD S05 Deferred)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,14 +11,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** `CORE-F34` GameInstance / Subsystem（从 **S00** ObjectManager 进程单例开工）。BUILD 引擎侧 S01–S04/S06 已落地；**S05 minCraft 迁根 Deferred**。ASSET-F04 人手验收可并行。
+**Primary：** 可选下一主线（F33 review / ASSET-F04 / BUILD S05）。`CORE-F34` 引擎主链（S00–S06）**Done**。BUILD **S05 minCraft 迁根 Deferred**。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F34 | GameInstance · Subsystem · OM 进程单例 | **In Progress**（S00–S05 Done → S06 Sample） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
+| 0 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
 | 1 | BUILD-F01 | 产品构建链 · Editor/Game · 模板 · Stage | **In Progress**（S05 Deferred） | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) |
-| 2 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
-| 3 | ASSET-F04 | CB Workflow + Automation | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
+| 2 | ASSET-F04 | CB Workflow + Automation | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
+| — | CORE-F34 | GameInstance · Subsystem | **Done**（S00–S06） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
 | — | ASSET-F06 | AssetManager Facade 重构 | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
 | — | ASSET-F05 | Texture2D cook 资产 | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
 | — | ED-F24 | AES GUI 收敛 | **Done** | [Design](./Editor/ED-F24_ASSET_EDITOR_SERVICES_GUI_CONVERGENCE_DESIGN.md) |
@@ -26,7 +26,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）`CORE-F34` **S06** Sample 示范 GI/World 子系统（对齐 BUILD）；（2）BUILD S05（minCraft）有空再迁；（3）F33 个人 review / ASSET-F04 人手验收。
+**下一动作：**（1）F33 个人 review；（2）ASSET-F04 人手验收；（3）BUILD S05（minCraft）有空再迁；（4）可选 CORE-F34 S07 LocalPlayer。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

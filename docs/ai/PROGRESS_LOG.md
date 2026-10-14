@@ -1,3 +1,13 @@
+## 2026-10-14 — CORE-F34 S06：GameModuleStub 示范子系统
+
+- **Scope:** 游戏 SHARED 示范 GI / TickableWorld 子系统；反射发现
+- **Completed:**
+  - `StubGameInstanceSubsystem` / `StubTickableWorldSubsystem` + gen
+  - Marker 触达；suite `game-module-stub` 扩子系统用例
+  - Feature 主链 S00–S06 **Done**（S07/S08 后置）
+- **Verification:** `minEngineTests test game-module-stub`（2 cases）
+- **Next:** 可选 S07 LocalPlayer；或换 Primary（F33 / ASSET-F04 / BUILD S05）
+
 ## 2026-10-14 — CORE-F34 S05：Tickable 相位
 
 - **Scope:** TickableWorld/GI 单插入点（Physics/UI 后、EOF 前）

@@ -1,22 +1,62 @@
 {
   "tool_cache_version": 17,
   "files": {
+    "StubGameInstanceSubsystem.h": {
+      "mtime_ns": 1791965569469812000,
+      "size": 671,
+      "file_hash": "6b8fa721580f113d25ca0ef873d6eab8b51db036d9801762259e1120cf22f636",
+      "has_markers": true,
+      "class_keys": [
+        "GameModuleStub::StubGameInstanceSubsystem"
+      ],
+      "enum_keys": []
+    },
     "StubGamePrimitiveComponent.h": {
-      "mtime_ns": 1790048084827638200,
-      "size": 1139,
-      "file_hash": "55186cfd7b8cb2177bca9994777019157c6dd3f498c890bd573febf3b329deee",
+      "mtime_ns": 1791860827037742700,
+      "size": 1145,
+      "file_hash": "c468d71c68773678e3e5384694a1bc7a34a82bd05ab544d3a880035cd9c971af",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::StubGamePrimitiveComponent"
       ],
       "enum_keys": []
+    },
+    "StubTickableWorldSubsystem.h": {
+      "mtime_ns": 1791965573322544600,
+      "size": 665,
+      "file_hash": "399d152e3ad937b982c30eb0919dcadfb9588086f5b2c43c4fc2da04d4be2e50",
+      "has_markers": true,
+      "class_keys": [
+        "GameModuleStub::StubTickableWorldSubsystem"
+      ],
+      "enum_keys": []
     }
   },
   "classes": {
+    "GameModuleStub::StubGameInstanceSubsystem": {
+      "namespace": "GameModuleStub",
+      "class_name": "StubGameInstanceSubsystem",
+      "decl_pos": 285,
+      "class_hash": "b89559dc0039d2510e384ea095d3c23d35e951ad25c182d777a00f89ef7a72ae",
+      "specifiers": [],
+      "metadata": {},
+      "base_types": [
+        "minEngine::GameInstanceSubsystem"
+      ],
+      "has_virtual_inheritance": false,
+      "content_hash": "c31969851b61a597e006c938cdd248709f70d95b8627919d0a6034e2c4b49af5",
+      "output_header": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstanceSubsystem.gen.h",
+      "output_source": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstanceSubsystem.gen.cpp",
+      "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/StubGameInstanceSubsystem.h",
+      "source_include": "StubGameInstanceSubsystem.h",
+      "source_rel": "StubGameInstanceSubsystem.h",
+      "properties": [],
+      "functions": []
+    },
     "GameModuleStub::StubGamePrimitiveComponent": {
       "namespace": "GameModuleStub",
       "class_name": "StubGamePrimitiveComponent",
-      "decl_pos": 402,
+      "decl_pos": 408,
       "class_hash": "791481753c211cc92e42c2c2623b596ac41cf11d18ef7052b804be9efd801c1e",
       "specifiers": [],
       "metadata": {},
@@ -30,6 +70,26 @@
       "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/StubGamePrimitiveComponent.h",
       "source_include": "StubGamePrimitiveComponent.h",
       "source_rel": "StubGamePrimitiveComponent.h",
+      "properties": [],
+      "functions": []
+    },
+    "GameModuleStub::StubTickableWorldSubsystem": {
+      "namespace": "GameModuleStub",
+      "class_name": "StubTickableWorldSubsystem",
+      "decl_pos": 271,
+      "class_hash": "b39d9113a8dadf0c20ee85a7bc8d2b3f8501fabe4bf3070196ef23d99f61e632",
+      "specifiers": [],
+      "metadata": {},
+      "base_types": [
+        "minEngine::TickableWorldSubsystem"
+      ],
+      "has_virtual_inheritance": false,
+      "content_hash": "4c701f029d26ebc5d47b60cd52a0ceffc42897136bf525fd206c1946ed521bcc",
+      "output_header": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubTickableWorldSubsystem.gen.h",
+      "output_source": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubTickableWorldSubsystem.gen.cpp",
+      "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/StubTickableWorldSubsystem.h",
+      "source_include": "StubTickableWorldSubsystem.h",
+      "source_rel": "StubTickableWorldSubsystem.h",
       "properties": [],
       "functions": []
     }
