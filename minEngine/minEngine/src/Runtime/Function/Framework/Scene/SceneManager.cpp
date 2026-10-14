@@ -42,7 +42,18 @@ namespace minEngine
 
         for (const SceneContext& pieContext : m_PIEContexts)
         {
-            if (pieContext.Scene && PhysicsSystem::HasInstance())
+            if (!pieContext.Scene)
+            {
+                continue;
+            }
+
+            if (pieContext.Scene->HasBegunPlay())
+            {
+                pieContext.Scene->DispatchEndPlay(EEndPlayReason::Destroyed);
+            }
+            pieContext.Scene->DeinitializeWorldSubsystems();
+
+            if (PhysicsSystem::HasInstance())
             {
                 PhysicsSystem::Get().DestroyWorld(pieContext.Scene.get());
             }
@@ -63,6 +74,8 @@ namespace minEngine
             {
                 m_CurrentActiveScene->DispatchEndPlay(EEndPlayReason::Destroyed);
             }
+
+            m_CurrentActiveScene->DeinitializeWorldSubsystems();
 
             if (AudioSystem::HasInstance())
             {
@@ -236,6 +249,12 @@ namespace minEngine
         Scene* pieScene = GetPIEScene(instanceId);
         if (pieScene != nullptr)
         {
+            if (pieScene->HasBegunPlay())
+            {
+                pieScene->DispatchEndPlay(EEndPlayReason::Destroyed);
+            }
+            pieScene->DeinitializeWorldSubsystems();
+
             if (AudioSystem::HasInstance())
             {
                 AudioSystem::Get().OnSceneUnloaded(pieScene);
@@ -321,6 +340,9 @@ namespace minEngine
         {
             Get().ResolvePendingActivationsForScene(scene);
         }
+
+        scene->InitializeWorldSubsystems();
+        scene->PostInitializeWorldSubsystems();
     }
 
     RenderScene* SceneManager::GetRenderScene()
@@ -373,8 +395,7 @@ namespace minEngine
         editorContext.ContextHandle = "Editor";
         SetEditorSceneContext(std::move(editorContext));
 
-        ResolvePendingActivationsForScene(m_CurrentActiveScene.get());
-        RebuildSceneComponentAttachHierarchy(m_CurrentActiveScene.get());
+        FinalizeLoadedScene(m_CurrentActiveScene.get());
 
         if (PhysicsSystem::HasInstance())
         {

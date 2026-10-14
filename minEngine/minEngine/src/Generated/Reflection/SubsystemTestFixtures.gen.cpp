@@ -15,3 +15,8 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestGameInstanceSubsystem, GReflecti
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::GameInstanceSubsystem)
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestGameInstanceSubsystem)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestWorldSubsystem, GReflectionClassRegister_TestWorldSubsystem_ca1aafe3)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::WorldSubsystem)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestWorldSubsystem)

@@ -18,11 +18,47 @@ namespace minEngine
     Scene::~Scene()
     {
         ME_LOG(LogCore, Info, "Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
+        DeinitializeWorldSubsystems();
         m_GameplayEventSystem = nullptr;
         m_GameObjects.clear();
         m_GameObjectsById.clear();
         m_PrefabInstances.clear();
         m_RenderScene.reset();
+    }
+
+    void Scene::InitializeWorldSubsystems()
+    {
+        if (m_WorldSubsystems.IsInitialized())
+        {
+            return;
+        }
+
+        ME_ASSERT(ObjectManager::HasInstance(), "InitializeWorldSubsystems requires ObjectManager");
+        m_WorldSubsystems.Initialize(this);
+    }
+
+    void Scene::PostInitializeWorldSubsystems()
+    {
+        if (!m_WorldSubsystems.IsInitialized())
+        {
+            return;
+        }
+
+        m_WorldSubsystems.ForEachSubsystem([](Subsystem* subsystem) {
+            WorldSubsystem* worldSubsystem = static_cast<WorldSubsystem*>(subsystem);
+            if (worldSubsystem)
+            {
+                worldSubsystem->PostInitialize();
+            }
+        });
+    }
+
+    void Scene::DeinitializeWorldSubsystems()
+    {
+        if (m_WorldSubsystems.IsInitialized())
+        {
+            m_WorldSubsystems.Deinitialize();
+        }
     }
 
     void Scene::RegisterGameplayEventSystem(GameplayEventSystemComponent* component)
@@ -181,6 +217,17 @@ namespace minEngine
         // Set before the loop so SpawnGameObject during BeginPlay also BeginPlays.
         m_bHasBegunPlay = true;
 
+        if (m_WorldSubsystems.IsInitialized())
+        {
+            m_WorldSubsystems.ForEachSubsystem([this](Subsystem* subsystem) {
+                WorldSubsystem* worldSubsystem = static_cast<WorldSubsystem*>(subsystem);
+                if (worldSubsystem)
+                {
+                    worldSubsystem->OnWorldBeginPlay(*this);
+                }
+            });
+        }
+
         StructuralTraversalScope scope(*this);
         const size_t count = m_GameObjects.size();
         for (size_t i = 0; i < count; ++i)
@@ -211,6 +258,17 @@ namespace minEngine
             {
                 gameObject->EndPlay(reason);
             }
+        }
+
+        if (m_WorldSubsystems.IsInitialized())
+        {
+            m_WorldSubsystems.ForEachSubsystem([this, reason](Subsystem* subsystem) {
+                WorldSubsystem* worldSubsystem = static_cast<WorldSubsystem*>(subsystem);
+                if (worldSubsystem)
+                {
+                    worldSubsystem->OnWorldEndPlay(*this, reason);
+                }
+            });
         }
 
         m_bHasBegunPlay = false;
@@ -333,6 +391,7 @@ namespace minEngine
 
     void Scene::Reset()
     {
+        DeinitializeWorldSubsystems();
         m_GameObjects.clear();
         m_GameObjectsById.clear();
         m_PendingDestroyIds.clear();

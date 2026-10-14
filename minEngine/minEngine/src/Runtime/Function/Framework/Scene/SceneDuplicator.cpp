@@ -92,13 +92,7 @@ namespace minEngine
 
     void SceneDuplicator::FinalizePIEScene(Scene& pieScene)
     {
-        pieScene.RebuildRuntimeGameObjectIndex();
         pieScene.EnsureRenderScene();
-        pieScene.ResolveGameObjectHierarchy();
-        SceneManager::RebuildSceneComponentAttachHierarchy(&pieScene);
-        if (SceneManager::HasInstance())
-        {
-            SceneManager::Get().ResolvePendingActivationsForScene(&pieScene);
-        }
+        SceneManager::FinalizeLoadedScene(&pieScene);
     }
 }

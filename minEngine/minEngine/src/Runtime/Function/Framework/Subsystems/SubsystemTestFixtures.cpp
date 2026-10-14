@@ -62,4 +62,49 @@ namespace minEngine
     {
         ++s_DeinitCount;
     }
+
+    bool TestWorldSubsystem::s_AllowCreate = false;
+    int TestWorldSubsystem::s_InitCount = 0;
+    int TestWorldSubsystem::s_DeinitCount = 0;
+    int TestWorldSubsystem::s_PostInitCount = 0;
+    int TestWorldSubsystem::s_BeginPlayCount = 0;
+    int TestWorldSubsystem::s_EndPlayCount = 0;
+
+    bool TestWorldSubsystem::ShouldCreateSubsystem(MEObject* outer) const
+    {
+        if (!s_AllowCreate)
+        {
+            return false;
+        }
+        return WorldSubsystem::ShouldCreateSubsystem(outer);
+    }
+
+    void TestWorldSubsystem::Initialize(SubsystemCollectionBase& collection)
+    {
+        (void)collection;
+        ++s_InitCount;
+    }
+
+    void TestWorldSubsystem::Deinitialize()
+    {
+        ++s_DeinitCount;
+    }
+
+    void TestWorldSubsystem::PostInitialize()
+    {
+        ++s_PostInitCount;
+    }
+
+    void TestWorldSubsystem::OnWorldBeginPlay(Scene& scene)
+    {
+        (void)scene;
+        ++s_BeginPlayCount;
+    }
+
+    void TestWorldSubsystem::OnWorldEndPlay(Scene& scene, EEndPlayReason reason)
+    {
+        (void)scene;
+        (void)reason;
+        ++s_EndPlayCount;
+    }
 }

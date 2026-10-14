@@ -1,3 +1,14 @@
+## 2026-10-14 — CORE-F34 S03：Scene WorldSubsystem 集合
+
+- **Scope:** 每 Scene 一份 World 子系统；Finalize / 卸载 / Play 相位转发
+- **Completed:**
+  - `Scene::InitializeWorldSubsystems` / `PostInitialize` / `Deinitialize`；`GetSubsystem<T>`
+  - `FinalizeLoadedScene` / `CreateNewScene` / PIE Finalize 拉起；Unload / UnregisterPIE / Shutdown 卸下
+  - `DispatchBeginPlay/EndPlay` 转发 `OnWorldBeginPlay/EndPlay`；`DoesSupportWorldType`
+  - suite `world-subsystem`
+- **Verification:** build minEngineTests；`world-subsystem` / `begin-play` / `game-instance-subsystem`
+- **Next:** S04 Play Mode 每 PIE 一 GI
+
 ## 2026-10-14 — CORE-F34 S01+S02：Engine MEObject + GameInstance / SubsystemCollection
 
 - **Scope:** 引擎作用域子系统骨架（Engine + GameInstance；不含 World / Tick / PIE）

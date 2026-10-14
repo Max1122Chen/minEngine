@@ -2,6 +2,8 @@
 #include "Core.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
 #include "Runtime/Function/Framework/Prefab/PrefabTypes.h"
+#include "Runtime/Function/Framework/Subsystems/Subsystem.h"
+#include "Runtime/Function/Framework/Subsystems/SubsystemCollection.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Physics/PhysicsTypes.h"
 #include "Runtime/Resource/Asset.h"
@@ -94,6 +96,22 @@ namespace minEngine
         void DispatchEndPlay(EEndPlayReason reason);
         bool HasBegunPlay() const { return m_bHasBegunPlay; }
 
+        void InitializeWorldSubsystems();
+        void PostInitializeWorldSubsystems();
+        void DeinitializeWorldSubsystems();
+
+        SubsystemCollection<WorldSubsystem>& GetSubsystemCollection() { return m_WorldSubsystems; }
+        const SubsystemCollection<WorldSubsystem>& GetSubsystemCollection() const
+        {
+            return m_WorldSubsystems;
+        }
+
+        template<typename T>
+        T* GetSubsystem() const
+        {
+            return m_WorldSubsystems.GetSubsystem<T>();
+        }
+
         void MarkReachableObjects(const std::function<void(MEObject*)>& markReachable) const;
 
         GameplayEventSystemComponent* GetGameplayEventSystem() const { return m_GameplayEventSystem; }
@@ -154,6 +172,7 @@ namespace minEngine
         int32_t m_PIEInstanceId{ -1 };
         bool m_bHasBegunPlay{ false };
         GameplayEventSystemComponent* m_GameplayEventSystem{ nullptr };
+        SubsystemCollection<WorldSubsystem> m_WorldSubsystems;
     };
 }
 

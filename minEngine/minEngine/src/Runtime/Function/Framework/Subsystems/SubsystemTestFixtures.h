@@ -53,6 +53,27 @@ namespace minEngine
         void Initialize(SubsystemCollectionBase& collection) override;
         void Deinitialize() override;
     };
+
+    ME_CLASS()
+    class TestWorldSubsystem : public WorldSubsystem
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        static bool s_AllowCreate;
+        static int s_InitCount;
+        static int s_DeinitCount;
+        static int s_PostInitCount;
+        static int s_BeginPlayCount;
+        static int s_EndPlayCount;
+
+        bool ShouldCreateSubsystem(MEObject* outer) const override;
+        void Initialize(SubsystemCollectionBase& collection) override;
+        void Deinitialize() override;
+        void PostInitialize() override;
+        void OnWorldBeginPlay(Scene& scene) override;
+        void OnWorldEndPlay(Scene& scene, EEndPlayReason reason) override;
+    };
 }
 
 #include "SubsystemTestFixtures.gen.h"

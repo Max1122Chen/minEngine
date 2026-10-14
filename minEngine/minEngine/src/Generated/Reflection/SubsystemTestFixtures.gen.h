@@ -17,3 +17,8 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestGameInstanceSubsystem)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::TestGameInstanceSubsystem, GReflectionClassRegister_TestGameInstanceSubsystem_282d2eaf)
+
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestWorldSubsystem)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::TestWorldSubsystem, GReflectionClassRegister_TestWorldSubsystem_ca1aafe3)

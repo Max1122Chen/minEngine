@@ -6,7 +6,7 @@
 - **Complexity:** `L3`
 - **Status:** `In Progress`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-14`（S01+S02：Engine MEObject + SubsystemCollection + GameInstance）
+- **Last updated:** `2026-10-14`（S03：Scene WorldSubsystem 集合 + Begin/EndPlay 转发）
 - **Related:**
   - 依赖：[CORE-F05](./CORE-F05_PLAY_MODE_DESIGN.md)、[CORE-F31](./CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md)、[CORE-F33](./CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)、[CORE-F27](./CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md)
   - **先实施构建产品化：** [BUILD-F01](../ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)（Editor+Game；退役 ED-F20）→ 再开本 Feature
@@ -599,7 +599,7 @@ S06：删 KeepAlive/Marker；Sample 模块示范子系统；契约文档与 ED-F
 | **S00** | **ObjectManager 进程单例**（脱离 Engine 拥有）；bootstrap / 测试 / Shutdown 序 | **Done** — 静态 Init/Shutdown + `s_Owned`；Engine 无 `m_ObjectManager` |
 | **S01** | `Engine : MEObject` + `Subsystem`/`SubsystemCollection` + 反射发现；Engine 集合 | **Done** — Init/Deinit；`InitializeDependency`；环检测；suite `game-instance-subsystem` |
 | **S02** | `GameInstance` + GI 集合；Standalone Create/Init/Shutdown | **Done** — Create/Destroy；GetSubsystem；Shutdown 逆序 |
-| **S03** | Scene World 集合；Finalize/卸载；PostInitialize + BeginPlay/EndPlay 转发 | 每 Scene 一份；SceneType 过滤 |
+| **S03** | Scene World 集合；Finalize/卸载；PostInitialize + BeginPlay/EndPlay 转发 | **Done** — suite `world-subsystem`；Finalize/Unload/PIE 卸；DoesSupportWorldType |
 | **S04** | Play Mode：每 PIE 一 GI；顺序对齐 UE | Enter/Exit 无泄漏 |
 | **S05** | Tickable；LogicalTick 单插入点（Physics 后、EOF 前） | 不在 GO 循环内；F33 回归 |
 | **S06** | Sample 示范 GI/World 子系统；与 **BUILD-F01** 对齐删 KeepAlive | Sample suite；反射可见游戏子系统类 |
@@ -652,15 +652,16 @@ S06：删 KeepAlive/Marker；Sample 模块示范子系统；契约文档与 ED-F
 ## Acceptance Checklist
 
 - [x] Design review（iterative；Verdict Ready with deferred）
-- [ ] Implementation plan / slices 按上表执行（S00–S02 Done；S03+ 待做）
+- [ ] Implementation plan / slices 按上表执行（S00–S03 Done；S04+ 待做）
 - [x] Progress log updated
 - [x] Feature registry status synced
-- [ ] Suites 证明 GI/World/Engine 三层寿命（Engine+GI Done；World → S03）
+- [x] Suites 证明 GI/World/Engine 三层寿命（Play Mode PIE 接线 → S04）
 - [ ] Play Mode PIE 接线无泄漏
 - [ ] 文档明确：游戏业务子系统不进 Core
 - [x] S00：Engine 不再拥有 ObjectManager
 - [x] S01：Engine : MEObject + EngineSubsystem 集合
 - [x] S02：GameInstance + GI 集合 Standalone Create/Init/Shutdown
+- [x] S03：Scene WorldSubsystem 集合 + Begin/EndPlay 转发
 
 ## 附录 A — 与反哺稿差异（显式划掉）
 

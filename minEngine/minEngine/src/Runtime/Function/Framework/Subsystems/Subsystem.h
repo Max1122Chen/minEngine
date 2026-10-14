@@ -2,10 +2,12 @@
 
 #include "Core.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Function/Framework/Scene/SceneTypes.h"
 
 namespace minEngine
 {
     class SubsystemCollectionBase;
+    class Scene;
 
     /**
      * Abstract base for scoped engine extensions (Engine / GameInstance / World).
@@ -55,9 +57,24 @@ namespace minEngine
         ME_GENERATED_BODY()
 
     public:
-        virtual void OnWorldBeginPlay() {}
-        virtual void OnWorldEndPlay() {}
+        Scene* GetScene() const;
+
+        bool ShouldCreateSubsystem(MEObject* outer) const override;
+
+        /** Filter by SceneType (Editor / PIE). Default: all types. */
+        virtual bool DoesSupportWorldType(ESceneType sceneType) const
+        {
+            (void)sceneType;
+            return true;
+        }
+
         virtual void PostInitialize() {}
+        virtual void OnWorldBeginPlay(Scene& scene) { (void)scene; }
+        virtual void OnWorldEndPlay(Scene& scene, EEndPlayReason reason)
+        {
+            (void)scene;
+            (void)reason;
+        }
     };
 
     ME_CLASS(Abstract)
