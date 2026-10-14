@@ -1,3 +1,4 @@
 {
-    "EditorDefaultSceneName": "default"
+    "EditorDefaultSceneName": "default",
+    "GameInstanceClass": ""
 }

@@ -32,3 +32,8 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestTickableGameInstanceSubsystem)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::TestTickableGameInstanceSubsystem, GReflectionClassRegister_TestTickableGameInstanceSubsystem_18e060f9)
+
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::TestDerivedGameInstance)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::TestDerivedGameInstance, GReflectionClassRegister_TestDerivedGameInstance_643abd97)

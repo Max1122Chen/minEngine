@@ -7,8 +7,9 @@ namespace minEngine
     void GameInstance::Init()
     {
         ME_ASSERT(!m_bInitialized, "GameInstance::Init called twice");
-        OnInit();
+        // CORE-F35: Collection first so derived OnInit can GetSubsystem safely.
         m_Subsystems.Initialize(this);
+        OnInit();
         m_bInitialized = true;
     }
 

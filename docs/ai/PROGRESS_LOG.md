@@ -1,3 +1,14 @@
+## 2026-10-14 — CORE-F35：GI 中枢 + 项目可选派生类
+
+- **Scope:** Hub vs Subsystem；`ProjectSettings.GameInstanceClass`；Standalone/PIE 按类创建
+- **Completed:**
+  - Init 序：Collection → OnInit；Shutdown：OnShutdown → Deinit
+  - `ResolveGameInstanceClass` / `SetGameInstanceClassOverride`；Create* 共用
+  - `StubGameInstance` + `TestDerivedGameInstance`；模板 mesettings 字段
+  - Feature 引擎侧 **Done**（S04 minCraft Deferred）
+- **Verification:** `game-instance-subsystem` / `game-module-stub` / `tickable-subsystem` / `world-subsystem`
+- **Next:** 可选 minCraft 派生 GI；或 F33 review
+
 ## 2026-10-14 — BUILD-F01 S05：minCraft 迁项目根双 exe
 
 - **Scope:** 外仓 minCraft 以 `ENGINE_ROOT` 为根；`MinCraft.exe` + `MinCraftEditor.exe`；删 Marker/DEFER

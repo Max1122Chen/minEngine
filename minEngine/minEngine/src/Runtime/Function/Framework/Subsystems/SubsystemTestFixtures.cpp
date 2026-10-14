@@ -142,4 +142,13 @@ namespace minEngine
         ++s_TickCount;
         s_LastDeltaTime = deltaTime;
     }
+
+    int TestDerivedGameInstance::s_OnInitCount = 0;
+    bool TestDerivedGameInstance::s_SawGiSubsystemOnInit = false;
+
+    void TestDerivedGameInstance::OnInit()
+    {
+        ++s_OnInitCount;
+        s_SawGiSubsystemOnInit = GetSubsystem<TestGameInstanceSubsystem>() != nullptr;
+    }
 }

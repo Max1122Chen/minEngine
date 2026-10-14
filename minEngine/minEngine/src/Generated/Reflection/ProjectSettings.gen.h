@@ -5,6 +5,7 @@
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ProjectSettings)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, EditorDefaultSceneName)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, GameInstanceClass)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, Editor)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectSettings, Appearance)
 ME_REFLECTION_ACCESSOR_END()

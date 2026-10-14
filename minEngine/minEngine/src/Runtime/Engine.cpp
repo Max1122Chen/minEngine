@@ -1,10 +1,13 @@
 #include "Engine.h"
 
 #include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Profiling/Profile.h"
+#include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/GameInstance/GameInstance.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
+#include "Runtime/Function/Framework/Project/ProjectSettings.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
@@ -275,19 +278,75 @@ namespace minEngine
         return GetGameInstanceForPIE(pieId);
     }
 
+    void Engine::SetGameInstanceClassOverride(const Reflection::MEClass* gameInstanceClass)
+    {
+        m_GameInstanceClassOverride = gameInstanceClass;
+    }
+
+    const Reflection::MEClass* Engine::ResolveGameInstanceClass() const
+    {
+        const Reflection::MEClass* defaultClass = GameInstance::StaticClass();
+        ME_ASSERT(defaultClass != nullptr, "GameInstance::StaticClass missing");
+
+        const Reflection::MEClass* candidate = m_GameInstanceClassOverride;
+        if (candidate == nullptr && ProjectManager::HasInstance())
+        {
+            const std::string& className =
+                ProjectManager::Get().GetCurrentProjectCtx().Settings.GameInstanceClass;
+            if (!className.empty())
+            {
+                candidate = Reflection::ReflectionSystem::Get().FindClass(className);
+                if (candidate == nullptr)
+                {
+                    ME_LOG(LogCore, Error,
+                        "ResolveGameInstanceClass: unable to find '{}'; falling back to GameInstance.",
+                        className);
+                    return defaultClass;
+                }
+            }
+        }
+
+        if (candidate == nullptr)
+        {
+            return defaultClass;
+        }
+
+        if (!candidate->IsA(defaultClass))
+        {
+            ME_LOG(LogCore, Error,
+                "ResolveGameInstanceClass: '{}' is not a GameInstance; falling back to GameInstance.",
+                candidate->GetName());
+            return defaultClass;
+        }
+
+        return candidate;
+    }
+
+    std::shared_ptr<GameInstance> Engine::CreateGameInstanceOfResolvedClass(
+        const std::string& objectName,
+        Scene* primaryScene,
+        int32_t pieInstanceId)
+    {
+        const Reflection::MEClass* giClass = ResolveGameInstanceClass();
+        std::shared_ptr<MEObject> created = NewObject(giClass, objectName, this);
+        std::shared_ptr<GameInstance> gameInstance = Cast<GameInstance>(created);
+        ME_ASSERT(gameInstance != nullptr, "Failed to NewObject GameInstance class");
+
+        gameInstance->SetPIEInstanceId(pieInstanceId);
+        if (primaryScene != nullptr)
+        {
+            gameInstance->SetPrimaryScene(primaryScene);
+        }
+        gameInstance->Init();
+        return gameInstance;
+    }
+
     std::shared_ptr<GameInstance> Engine::CreateGameInstance(Scene* primaryScene)
     {
         ME_ASSERT(ObjectManager::HasInstance(), "CreateGameInstance requires ObjectManager");
         ME_ASSERT(m_GameInstance == nullptr, "Standalone GameInstance already exists");
 
-        m_GameInstance = NewObject<GameInstance>("GameInstance", this);
-        ME_ASSERT(m_GameInstance != nullptr, "Failed to NewObject GameInstance");
-        m_GameInstance->SetPIEInstanceId(-1);
-        if (primaryScene != nullptr)
-        {
-            m_GameInstance->SetPrimaryScene(primaryScene);
-        }
-        m_GameInstance->Init();
+        m_GameInstance = CreateGameInstanceOfResolvedClass("GameInstance", primaryScene, -1);
         return m_GameInstance;
     }
 
@@ -310,15 +369,10 @@ namespace minEngine
         ME_ASSERT(m_PIEGameInstances.find(pieInstanceId) == m_PIEGameInstances.end(),
             "GameInstance already exists for this PIE instance");
 
-        std::shared_ptr<GameInstance> gameInstance =
-            NewObject<GameInstance>("GameInstance_PIE_" + std::to_string(pieInstanceId), this);
-        ME_ASSERT(gameInstance != nullptr, "Failed to NewObject PIE GameInstance");
-        gameInstance->SetPIEInstanceId(pieInstanceId);
-        if (primaryScene != nullptr)
-        {
-            gameInstance->SetPrimaryScene(primaryScene);
-        }
-        gameInstance->Init();
+        std::shared_ptr<GameInstance> gameInstance = CreateGameInstanceOfResolvedClass(
+            "GameInstance_PIE_" + std::to_string(pieInstanceId),
+            primaryScene,
+            pieInstanceId);
         m_PIEGameInstances[pieInstanceId] = gameInstance;
         return gameInstance;
     }

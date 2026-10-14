@@ -58,6 +58,7 @@ namespace minEngine
         ~ProjectManager() = default;
 
         static ProjectManager& Get();
+        static bool HasInstance() { return s_Instance != nullptr; }
 
         void Initialize();
         void Shutdown();

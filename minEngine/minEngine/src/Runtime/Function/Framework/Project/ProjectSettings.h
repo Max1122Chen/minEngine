@@ -14,6 +14,13 @@ namespace minEngine
         ME_PROPERTY()
         std::string EditorDefaultSceneName;
 
+        /**
+         * Soft class path for the session GameInstance hub (UE GameMapsSettings::GameInstanceClass).
+         * Empty = minEngine::GameInstance. Use reflection full name, e.g. GameModuleStub::StubGameInstance.
+         */
+        ME_PROPERTY()
+        std::string GameInstanceClass;
+
         ME_PROPERTY()
         EditorSettings Editor;
 

@@ -168,6 +168,56 @@ namespace minEngine
             return true;
         }
 
+        bool RunGameInstanceClassResolveAndDerivedCreateTest()
+        {
+            GameInstanceSubsystemTestScope scope;
+
+            TestGameInstanceSubsystem::s_AllowCreate = true;
+            TestDerivedGameInstance::s_OnInitCount = 0;
+            TestDerivedGameInstance::s_SawGiSubsystemOnInit = false;
+
+            Engine engine;
+            engine.InitializeEngineSubsystems();
+
+            if (engine.ResolveGameInstanceClass() != GameInstance::StaticClass())
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: empty resolve should be GameInstance.");
+                return false;
+            }
+
+            // Scene is MEObject but not GameInstance — must fall back.
+            engine.SetGameInstanceClassOverride(Scene::StaticClass());
+            if (engine.ResolveGameInstanceClass() != GameInstance::StaticClass())
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: non-GI override must fall back.");
+                return false;
+            }
+
+            engine.SetGameInstanceClassOverride(TestDerivedGameInstance::StaticClass());
+            if (engine.ResolveGameInstanceClass() != TestDerivedGameInstance::StaticClass())
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: derived override not resolved.");
+                return false;
+            }
+
+            std::shared_ptr<GameInstance> gi = engine.CreateGameInstance();
+            if (!gi || !gi->IsA(TestDerivedGameInstance::StaticClass()))
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: Create did not use derived class.");
+                return false;
+            }
+            if (TestDerivedGameInstance::s_OnInitCount < 1 || !TestDerivedGameInstance::s_SawGiSubsystemOnInit)
+            {
+                ME_LOG(LogTest, Error, "GameInstanceSubsystemTest: OnInit order/subsystem visibility failed.");
+                return false;
+            }
+
+            engine.DestroyGameInstance();
+            engine.SetGameInstanceClassOverride(nullptr);
+            engine.DeinitializeEngineSubsystems();
+            return true;
+        }
+
         bool RunPieGameInstanceIsolationAndOrderTest()
         {
             GameInstanceSubsystemTestScope scope;
@@ -253,6 +303,7 @@ namespace minEngine
         return RunEngineSubsystemInitDeinitTest()
             && RunGameInstanceCreateShutdownTest()
             && RunGatedFixtureSkippedInDefaultDiscoveryTest()
+            && RunGameInstanceClassResolveAndDerivedCreateTest()
             && RunPieGameInstanceIsolationAndOrderTest();
     }
 }

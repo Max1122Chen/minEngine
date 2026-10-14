@@ -12,6 +12,11 @@
 #include <string>
 #include <unordered_map>
 
+namespace minEngine::Reflection
+{
+    class MEClass;
+}
+
 namespace minEngine
 {
     class ProjectManager;
@@ -91,7 +96,20 @@ namespace minEngine
         void DestroyGameInstanceForPIE(int32_t pieInstanceId);
         void DestroyAllPIEGameInstances();
 
+        /**
+         * Resolve project (or override) GameInstance class. Always non-null; invalid names
+         * fall back to GameInstance. Standalone and PIE share this path (CORE-F35).
+         */
+        const Reflection::MEClass* ResolveGameInstanceClass() const;
+
+        /** Test / tooling bypass for ProjectSettings.GameInstanceClass. nullptr clears. */
+        void SetGameInstanceClassOverride(const Reflection::MEClass* gameInstanceClass);
+
     private:
+        std::shared_ptr<GameInstance> CreateGameInstanceOfResolvedClass(
+            const std::string& objectName,
+            Scene* primaryScene,
+            int32_t pieInstanceId);
         void FinializeReflection();
         void StartSystems();
         void ShutdownSystems();
@@ -107,6 +125,7 @@ namespace minEngine
         SubsystemCollection<EngineSubsystem> m_EngineSubsystems;
         std::shared_ptr<GameInstance> m_GameInstance;
         std::unordered_map<int32_t, std::shared_ptr<GameInstance>> m_PIEGameInstances;
+        const Reflection::MEClass* m_GameInstanceClassOverride = nullptr;
 
         std::shared_ptr<ProjectManager> m_ProjectManager;
         std::shared_ptr<AssetManager> m_AssetManager;

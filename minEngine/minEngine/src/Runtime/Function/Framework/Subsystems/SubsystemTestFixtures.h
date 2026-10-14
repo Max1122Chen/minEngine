@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Runtime/Function/Framework/GameInstance/GameInstance.h"
 #include "Runtime/Function/Framework/Subsystems/Subsystem.h"
 #include "Runtime/Function/Framework/Subsystems/SubsystemCollection.h"
 
@@ -101,6 +102,19 @@ namespace minEngine
 
         bool ShouldCreateSubsystem(MEObject* outer) const override;
         void Tick(float deltaTime) override;
+    };
+
+    /** CORE-F35: derived hub for Resolve/Create tests. */
+    ME_CLASS()
+    class TestDerivedGameInstance : public GameInstance
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        static int s_OnInitCount;
+        static bool s_SawGiSubsystemOnInit;
+
+        void OnInit() override;
     };
 }
 

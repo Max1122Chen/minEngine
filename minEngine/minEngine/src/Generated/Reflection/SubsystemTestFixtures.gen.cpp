@@ -30,3 +30,8 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestTickableGameInstanceSubsystem, G
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::TickableGameInstanceSubsystem)
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestTickableGameInstanceSubsystem)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestDerivedGameInstance, GReflectionClassRegister_TestDerivedGameInstance_643abd97)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::GameInstance)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestDerivedGameInstance)

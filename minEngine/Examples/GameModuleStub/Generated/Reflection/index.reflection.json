@@ -1,24 +1,28 @@
 {
-  "generated_count": 4,
+  "generated_count": 2,
   "removed_count": 0,
-  "scanned_files": 3,
-  "parsed_files": 2,
+  "scanned_files": 4,
+  "parsed_files": 4,
   "sources": [
+    "StubGameInstance.h",
     "StubGameInstanceSubsystem.h",
     "StubGamePrimitiveComponent.h",
     "StubTickableWorldSubsystem.h"
   ],
   "generated_headers": [
+    "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstance.gen.h",
     "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstanceSubsystem.gen.h",
     "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGamePrimitiveComponent.gen.h",
     "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubTickableWorldSubsystem.gen.h"
   ],
   "generated_sources": [
+    "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstance.gen.cpp",
     "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstanceSubsystem.gen.cpp",
     "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGamePrimitiveComponent.gen.cpp",
     "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubTickableWorldSubsystem.gen.cpp"
   ],
   "classes": [
+    "GameModuleStub::StubGameInstance",
     "GameModuleStub::StubGameInstanceSubsystem",
     "GameModuleStub::StubGamePrimitiveComponent",
     "GameModuleStub::StubTickableWorldSubsystem"

@@ -16,6 +16,7 @@ set(GAMEMODULESTUB_GENERATED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Generated/Reflecti
 add_library(GameModuleStub SHARED
     GameModuleStub.cpp
     src/StubGamePrimitiveComponent.cpp
+    src/StubGameInstance.cpp
     src/StubGameInstanceSubsystem.cpp
     src/StubTickableWorldSubsystem.cpp
 )

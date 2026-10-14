@@ -1,8 +1,18 @@
 {
   "tool_cache_version": 17,
   "files": {
+    "StubGameInstance.h": {
+      "mtime_ns": 1791976941702910400,
+      "size": 673,
+      "file_hash": "25c714a927b2fb67196f2a1c3db5fe4e1f2a753f67fbed3023c384023de756b8",
+      "has_markers": true,
+      "class_keys": [
+        "GameModuleStub::StubGameInstance"
+      ],
+      "enum_keys": []
+    },
     "StubGameInstanceSubsystem.h": {
-      "mtime_ns": 1791965569469812000,
+      "mtime_ns": 1791971013743633800,
       "size": 671,
       "file_hash": "6b8fa721580f113d25ca0ef873d6eab8b51db036d9801762259e1120cf22f636",
       "has_markers": true,
@@ -12,7 +22,7 @@
       "enum_keys": []
     },
     "StubGamePrimitiveComponent.h": {
-      "mtime_ns": 1791860827037742700,
+      "mtime_ns": 1791971013744832200,
       "size": 1145,
       "file_hash": "c468d71c68773678e3e5384694a1bc7a34a82bd05ab544d3a880035cd9c971af",
       "has_markers": true,
@@ -22,7 +32,7 @@
       "enum_keys": []
     },
     "StubTickableWorldSubsystem.h": {
-      "mtime_ns": 1791965573322544600,
+      "mtime_ns": 1791971013770235800,
       "size": 665,
       "file_hash": "399d152e3ad937b982c30eb0919dcadfb9588086f5b2c43c4fc2da04d4be2e50",
       "has_markers": true,
@@ -33,6 +43,26 @@
     }
   },
   "classes": {
+    "GameModuleStub::StubGameInstance": {
+      "namespace": "GameModuleStub",
+      "class_name": "StubGameInstance",
+      "decl_pos": 315,
+      "class_hash": "e8406e43cd2a4f5b79193fb658992e5f3b9210ac95d8c261f4345f345d9c6211",
+      "specifiers": [],
+      "metadata": {},
+      "base_types": [
+        "minEngine::GameInstance"
+      ],
+      "has_virtual_inheritance": false,
+      "content_hash": "54bd1fc2964b439f18c3f5b42e5595e2a1e0a769a93d24c6ca182153f0a97b9a",
+      "output_header": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstance.gen.h",
+      "output_source": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/StubGameInstance.gen.cpp",
+      "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/StubGameInstance.h",
+      "source_include": "StubGameInstance.h",
+      "source_rel": "StubGameInstance.h",
+      "properties": [],
+      "functions": []
+    },
     "GameModuleStub::StubGameInstanceSubsystem": {
       "namespace": "GameModuleStub",
       "class_name": "StubGameInstanceSubsystem",

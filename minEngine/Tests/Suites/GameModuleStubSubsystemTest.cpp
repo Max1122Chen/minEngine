@@ -13,6 +13,7 @@
 #include "doctest.h"
 
 #if defined(MINENGINE_LINK_GAME_MODULE_STUB) && MINENGINE_LINK_GAME_MODULE_STUB
+#    include "StubGameInstance.h"
 #    include "StubGameInstanceSubsystem.h"
 #    include "StubTickableWorldSubsystem.h"
 #endif
@@ -32,6 +33,9 @@ namespace minEngine
                 Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
                 m_SceneManager.Initialize();
 
+                GameModuleStub::StubGameInstance::s_OnInitCount = 0;
+                GameModuleStub::StubGameInstance::s_OnShutdownCount = 0;
+                GameModuleStub::StubGameInstance::s_SawGiSubsystemOnInit = false;
                 GameModuleStub::StubGameInstanceSubsystem::s_InitCount = 0;
                 GameModuleStub::StubGameInstanceSubsystem::s_DeinitCount = 0;
                 GameModuleStub::StubTickableWorldSubsystem::s_InitCount = 0;
@@ -78,8 +82,12 @@ namespace minEngine
         REQUIRE(worldSubsystem != nullptr);
         CHECK(GameModuleStub::StubTickableWorldSubsystem::s_InitCount >= 1);
 
+        engine.SetGameInstanceClassOverride(GameModuleStub::StubGameInstance::StaticClass());
         std::shared_ptr<GameInstance> gi = engine.CreateGameInstance(scene.get());
         REQUIRE(gi != nullptr);
+        REQUIRE(gi->IsA(GameModuleStub::StubGameInstance::StaticClass()));
+        CHECK(GameModuleStub::StubGameInstance::s_OnInitCount >= 1);
+        CHECK(GameModuleStub::StubGameInstance::s_SawGiSubsystemOnInit);
 
         GameModuleStub::StubGameInstanceSubsystem* giSubsystem =
             gi->GetSubsystem<GameModuleStub::StubGameInstanceSubsystem>();
@@ -91,6 +99,8 @@ namespace minEngine
 
         engine.DestroyGameInstance();
         CHECK(GameModuleStub::StubGameInstanceSubsystem::s_DeinitCount >= 1);
+        CHECK(GameModuleStub::StubGameInstance::s_OnShutdownCount >= 1);
+        engine.SetGameInstanceClassOverride(nullptr);
 
         engine.DeinitializeEngineSubsystems();
     }

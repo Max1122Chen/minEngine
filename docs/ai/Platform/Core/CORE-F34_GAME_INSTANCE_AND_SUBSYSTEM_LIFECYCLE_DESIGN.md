@@ -6,8 +6,9 @@
 - **Complexity:** `L3`
 - **Status:** `Done`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-14`（S06：GameModuleStub 示范 GI/World 子系统）
+- **Last updated:** `2026-10-14`（S06 Done；中枢/可选类见 [CORE-F35](./CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md)）
 - **Related:**
+  - 后续：[CORE-F35](./CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md)（GI Hub + ProjectSettings 类）
   - 依赖：[CORE-F05](./CORE-F05_PLAY_MODE_DESIGN.md)、[CORE-F31](./CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md)、[CORE-F33](./CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)、[CORE-F27](./CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md)
   - **先实施构建产品化：** [BUILD-F01](../ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)（Editor+Game；退役 ED-F20）→ 再开本 Feature
   - 模块链接现状：[ED-F20](../../Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md)、[ED-F21](../../Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)、[ED-F22](../../Editor/ED-F22_GAME_MODULE_STARTUP_DESIGN.md)
