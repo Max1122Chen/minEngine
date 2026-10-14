@@ -39,7 +39,17 @@ function(minengine_add_game_executable TARGET_NAME)
             message(FATAL_ERROR
                 "minengine_add_game_executable(${TARGET_NAME}): GAME_MODULE '${ARG_GAME_MODULE}' not a target")
         endif()
-        target_link_libraries(${TARGET_NAME} PRIVATE ${ARG_GAME_MODULE})
+        # MinGW/ld --as-needed drops unreferenced SHARED deps; ME_CLASS static
+        # registration then never runs. Keep the game DLL in the link.
+        if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            target_link_libraries(${TARGET_NAME} PRIVATE
+                "-Wl,--no-as-needed"
+                ${ARG_GAME_MODULE}
+                "-Wl,--as-needed"
+            )
+        else()
+            target_link_libraries(${TARGET_NAME} PRIVATE ${ARG_GAME_MODULE})
+        endif()
         add_dependencies(${TARGET_NAME} ${ARG_GAME_MODULE})
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -89,7 +99,16 @@ function(minengine_add_editor_executable TARGET_NAME)
             message(FATAL_ERROR
                 "minengine_add_editor_executable(${TARGET_NAME}): GAME_MODULE '${ARG_GAME_MODULE}' not a target")
         endif()
-        target_link_libraries(${TARGET_NAME} PRIVATE ${ARG_GAME_MODULE})
+        # See minengine_add_game_executable: keep game DLL under --as-needed.
+        if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            target_link_libraries(${TARGET_NAME} PRIVATE
+                "-Wl,--no-as-needed"
+                ${ARG_GAME_MODULE}
+                "-Wl,--as-needed"
+            )
+        else()
+            target_link_libraries(${TARGET_NAME} PRIVATE ${ARG_GAME_MODULE})
+        endif()
         add_dependencies(${TARGET_NAME} ${ARG_GAME_MODULE})
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different

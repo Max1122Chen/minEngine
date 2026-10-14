@@ -1,3 +1,14 @@
+## 2026-10-14 — BUILD-F01 S05：minCraft 迁项目根双 exe
+
+- **Scope:** 外仓 minCraft 以 `ENGINE_ROOT` 为根；`MinCraft.exe` + `MinCraftEditor.exe`；删 Marker/DEFER
+- **Completed:**
+  - `MinEngineTargets`：MinGW `--no-as-needed` 保住 GAME_MODULE DLL
+  - minEngine：`exclude-libs` 补 Assimp/zlib（静态 fallback 不爆 PE ordinal）
+  - minCraft：项目根 CMake；`MinCraftGame`（OUTPUT `MinCraft`）/ `MinCraftEditor`；`GameMain.cpp`；去 `MinCraftModuleMarker`
+  - ASSET-F08：`BlockTextureAtlas` 改 `LoadAssetByPath` + cast
+- **Verification:** configure `minCraft/build-s05`；build `MinCraftGame` + `MinCraftEditor` → `bin/MinCraft.exe` / `MinCraftEditor.exe` / `libminCraft.dll`
+- **Next:** 双仓 commit；主线可选 F33 review / ASSET-F04
+
 ## 2026-10-14 — CORE-F34 S06：GameModuleStub 示范子系统
 
 - **Scope:** 游戏 SHARED 示范 GI / TickableWorld 子系统；反射发现

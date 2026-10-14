@@ -4,9 +4,9 @@
 - **ID:** `BUILD-F01`
 - **Type:** Feature
 - **Complexity:** `L3`
-- **Status:** `In Progress`
+- **Status:** `Done`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-13`（S03 模板 + S04 package-game；S05 minCraft Deferred）
+- **Last updated:** `2026-10-14`（S05 minCraft 迁项目根 Done；Feature 收口）
 - **Related:**
   - 取代/收敛权宜：[ED-F20](../../Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md)（引擎反向 add 游戏）、KeepAlive/Marker
   - 对称链接文档：[ED-F21](../../Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)
@@ -244,7 +244,7 @@ Launcher `create`：复制 + 替换 → configure/build 两个 exe；文档写�
 | **S02** | EditorLib + Sample：SampleEditor **与** SampleGame；无反向拉取 | **Done** |
 | **S03** | `Templates/GameProject` + Launcher create 填变量 | **Done**（create 单测 + MinGW configure） |
 | **S04** | `package-game` Stage 最小拷贝（Sample + 模板） | **Done**（`package-SampleGame` → Staging） |
-| **S05** | minCraft 迁项目根；双 exe | **Deferred**（外仓；模板就绪后另开） |
+| **S05** | minCraft 迁项目根；双 exe | **Done**（外仓 `ENGINE_ROOT` + `MinCraftGame`/`MinCraftEditor`；产物 `MinCraft.exe`） |
 | **S06** | 移除 `MINENGINE_GAME_DIR` / KeepAlive | **Done** |
 
 ## Verification Strategy

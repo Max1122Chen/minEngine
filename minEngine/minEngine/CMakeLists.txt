@@ -146,7 +146,8 @@ set_target_properties(${ENGINE_NAME} PROPERTIES
 if(WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
     target_link_options(${ENGINE_NAME} PRIVATE
         "LINKER:--export-all-symbols"
-        "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a")
+        # Assimp/zlib when falling back to static subproject (no prebuilt DLL in bin/).
+        "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a:libassimp.a:libassimpd.a:libzlibstatic.a:libzlibstaticd.a")
 endif()
 
 target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)
