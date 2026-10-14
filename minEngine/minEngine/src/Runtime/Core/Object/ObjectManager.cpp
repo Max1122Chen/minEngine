@@ -8,10 +8,20 @@
 namespace minEngine
 {
     ObjectManager* ObjectManager::s_Instance = nullptr;
+    std::unique_ptr<ObjectManager> ObjectManager::s_Owned;
 
     void ObjectManager::SetInstance(ObjectManager* instance)
     {
+        // Tests may inject a stack instance; do not keep a process-owned copy alongside it.
+        if (instance != nullptr && s_Owned && instance != s_Owned.get())
+        {
+            s_Owned.reset();
+        }
         s_Instance = instance;
+        if (instance == nullptr)
+        {
+            s_Owned.reset();
+        }
     }
 
     ObjectManager& ObjectManager::Get()
@@ -27,10 +37,32 @@ namespace minEngine
 
     void ObjectManager::Initialize()
     {
-        m_ObjectsByGuid.clear();
+        if (s_Instance == nullptr)
+        {
+            s_Owned = std::make_unique<ObjectManager>();
+            s_Instance = s_Owned.get();
+        }
+        s_Instance->ResetRegistry();
     }
 
     void ObjectManager::Shutdown()
+    {
+        if (s_Instance == nullptr)
+        {
+            return;
+        }
+
+        s_Instance->ClearRegistry();
+        s_Owned.reset();
+        s_Instance = nullptr;
+    }
+
+    void ObjectManager::ResetRegistry()
+    {
+        m_ObjectsByGuid.clear();
+    }
+
+    void ObjectManager::ClearRegistry()
     {
         m_GarbageRootSources.clear();
         m_ObjectsByGuid.clear();

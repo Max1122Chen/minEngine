@@ -36,12 +36,12 @@ namespace minEngine
         MaterialIRTestObjectManagerScope()
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
-            m_Manager.Initialize();
+            ObjectManager::Initialize();
         }
 
         ~MaterialIRTestObjectManagerScope()
         {
-            m_Manager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 

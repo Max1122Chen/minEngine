@@ -31,7 +31,7 @@ namespace minEngine
         LuaScriptMvpTestScope(bool withAssets)
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
-            m_ObjectManager.Initialize();
+            ObjectManager::Initialize();
 
             if (withAssets)
             {
@@ -55,7 +55,7 @@ namespace minEngine
                 Testing::TestAccess<SceneManager>::SetInstance(nullptr);
             }
 
-            m_ObjectManager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 

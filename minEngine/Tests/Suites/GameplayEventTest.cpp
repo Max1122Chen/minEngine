@@ -28,7 +28,7 @@ namespace minEngine
         GameplayEventTestScope()
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
-            m_ObjectManager.Initialize();
+            ObjectManager::Initialize();
 
             GameplayTagManager::SetInstance(&m_TagManager);
             m_TagManager.Initialize();
@@ -39,7 +39,7 @@ namespace minEngine
             m_TagManager.Shutdown();
             GameplayTagManager::SetInstance(nullptr);
 
-            m_ObjectManager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 

@@ -1,3 +1,12 @@
+## 2026-10-14 — CORE-F34 S00：ObjectManager 进程单例
+
+- **Scope:** ObjectManager 脱离 Engine 拥有，对齐进程级设施
+- **Completed:**
+  - `ObjectManager::Initialize/Shutdown` 静态 API + `s_Owned`；Engine 删除 `m_ObjectManager`
+  - 测试改为静态 Init/Shutdown（仍可 TestAccess 注入栈实例）
+- **Verification:** build minEngineTests；`object-manager` / `smoke` / `serialization-archive`
+- **Next:** S01 Engine : MEObject + SubsystemCollection 骨架
+
 ## 2026-10-13 — BUILD S03/S04：GameProject 模板 + package-game
 
 - **Scope:** 引擎侧产品构建余量（不含 minCraft 迁根）

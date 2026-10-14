@@ -23,7 +23,7 @@ namespace minEngine
         PhysicsContactTestScope()
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
-            m_ObjectManager.Initialize();
+            ObjectManager::Initialize();
 
             Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
@@ -40,7 +40,7 @@ namespace minEngine
             m_PhysicsSystem.Shutdown();
             Testing::TestAccess<PhysicsSystem>::SetInstance(nullptr);
 
-            m_ObjectManager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
@@ -161,7 +161,7 @@ namespace minEngine
                 return false;
             }
 
-            // Tall trigger volume the dynamic box falls through (sensor �?no push).
+            // Tall trigger volume the dynamic box falls through (sensor 鈫?no push).
             const std::shared_ptr<GameObject> triggerObject = scene->CreateGameObject();
             const std::shared_ptr<SceneComponent> triggerRoot = triggerObject->AddComponent<SceneComponent>();
             triggerRoot->SetPosition(Vector3(0.0f, 5.0f, 0.0f));
@@ -235,7 +235,7 @@ namespace minEngine
                 return false;
             }
 
-            // Sensor must not stop the falling body near the trigger center (y�?).
+            // Sensor must not stop the falling body near the trigger center (y鈮?).
             const float finalHeight = dynamicRoot->GetPosition().y;
             if (!(finalHeight < heightAtBegin - 0.5f))
             {
@@ -269,14 +269,14 @@ namespace minEngine
             if (registry.GetResponse(ECollisionChannel::Trigger, ECollisionChannel::Trigger)
                 != ECollisionResponse::Ignore)
             {
-                ME_LOG(LogTest, Error, "PhysicsContactTest: Trigger↔Trigger should Ignore.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: Trigger鈫擳rigger should Ignore.");
                 return false;
             }
 
             if (registry.GetResponse(ECollisionChannel::Default, ECollisionChannel::Trigger)
                 != ECollisionResponse::Overlap)
             {
-                ME_LOG(LogTest, Error, "PhysicsContactTest: Default↔Trigger should Overlap.");
+                ME_LOG(LogTest, Error, "PhysicsContactTest: Default鈫擳rigger should Overlap.");
                 return false;
             }
 

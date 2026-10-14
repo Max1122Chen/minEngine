@@ -4,17 +4,17 @@
 #include "MEObject.h"
 
 #include <functional>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace minEngine
 {
-    class Engine;
-
     using ObjectReachabilityMarker = std::function<void(MEObject*)>;
     using ObjectReachabilityRootVisitor = std::function<void(const ObjectReachabilityMarker& markReachable)>;
     using ObjectGarbageRootSourceId = void*;
 
+    /** Process-level object registry (not owned by Engine). Aligns with LogSystem lifetime. */
     class ObjectManager
     {
     public:
@@ -24,8 +24,10 @@ namespace minEngine
         static ObjectManager& Get();
         static bool HasInstance();
 
-        void Initialize();
-        void Shutdown();
+        /** Create process singleton if needed, then reset the registry. */
+        static void Initialize();
+        /** Clear registry and destroy the process-owned instance (if any). */
+        static void Shutdown();
 
         void RegisterObject(const std::shared_ptr<MEObject>& object);
         bool RemapObjectGuid(const std::shared_ptr<MEObject>& object, const GUID& newGuid);
@@ -100,12 +102,15 @@ namespace minEngine
         void ForEachLiveObject(const std::function<void(const std::shared_ptr<MEObject>&)>& visitor) const;
 
     private:
-        friend class Engine;
         friend class Testing::TestAccess<ObjectManager>;
 
         static void SetInstance(ObjectManager* instance);
+        void ResetRegistry();
+        void ClearRegistry();
         void PruneExpiredEntries();
+
         static ObjectManager* s_Instance;
+        static std::unique_ptr<ObjectManager> s_Owned;
 
         std::unordered_map<GUID, std::weak_ptr<MEObject>, GUID::Hash> m_ObjectsByGuid;
         std::unordered_map<ObjectGarbageRootSourceId, ObjectReachabilityRootVisitor> m_GarbageRootSources;

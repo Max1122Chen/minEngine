@@ -21,7 +21,7 @@ namespace minEngine
         PhysicsSmokeTestScope()
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
-            m_ObjectManager.Initialize();
+            ObjectManager::Initialize();
 
             Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
@@ -38,7 +38,7 @@ namespace minEngine
             m_PhysicsSystem.Shutdown();
             Testing::TestAccess<PhysicsSystem>::SetInstance(nullptr);
 
-            m_ObjectManager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 

@@ -26,12 +26,12 @@ namespace minEngine
         SerializationArchiveTestScope()
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
-            m_Manager.Initialize();
+            ObjectManager::Initialize();
         }
 
         ~SerializationArchiveTestScope()
         {
-            m_Manager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 

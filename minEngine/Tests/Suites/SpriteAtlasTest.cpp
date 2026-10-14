@@ -26,12 +26,12 @@ namespace
         ScopedObjectManager()
         {
             minEngine::Testing::TestAccess<minEngine::ObjectManager>::SetInstance(&m_Manager);
-            m_Manager.Initialize();
+            minEngine::ObjectManager::Initialize();
         }
 
         ~ScopedObjectManager()
         {
-            m_Manager.Shutdown();
+            minEngine::ObjectManager::Shutdown();
             minEngine::Testing::TestAccess<minEngine::ObjectManager>::SetInstance(nullptr);
         }
 

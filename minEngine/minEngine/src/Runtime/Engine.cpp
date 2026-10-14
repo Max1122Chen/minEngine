@@ -227,9 +227,8 @@ namespace minEngine
 
     void Engine::StartSystems()
     {
-        m_ObjectManager = std::make_shared<ObjectManager>();
-        ObjectManager::SetInstance(m_ObjectManager.get());
-        m_ObjectManager->Initialize();
+        // Process-level facility (not Engine-owned); safe if tests already injected an instance.
+        ObjectManager::Initialize();
 
         m_GameplayTagManager = std::make_shared<GameplayTagManager>();
         GameplayTagManager::SetInstance(m_GameplayTagManager.get());
@@ -359,12 +358,7 @@ namespace minEngine
             m_AssetManager.reset();
         }
 
-        if (m_ObjectManager)
-        {
-            m_ObjectManager->Shutdown();
-            ObjectManager::SetInstance(nullptr);
-            m_ObjectManager.reset();
-        }
+        ObjectManager::Shutdown();
 
         if (m_GameplayTagManager)
         {

@@ -37,7 +37,7 @@ namespace
         ScopedManagers()
         {
             minEngine::Testing::TestAccess<minEngine::ObjectManager>::SetInstance(&m_ObjectManager);
-            m_ObjectManager.Initialize();
+            minEngine::ObjectManager::Initialize();
             minEngine::Testing::TestAccess<minEngine::SceneManager>::SetInstance(&m_SceneManager);
             m_SceneManager.Initialize();
             minEngine::Testing::TestAccess<minEngine::AssetManager>::SetInstance(&m_AssetManager);
@@ -50,7 +50,7 @@ namespace
             minEngine::Testing::TestAccess<minEngine::AssetManager>::SetInstance(nullptr);
             m_SceneManager.Shutdown();
             minEngine::Testing::TestAccess<minEngine::SceneManager>::SetInstance(nullptr);
-            m_ObjectManager.Shutdown();
+            minEngine::ObjectManager::Shutdown();
             minEngine::Testing::TestAccess<minEngine::ObjectManager>::SetInstance(nullptr);
         }
 

@@ -26,7 +26,7 @@ namespace minEngine
             GameModuleStubReflectionScope()
             {
                 Testing::TestAccess<ObjectManager>::SetInstance(&m_ObjectManager);
-                m_ObjectManager.Initialize();
+                ObjectManager::Initialize();
                 Testing::TestAccess<SceneManager>::SetInstance(&m_SceneManager);
                 m_SceneManager.Initialize();
             }
@@ -35,7 +35,7 @@ namespace minEngine
             {
                 m_SceneManager.Shutdown();
                 Testing::TestAccess<SceneManager>::SetInstance(nullptr);
-                m_ObjectManager.Shutdown();
+                ObjectManager::Shutdown();
                 Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
             }
 

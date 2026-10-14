@@ -10,7 +10,6 @@
 
 namespace minEngine
 {
-    class ObjectManager;
     class ProjectManager;
     class AssetManager;
     class WindowSystem;
@@ -65,7 +64,6 @@ namespace minEngine
 
         static Engine* s_Instance;
 
-        std::shared_ptr<ObjectManager> m_ObjectManager;
         std::shared_ptr<ProjectManager> m_ProjectManager;
         std::shared_ptr<AssetManager> m_AssetManager;
         std::shared_ptr<WindowSystem> m_WindowSystem;

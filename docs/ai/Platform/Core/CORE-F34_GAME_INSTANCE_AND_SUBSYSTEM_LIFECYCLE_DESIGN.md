@@ -596,7 +596,7 @@ S06：删 KeepAlive/Marker；Sample 模块示范子系统；契约文档与 ED-F
 
 | Slice | 范围 | 验证 |
 |-------|------|------|
-| **S00** | **ObjectManager 进程单例**（脱离 Engine 拥有）；bootstrap / 测试 / Shutdown 序 | 无 Engine 可 NewObject；Engine Shutdown 不销毁「被别人还在用的」语义清晰 |
+| **S00** | **ObjectManager 进程单例**（脱离 Engine 拥有）；bootstrap / 测试 / Shutdown 序 | **Done** — 静态 Init/Shutdown + `s_Owned`；Engine 无 `m_ObjectManager` |
 | **S01** | `Engine : MEObject` + `Subsystem`/`SubsystemCollection` + 反射发现；Engine 集合 | Init/Deinit；`InitializeDependency`；环检测 |
 | **S02** | `GameInstance` + GI 集合；Standalone Create/Init/Shutdown | GetSubsystem；Shutdown 逆序 |
 | **S03** | Scene World 集合；Finalize/卸载；PostInitialize + BeginPlay/EndPlay 转发 | 每 Scene 一份；SceneType 过滤 |
@@ -658,7 +658,7 @@ S06：删 KeepAlive/Marker；Sample 模块示范子系统；契约文档与 ED-F
 - [ ] Suites 证明 GI/World/Engine 三层寿命
 - [ ] Play Mode PIE 接线无泄漏
 - [ ] 文档明确：游戏业务子系统不进 Core
-- [ ] S00：Engine 不再拥有 ObjectManager
+- [x] S00：Engine 不再拥有 ObjectManager
 
 ## 附录 A — 与反哺稿差异（显式划掉）
 

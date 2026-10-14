@@ -20,12 +20,12 @@ namespace minEngine
         DelegateObjectManagerScope()
         {
             Testing::TestAccess<ObjectManager>::SetInstance(&m_Manager);
-            m_Manager.Initialize();
+            ObjectManager::Initialize();
         }
 
         ~DelegateObjectManagerScope()
         {
-            m_Manager.Shutdown();
+            ObjectManager::Shutdown();
             Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
         }
 
