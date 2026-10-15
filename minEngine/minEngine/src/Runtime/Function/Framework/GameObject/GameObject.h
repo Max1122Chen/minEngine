@@ -24,6 +24,11 @@ namespace minEngine
 
         void Tick(float deltaTime);
 
+        /** Forwards to Components with FixedTick enabled. */
+        void FixedTick(float fixedDeltaSeconds);
+        bool WantsFixedTick() const { return m_FixedTickComponentCount > 0; }
+        void NotifyFixedTickComponentChanged(bool componentEnabled);
+
         /** Routes to Components then OnBeginPlay. */
         void BeginPlay();
         void EndPlay(EEndPlayReason reason);
@@ -150,6 +155,7 @@ namespace minEngine
 
         bool m_bHasBegunPlay{ false };
         bool m_bPendingDestroy{ false };
+        int m_FixedTickComponentCount{ 0 };
 
     };
 }

@@ -24,12 +24,17 @@
 #include "Runtime/Function/Debug/DebugDrawService.h"
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTagManager.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
+#include "Runtime/Function/Framework/Time/GameplayFixedTickClock.h"
 
 #include <vector>
 
 namespace minEngine
 {
     Engine* Engine::s_Instance = nullptr;
+
+    Engine::Engine() = default;
+
+    Engine::~Engine() = default;
 
     Engine& Engine::Get()
     {
@@ -577,10 +582,150 @@ namespace minEngine
         }
     }
 
+    void Engine::TickGameplayVariablePhase(float deltaTime)
+    {
+        if (m_GameInstance)
+        {
+            m_GameInstance->TickSubsystems(deltaTime);
+        }
+        for (const auto& [pieId, gameInstance] : m_PIEGameInstances)
+        {
+            (void)pieId;
+            if (gameInstance)
+            {
+                gameInstance->TickSubsystems(deltaTime);
+            }
+        }
+
+        if (SceneManager::HasInstance())
+        {
+            SceneManager::Get().TickVariableGameplay(deltaTime);
+        }
+    }
+
+    void Engine::TickGameplayFixedPhase(float frameDt)
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            return;
+        }
+
+        GameplayFixedTickClock& clock = *m_GameplayFixedTickClock;
+        const int stepCount = clock.BeginFrameAndConsumeSteps(frameDt);
+        if (stepCount <= 0)
+        {
+            return;
+        }
+
+        const float fixedDt = clock.GetIntervalSeconds();
+        for (int step = 0; step < stepCount; ++step)
+        {
+            if (m_GameInstance)
+            {
+                m_GameInstance->OnFixedTick(fixedDt);
+            }
+            for (const auto& [pieId, gameInstance] : m_PIEGameInstances)
+            {
+                (void)pieId;
+                if (gameInstance)
+                {
+                    gameInstance->OnFixedTick(fixedDt);
+                }
+            }
+
+            if (SceneManager::HasInstance())
+            {
+                SceneManager::Get().FixedTickGameplay(fixedDt);
+            }
+
+            clock.NotifyStepCompleted();
+        }
+
+        clock.FlushPendingInterval();
+    }
+
+    void Engine::SetGameplayFixedTickInterval(float seconds)
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            m_GameplayFixedTickClock = std::make_unique<GameplayFixedTickClock>();
+        }
+        m_GameplayFixedTickClock->SetIntervalSeconds(seconds);
+    }
+
+    float Engine::GetGameplayFixedTickInterval() const
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            return 0.0f;
+        }
+        return m_GameplayFixedTickClock->GetIntervalSeconds();
+    }
+
+    void Engine::SetGameplayFixedTicksPerSecond(float ticksPerSecond)
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            m_GameplayFixedTickClock = std::make_unique<GameplayFixedTickClock>();
+        }
+        m_GameplayFixedTickClock->SetTicksPerSecond(ticksPerSecond);
+    }
+
+    void Engine::SetGameplayFixedTimeScale(float scale)
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            m_GameplayFixedTickClock = std::make_unique<GameplayFixedTickClock>();
+        }
+        m_GameplayFixedTickClock->SetTimeScale(scale);
+    }
+
+    float Engine::GetGameplayFixedTimeScale() const
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            return 1.0f;
+        }
+        return m_GameplayFixedTickClock->GetTimeScale();
+    }
+
+    void Engine::SetGameplayFixedMaxStepsPerFrame(int maxSteps)
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            m_GameplayFixedTickClock = std::make_unique<GameplayFixedTickClock>();
+        }
+        m_GameplayFixedTickClock->SetMaxStepsPerFrame(maxSteps);
+    }
+
+    void Engine::SetGameplayFixedTickPaused(bool paused)
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            m_GameplayFixedTickClock = std::make_unique<GameplayFixedTickClock>();
+        }
+        m_GameplayFixedTickClock->SetPaused(paused);
+    }
+
+    bool Engine::IsGameplayFixedTickEnabled() const
+    {
+        return m_GameplayFixedTickClock && m_GameplayFixedTickClock->IsEnabled();
+    }
+
+    uint64_t Engine::GetGameplayFixedTickIndex() const
+    {
+        if (!m_GameplayFixedTickClock)
+        {
+            return 0;
+        }
+        return m_GameplayFixedTickClock->GetTickIndex();
+    }
+
     void Engine::LogicalTick(float deltaTime)
     {
         m_InputSystem->Tick(deltaTime);
-        m_SceneManager->Tick(deltaTime);
+        TickGameplayFixedPhase(deltaTime);
+        TickGameplayVariablePhase(deltaTime);
         if (m_AudioSystem)
         {
             m_AudioSystem->Tick(deltaTime);
@@ -593,7 +738,6 @@ namespace minEngine
         {
             m_UISystem->Tick(deltaTime);
         }
-        TickTickableSubsystems(deltaTime);
         m_SceneManager->SendAllEndOfFrameUpdates();
         m_SceneManager->FlushDeferredStructuralEdits();
     }

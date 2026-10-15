@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-15（RND-F24 S01 In Progress）
+Last updated: 2026-10-15（CORE-F36 on feat/core · RND-F24 S01–S02 on master）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -62,7 +62,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F33` | 运行期结构变更（Spawn 即时入世 · Destroy 延迟 · EOF swap） | **In Progress** | — | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) · `feat/core` · S01+S02 已合入；待个人 review / S03 可选 |
 | `CORE-F34` | GameInstance + Subsystem 作用域生命周期（引擎机制 · 游戏 App 契约） | **Done** | — | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) · L3 · S00–S06 主链 Done；S07 LocalPlayer 后置 |
 | `CORE-F35` | GameInstance 会话中枢 · 项目可选派生类（Hub vs Subsystem） | **Done** | — | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) · L2 · S01–S03；S04 minCraft Deferred |
-| `CORE-F36` | Gameplay FixedTick + 变步 Tick 相位对齐（唯一逻辑时钟 · 分层派发） | **In Progress** | — | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · L2 · S00–S04 on `feat/core-f36-gameplay-fixed-tick` · suite `gameplay-fixed-tick` |
+| `CORE-F36` | Gameplay FixedTick + 变步 Tick 相位对齐（唯一逻辑时钟 · 分层派发） | **In Progress** | — | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · L2 · S00–S04 on `feat/core` · suite `gameplay-fixed-tick` · minCraft `ENG-GAP-FIXED-TICK` |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |

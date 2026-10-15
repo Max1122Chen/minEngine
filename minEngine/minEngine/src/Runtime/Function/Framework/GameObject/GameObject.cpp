@@ -2,6 +2,7 @@
 
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Reflection/Reflection.h"
+#include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 #include <algorithm>
@@ -13,6 +14,15 @@ namespace minEngine
 
     GameObject::~GameObject()
     {
+        if (WantsFixedTick())
+        {
+            if (Scene* scene = dynamic_cast<Scene*>(const_cast<MEObject*>(GetOuter())))
+            {
+                scene->UnregisterFixedTickGameObject(this);
+            }
+            m_FixedTickComponentCount = 0;
+        }
+
         if (m_bHasBegunPlay)
         {
             EndPlay(EEndPlayReason::Destroyed);
@@ -322,6 +332,11 @@ namespace minEngine
                 SceneManager::Get().UnmarkComponentForNeededEndOfFrameUpdate(&target);
             }
 
+            if (target.IsFixedTickEnabled())
+            {
+                target.SetFixedTickEnabled(false);
+            }
+
             // Deactivate while still owned; destructor will also unlink attach safely.
             target.SetOwner(nullptr);
             m_Components.erase(it);
@@ -453,6 +468,55 @@ namespace minEngine
             {
                 component->Tick(deltaTime);
             }
+        }
+    }
+
+    void GameObject::FixedTick(float fixedDeltaSeconds)
+    {
+        for (auto& component : m_Components)
+        {
+            if (component == nullptr || !component->IsActive())
+            {
+                continue;
+            }
+            if (component->WantsFixedTick())
+            {
+                component->FixedTick(fixedDeltaSeconds);
+            }
+        }
+    }
+
+    void GameObject::NotifyFixedTickComponentChanged(bool componentEnabled)
+    {
+        const bool wantedBefore = WantsFixedTick();
+        if (componentEnabled)
+        {
+            ++m_FixedTickComponentCount;
+        }
+        else
+        {
+            m_FixedTickComponentCount = std::max(0, m_FixedTickComponentCount - 1);
+        }
+
+        const bool wantedAfter = WantsFixedTick();
+        if (wantedBefore == wantedAfter)
+        {
+            return;
+        }
+
+        Scene* scene = dynamic_cast<Scene*>(const_cast<MEObject*>(GetOuter()));
+        if (scene == nullptr)
+        {
+            return;
+        }
+
+        if (wantedAfter)
+        {
+            scene->RegisterFixedTickGameObject(this);
+        }
+        else
+        {
+            scene->UnregisterFixedTickGameObject(this);
         }
     }
 

@@ -84,10 +84,14 @@ namespace minEngine
     public:
         static bool s_AllowCreate;
         static int s_TickCount;
+        static int s_FixedTickCount;
         static float s_LastDeltaTime;
+        static float s_LastFixedDeltaTime;
 
         bool ShouldCreateSubsystem(MEObject* outer) const override;
         void Tick(float deltaTime) override;
+        bool WantsFixedTick() const override { return s_AllowCreate; }
+        void FixedTick(float fixedDeltaSeconds) override;
     };
 
     ME_CLASS()
@@ -98,13 +102,16 @@ namespace minEngine
     public:
         static bool s_AllowCreate;
         static int s_TickCount;
+        static int s_FixedTickCount;
         static float s_LastDeltaTime;
+        static float s_LastFixedDeltaTime;
 
         bool ShouldCreateSubsystem(MEObject* outer) const override;
         void Tick(float deltaTime) override;
+        void FixedTick(float fixedDeltaSeconds) override;
     };
 
-    /** CORE-F35: derived hub for Resolve/Create tests. */
+    /** Derived hub for Resolve/Create tests. */
     ME_CLASS()
     class TestDerivedGameInstance : public GameInstance
     {
@@ -115,6 +122,16 @@ namespace minEngine
         static bool s_SawGiSubsystemOnInit;
 
         void OnInit() override;
+    };
+
+    /** Derived GI that forwards FixedTick to its tickable GI subsystem. */
+    ME_CLASS()
+    class TestFixedTickGameInstance : public GameInstance
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        void OnFixedTick(float fixedDeltaSeconds) override;
     };
 }
 

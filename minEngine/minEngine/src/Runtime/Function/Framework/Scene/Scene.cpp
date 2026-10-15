@@ -82,6 +82,69 @@ namespace minEngine
         });
     }
 
+    void Scene::FixedTickWorldSubsystems(float fixedDeltaSeconds)
+    {
+        if (!m_WorldSubsystems.IsInitialized())
+        {
+            return;
+        }
+
+        m_WorldSubsystems.ForEachSubsystem([fixedDeltaSeconds](Subsystem* subsystem) {
+            if (subsystem == nullptr || !subsystem->IsA(TickableWorldSubsystem::StaticClass()))
+            {
+                return;
+            }
+
+            TickableWorldSubsystem* tickable = static_cast<TickableWorldSubsystem*>(subsystem);
+            if (tickable->WantsFixedTick())
+            {
+                tickable->FixedTick(fixedDeltaSeconds);
+            }
+        });
+    }
+
+    void Scene::FixedTickGameObjects(float fixedDeltaSeconds)
+    {
+        const std::vector<GameObject*> participants = m_FixedTickGameObjects;
+        for (GameObject* gameObject : participants)
+        {
+            if (gameObject == nullptr || gameObject->IsPendingDestroy())
+            {
+                continue;
+            }
+            if (!gameObject->WantsFixedTick())
+            {
+                continue;
+            }
+            gameObject->FixedTick(fixedDeltaSeconds);
+        }
+    }
+
+    void Scene::RegisterFixedTickGameObject(GameObject* gameObject)
+    {
+        if (gameObject == nullptr)
+        {
+            return;
+        }
+        if (std::find(m_FixedTickGameObjects.begin(), m_FixedTickGameObjects.end(), gameObject)
+            != m_FixedTickGameObjects.end())
+        {
+            return;
+        }
+        m_FixedTickGameObjects.push_back(gameObject);
+    }
+
+    void Scene::UnregisterFixedTickGameObject(GameObject* gameObject)
+    {
+        if (gameObject == nullptr)
+        {
+            return;
+        }
+        m_FixedTickGameObjects.erase(
+            std::remove(m_FixedTickGameObjects.begin(), m_FixedTickGameObjects.end(), gameObject),
+            m_FixedTickGameObjects.end());
+    }
+
     void Scene::RegisterGameplayEventSystem(GameplayEventSystemComponent* component)
     {
         if (component == nullptr)

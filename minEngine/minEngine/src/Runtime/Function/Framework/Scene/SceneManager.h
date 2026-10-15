@@ -28,6 +28,13 @@ namespace minEngine
         void TickScenes(float deltaTime);
         /** Tick WorldTickable subsystems for scenes with a non-None tick policy. */
         void TickWorldSubsystems(float deltaTime);
+        /**
+         * Variable gameplay: per scene WorldTickable then GO→Comp.
+         * Call after GI variable tick, before Physics.
+         */
+        void TickVariableGameplay(float deltaTime);
+        /** Fixed: per scene WorldTickable Fixed then GO Fixed participants. */
+        void FixedTickGameplay(float fixedDeltaSeconds);
 
         std::shared_ptr<Scene> GetCurrentActiveScene() const { return m_CurrentActiveScene; }
         Scene* GetEditorScene() const;

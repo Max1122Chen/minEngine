@@ -33,6 +33,7 @@ namespace minEngine
     class GameplayTagManager;
     class GameInstance;
     class Scene;
+    class GameplayFixedTickClock;
 
     ME_CLASS()
     class Engine : public MEObject
@@ -40,8 +41,8 @@ namespace minEngine
         ME_GENERATED_BODY()
 
     public:
-        Engine() = default;
-        ~Engine() override = default;
+        Engine();
+        ~Engine() override;
 
         Engine(const Engine&) = delete;
         Engine& operator=(const Engine&) = delete;
@@ -60,8 +61,30 @@ namespace minEngine
         void PollEvents();
         void TickLogicalFrame(float deltaTime);
         void TickRendererFrame(float deltaTime);
-        /** After Physics/UI, before EOF — Tickable GI + World subsystems. */
+        /**
+         * Variable gameplay phase: GI Tickable then Scene WorldTickable + GO.
+         * LogicalTick calls this before Physics.
+         */
+        void TickGameplayVariablePhase(float deltaTime);
+        /** GI + World Tickable only (no GO). Prefer TickGameplayVariablePhase for full phase. */
         void TickTickableSubsystems(float deltaTime);
+        /**
+         * Fixed gameplay phase: drain FixedTick clock (GI OnFixedTick then World + GO).
+         * LogicalTick calls this after Input and before the variable phase.
+         */
+        void TickGameplayFixedPhase(float frameDt);
+
+        /** Fixed clock API (Interval <= 0 disables). */
+        void SetGameplayFixedTickInterval(float seconds);
+        float GetGameplayFixedTickInterval() const;
+        void SetGameplayFixedTicksPerSecond(float ticksPerSecond);
+        void SetGameplayFixedTimeScale(float scale);
+        float GetGameplayFixedTimeScale() const;
+        void SetGameplayFixedMaxStepsPerFrame(int maxSteps);
+        void SetGameplayFixedTickPaused(bool paused);
+        bool IsGameplayFixedTickEnabled() const;
+        uint64_t GetGameplayFixedTickIndex() const;
+
         float CalculateDeltaTime();
         float CalculateFPS(float deltaTime);
 
@@ -145,6 +168,7 @@ namespace minEngine
         SceneRendererKind m_SceneRendererKind = SceneRendererKind::Forward;
 
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
+        std::unique_ptr<GameplayFixedTickClock> m_GameplayFixedTickClock;
     };
 }
 

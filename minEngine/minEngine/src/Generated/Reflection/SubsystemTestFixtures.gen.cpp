@@ -35,3 +35,8 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestDerivedGameInstance, GReflection
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::GameInstance)
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestDerivedGameInstance)
+
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::TestFixedTickGameInstance, GReflectionClassRegister_TestFixedTickGameInstance_0140e802)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::GameInstance)
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::TestFixedTickGameInstance)

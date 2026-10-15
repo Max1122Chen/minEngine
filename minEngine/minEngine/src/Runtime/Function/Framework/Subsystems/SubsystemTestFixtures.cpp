@@ -110,7 +110,9 @@ namespace minEngine
 
     bool TestTickableWorldSubsystem::s_AllowCreate = false;
     int TestTickableWorldSubsystem::s_TickCount = 0;
+    int TestTickableWorldSubsystem::s_FixedTickCount = 0;
     float TestTickableWorldSubsystem::s_LastDeltaTime = 0.0f;
+    float TestTickableWorldSubsystem::s_LastFixedDeltaTime = 0.0f;
 
     bool TestTickableWorldSubsystem::ShouldCreateSubsystem(MEObject* outer) const
     {
@@ -127,9 +129,17 @@ namespace minEngine
         s_LastDeltaTime = deltaTime;
     }
 
+    void TestTickableWorldSubsystem::FixedTick(float fixedDeltaSeconds)
+    {
+        ++s_FixedTickCount;
+        s_LastFixedDeltaTime = fixedDeltaSeconds;
+    }
+
     bool TestTickableGameInstanceSubsystem::s_AllowCreate = false;
     int TestTickableGameInstanceSubsystem::s_TickCount = 0;
+    int TestTickableGameInstanceSubsystem::s_FixedTickCount = 0;
     float TestTickableGameInstanceSubsystem::s_LastDeltaTime = 0.0f;
+    float TestTickableGameInstanceSubsystem::s_LastFixedDeltaTime = 0.0f;
 
     bool TestTickableGameInstanceSubsystem::ShouldCreateSubsystem(MEObject* outer) const
     {
@@ -141,6 +151,21 @@ namespace minEngine
     {
         ++s_TickCount;
         s_LastDeltaTime = deltaTime;
+    }
+
+    void TestTickableGameInstanceSubsystem::FixedTick(float fixedDeltaSeconds)
+    {
+        ++s_FixedTickCount;
+        s_LastFixedDeltaTime = fixedDeltaSeconds;
+    }
+
+    void TestFixedTickGameInstance::OnFixedTick(float fixedDeltaSeconds)
+    {
+        if (TestTickableGameInstanceSubsystem* subsystem =
+                GetSubsystem<TestTickableGameInstanceSubsystem>())
+        {
+            subsystem->FixedTick(fixedDeltaSeconds);
+        }
     }
 
     int TestDerivedGameInstance::s_OnInitCount = 0;

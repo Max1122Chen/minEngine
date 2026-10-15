@@ -1051,6 +1051,28 @@ namespace minEngine
             }
         };
 
+        struct GameplayFixedTickTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "gameplay-fixed-tick",
+                    "Gameplay FixedTick clock and phase dispatch",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'gameplay-fixed-tick'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "gameplay-fixed-tick",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -1109,6 +1131,7 @@ namespace minEngine
         using GameInstanceSubsystemSuite = TypedTestSuite<GameInstanceSubsystemTestSuiteTraits>;
         using WorldSubsystemSuite = TypedTestSuite<WorldSubsystemTestSuiteTraits>;
         using TickableSubsystemSuite = TypedTestSuite<TickableSubsystemTestSuiteTraits>;
+        using GameplayFixedTickSuite = TypedTestSuite<GameplayFixedTickTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1177,6 +1200,7 @@ namespace minEngine
             registry.Register(GameInstanceSubsystemSuite::Get());
             registry.Register(WorldSubsystemSuite::Get());
             registry.Register(TickableSubsystemSuite::Get());
+            registry.Register(GameplayFixedTickSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS

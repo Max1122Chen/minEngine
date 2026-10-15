@@ -85,6 +85,12 @@ namespace minEngine
     public:
         virtual void Tick(float deltaTime) { (void)deltaTime; }
         virtual bool IsTickable() const { return true; }
+
+        /**
+         * Only called when a derived GameInstance::OnFixedTick invokes it.
+         * Engine does not ForEach GI subsystems for FixedTick.
+         */
+        virtual void FixedTick(float fixedDeltaSeconds) { (void)fixedDeltaSeconds; }
     };
 
     ME_CLASS(Abstract)
@@ -95,6 +101,10 @@ namespace minEngine
     public:
         virtual void Tick(float deltaTime) { (void)deltaTime; }
         virtual bool IsTickable() const { return true; }
+
+        /** Opt into engine FixedTick dispatch (creation / m_Instances order). */
+        virtual bool WantsFixedTick() const { return false; }
+        virtual void FixedTick(float fixedDeltaSeconds) { (void)fixedDeltaSeconds; }
     };
 }
 

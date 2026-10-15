@@ -4,9 +4,9 @@
 - **ID:** `CORE-F36`
 - **Type:** Feature
 - **Complexity:** `L2`
-- **Status:** `Draft`
+- **Status:** `In Progress`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-15`（修订：玩法块在 Physics **前**）
+- **Last updated:** `2026-10-15`（S00–S04 已落码于 `feat/core-f36-gameplay-fixed-tick`）
 - **Related:**
   - 前置：[CORE-F34](./CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md)、[CORE-F35](./CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md)（GI Hub / 派生类）
   - 正交：[CORE-F33](./CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)（Fixed/变步内结构变更沿用 F33）
@@ -18,7 +18,7 @@
 
 ## TL;DR
 
-本 Feature 两件事：**（A）引擎唯一 Gameplay Fixed 时钟**（追赶、可调 Interval/Scale；默认关）；**（B）修正变步 Tick 时序**：把错位的 GI/World Tickable **拉回 Physics 前**，与 GO→Comp 组成同一玩法块，并与 Fixed **共用层序**（GI → WorldTickable → GO→Comp）。同帧：`Input → Fixed 0..N → Variable → Physics → …`。GI Fixed 顺序由派生 GI 编排。不内置 Minecraft 20 / 随机刻倍率。Status：Draft，待审批。
+本 Feature 两件事：**（A）引擎唯一 Gameplay Fixed 时钟**（追赶、可调 Interval/Scale；默认关）；**（B）修正变步 Tick 时序**：把错位的 GI/World Tickable **拉回 Physics 前**，与 GO→Comp 组成同一玩法块，并与 Fixed **共用层序**（GI → WorldTickable → GO→Comp）。同帧：`Input → Fixed 0..N → Variable → Physics → …`。GI Fixed 顺序由派生 GI 编排。不内置 Minecraft 20 / 随机刻倍率。Status：In Progress（S00–S04 在 feat 分支；S05 / 维护者验收待办）。
 
 ## Reader quick start
 
@@ -371,14 +371,14 @@ frameDt → × FixedTimeScale → Accum
 
 ## Suggested slices
 
-| Slice | Goal | Verify |
-|-------|------|--------|
-| **S00** | **变步相位对齐**：GI+WorldTickable **前移**到 Physics 前；与 GO→Comp 同玩法块（层序 A→B→C）；去掉 Physics 后玩法 Tickable | 序探针 + suite 回归 |
-| S01 | Engine Clock + 追赶 + Pause + Interval/Scale | suite 时钟契约 |
-| S02 | Layer A `OnFixedTick` + GI Subsystem `FixedTick` API | 派生 GI 顺序测试 |
-| S03 | Layer B WorldTickable Fixed（`m_Instances` 序） | 与变步序一致 |
-| S04 | Layer C GO←Comp Fixed 汇聚 + Participants | 不全量遍历 |
-| S05 | Stub/Sample + 文档（随机刻 + Tickable 前移说明）+ Progress | 可读 |
+| Slice | Goal | Verify | Status |
+|-------|------|--------|--------|
+| **S00** | **变步相位对齐**：GI+WorldTickable **前移**到 Physics 前；与 GO→Comp 同玩法块（层序 A→B→C）；去掉 Physics 后玩法 Tickable | `tickable-subsystem` + `gameplay-fixed-tick` | **Done** |
+| S01 | Engine Clock + 追赶 + Pause + Interval/Scale | suite 时钟契约 | **Done** |
+| S02 | Layer A `OnFixedTick` + GI Subsystem `FixedTick` API | 派生 GI 顺序测试 | **Done** |
+| S03 | Layer B WorldTickable Fixed（`m_Instances` 序） | 与变步序一致 | **Done** |
+| S04 | Layer C GO←Comp Fixed 汇聚 + Participants | 不全量遍历 | **Done**（API+汇聚；suite 覆盖时钟/GI/World） |
+| S05 | Stub/Sample + 文档（随机刻 + Tickable 前移说明）+ Progress | 可读 | Pending |
 
 ## Open Questions
 
@@ -415,14 +415,15 @@ frameDt → × FixedTimeScale → Accum
 - [x] Verification strategy exists  
 - [x] Open questions deferred/accepted  
 
-**Ready for implementation?** `no` — 待维护者审批 → Planned → Impl Plan。勿与 F33 混 PR。
+**Ready for implementation?** `yes` — 维护者已指示在 `feat/core-f36-gameplay-fixed-tick` 实现；合入 master 前再验收。勿与 F33 混 PR。
 
 ## Acceptance Checklist
 
-- [ ] Design review 维护者确认  
-- [ ] Implementation plan traces to design（L2）  
-- [ ] Progress log when status changes  
-- [ ] Feature registry status synced  
+- [x] Design review 维护者确认（文档 commit + 实现指示）  
+- [ ] Implementation plan traces to design（L2；本波直接按 Design slices 落地）  
+- [x] Progress log when status changes  
+- [x] Feature registry status synced  
+- [ ] 维护者验收 feat 分支后合入 master  
 
 ## 变更记录
 
@@ -432,3 +433,4 @@ frameDt → × FixedTimeScale → Accum
 | 2026-10-15 | 修订：引擎唯一时钟；GI=`OnFixedTick`；World/`m_Instances`；GO→Comp 汇聚 |
 | 2026-10-15 | 修订：R13/S00 变步相位（初稿误写 GO 后移） |
 | 2026-10-15 | **修订：** 纠正为 **Tickable 前移**；玩法块在 Physics 前；同帧 `Input→Fixed→Variable→Physics` |
+| 2026-10-15 | S00–S04 实现于 feat；suite `gameplay-fixed-tick`；MinGW PE export 去掉 imgui_demo + exclude-modules |

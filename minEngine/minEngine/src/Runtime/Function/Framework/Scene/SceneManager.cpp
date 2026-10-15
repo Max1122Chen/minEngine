@@ -165,6 +165,46 @@ namespace minEngine
         }
     }
 
+    void SceneManager::TickVariableGameplay(float deltaTime)
+    {
+        auto tickIfNeeded = [deltaTime](const SceneContext& context)
+        {
+            if (context.Scene == nullptr || context.TickPolicy == ESceneTickPolicy::None)
+            {
+                return;
+            }
+
+            context.Scene->TickWorldSubsystems(deltaTime);
+            context.Scene->Tick(deltaTime);
+        };
+
+        tickIfNeeded(m_EditorSceneContext);
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            tickIfNeeded(pieContext);
+        }
+    }
+
+    void SceneManager::FixedTickGameplay(float fixedDeltaSeconds)
+    {
+        auto tickIfNeeded = [fixedDeltaSeconds](const SceneContext& context)
+        {
+            if (context.Scene == nullptr || context.TickPolicy == ESceneTickPolicy::None)
+            {
+                return;
+            }
+
+            context.Scene->FixedTickWorldSubsystems(fixedDeltaSeconds);
+            context.Scene->FixedTickGameObjects(fixedDeltaSeconds);
+        };
+
+        tickIfNeeded(m_EditorSceneContext);
+        for (const SceneContext& pieContext : m_PIEContexts)
+        {
+            tickIfNeeded(pieContext);
+        }
+    }
+
     Scene* SceneManager::GetEditorScene() const
     {
         if (m_EditorSceneContext.Scene)

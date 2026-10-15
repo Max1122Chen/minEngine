@@ -29,6 +29,12 @@ namespace minEngine
 
         virtual void Tick(float deltaTime) {}
 
+        /** Opt into FixedTick; aggregates to owning GameObject. */
+        void SetFixedTickEnabled(bool enabled);
+        bool IsFixedTickEnabled() const { return m_bFixedTickEnabled; }
+        virtual bool WantsFixedTick() const { return m_bFixedTickEnabled; }
+        virtual void FixedTick(float fixedDeltaSeconds) { (void)fixedDeltaSeconds; }
+
         void SetActive(bool active);
         bool IsActive() const { return m_bActive; }
 
@@ -84,6 +90,7 @@ namespace minEngine
         bool m_bActive{ true };
 
         bool m_bCanEverTick{ true };
+        bool m_bFixedTickEnabled{ false };
         ComponentMarkedForNeededEndOfFrameUpdate m_MarkedForNeededEndOfFrameUpdate{ Unmarked };
 
     private:

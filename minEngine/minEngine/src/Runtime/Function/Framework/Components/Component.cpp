@@ -11,11 +11,29 @@ namespace minEngine
 
     Component::~Component()
     {
+        if (m_bFixedTickEnabled)
+        {
+            SetFixedTickEnabled(false);
+        }
         if (SceneManager::HasInstance())
         {
             SceneManager::Get().UnmarkComponentForNeededEndOfFrameUpdate(this);
         }
         Deactivate();
+    }
+
+    void Component::SetFixedTickEnabled(bool enabled)
+    {
+        if (m_bFixedTickEnabled == enabled)
+        {
+            return;
+        }
+
+        m_bFixedTickEnabled = enabled;
+        if (m_Owner != nullptr)
+        {
+            m_Owner->NotifyFixedTickComponentChanged(enabled);
+        }
     }
 
     bool Component::CanApplyActivation() const

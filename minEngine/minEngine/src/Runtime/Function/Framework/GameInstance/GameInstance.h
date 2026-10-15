@@ -57,8 +57,14 @@ namespace minEngine
         /** Called before GI SubsystemCollection Deinitialize. */
         virtual void OnShutdown() {}
 
-        /** Tick TickableGameInstanceSubsystem instances (Engine LogicalTick phase). */
+        /** Tick TickableGameInstanceSubsystem instances (variable gameplay phase). */
         void TickSubsystems(float deltaTime);
+
+        /**
+         * Fixed-phase hub hook. Base does nothing (no ForEach).
+         * Derived games call subsystem FixedTick in the order they choose.
+         */
+        virtual void OnFixedTick(float fixedDeltaSeconds) { (void)fixedDeltaSeconds; }
 
     private:
         SubsystemCollection<GameInstanceSubsystem> m_Subsystems;

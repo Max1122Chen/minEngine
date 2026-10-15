@@ -1,10 +1,20 @@
+## 2026-10-15 — CORE-F36 S00–S04：FixedTick 时钟 + 分层派发（feat/core）
+
+- **Scope:** `feat/core` 实现（不合 master 直至验收）
+- **Completed:**
+  - `LogicalTick`：`Input → Fixed → Variable(GI→WorldTickable→GO) → Physics → …`
+  - `GameplayFixedTickClock` + Engine Fixed API；GI `OnFixedTick`；World/GO←Comp Fixed 汇聚
+  - suite `gameplay-fixed-tick`；回归 `tickable-subsystem`
+- **Verification:** `minEngineTests.exe test gameplay-fixed-tick` / `tickable-subsystem` PASS
+- **Next:** 维护者验收 → 合 master；S05 Stub/外仓说明
+
 ## 2026-10-15 — RND-F24 S01–S02：Canonical locations + VertexColor
 
-- **Scope:** `feat/render`
+- **Scope:** `feat/render` → 已合入 `master`
 - **Completed:**
   - S01：`VertexAttr` 表；`RHIVertexElement::Location`；GL/VK 按 Location；骨骼 shell @9/10
   - S02：`MaterialGraphNodeDef_VertexColor`（RGBA/RGB）；shell `a_Color@4` + `v_Color`；`UsesVertexColor`
-  - MinGW PE：去掉 `imgui_demo`；`exclude-modules-for-implib=miniaudio.c.obj`（勿 exclude glad，避免双 loader）
+  - MinGW PE：去掉 `imgui_demo`；`exclude-modules-for-implib=miniaudio.c.obj`（勿 exclude glad）
 - **Verification:** `vertex-attribute-semantics` PASS；`material-ir` PASS（含 VertexColor→Albedo）
 - **Next:** S03 Custom0..1；可选画面梯度金样 / 工厂糖衣
 

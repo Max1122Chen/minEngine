@@ -99,8 +99,15 @@ namespace minEngine
         void InitializeWorldSubsystems();
         void PostInitializeWorldSubsystems();
         void DeinitializeWorldSubsystems();
-        /** Tick TickableWorldSubsystem instances (Engine LogicalTick phase). */
+        /** Tick TickableWorldSubsystem instances (variable gameplay phase). */
         void TickWorldSubsystems(float deltaTime);
+        /** FixedTick for WorldTickable (m_Instances order). */
+        void FixedTickWorldSubsystems(float fixedDeltaSeconds);
+        /** FixedTick for registered GameObjects only. */
+        void FixedTickGameObjects(float fixedDeltaSeconds);
+
+        void RegisterFixedTickGameObject(GameObject* gameObject);
+        void UnregisterFixedTickGameObject(GameObject* gameObject);
 
         SubsystemCollection<WorldSubsystem>& GetSubsystemCollection() { return m_WorldSubsystems; }
         const SubsystemCollection<WorldSubsystem>& GetSubsystemCollection() const
@@ -175,6 +182,7 @@ namespace minEngine
         bool m_bHasBegunPlay{ false };
         GameplayEventSystemComponent* m_GameplayEventSystem{ nullptr };
         SubsystemCollection<WorldSubsystem> m_WorldSubsystems;
+        std::vector<GameObject*> m_FixedTickGameObjects;
     };
 }
 
