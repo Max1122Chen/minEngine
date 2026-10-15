@@ -6,6 +6,7 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 #include <algorithm>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -64,7 +65,7 @@ namespace minEngine
                 if (std::shared_ptr<MEObject> rootObject =
                         ObjectManager::Get().FindObject(record.RootInstanceGuid))
                 {
-                    if (GameObject* rootGo = dynamic_cast<GameObject*>(rootObject.get()))
+                    if (GameObject* rootGo = Cast<GameObject>(rootObject.get()))
                     {
                         ref.RootName = rootGo->GetName();
                     }

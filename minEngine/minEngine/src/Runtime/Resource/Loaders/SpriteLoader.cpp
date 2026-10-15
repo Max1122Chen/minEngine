@@ -5,6 +5,7 @@
 #include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetSerializeHelper.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -43,7 +44,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const Sprite* sprite = dynamic_cast<const Sprite*>(&asset);
+        const Sprite* sprite = Cast<Sprite>(&asset);
         if (sprite == nullptr)
         {
             outError = "SaveHandler: expected Sprite";
@@ -83,7 +84,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const SpriteAtlas* atlas = dynamic_cast<const SpriteAtlas*>(&asset);
+        const SpriteAtlas* atlas = Cast<SpriteAtlas>(&asset);
         if (atlas == nullptr)
         {
             outError = "SaveHandler: expected SpriteAtlas";

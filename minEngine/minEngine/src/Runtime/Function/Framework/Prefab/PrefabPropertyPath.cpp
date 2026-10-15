@@ -8,6 +8,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -83,7 +84,7 @@ namespace minEngine
         constexpr std::string_view kComponentsPrefix = "m_Components/";
         if (propertyPath.rfind(kComponentsPrefix, 0) == 0)
         {
-            GameObject* gameObject = dynamic_cast<GameObject*>(&rootObject);
+            GameObject* gameObject = Cast<GameObject>(&rootObject);
             if (gameObject == nullptr)
             {
                 if (outError)

@@ -11,6 +11,7 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 
 #include <unordered_map>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -33,8 +34,7 @@ namespace minEngine
         }
 
         const GUID stageRootGuid = rootMapIter->second;
-        std::shared_ptr<GameObject> stageRoot = std::dynamic_pointer_cast<GameObject>(
-            PrefabObjectLookup::FindSharedInScene(stageScene, stageRootGuid));
+        std::shared_ptr<GameObject> stageRoot = Cast<GameObject>(PrefabObjectLookup::FindSharedInScene(stageScene, stageRootGuid));
         if (!stageRoot)
         {
             if (outError)

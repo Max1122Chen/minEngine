@@ -17,6 +17,7 @@
 
 #include <filesystem>
 #include <unordered_set>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -111,7 +112,7 @@ namespace minEngine
             return nullptr;
         }
 
-        if (Scene* ownerScene = dynamic_cast<Scene*>(const_cast<MEObject*>(root.GetOuter())))
+        if (Scene* ownerScene = Cast<Scene>(const_cast<MEObject*>(root.GetOuter())))
         {
             PrefabInstanceRecord record;
             PrefabUtilityDetail::BuildInstanceRecordFromCloneContext(
@@ -247,7 +248,7 @@ namespace minEngine
 
         std::string error;
         std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByGUID(assetGuid, error);
-        return std::dynamic_pointer_cast<Prefab>(asset);
+        return Cast<Prefab>(asset);
     }
 
     std::shared_ptr<GameObject> PrefabUtility::Instantiate(
@@ -323,7 +324,7 @@ namespace minEngine
             const auto objectIter = cloneContext.ClonedBySourceGuid.find(prefab.GetRootGuid());
             if (objectIter != cloneContext.ClonedBySourceGuid.end())
             {
-                instanceRoot = std::dynamic_pointer_cast<GameObject>(objectIter->second);
+                instanceRoot = Cast<GameObject>(objectIter->second);
             }
         }
 

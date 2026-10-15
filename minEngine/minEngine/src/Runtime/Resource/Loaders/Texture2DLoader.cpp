@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -544,7 +545,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const auto* texture = dynamic_cast<const Texture2D*>(&asset);
+        const auto* texture = Cast<Texture2D>(&asset);
         if (texture == nullptr)
         {
             outError = "SaveHandler: expected Texture2D";

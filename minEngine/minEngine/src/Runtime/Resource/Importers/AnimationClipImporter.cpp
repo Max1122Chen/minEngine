@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <system_error>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -285,8 +286,7 @@ namespace minEngine
         }
 
         std::string loadError;
-        std::shared_ptr<Skeleton> skeleton = std::dynamic_pointer_cast<Skeleton>(
-            manager.LoadAssetByPath(std::string(skeletonAssetPath), loadError));
+        std::shared_ptr<Skeleton> skeleton = Cast<Skeleton>(manager.LoadAssetByPath(std::string(skeletonAssetPath), loadError));
         if (skeleton == nullptr)
         {
             result.ErrorMessage = "failed to load Skeleton: " + std::string(skeletonAssetPath);

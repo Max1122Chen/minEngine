@@ -8,6 +8,7 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -86,7 +87,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const Material* material = dynamic_cast<const Material*>(&asset);
+        const Material* material = Cast<Material>(&asset);
         if (material == nullptr)
         {
             outError = "SaveHandler: expected Material";

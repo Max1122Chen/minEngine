@@ -54,6 +54,7 @@
 #include <algorithm>
 #include <cctype>
 #include <system_error>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -164,7 +165,7 @@ namespace minEngine
 
             markReachable(loadedObject.get());
 
-            Scene* sceneAsset = dynamic_cast<Scene*>(loadedObject.get());
+            Scene* sceneAsset = Cast<Scene>(loadedObject.get());
             if (sceneAsset != nullptr)
             {
                 sceneAsset->MarkReachableObjects(markReachable);
@@ -1127,7 +1128,7 @@ namespace minEngine
         {
             std::string loadError;
             std::shared_ptr<Asset> loaded = LoadAssetByPath(meta->AssetPath, loadError);
-            std::shared_ptr<AnimationClip> clip = std::dynamic_pointer_cast<AnimationClip>(loaded);
+            std::shared_ptr<AnimationClip> clip = Cast<AnimationClip>(loaded);
             if (clip != nullptr && clip->GetSkeleton() != nullptr)
             {
                 const Skeleton* skeleton = clip->GetSkeleton();
@@ -1321,7 +1322,7 @@ namespace minEngine
                 std::shared_ptr<MEObject> cachedObject = cacheIt->second.lock();
                 if (cachedObject)
                 {
-                    return std::dynamic_pointer_cast<Asset>(cachedObject);
+                    return Cast<Asset>(cachedObject);
                 }
             }
         }

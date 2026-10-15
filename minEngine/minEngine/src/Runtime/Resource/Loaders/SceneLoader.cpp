@@ -5,6 +5,7 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -43,7 +44,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const Scene* scene = dynamic_cast<const Scene*>(&asset);
+        const Scene* scene = Cast<Scene>(&asset);
         if (scene == nullptr)
         {
             outError = "SaveHandler: expected Scene";

@@ -4,6 +4,7 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/RenderScene.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -48,7 +49,7 @@ namespace minEngine
             return nullptr;
         }
 
-        return dynamic_cast<Scene*>(const_cast<MEObject*>(m_Owner->GetOuter()));
+        return Cast<Scene>(const_cast<MEObject*>(m_Owner->GetOuter()));
     }
 
     RenderScene* Component::GetOwningRenderScene() const

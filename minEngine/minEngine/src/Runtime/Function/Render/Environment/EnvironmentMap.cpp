@@ -12,6 +12,7 @@
 
 #include <array>
 #include <filesystem>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -249,7 +250,7 @@ namespace minEngine
             {
                 std::string loadError;
                 std::shared_ptr<Texture2D> loaded =
-                    ([&]() -> std::shared_ptr<Texture2D> { std::string _loadAssetError; return std::dynamic_pointer_cast<Texture2D>(AssetManager::Get().LoadAssetByPath(m_BrdfLUT->GetMeta()->AssetPath, _loadAssetError)); })();
+                    ([&]() -> std::shared_ptr<Texture2D> { std::string _loadAssetError; return Cast<Texture2D>(AssetManager::Get().LoadAssetByPath(m_BrdfLUT->GetMeta()->AssetPath, _loadAssetError)); })();
                 if (loaded)
                 {
                     m_BrdfLUT = loaded;

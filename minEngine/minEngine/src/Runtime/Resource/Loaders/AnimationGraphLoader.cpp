@@ -6,6 +6,7 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Resource/AssetManager.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -95,7 +96,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const AnimationGraph* graph = dynamic_cast<const AnimationGraph*>(&asset);
+        const AnimationGraph* graph = Cast<AnimationGraph>(&asset);
         if (graph == nullptr)
         {
             outError = "SaveHandler: expected AnimationGraph";

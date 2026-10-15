@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -697,8 +698,7 @@ namespace minEngine
         }
 
         std::string loadError;
-        std::shared_ptr<Skeleton> registeredSkeleton = std::dynamic_pointer_cast<Skeleton>(
-            assetManager.LoadAssetByPath(skeletonMeta.AssetPath, loadError));
+        std::shared_ptr<Skeleton> registeredSkeleton = Cast<Skeleton>(assetManager.LoadAssetByPath(skeletonMeta.AssetPath, loadError));
         if (!registeredSkeleton)
         {
             if (outError != nullptr)

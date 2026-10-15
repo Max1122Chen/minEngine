@@ -1,3 +1,12 @@
+## 2026-10-15 — CORE-F37 B1-a：Runtime MEObject → `Cast<>`
+
+- **Scope:** 簇 B1-a（仅 Runtime；不含 A1/C1/Editor/Tests）
+- **Completed:**
+  - 20 文件 / 34 处：`dynamic_cast` / `dynamic_pointer_cast` → `Cast<>` + `ObjectCast.h`
+  - 覆盖：ObjectManager、GameObject/Component Outer、SceneManager、Prefab*、AssetManager、Loaders、AnimationClipImporter、EnvironmentMap
+- **Verification:** `minEngineTests` build OK；`test smoke` PASS；`test prefab` PASS（17/17）
+- **Next:** A1（MAT-F07 Design）或 C1 TD 登记；B1-b Editor/Tests 本战役放过
+
 ## 2026-10-15 — CORE-F37-S01 Done：MIR `As<T>()`（对齐 UE）
 
 - **Scope:** 簇 A2 实现

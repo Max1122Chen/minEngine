@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <vector>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -352,7 +353,7 @@ namespace minEngine
 
             for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
             {
-                SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
+                SceneComponent* sceneComponent = Cast<SceneComponent>(component.get());
                 if (sceneComponent != nullptr)
                 {
                     sceneComponent->GetAttachChildren().clear();
@@ -369,7 +370,7 @@ namespace minEngine
 
             for (const std::shared_ptr<Component>& component : gameObject->GetAllComponents())
             {
-                SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
+                SceneComponent* sceneComponent = Cast<SceneComponent>(component.get());
                 if (sceneComponent == nullptr)
                 {
                     continue;
@@ -485,7 +486,7 @@ namespace minEngine
 
     bool SceneManager::LoadSceneByPath(const std::string& path)
     {
-        std::shared_ptr<Scene> scene = ([&]() -> std::shared_ptr<Scene> { std::string _loadAssetError; return std::dynamic_pointer_cast<Scene>(AssetManager::Get().LoadAssetByPath(path, _loadAssetError)); })();
+        std::shared_ptr<Scene> scene = ([&]() -> std::shared_ptr<Scene> { std::string _loadAssetError; return Cast<Scene>(AssetManager::Get().LoadAssetByPath(path, _loadAssetError)); })();
         if (scene)
         {
             UnloadActiveScene();
@@ -514,7 +515,7 @@ namespace minEngine
                         {
                             MarkComponentForNeededEndOfFrameUpdate(component.get());
                         }
-                        SceneComponent* sceneComponent = dynamic_cast<SceneComponent*>(component.get());
+                        SceneComponent* sceneComponent = Cast<SceneComponent>(component.get());
                         if (sceneComponent)
                         {
                             sceneComponent->MarkRenderStateDirty();

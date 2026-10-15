@@ -6,6 +6,7 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 
 #include <algorithm>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -16,7 +17,7 @@ namespace minEngine
     {
         if (WantsFixedTick())
         {
-            if (Scene* scene = dynamic_cast<Scene*>(const_cast<MEObject*>(GetOuter())))
+            if (Scene* scene = Cast<Scene>(const_cast<MEObject*>(GetOuter())))
             {
                 scene->UnregisterFixedTickGameObject(this);
             }
@@ -504,7 +505,7 @@ namespace minEngine
             return;
         }
 
-        Scene* scene = dynamic_cast<Scene*>(const_cast<MEObject*>(GetOuter()));
+        Scene* scene = Cast<Scene>(const_cast<MEObject*>(GetOuter()));
         if (scene == nullptr)
         {
             return;

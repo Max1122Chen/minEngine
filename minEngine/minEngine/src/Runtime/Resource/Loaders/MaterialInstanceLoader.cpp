@@ -6,6 +6,7 @@
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Resource/AssetSerializeHelper.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -56,7 +57,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const MaterialInstance* instance = dynamic_cast<const MaterialInstance*>(&asset);
+        const MaterialInstance* instance = Cast<MaterialInstance>(&asset);
         if (instance == nullptr)
         {
             outError = "SaveHandler: expected MaterialInstance";
@@ -74,7 +75,7 @@ namespace minEngine
         std::shared_ptr<Material> parent;
         if (const AssetMeta* defaultMeta = manager.FindAssetMetaByPath("Materials/DefaultMaterial.memtl"))
         {
-            parent = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(manager.LoadAssetByPath(defaultMeta->AssetPath, _loadAssetError)); })();
+            parent = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return Cast<Material>(manager.LoadAssetByPath(defaultMeta->AssetPath, _loadAssetError)); })();
         }
         if (!parent)
         {
@@ -85,7 +86,7 @@ namespace minEngine
                 {
                     continue;
                 }
-                parent = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return std::dynamic_pointer_cast<Material>(manager.LoadAssetByPath(materialMeta->AssetPath, _loadAssetError)); })();
+                parent = ([&]() -> std::shared_ptr<Material> { std::string _loadAssetError; return Cast<Material>(manager.LoadAssetByPath(materialMeta->AssetPath, _loadAssetError)); })();
                 if (parent)
                 {
                     break;

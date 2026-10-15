@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -48,7 +49,7 @@ namespace minEngine
             {
                 return nullptr;
             }
-            return std::dynamic_pointer_cast<T>(baseObject);
+            return Cast<T>(baseObject);
         }
 
         template<typename T>

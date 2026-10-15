@@ -4,7 +4,7 @@
 - **ID:** `CORE-F37`
 - **Type:** Survey / campaign umbrella（非单一切片实现案）
 - **Complexity:** L2（跨 Material / Core / RHI / Editor；子项再拆 Design）
-- **Status:** `Review`（维护者审阅 + 对需设计项给出方案；**未授权大规模改码**）
+- **Status:** `In Progress`（S01 + B1-a Done；余 A1 Design / C1 TD）
 - **Owner:** project maintainer
 - **Last updated:** 2026-10-15
 - **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ObjectCast.h](../../../../minEngine/minEngine/src/Runtime/Core/Object/ObjectCast.h) · Material pin 相关见簇 A1
@@ -79,7 +79,7 @@ Top 文件（按处数）：
 | **维护者裁定** | _（待填）_ |
 | **建议后续** | 政策拍板后小切片；勿与 A1 绑同一 PR |
 
-### 簇 B1 — MEObject / Asset 图 LazyRTTI — **Mechanical（可批）**
+### 簇 B1 — MEObject / Asset 图 LazyRTTI — **B1-a Done（Runtime）**
 
 | | |
 |--|--|
@@ -88,7 +88,7 @@ Top 文件（按处数）：
 | **修法** | `#include ObjectCast.h` → `Cast<T>(...)` |
 | **风险** | 低；需确认无非 MEObject 误用 |
 | **Agent 推荐** | 见 **§7.3** |
-| **维护者裁定** | _（待填）_ |
+| **维护者裁定** | Approve B1-a（2026-10-15）→ Runtime 机械波已落地；`Serializer` / Editor / Tests 仍属 B1-b（本战役放过） |
 
 ### 簇 B2 — Editor 子模块 id→typed — **Deferred（本战役放过）**
 
@@ -207,15 +207,16 @@ Top 文件（按处数）：
 
 ---
 
-### 7.3 簇 B1 — MEObject LazyRTTI（推荐默认 · 本战役只做 Runtime）
+### 7.3 簇 B1 — MEObject LazyRTTI — **B1-a Done**
 
-**本战役：B1-a（Runtime）机械换 `Cast<>`。**  
-Editor / Tests 里同类 LazyRTTI **本战役放过**（与 B2 一并后置），避免和「Editor 边界暂缓」纠缠。
+**B1-a（Runtime）已完成：** 20 文件 / 34 处 → `Cast<>`（ObjectManager、Framework Outer/Prefab/Scene、AssetManager、Loaders、EnvironmentMap 等）。  
+`Serializer` 的 Archive 侧 `dynamic_cast` **非 MEObject**，未纳入。  
+Editor / Tests（B1-b）**本战役放过**（与 B2 一并后置）。
 
-规则：
+规则（后续 B1-b 仍适用）：
 
 - 仅当静态基类是 `MEObject`（或 `shared_ptr` thereof）才换 `Cast<>`。
-- 禁止在机械波里「顺手」改 A1/A2/C1。
+- 禁止在机械波里「顺手」改 A1/C1。
 - 不改 Load API 形状（仍 ByPath 返回基类 + Cast）。
 
 ---
@@ -240,8 +241,8 @@ Editor / Tests 里同类 LazyRTTI **本战役放过**（与 B2 一并后置）�
 ### 7.6 本战役执行序（批准后 · Editor 已剔除）
 
 ```text
-1) CORE-F37-S01  MIR As<T>()（本 Design，审批后）
-2) B1-a          Runtime MEObject → Cast<>（机械）
+1) CORE-F37-S01  MIR As<T>()           Done
+2) B1-a          Runtime MEObject → Cast<>  Done
 3) A1            MAT-F07 pin 数据声明（另 Design）
 4) C1            仅登记 TD
 — 后置：B2 Editor；B1-b Editor/Tests
@@ -257,3 +258,4 @@ Editor / Tests 里同类 LazyRTTI **本战役放过**（与 B2 一并后置）�
 | 2026-10-15 | §7 Agent 推荐方案（A1 数据 pin / A2 Kind accessor / B1 分刀 / B2 模板 / C1 TD） |
 | 2026-10-15 | 澄清 A2：`As*` 是药不是病；B2 + Editor 侧 B1-b 本战役 Deferred |
 | 2026-10-15 | A2 锁定 UE `As<T>()`；Design Spec Review 待审批 |
+| 2026-10-15 | S01 Done；B1-a Runtime `Cast<>` Done（20 文件 / 34 处）；余 A1 / C1 TD |

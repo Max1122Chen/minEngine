@@ -7,6 +7,7 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Resource/AssetSerializeHelper.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -51,7 +52,7 @@ namespace minEngine
         const Asset& asset,
         std::string& outError)
     {
-        const Prefab* prefab = dynamic_cast<const Prefab*>(&asset);
+        const Prefab* prefab = Cast<Prefab>(&asset);
         if (prefab == nullptr)
         {
             outError = "SaveHandler: expected Prefab";

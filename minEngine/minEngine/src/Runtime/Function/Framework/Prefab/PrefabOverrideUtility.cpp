@@ -20,6 +20,7 @@
 #include "Runtime/Resource/AssetManager.h"
 
 #include <algorithm>
+#include "Runtime/Core/Object/ObjectCast.h"
 
 namespace minEngine
 {
@@ -33,14 +34,14 @@ namespace minEngine
 
         GameObject* FindOwningGameObject(MEObject& object)
         {
-            if (GameObject* gameObject = dynamic_cast<GameObject*>(&object))
+            if (GameObject* gameObject = Cast<GameObject>(&object))
             {
                 return gameObject;
             }
 
-            if (Component* component = dynamic_cast<Component*>(&object))
+            if (Component* component = Cast<Component>(&object))
             {
-                return dynamic_cast<GameObject*>(const_cast<MEObject*>(component->GetOuter()));
+                return Cast<GameObject>(const_cast<MEObject*>(component->GetOuter()));
             }
 
             return nullptr;
@@ -183,7 +184,7 @@ namespace minEngine
             {
                 std::string error;
                 std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByGUID(prefabAssetGuid, error);
-                return std::dynamic_pointer_cast<Prefab>(asset);
+                return Cast<Prefab>(asset);
             }
 
             return nullptr;
