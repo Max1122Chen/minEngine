@@ -30,7 +30,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）审阅 [CORE-F37 RTTI Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) 并填 A 类方案；（2）**RND-F24 S03** 或继续验收；（3）F33 个人 review；（4）ASSET-F04 人手验收。F34 S07 LocalPlayer **不排期**。
+**下一动作：**（1）审批 [CORE-F37-S01 MIR Kind Cast Design](./Render/Material/CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md)（UE `As<T>()`）；（2）**RND-F24 S03** 或继续验收；（3）F33 个人 review；（4）ASSET-F04 人手验收。F34 S07 LocalPlayer **不排期**。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）；CORE-F36 S05 Stub。
 

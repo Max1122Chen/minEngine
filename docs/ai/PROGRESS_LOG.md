@@ -1,3 +1,12 @@
+## 2026-10-15 — CORE-F37-S01：MIR Kind Cast Design（对齐 UE，待审批）
+
+- **Scope:** 簇 A2；学 UE `FValue::As<T>()`；未改代码
+- **Completed:**
+  - [CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md](./Render/Material/CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md) Status **Review**
+  - Survey §7.2 指向该 Design；执行序 S01 优先
+- **Verification:** docs + UE 源码锚点对照
+- **Next:** 维护者批准 → Planned → 实现（`material-ir` + grep 无 MIR `dynamic_cast`）
+
 ## 2026-10-15 — CORE-F37：RTTI Hygiene Survey 落盘（Review）
 
 - **Scope:** 将 RTTI 盘点整理为可审阅文档；未改运行时代码
