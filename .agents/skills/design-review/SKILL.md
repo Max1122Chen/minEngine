@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: "Design / pre-implementation review for minEngine. Review design docs for clarity, consistency, completeness, testability, scope, and architecture fit—before coding or after multi-round design revisions. Use when user asks: design review, 设计评审, pre-implementation review, 开工前评审, 方案评审, review this Design Spec, check design readiness. Read-only on design by default; distinct from engine-system-review (code/subsystem audit)."
+description: "Design / pre-implementation review for minEngine. Review design docs for clarity, consistency, completeness, testability, scope, architecture fit, shell-product red flags, and concrete design-principle findings—before coding or after multi-round design revisions. Use when user asks: design review, 设计评审, pre-implementation review, 开工前评审, 方案评审, review this Design Spec, check design readiness. Read-only on design by default; distinct from engine-system-review (code/subsystem audit)."
 ---
 
 # Design Review (Pre-Implementation & Iterative)
@@ -31,6 +31,7 @@ Learning / 0.1.0 context: keep foundations coherent; keep report **proportional*
 - After **multiple discussion rounds** — check contradictions, lost requirements, scope creep
 - Architecture change, refactor plan, Editor/Runtime/Asset/Serialization/Render/UI/Anim/Tooling/MCP designs
 - User asks: design review / 设计评审 / pre-implementation review / 方案评审 / design readiness
+- Flag **shell-product red flags** (DOC_GOVERNANCE §7.3) and concrete principle issues (`DESIGN_PRINCIPLES.md`) — not checkbox theater
 
 ## When NOT to use
 

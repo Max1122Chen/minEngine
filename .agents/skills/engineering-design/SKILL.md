@@ -1,6 +1,6 @@
 ---
 name: engineering-design
-description: Guide system design for non-trivial engineering work. Use before large implementation when a feature/refactor needs architecture reasoning — discovery, requirements vs solutions, responsibilities, boundaries, ownership, state, failure, alternatives, and verification planning. Domain-neutral; not for typos or one-line fixes.
+description: Guide system design for non-trivial engineering work. Use before large implementation when a feature/refactor needs architecture reasoning — intent playback when ambiguous, discovery, requirements vs solutions, responsibilities, boundaries, ownership, state, failure, alternatives, design-principle lenses, and verification planning. Reject shell products. Domain-neutral; not for typos or one-line fixes.
 ---
 
 # Engineering Design
@@ -10,22 +10,34 @@ Do **not** force a full design for Level 0 trivial work.
 
 Authority for *when* design is required: DOC_GOVERNANCE complexity levels + `WORKFLOW_PROFILE` preset effects.  
 Authority for *how* to design: this skill.  
-Artifact shape: `docs/ai/templates/design-spec.template.md`.
+Artifact shape: `docs/ai/templates/design-spec.template.md`.  
+Principle lenses (short card): `docs/ai/templates/DESIGN_PRINCIPLES.md`.
 
 ## Goal
 
-Before coding, discover enough design truth that implementation does not invent ownership, boundaries, or failure behavior on the fly.
+Before coding, discover enough design truth that implementation does not invent ownership, boundaries, or failure behavior on the fly. Prefer substance over filled templates (anti-shell).
 
 ```text
-Understand problem
+Intent playback when ambiguous
+  → Understand problem
   → Understand existing system
   → Separate requirements from solutions
-  → Design responsibilities and boundaries
+  → Design responsibilities and boundaries (principle lenses)
   → Reason about state, lifetime, dependencies, failure (when relevant)
   → Compare meaningful alternatives
   → Plan verification
   → Hand off to design-review / readiness gate
 ```
+
+## 0) Intent playback (when ambiguous)
+
+For non-trivial work (typically L1+) when intent or success criteria are incomplete:
+
+1. Playback ~150–300 words: problem, success, non-goals, key constraints (mark guesses).
+2. One clarifying question **or** ask for correction.
+3. Then open/expand the Design Spec or large coding.
+
+User may skip (“just do it”); record assumptions. L0 exempt.
 
 ## 1) Separate problem from solution
 
@@ -158,6 +170,10 @@ Verification should not be invented only after coding.
 2. Write or update the Design Spec under `docs/ai/<DOMAIN>/` using the design template (omit sections with `Not applicable because ...`).
 3. For L2+, invoke **design-review** before large implementation.
 4. Do not start large coding while Design Status is `Draft` or readiness is unmet (see DOC_GOVERNANCE).
+
+## Anti-shell (before calling design “done”)
+
+Reject your own draft if it shows shell-product red flags (DOC_GOVERNANCE §7.3 Quality DoD): critical TBD, strawman alternatives, unverifiable acceptance, or principle theater (“followed OCP” with no structural consequence). Apply YAGNI / OCP anti-abuse from `DESIGN_PRINCIPLES.md`.
 
 ## Domain neutrality
 

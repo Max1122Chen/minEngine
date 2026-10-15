@@ -27,6 +27,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `WF-F01` | Documentation templates and collaboration governance | Done | — | [templates/](./templates/), [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) |
 | `WF-F02` | 协作者文档站（MkDocs 公开手册 + GitHub Pages） | **In Progress** | — | [Design](./Platform/Docs/HANDBOOK_SITE_DESIGN.md) · [Impl](./Platform/Docs/HANDBOOK_SITE_IMPLEMENTATION.md) — 骨架 Done，子系统文档待补 |
 | `WF-F04` | Sync engineering-design workflow from min-agent-workflows (L0–L3 + readiness) | **Done** | — | [WORKFLOW_PROFILE](./WORKFLOW_PROFILE.md) · [WORKFLOW_PRESETS](./templates/WORKFLOW_PRESETS.md) · `.agents/skills/engineering-design/` |
+| `WF-F05` | Sync TMPL-F05 artifact quality + comment/branch ID hygiene + design principles | **Done** | — | [DESIGN_PRINCIPLES](./templates/DESIGN_PRINCIPLES.md) · [DOC_GOVERNANCE](./templates/DOC_GOVERNANCE.md) §7 · hard-constraints §4–§5 |
 | `CORE-F01` | Lua scripting runtime（sol2 + System + LuaScript asset + LuaComponent） | Done | — | [LUA_SCRIPTING_DESIGN](./Platform/Scripting/LUA_SCRIPTING_DESIGN.md) |
 | `CORE-F02` | Lua Script binding codegen（Script\* specifier → sol2） | Done | — | [LUA_SCRIPT_BINDING_DESIGN](./Platform/Scripting/LUA_SCRIPT_BINDING_DESIGN.md) |
 | `CORE-F03` | Transform 四元数存储（Quaternion 类型、序列化、Inspector 欧拉 Widget） | Done | — | [Design](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_DESIGN.md) · [Impl](./Platform/Core/CORE-F03_TRANSFORM_QUATERNION_IMPLEMENTATION.md) |

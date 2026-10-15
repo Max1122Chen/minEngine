@@ -1,9 +1,9 @@
 # 文档与协作规范 v1
 
-Last updated: 2026-09-22  
+Last updated: 2026-10-15  
 Status: **Active**  
 Owner: project maintainer + AI collaborator  
-Source sync: `min-agent-workflows` TMPL-F04 (complexity + readiness gates)
+Source sync: `min-agent-workflows` TMPL-F04 + TMPL-F05 (Quality DoD, comment/branch ID hygiene, design principles)
 
 ---
 
@@ -225,9 +225,14 @@ Request → Discovery → Complexity Assessment
 
 ## 7) Slice 完成定义（DoD）
 
+DoD 分两层：**Process DoD** = 协作簿记；**Quality DoD** = 产物实质。  
+L2+：Done 前两者都要满足。L1：推荐 Quality。L0：Process 可轻量（仍遵守注释/分支 ID 禁令）。
+
+原则卡：[DESIGN_PRINCIPLES.md](./DESIGN_PRINCIPLES.md)。
+
 每完成一个 **Slice**（或等效、可独立验收的一轮工作），**文档 + 工程** 均需满足（微小 chore 可逐项标注 N/A）。
 
-### 7.1 文档 DoD
+### 7.1 Process DoD（文档）
 
 | 动作 | 位置 |
 |------|------|
@@ -240,26 +245,42 @@ Request → Discovery → Complexity Assessment
 | 修 Bug | 更新 Bug Record → Fixed/Verified |
 | 大任务结束 | 可选 `sessions/` 笔记归档 |
 
-### 7.2 工程 DoD
+### 7.2 Process DoD（工程簿记）
 
 | 检查 | 要求 |
 |------|------|
-| **验证** | 至少一种：构建通过、或写明测试/CLI 命令且已执行、或记录手动验收步骤。基础设施切片默认：`.\scripts\verify.ps1`（build + `Editor.exe test smoke`） |
+| **验证** | 至少一种：构建通过、或写明测试/CLI 命令且已执行、或记录手动验收步骤。基础设施切片默认：`.\scripts\verify.ps1`（build + `Editor.exe test smoke`）。记录 **命令 + 结果**，不单写断言 |
 | **缺陷** | 无未记录的 S0/S1 问题；已知问题写入 Bug 或 Design 风险 |
 | **公共 API** | 若改 Runtime/Editor 契约：调用方已更新，或 ADR/Design 标明 intentional breaking |
+| **实现对齐** | 实现匹配已审设计决策（或记录已批准偏离） |
+| **注释卫生** | 本批触及的源码注释不含 Feature / Slice / Bug / ADR ID |
+| **分支命名** | 若本批新建/重命名分支：`feat/<topic>[/<subtopic>]` 主题路径，非 ID 命名 |
 | **产品快照** | 仅当方向/架构级变化时更新 `PROJECT_CONTEXT.md` |
 
-### 7.3 Commit 与追溯
+### 7.3 Quality DoD
+
+- Design（需要时）：陌生实现者可不靠聊天历史就能排期；关键决策无 ownership/API/failure 空 TBD
+- Plan（需要时）：每个 in-scope 切片有路径 + 可观察验收 + 验证信号；无空步骤
+- 无未处理的 **shell-product 红旗**（除非显式 Deferred/Accepted）：
+  - 章节只复述标题或留下关键 TBD
+  - 稻草人备选方案
+  - 不可验证验收（“更可维护”“properly handled”）
+  - 计划步骤无路径或无可检查结果
+  - “更新了测试/文档”却不写 what/where
+  - “遵循了 SOLID/OCP”却无具名结构后果
+  - 宣称 Done 却无验证证据
+
+### 7.4 Commit 与追溯
 
 - **Commit message：** 用**具体事项**概括（见 `git-commit-mentor`）；不以 Feature/Slice ID 代替说明。
 - **追溯：** ID 写在 Progress、Registry、Design Meta；commit 可选 `Refs: ED-F03-S02` 脚注。
-- **准备 commit 时：** 跑 Doc DoD + 工程 DoD 自查（`git-commit-mentor`）；缺项列出，由用户决定是否仍提交。
+- **准备 commit 时：** 跑 Process + Quality DoD 自查（`git-commit-mentor`）；缺项列出，由用户决定是否仍提交。
 
-### 7.4 工作边界（先 commit，再开下一项）
+### 7.5 工作边界（先 commit，再开下一项）
 
 完成一个 **Slice**、一个 **Feature**，或一整批同属一个 Feature 的改动（含仅 docs/rules/skills）后：
 
-1. 完成 §7.1–7.2（及 Progress）。
+1. 完成 §7.1–7.3（及 Progress）。
 2. **默认下一步：主动跑 `git-commit-mentor`**（DoD 自查 + commit message **草稿** + 等审批），**不要**只问「要不要准备 commit」，也**不要**直接拉起另一个 Feature 的实现或 Pre-flight。用户不必再提一句「请准备 commit」。
 
 **例外（用户明确说才可跳过主动草稿）：**「先不提交」「继续在同一分支做 Y」「只给建议不写代码」「这轮先不 commit」。

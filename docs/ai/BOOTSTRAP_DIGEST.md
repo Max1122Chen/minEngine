@@ -55,6 +55,8 @@ Do **not** scan [README.md](./README.md) roadmap lists to infer mandatory work.
 - **Defects:** fixing module A -- do not drive-by fix large bugs in B/C/D; file `BUG-*` first.  
 - **Work boundary:** after a finished deliverable batch -> **proactively draft commit** (DoD + message); wait for approval -- user need not say prepare commit first.  
 - **Stage mode:** one Primary track + parallel side tracks -- not strict linear TODOs.
+- No Feature/Slice/Bug/ADR IDs in source comments; branches use `feat/<topic>[/<subtopic>]`, never ID-based names.
+- Profile may tune strictness/autonomy/role/language; it cannot disable the rules above (including comment/branch ID bans). Structure lenses: [DESIGN_PRINCIPLES.md](./templates/DESIGN_PRINCIPLES.md).
 
 Skills: `.agents/skills/engine-learning-mentor/SKILL.md`, `.agents/skills/engineering-design/SKILL.md`, `.agents/skills/design-review/SKILL.md`, `.agents/skills/git-commit-mentor/SKILL.md`, `.agents/skills/engine-system-review/SKILL.md`  
 Triggers: `.cursor/rules/docs-workflow-triggers.mdc` / `.cursor/rules/engine-design-philosophy.mdc`  

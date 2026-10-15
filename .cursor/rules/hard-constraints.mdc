@@ -1,11 +1,11 @@
 ---
-description: Non-negotiable constraints for commits, C/C++ style, and context recovery. Re-read when context may have been compressed.
+description: Non-negotiable constraints for commits, C/C++ style, context recovery, comment hygiene, and branch naming. Re-read when context may have been compressed.
 alwaysApply: true
 ---
 
 # Hard Constraints (always)
 
-These three rules override convenience habits. If anything else conflicts, follow this file.
+These rules override convenience habits. If anything else conflicts, follow this file.
 
 ## 1) Commit preparation (mandatory gate)
 
@@ -30,11 +30,25 @@ When writing or editing `.c`, `.cpp`, `.h`, `.hpp`, `.cc`, `.cxx`:
 
 ## 3) Context recovery (re-apply this rule)
 
-**Re-read and silently re-apply sections 1–2** at the start of your reply when any of these is true:
+**Re-read and silently re-apply sections 1–5** at the start of your reply when any of these is true:
 
 - New Cursor session or thread, or the conversation was **summarized / compressed** (long history truncated, “continue previous task”, or prior rules seem forgotten).
 - User says **re-bootstrap**, **对齐约束**, or asks to realign with project rules.
 - You are resuming after a **long tool-heavy stretch** (many reads/edits/builds) and about to make a **non-trivial code change** or **commit-related** action.
-- You are unsure whether commit-approval or C++ organization rules still apply.
+- You are unsure whether commit-approval, C++ organization, comment hygiene, or branch naming rules still apply.
 
 After recovery: do not repeat the full rule text to the user unless they ask; just behave according to it.
+
+## 4) Comment hygiene (IDs stay out of code comments)
+
+- **Forbidden** in source comments / code-adjacent inline docs: Feature, Slice, Bug, or ADR IDs (e.g. `CORE-F01`, `CORE-F01-S02`, `BUG-CORE-001`, `ADR-20261015-01`).
+- IDs belong in collaboration docs (registry, ACTIVE_WORK, design/plan/progress) and may appear in commit messages when the team uses them there.
+- Comments explain non-obvious *why*, invariants, hazards, or trade-offs; keep them short; do not restate the next line of code.
+
+## 5) Branch naming (topic granularity; no registry IDs)
+
+- Feature branches use topic paths: `feat/<topic>` or `feat/<topic>/<subtopic>` (e.g. `feat/render`, `feat/render/material`, `feat/gameplay`).
+- Name the **area of change**, not a Feature/Slice row. Prefer an existing matching area branch over a new ID-tied branch.
+- **Forbidden:** branch names built around registry IDs (e.g. `feat/core-f01-xxx`, `feat/TMPL-F05`, `feat/core-f01-s01`).
+- Same ID ban applies to `fix/` / `refactor/` / `chore/` (and similar): topic words only.
+- Profile cannot disable §4 or §5.

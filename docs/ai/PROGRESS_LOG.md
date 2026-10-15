@@ -1,3 +1,23 @@
+## 2026-10-15 — 源码注释 ID 清扫 + RTTI 分类调研
+
+- **Scope:** 落实 WF-F05 注释卫生；只读盘点 `dynamic_cast` / `dynamic_pointer_cast`（未改 RTTI 码）
+- **Completed:**
+  - 源码（含部分日志/测试字符串）去掉 Feature/Slice/Bug/ADR ID；残留扫描 **0**
+  - RTTI：约 **68 文件 / 218 处**（excl. Third-Party）；分类见下条对话报告
+- **Verification:** grep ID 模式 → 0 hits；cast 计数脚本
+- **Next:** 按分类讨论优先项（Material pin 类型 DIP vs MEObject `Cast<>` 机械替换）
+
+## 2026-10-15 — WF-F05：合入 TMPL-F05（注释/分支 ID 禁令 + Quality DoD）
+
+- **Scope:** sync `min-agent-workflows` TMPL-F05 into minEngine-adapted paths
+- **Completed:**
+  - hard-constraints §4 comment ID ban + §5 topic branch naming
+  - `templates/DESIGN_PRINCIPLES.md`；DOC_GOVERNANCE Process/Quality DoD
+  - bootstrap / profile / WORKING_WITH_AI / triggers / implementation-discipline
+  - engineering-design intent playback + anti-shell；design-review shell flags
+- **Verification:** docs cross-link；paths use `.agents/skills/`
+- **Next:** source comment ID sweep；then RTTI classification survey
+
 ## 2026-10-15 — CORE-F36 合入 master（S00–S04 Done）
 
 - **Scope:** `feat/core` → `master`（ff）；文档收口

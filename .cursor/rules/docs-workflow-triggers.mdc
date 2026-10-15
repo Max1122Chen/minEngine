@@ -10,18 +10,19 @@ On matching user intent, **state the recommended workflow in 2–4 lines** and p
 | Intent (examples) | Propose |
 |-------------------|---------|
 | 计划、路线图、优先级、roadmap | Re-read `ENGINE_DESIGN_PHILOSOPHY.md` + `ENGINE_CAPABILITY_ROADMAP.md`; Check `FEATURE_REGISTRY`; Roadmap or Implementation Plan; register `<DOMAIN>-Fnn` before use；提醒多轨并行、勿线性清空 TODO |
-| 设计、方案、架构、怎么实现 | Assess **L0–L3**；substantial → register Feature → **`engineering-design`** (Design Spec) → Design Review / readiness → Implementation Plan；**mentor Pre-flight** before big code |
+| 设计、方案、架构、怎么实现 | Assess **L0–L3**；substantial → register Feature → **`engineering-design`** (Design Spec) → Design Review / readiness → Implementation Plan；**mentor Pre-flight** before big code；结构透镜见 `DESIGN_PRINCIPLES.md`（勿把 SOLID 矩阵塞进每篇 Design） |
+| 意图不清的非琐碎需求（L1+） | Short **intent playback** before large design/coding（用户可 skip） |
 | 新模块、新功能、开始做 X（ substantial ） | Complexity + **Pre-flight** (deps, debt, WIP, Go/Defer) per `engine-learning-mentor`；L2+ block large code on `Draft` / `Not ready` |
 | 重构、refactor、重写、理顺、整理架构 | Same as new feature: Registry + Design/REFACTOR plan + **Pre-flight**; **true refactor** not band-aid (mentor § Refactoring discipline) |
 | 别模块 bug、顺手修、改 B 模块（当前在做 A） | File `BUG-*` first; no drive-by fix unless user overrides (mentor § Defects) |
 | handoff、交接、换会话、下次继续 | Session note + `PROGRESS_LOG`; Blocked + Status note if slice incomplete (§DOC_GOVERNANCE §9.1) |
 | 发现 bug、崩溃、回归、修不了 | Bug Record (`bug-record.template.md`); `BUG-<DOMAIN>-nnn` |
 | 改设计、方案变更、推翻 | Revise Design + changelog; major trade-off → ADR |
-| 做完、收尾、这轮结束、slice 完成 | Slice DoD + `PROGRESS_LOG`; then **proactively draft commit** via `git-commit-mentor` (不等用户再说「准备 commit」) before unrelated next work (§7.4 / mentor Work boundary) |
+| 做完、收尾、这轮结束、slice 完成 | Process + Quality DoD + `PROGRESS_LOG`; then **proactively draft commit** via `git-commit-mentor` (不等用户再说「准备 commit」) before unrelated next work (§7.4 / mentor Work boundary)；源码注释无 Feature/Slice/Bug/ADR ID |
 | Agent 完成一批 docs/rules/多文件改动 | Same: DoD + Progress → **draft commit msg + wait for approval**; do not jump to new Feature implementation |
 | 准备 commit、准备提交、写提交信息 | **git-commit-mentor**: draft message + **wait for approval** — not `git commit` unless user explicitly approves execution |
 | 参考 UE/Godot、对标、对齐、像 XX 引擎 | Mentor：打开本机源码树（`UnrealEngine` / `Godot`），用源码锚点回答；禁止纯记忆下具体 API/类结论 |
-| 设计评审、方案评审、开工前评审、pre-implementation review、design review | **design-review**：评审 Design 清晰度/一致性/可执行性/验收与 **implementation readiness**；默认只读 Design；模板 `design-review.template.md` |
+| 设计评审、方案评审、开工前评审、pre-implementation review、design review | **design-review**：评审 Design 清晰度/一致性/可执行性/验收与 **implementation readiness**；拒绝 shell product（空 TBD、不可验收、原则表演）；默认只读 Design；模板 `design-review.template.md` |
 | 系统复盘、工程 review、subsystem review、0.1.0 readiness | **engine-system-review**：先重建设计模型再出报告；默认只读；模板 `system-engineering-review.template.md` |
 | Profile `unconfigured` / 首次大规模协作 | Ask meta-question once：`docs/ai/WORKFLOW_PROFILE.md` + `templates/WORKFLOW_PRESETS.md` |
 | `reconfigure workflow` | Re-run profile flow；update `WORKFLOW_PROFILE.md` |

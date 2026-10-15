@@ -33,7 +33,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）；CORE-F36 S05 Stub。
 
-**本波已收口（勿当 WIP）：** CORE-F36；CORE-F35；BUILD-F01；CORE-F34；UI-F05；UI-F06；ASSET-F08；ASSET-F07；CORE-F32；ED-F23；UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04；RND-F21 **Deferred**。
+**本波已收口（勿当 WIP）：** CORE-F36；CORE-F35；BUILD-F01；CORE-F34；UI-F05；UI-F06；ASSET-F08；ASSET-F07；CORE-F32；ED-F23；UI-F04；CORE-F28–F31；CORE-F29/F30；SPR-F01–F07；RND-F18–F20/F22/F23、CORE-F27 / ED-F21、WF-F04、**WF-F05**；RND-F21 **Deferred**。
 **并行 / 不挡**
 
 | 轨 | ID | 说明 |

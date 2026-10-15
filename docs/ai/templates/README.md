@@ -6,7 +6,8 @@
 
 | 文件 | 用途 |
 |------|------|
-| **[DOC_GOVERNANCE.md](./DOC_GOVERNANCE.md)** | ID 规则、L0–L3、readiness、状态机、Slice DoD、Bug/Defer、Handoff |
+| **[DOC_GOVERNANCE.md](./DOC_GOVERNANCE.md)** | ID 规则、L0–L3、readiness、状态机、Process/Quality DoD、Bug/Defer、Handoff |
+| **[DESIGN_PRINCIPLES.md](./DESIGN_PRINCIPLES.md)** | 结构透镜（内聚/耦合/SOLID-shaped/YAGNI）；勿把矩阵塞进每篇 Design |
 | **[WORKFLOW_PRESETS.md](./WORKFLOW_PRESETS.md)** | 协作预设目录（部署/重配 `WORKFLOW_PROFILE`） |
 | **[FEATURE_REGISTRY.md](../FEATURE_REGISTRY.md)** | 新 Feature 先登记 ID |
 | 下方模板 | 复制后填占位符，删除说明性注释 |
@@ -27,10 +28,11 @@
 
 ## 快速规则（摘要）
 
-- **功能 ID：** `<DOMAIN>-F<nn>`（例 `ED-F03`）
+- **功能 ID：** `<DOMAIN>-F<nn>`（例 `ED-F03`）— 写在协作文档，**不要**写进源码注释
 - **切片 ID：** `<FeatureID>-S<nn>`（例 `ED-F03-S02`）
 - **Bug ID：** `BUG-<DOMAIN>-<nnn>`
 - **ADR ID：** `ADR-<yyyyMMdd>-<nn>`
+- **分支：** `feat/<topic>[/<subtopic>]`，禁止 ID 命名
 - **新文档禁止**混用 Phase / M / E / P 作为切片编号；历史文档可保留旧标记，文首注明映射即可。
 
 ## 与 bootstrap 的关系

@@ -9,12 +9,16 @@ Enable this rule in repos where codebase health is a primary objective.
 
 ## Principles
 
-1. Reuse before duplication.
+1. Reuse before duplication (knowledge DRY).
 2. Remove dead or superseded paths in the same change when safe.
 3. If transitional code must remain, register explicit debt with exit condition.
 4. Keep exports and public APIs aligned with actual usage.
+5. Prefer high cohesion and low coupling in touched code.
+6. Prefer extending via existing extension points (OCP) without inventing speculative hooks (YAGNI).
+
+Card: `docs/ai/templates/DESIGN_PRINCIPLES.md`.
 
 ## Boundary
 
-- In scope: cleanup directly touched by the current task.
+- In scope: cleanup and structure hygiene directly touched by the current task.
 - Out of scope: unrelated large rewrites; register debt instead.
