@@ -62,7 +62,32 @@ namespace minEngine
 
         std::vector<MIRValue*> GetUses() const;
         std::vector<MIRValue*> GetUsesForStage(ShaderStage stage) const;
+
+        // Kind-based downcast (UE FValue::As<T>): no C++ RTTI.
+        template <typename T>
+        T* As()
+        {
+            return IsA(T::TypeKind) ? static_cast<T*>(this) : nullptr;
+        }
+
+        template <typename T>
+        const T* As() const
+        {
+            return IsA(T::TypeKind) ? static_cast<const T*>(this) : nullptr;
+        }
     };
+
+    template <typename T>
+    T* As(MIRValue* value)
+    {
+        return value != nullptr ? value->As<T>() : nullptr;
+    }
+
+    template <typename T>
+    const T* As(const MIRValue* value)
+    {
+        return value != nullptr ? value->As<T>() : nullptr;
+    }
 
     MIRInstruction* AsInstruction(MIRValue* value);
     const MIRInstruction* AsInstruction(const MIRValue* value);

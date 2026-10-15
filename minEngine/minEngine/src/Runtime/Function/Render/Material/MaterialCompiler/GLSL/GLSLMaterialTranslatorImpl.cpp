@@ -423,12 +423,12 @@ namespace minEngine
 
     void GLSLMaterialTranslatorImpl::LowerTextureRead(const MIRTextureRead& textureRead)
     {
-        if (const MIRTextureObject* textureObject = dynamic_cast<const MIRTextureObject*>(textureRead.Texture))
+        if (const MIRTextureObject* textureObject = As<MIRTextureObject>(textureRead.Texture))
         {
             m_UsedTextureSlots.insert(textureObject->TextureSlotIndex);
         }
 
-        if (const MIRExternalInput* externalInput = dynamic_cast<const MIRExternalInput*>(textureRead.TexCoord))
+        if (const MIRExternalInput* externalInput = As<MIRExternalInput>(textureRead.TexCoord))
         {
             if (externalInput->InputId == EI_TexCoord0)
             {

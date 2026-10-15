@@ -1,3 +1,13 @@
+## 2026-10-15 — CORE-F37-S01 Done：MIR `As<T>()`（对齐 UE）
+
+- **Scope:** 簇 A2 实现
+- **Completed:**
+  - `MIRValue::As<T>()` + 自由函数 `As<T>(MIRValue*)`；`AsDimensional` 转发
+  - `MIRDebug` / `MIREmitter` / `GLSLMaterialTranslatorImpl` 去掉 MIR `dynamic_cast`
+  - Design Status → **Done**
+- **Verification:** `minEngineTests.exe test material-ir` PASS（5/5）；MaterialIR+GLSL grep 无 `dynamic_cast`
+- **Next:** B1-a 或 A1 Design（战役仍 In Progress）
+
 ## 2026-10-15 — CORE-F37-S01：MIR Kind Cast Design（对齐 UE，待审批）
 
 - **Scope:** 簇 A2；学 UE `FValue::As<T>()`；未改代码
@@ -5,7 +15,7 @@
   - [CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md](./Render/Material/CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md) Status **Review**
   - Survey §7.2 指向该 Design；执行序 S01 优先
 - **Verification:** docs + UE 源码锚点对照
-- **Next:** 维护者批准 → Planned → 实现（`material-ir` + grep 无 MIR `dynamic_cast`）
+- **Next:** （已批准并实现，见上条）
 
 ## 2026-10-15 — CORE-F37：RTTI Hygiene Survey 落盘（Review）
 

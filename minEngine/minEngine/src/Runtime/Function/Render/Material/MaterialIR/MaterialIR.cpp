@@ -181,12 +181,12 @@ namespace minEngine
 
     MIRDimensional* AsDimensional(MIRValue* value)
     {
-        return (value != nullptr && value->IsA(VK_Dimensional)) ? static_cast<MIRDimensional*>(value) : nullptr;
+        return As<MIRDimensional>(value);
     }
 
     const MIRDimensional* AsDimensional(const MIRValue* value)
     {
-        return (value != nullptr && value->IsA(VK_Dimensional)) ? static_cast<const MIRDimensional*>(value) : nullptr;
+        return As<MIRDimensional>(value);
     }
 
     MIRValue* GetScalarComponent(MIRValue* value, int index)

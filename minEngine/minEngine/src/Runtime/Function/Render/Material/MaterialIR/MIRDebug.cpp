@@ -196,7 +196,7 @@ namespace minEngine
                     return;
                 }
 
-                if (const MIRConstant* constant = dynamic_cast<const MIRConstant*>(value))
+                if (const MIRConstant* constant = value->As<MIRConstant>())
                 {
                     if (constant->IsBool())
                     {
@@ -276,31 +276,31 @@ namespace minEngine
 
             void AppendInstructionProperties(const MIRInstruction* instr)
             {
-                if (const SetMaterialOutput* output = dynamic_cast<const SetMaterialOutput*>(instr))
+                if (const SetMaterialOutput* output = instr->As<SetMaterialOutput>())
                 {
                     Out << " \"" << LexMaterialProperty(output->Property) << '"';
                 }
-                else if (const MIROperator* op = dynamic_cast<const MIROperator*>(instr))
+                else if (const MIROperator* op = instr->As<MIROperator>())
                 {
                     Out << " \"" << LexOperator(op->Op) << '"';
                 }
-                else if (const MIRCast* cast = dynamic_cast<const MIRCast*>(instr))
+                else if (const MIRCast* cast = instr->As<MIRCast>())
                 {
                     Out << " -> " << GetTypeSpelling(cast->Type);
                 }
-                else if (const MIRSubscript* subscript = dynamic_cast<const MIRSubscript*>(instr))
+                else if (const MIRSubscript* subscript = instr->As<MIRSubscript>())
                 {
                     Out << " [" << subscript->Index << ']';
                 }
-                else if (const MIRExternalInput* externalInput = dynamic_cast<const MIRExternalInput*>(instr))
+                else if (const MIRExternalInput* externalInput = instr->As<MIRExternalInput>())
                 {
                     Out << " \"" << static_cast<int>(externalInput->InputId) << '"';
                 }
-                else if (const MIRTextureObject* textureObject = dynamic_cast<const MIRTextureObject*>(instr))
+                else if (const MIRTextureObject* textureObject = instr->As<MIRTextureObject>())
                 {
                     Out << " slot " << textureObject->TextureSlotIndex;
                 }
-                else if (const MIRUniformParameter* uniformParameter = dynamic_cast<const MIRUniformParameter*>(instr))
+                else if (const MIRUniformParameter* uniformParameter = instr->As<MIRUniformParameter>())
                 {
                     Out << " slot " << uniformParameter->UniformSlotIndex
                         << " default " << uniformParameter->DefaultValue << 'f';

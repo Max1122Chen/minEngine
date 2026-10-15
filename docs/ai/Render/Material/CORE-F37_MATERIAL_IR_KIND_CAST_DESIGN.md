@@ -4,7 +4,7 @@
 - **ID:** `CORE-F37`（切片 `CORE-F37-S01`）
 - **Type:** Refactor
 - **Complexity:** `L1`
-- **Status:** `Review`（待维护者审批；**未授权实现**）
+- **Status:** `Done`（`CORE-F37-S01` 已实现）
 - **Owner:** project maintainer
 - **Last updated:** 2026-10-15
 - **Related:**
@@ -17,7 +17,7 @@
 
 MIR 已有 `MIRValueKind` + `TMIRValue`/`TMIRInstruction::TypeKind`，但 Debug / Emitter / GLSL 仍用 C++ `dynamic_cast`。  
 对齐 UE MaterialIR：在 `MIRValue` 上提供 `As<T>()`（`IsA(T::TypeKind)` + `static_cast`），消灭 MaterialIR 路径上的 `dynamic_cast`。  
-**Status: Review — 等你批准后再开码。**
+**Status: Done — `As<T>()` 已落地；MaterialIR/GLSL 路径无 MIR `dynamic_cast`。**
 
 ## Problem
 
@@ -218,8 +218,8 @@ Not applicable because 无新数据管道；编译/Debug 读写同一 MIR 图。
 
 ## Design Review
 
-- **Verdict:** `Pending`（维护者审批）
-- **Reviewer / date:**
+- **Verdict:** `Ready`
+- **Reviewer / date:** project maintainer / 2026-10-15（批准）
 - **Agent self-check:** Ready with deferred items（A1/B1/C 不在本篇；Open Questions 非阻塞）
 
 ## Implementation Readiness
@@ -238,23 +238,24 @@ Not applicable because 无新数据管道；编译/Debug 读写同一 MIR 图。
 - [x] Verification strategy exists
 - [x] Unresolved questions resolved or explicitly deferred/accepted
 
-**Ready for implementation?** `no` — 阻塞：**维护者批准本 Design（Status → Planned）**。
+**Ready for implementation?** `yes`
 
 ## Acceptance Checklist
 
-- [ ] 维护者批准（Status → Planned 或 In Progress）
-- [ ] 实现后：MaterialIR/GLSL 路径无 MIR `dynamic_cast`；`material-ir` PASS
-- [ ] Progress / Registry 切片状态同步
-- [ ] 源码注释无 Feature ID
+- [x] 维护者批准（Status → In Progress）
+- [x] 实现后：MaterialIR/GLSL 路径无 MIR `dynamic_cast`；`material-ir` PASS
+- [x] Progress / Registry 切片状态同步
+- [x] 源码注释无 Feature ID
 
 ## Implementation slices (traceability)
 
-| Slice | Summary | Design decision | Verification |
-|-------|---------|-----------------|--------------|
-| `CORE-F37-S01` | `As<T>()` API + 替换 Debug/Emitter/GLSL cast | Option A | `material-ir` + grep |
+| Slice | Summary | Design decision | Verification | Status |
+|-------|---------|-----------------|--------------|--------|
+| `CORE-F37-S01` | `As<T>()` API + 替换 Debug/Emitter/GLSL cast | Option A | `material-ir` + grep | **Done** |
 
 ## Changelog
 
 | Date | Note |
 |------|------|
 | 2026-10-15 | Draft/Review：对齐 UE `FValue::As<T>()`；待审批 |
+| 2026-10-15 | 批准并实现：`MIRValue::As<T>()`；Debug/Emitter/GLSL 去 RTTI；`material-ir` PASS |

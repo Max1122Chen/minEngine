@@ -14,11 +14,6 @@ namespace minEngine
 {
     namespace
     {
-        MIRConstant* AsConstant(MIRValue* value)
-        {
-            return value != nullptr ? dynamic_cast<MIRConstant*>(value) : nullptr;
-        }
-
         MIRValue* TryFoldUnary(MIREmitter& emitter, MIROperatorCode op, MIRConstant* constant)
         {
             if (constant == nullptr)
@@ -148,7 +143,7 @@ namespace minEngine
             outComponents.reserve(dimensional->Components.size());
             for (MIRValue* component : dimensional->Components)
             {
-                MIRConstant* constant = AsConstant(component);
+                MIRConstant* constant = As<MIRConstant>(component);
                 if (constant == nullptr)
                 {
                     return false;
@@ -251,17 +246,17 @@ namespace minEngine
 
             if (IsUnaryOperator(op))
             {
-                return TryFoldUnary(emitter, op, AsConstant(a));
+                return TryFoldUnary(emitter, op, As<MIRConstant>(a));
             }
 
             if (IsBinaryOperator(op))
             {
-                return TryFoldBinary(emitter, op, AsConstant(a), AsConstant(b), scalarType);
+                return TryFoldBinary(emitter, op, As<MIRConstant>(a), As<MIRConstant>(b), scalarType);
             }
 
             if (IsTernaryOperator(op))
             {
-                return TryFoldTernary(emitter, AsConstant(a), b, c);
+                return TryFoldTernary(emitter, As<MIRConstant>(a), b, c);
             }
 
             return nullptr;
@@ -408,7 +403,7 @@ namespace minEngine
                 return CastValueToPrimitiveType(firstComponent, targetPrimitiveType);
             }
 
-            if (MIRConstant* constant = AsConstant(value))
+            if (MIRConstant* constant = As<MIRConstant>(value))
             {
                 return CastConstant(*this, constant, valuePrimitiveType->ScalarKind, targetPrimitiveType->ScalarKind);
             }
@@ -1042,7 +1037,7 @@ namespace minEngine
             return Poison();
         }
 
-        if (MIRConstant* constCondition = dynamic_cast<MIRConstant*>(condition))
+        if (MIRConstant* constCondition = As<MIRConstant>(condition))
         {
             return constCondition->Get<bool>() ? trueValue : falseValue;
         }

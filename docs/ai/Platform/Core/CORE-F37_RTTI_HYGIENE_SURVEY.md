@@ -197,14 +197,13 @@ Top 文件（按处数）：
 
 ---
 
-### 7.2 簇 A2 — MIR Kind — **Design 已出，待审批**
+### 7.2 簇 A2 — MIR Kind — **S01 Done**
 
-**锁定方向（对齐 UE）：** `MIRValue::As<T>()` = `IsA(T::TypeKind) ? static_cast<T*> : nullptr`（及自由函数 `As<T>(MIRValue*)`）。  
-**不是**手写一长串 `AsConstant`/`AsOperator` 自由函数为主 API（UE 用模板；你们已有 `TypeKind`）。
+**锁定方向（对齐 UE）：** `MIRValue::As<T>()` = `IsA(T::TypeKind) ? static_cast<T*> : nullptr`（及自由函数 `As<T>(MIRValue*)`）。
 
-- **Design Spec:** [CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md](../../Render/Material/CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md)（`CORE-F37-S01`，Status **Review**）
-- **UE 锚点:** `Engine/.../Materials/MaterialIR.h` — `FValue::As<T>()`；`MaterialIRDebug.cpp` 使用 `Value->As<FConstant>()` 等；MaterialIR 树内无 `dynamic_cast`
-- **维护者裁定:** _待审批 → Planned 后方可实现_
+- **Design Spec:** [CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md](../../Render/Material/CORE-F37_MATERIAL_IR_KIND_CAST_DESIGN.md)（`CORE-F37-S01` **Done**）
+- **UE 锚点:** `Engine/.../Materials/MaterialIR.h` — `FValue::As<T>()`
+- **维护者裁定:** Approve（2026-10-15）→ 已实现；`material-ir` PASS
 
 ---
 
