@@ -1,11 +1,20 @@
+## 2026-10-15 — CORE-F37：RTTI Hygiene Survey 落盘（Review）
+
+- **Scope:** 将 RTTI 盘点整理为可审阅文档；未改运行时代码
+- **Completed:**
+  - [CORE-F37_RTTI_HYGIENE_SURVEY.md](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md)：A/B/C 定义、簇 A1–C1、开放设计题
+  - Registry / ACTIVE_WORK → **Review**
+- **Verification:** docs only
+- **Next:** 维护者填 A1/A2（及 B/C 确认）→ 再拆 Design / 机械波
+
 ## 2026-10-15 — 源码注释 ID 清扫 + RTTI 分类调研
 
 - **Scope:** 落实 WF-F05 注释卫生；只读盘点 `dynamic_cast` / `dynamic_pointer_cast`（未改 RTTI 码）
 - **Completed:**
   - 源码（含部分日志/测试字符串）去掉 Feature/Slice/Bug/ADR ID；残留扫描 **0**
-  - RTTI：约 **68 文件 / 218 处**（excl. Third-Party）；分类见下条对话报告
+  - RTTI：约 **68 文件 / 218 处**（excl. Third-Party）；分类见 CORE-F37 Survey
 - **Verification:** grep ID 模式 → 0 hits；cast 计数脚本
-- **Next:** 按分类讨论优先项（Material pin 类型 DIP vs MEObject `Cast<>` 机械替换）
+- **Next:** Survey 审阅（已落盘）
 
 ## 2026-10-15 — WF-F05：合入 TMPL-F05（注释/分支 ID 禁令 + Quality DoD）
 
