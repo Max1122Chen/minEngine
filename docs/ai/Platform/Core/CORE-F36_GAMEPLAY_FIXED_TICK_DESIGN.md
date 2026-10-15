@@ -6,7 +6,7 @@
 - **Complexity:** `L2`
 - **Status:** `In Progress`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-15`（S00–S04 已落码于 `feat/core-f36-gameplay-fixed-tick`）
+- **Last updated:** `2026-10-15`（S00–S04 已落码于 `feat/core`）
 - **Related:**
   - 前置：[CORE-F34](./CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md)、[CORE-F35](./CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md)（GI Hub / 派生类）
   - 正交：[CORE-F33](./CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)（Fixed/变步内结构变更沿用 F33）
@@ -415,7 +415,7 @@ frameDt → × FixedTimeScale → Accum
 - [x] Verification strategy exists  
 - [x] Open questions deferred/accepted  
 
-**Ready for implementation?** `yes` — 维护者已指示在 `feat/core-f36-gameplay-fixed-tick` 实现；合入 master 前再验收。勿与 F33 混 PR。
+**Ready for implementation?** `yes` — 维护者已指示在 `feat/core` 实现；合入 master 前再验收。勿与 F33 混 PR。
 
 ## Acceptance Checklist
 
