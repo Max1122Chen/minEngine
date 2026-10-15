@@ -242,6 +242,22 @@ namespace minEngine
         emitter.Output(0, emitter.ExternalInput(EI_TexCoord0));
     }
 
+    MaterialGraphNodeDef_VertexColor::MaterialGraphNodeDef_VertexColor()
+    {
+        m_Outputs.push_back({ "RGBA" });
+        m_Outputs.push_back({ "RGB" });
+    }
+
+    void MaterialGraphNodeDef_VertexColor::BuildIR(MIREmitter& emitter)
+    {
+        MIRValue* color = emitter.ExternalInput(EI_VertexColor);
+        emitter.Output(0, color);
+        if (emitter.IsOutputConnected(1))
+        {
+            emitter.Output(1, emitter.Cast(color, MIRPrimitiveType::GetFloat3()));
+        }
+    }
+
     MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject()
         : MaterialGraphNodeDef_TextureObject("", 0)
     {

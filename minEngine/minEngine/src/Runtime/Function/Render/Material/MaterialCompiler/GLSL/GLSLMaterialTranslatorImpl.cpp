@@ -41,6 +41,7 @@ namespace minEngine
         m_UsedTextureSlots.clear();
         m_UsedScalarUniformSlots.clear();
         m_UsesTexCoord0 = false;
+        m_UsesVertexColor = false;
 
         BeginStage(Stage_Vertex);
         if (MIRBlock* vertexRootBlock = graph.GetRootBlock(Stage_Vertex);
@@ -57,6 +58,7 @@ namespace minEngine
         result.Stages[Stage_Fragment].Preamble = BuildFragmentShaderPreamble();
         result.Stages[Stage_Fragment].Body = m_Printer.TakeBuffer();
         result.UsesTexCoord0 = m_UsesTexCoord0;
+        result.UsesVertexColor = m_UsesVertexColor;
         FillParameterLayout(result);
 
         m_ActiveResult = nullptr;
@@ -389,6 +391,13 @@ namespace minEngine
         if (externalInput.InputId == EI_WorldNormal)
         {
             m_Printer.Append("v_WorldNormal");
+            return;
+        }
+
+        if (externalInput.InputId == EI_VertexColor)
+        {
+            m_UsesVertexColor = true;
+            m_Printer.Append("v_Color");
             return;
         }
 

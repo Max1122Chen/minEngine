@@ -23,7 +23,7 @@ namespace minEngine
             MaterialCompileResult& compiled);
 
         static std::string BuildMaterialParametersStructGlobal(int numTexCoords);
-        static std::string BuildVertexTexCoordSetup(int numTexCoords);
+        static std::string BuildVertexTexCoordSetup(int numTexCoords, bool usesVertexColor);
         static std::string BuildFragmentTexCoordSetup(int numTexCoords);
         static std::string BuildFragmentMaterialInputsStructGlobal(
             MaterialShadingModel shadingModel,
@@ -33,9 +33,13 @@ namespace minEngine
             int numTexCoords,
             bool includeSceneLightingVaryings,
             bool usesTangentFrame,
+            bool usesVertexColor,
             bool skinned);
-        static std::string BuildFragmentInTexCoords(int numTexCoords);
-        static std::string BuildFragmentLightingVaryings(int numTexCoords, bool usesTangentFrame);
+        static std::string BuildFragmentInTexCoords(int numTexCoords, bool usesVertexColor);
+        static std::string BuildFragmentLightingVaryings(
+            int numTexCoords,
+            bool usesVertexColor,
+            bool usesTangentFrame);
         static std::string BuildFragmentWorldNormal(const MaterialCompileEnvironment& env);
         static std::string BuildFragmentSceneLighting(
             const std::filesystem::path& assetsRoot,

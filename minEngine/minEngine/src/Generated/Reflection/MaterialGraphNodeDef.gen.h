@@ -98,6 +98,11 @@ ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_TextureCoordinate, GReflectionClassRegister_MaterialGraphNodeDef_TextureCoordinate_9126a58b)
 
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_VertexColor)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_VertexColor, GReflectionClassRegister_MaterialGraphNodeDef_VertexColor_7322102f)
+
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_TextureObject)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureObject, ParameterName)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureObject, TextureSlotIndex)

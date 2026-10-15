@@ -24,6 +24,8 @@ file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_glfw.cpp
                 ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_opengl3.cpp
 )
+# Demo is not part of the engine UI surface; drop it to keep PE export ordinals under 65535.
+list(FILTER IMGUI EXCLUDE REGEX ".*/imgui_demo\\.cpp$")
 set(IMGUI_UPSTREAM_DIR ${THIRD_PARTY_PATH}/imgui-upstream)
 set(IMGUI_FREETYPE_SRC ${IMGUI_UPSTREAM_DIR}/misc/freetype/imgui_freetype.cpp)
 
@@ -143,11 +145,15 @@ set_target_properties(${ENGINE_NAME} PROPERTIES
 # Exclude heavy static deps from auto-export (PE max 65535 ordinals). Use LINKER: so
 # commas/colons are not split by the driver the way -Wl,a,b,c is.
 # Do NOT use ALL: that also drops symbols from our objects.a.
+# exclude-modules-for-implib: keep internal C deps inside the DLL without consuming export
+# ordinals (clients use engine wrappers, not glad/miniaudio entry points).
 if(WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
     target_link_options(${ENGINE_NAME} PRIVATE
         "LINKER:--export-all-symbols"
         # Assimp/zlib when falling back to static subproject (no prebuilt DLL in bin/).
-        "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a:libassimp.a:libassimpd.a:libzlibstatic.a:libzlibstaticd.a")
+        "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a:libassimp.a:libassimpd.a:libzlibstatic.a:libzlibstaticd.a"
+        # miniaudio only: excluding glad.c.obj duplicates GL loader into client .exe via implib and can crash.
+        "LINKER:--exclude-modules-for-implib=miniaudio.c.obj")
 endif()
 
 target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)

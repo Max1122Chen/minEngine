@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Render/RHI/VertexAttributeSemantics.h"
 
 #include <cstdint>
 #include <initializer_list>
@@ -84,14 +85,25 @@ namespace minEngine
         uint32_t Size = 0;
         bool bNormalized = false;
         uint32_t Offset = 0;
+        /** Shader / PSO attribute location; defaults from VertexAttr name table when unset. */
+        uint32_t Location = VertexAttr::kUnsetLocation;
 
-        RHIVertexElement(const std::string& name, VertexElementType type, bool normalized = false)
+        RHIVertexElement(
+            const std::string& name,
+            VertexElementType type,
+            bool normalized = false,
+            uint32_t location = VertexAttr::kUnsetLocation)
             : Name(name)
             , Type(type)
             , Size(VertexElementSize(type))
             , bNormalized(normalized)
             , Offset(0)
+            , Location(location)
         {
+            if (Location == VertexAttr::kUnsetLocation)
+            {
+                Location = VertexAttr::LocationForName(Name);
+            }
         }
     };
 

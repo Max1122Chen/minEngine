@@ -727,11 +727,17 @@ namespace minEngine
     OpenGLRHIVertexInputLayout::OpenGLRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements)
     {
         uint32_t offset = 0;
+        uint32_t denseFallback = 0;
         for (const auto& element : elements)
         {
             RHIVertexElement copy = element;
             copy.Offset = offset;
             offset += VertexElementTypeSize(element.Type);
+            if (copy.Location == VertexAttr::kUnsetLocation)
+            {
+                copy.Location = denseFallback;
+            }
+            ++denseFallback;
             m_Elements.push_back(copy);
         }
         m_Stride = offset;
@@ -749,10 +755,10 @@ namespace minEngine
         glBindVertexArray(m_VAO);
         glBindBuffer(GL_ARRAY_BUFFER, bufferId);
 
-        uint32_t index = 0;
         for (const auto& element : m_Elements)
         {
-            glEnableVertexAttribArray(index);
+            const GLuint location = element.Location;
+            glEnableVertexAttribArray(location);
             const void* offsetPtr =
                 reinterpret_cast<const void*>(static_cast<uintptr_t>(element.Offset));
             // ivec* shader inputs require IPointer; Pointer + GL_INT converts to float and
@@ -760,7 +766,7 @@ namespace minEngine
             if (IsIntegerVertexElementType(element.Type))
             {
                 glVertexAttribIPointer(
-                    index,
+                    location,
                     element.Size,
                     VertexElementTypeToGL(element.Type),
                     m_Stride,
@@ -769,14 +775,13 @@ namespace minEngine
             else
             {
                 glVertexAttribPointer(
-                    index,
+                    location,
                     element.Size,
                     VertexElementTypeToGL(element.Type),
                     element.bNormalized ? GL_TRUE : GL_FALSE,
                     m_Stride,
                     offsetPtr);
             }
-            ++index;
         }
     }
 

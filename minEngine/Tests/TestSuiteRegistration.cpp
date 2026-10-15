@@ -30,6 +30,7 @@
 #include "Suites/ScreenUICoordsTest.h"
 #include "Suites/FrustumTest.h"
 #include "Suites/NoiseTest.h"
+#include "Suites/VertexAttributeSemanticsTest.h"
 #include "Suites/BeginPlayTest.h"
 #include "Suites/DeferredStructuralEditTest.h"
 #include "Suites/GameplayInputGateTest.h"
@@ -463,6 +464,28 @@ namespace minEngine
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "noise",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct VertexAttributeSemanticsTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "vertex-attribute-semantics",
+                    "Canonical mesh vertex attribute locations",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'vertex-attribute-semantics'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "vertex-attribute-semantics",
                     context.GetCommandLine().TestKind);
             }
         };
@@ -1053,6 +1076,7 @@ namespace minEngine
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
+        using VertexAttributeSemanticsSuite = TypedTestSuite<VertexAttributeSemanticsTestSuiteTraits>;
         using BeginPlaySuite = TypedTestSuite<BeginPlayTestSuiteTraits>;
         using DeferredStructuralEditSuite = TypedTestSuite<DeferredStructuralEditTestSuiteTraits>;
         using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
@@ -1120,6 +1144,7 @@ namespace minEngine
             registry.Register(ScreenUICoordsSuite::Get());
             registry.Register(FrustumSuite::Get());
             registry.Register(NoiseSuite::Get());
+            registry.Register(VertexAttributeSemanticsSuite::Get());
             registry.Register(BeginPlaySuite::Get());
             registry.Register(DeferredStructuralEditSuite::Get());
             registry.Register(GameplayInputGateSuite::Get());

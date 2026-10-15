@@ -101,6 +101,7 @@ namespace minEngine
         std::string IRDump;
         std::vector<MaterialCompileDiagnostic> Diagnostics;
         bool UsesTexCoord0 = false;
+        bool UsesVertexColor = false;
         MaterialShaderParameterLayout ParameterLayout;
     };
 }

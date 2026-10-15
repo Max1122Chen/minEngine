@@ -516,12 +516,12 @@ namespace minEngine
         mesh->m_VertexBuffer = rhi->RHICreateBuffer(vbDesc, gpuVertices.data());
 
         mesh->m_VertexInputLayout = rhi->RHICreateVertexInputLayout({
-            RHIVertexElement("a_Position", VertexElementType::Float3),
-            RHIVertexElement("a_TexCoord", VertexElementType::Float2),
-            RHIVertexElement("a_Normal", VertexElementType::Float3),
-            RHIVertexElement("a_Tangent", VertexElementType::Float4),
-            RHIVertexElement("a_BoneIndices", VertexElementType::Int4),
-            RHIVertexElement("a_BoneWeights", VertexElementType::Float4)
+            VertexAttr::Make(VertexAttr::Semantic::Position),
+            VertexAttr::Make(VertexAttr::Semantic::TexCoord0),
+            VertexAttr::Make(VertexAttr::Semantic::Normal),
+            VertexAttr::Make(VertexAttr::Semantic::Tangent),
+            VertexAttr::Make(VertexAttr::Semantic::BoneIndices),
+            VertexAttr::Make(VertexAttr::Semantic::BoneWeights),
         });
 
         RHIBufferCreateDesc ibDesc;

@@ -1,3 +1,50 @@
+## 2026-10-15 — RND-F24 S01–S02：Canonical locations + VertexColor
+
+- **Scope:** `feat/render`
+- **Completed:**
+  - S01：`VertexAttr` 表；`RHIVertexElement::Location`；GL/VK 按 Location；骨骼 shell @9/10
+  - S02：`MaterialGraphNodeDef_VertexColor`（RGBA/RGB）；shell `a_Color@4` + `v_Color`；`UsesVertexColor`
+  - MinGW PE：去掉 `imgui_demo`；`exclude-modules-for-implib=miniaudio.c.obj`（勿 exclude glad，避免双 loader）
+- **Verification:** `vertex-attribute-semantics` PASS；`material-ir` PASS（含 VertexColor→Albedo）
+- **Next:** S03 Custom0..1；可选画面梯度金样 / 工厂糖衣
+
+## 2026-10-15 — CORE-F36 Design：变步时序纠正为 Physics 前玩法块
+
+- **Scope:** 纠正 R13/S00（仍未开工码）
+- **Completed:**
+  - 锁定：`Input → Fixed → Variable(GI→WorldTickable→GO/Comp) → Physics → …`
+  - S00 = 把 GI/World Tickable **前移**与 GO 汇合（非把 GO 后移）
+- **Verification:** docs only
+- **Next:** 文档 commit → 审批后从 S00 开工
+
+## 2026-10-15 — CORE-F36 Design：纳入变步 Tick 相位修复
+
+- **Scope:** Design 补充 R13/S00（仍未开工码）
+- **Completed:** （已被下一修订纠正方向）初稿曾误写 GO 迁 Physics 后
+- **Verification:** docs only
+- **Next:** 见上条
+
+## 2026-10-15 — CORE-F36 Design 修订（唯一时钟 + 多层派发）
+
+- **Scope:** 按维护者意图修订 FixedTick Design（仍未开工码）
+- **Completed:**
+  - 引擎唯一时钟；`OnFixedTick` 由派生 GI 编排子系统序
+  - WorldTickable 跟变步 `m_Instances` 序；GO←Comp 汇聚 Participants
+  - （随后一修订已把变步相位从「后置」改为本 Feature 必修）
+  - agent 自审：Ready with deferred items
+- **Verification:** docs only
+- **Next:** 维护者审批 CORE-F36（及此前 RND-F24）→ Planned
+
+## 2026-10-15 — CORE-F36 / RND-F24：Design Draft（待审批）
+
+- **Scope:** minCraft 反哺缺口 → 引擎级机制设计（未开工码）
+- **Completed:**
+  - 注册 `CORE-F36`（Gameplay FixedTick 共享时钟）· `RND-F24`（顶点语义 Color→Custom）
+  - Design：[CORE-F36](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · [RND-F24](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md)
+  - ACTIVE_WORK / FEATURE_REGISTRY 已挂；agent 自审 Verdict：Ready with deferred items
+- **Verification:** docs only
+- **Next:** 维护者审批 Design → Planned → Impl Plan；实现勿与 F33 混 PR
+
 ## 2026-10-15 — BUILD-F01 S07：GameModuleEntry 强制加载
 
 - **Scope:** 引擎收口「游戏 SHARED 进进程」；去掉各游戏手写 Marker 的推荐路径

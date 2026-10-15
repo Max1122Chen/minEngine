@@ -105,6 +105,7 @@ namespace minEngine
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Min::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_Max::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureCoordinate::StaticClass()));
+            s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_VertexColor::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureObject::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_TextureSample::StaticClass()));
             s_CreatableNodes.push_back(MakeEntry(MaterialGraphNodeDef_NormalUnpack::StaticClass()));

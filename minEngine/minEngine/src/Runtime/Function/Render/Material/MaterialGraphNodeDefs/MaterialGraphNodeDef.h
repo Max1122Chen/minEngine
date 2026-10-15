@@ -274,6 +274,16 @@ namespace minEngine
     };
 
     ME_CLASS()
+    class MaterialGraphNodeDef_VertexColor : public MaterialGraphNodeDef
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        MaterialGraphNodeDef_VertexColor();
+        void BuildIR(MIREmitter& emitter) override;
+    };
+
+    ME_CLASS()
     class MaterialGraphNodeDef_TextureObject : public MaterialGraphNodeDef
     {
         ME_GENERATED_BODY()

@@ -140,6 +140,19 @@ namespace minEngine
             return MIRPrimitiveType::GetFloat2();
         }
 
+        if (dynamic_cast<const MaterialGraphNodeDef_VertexColor*>(nodeDef) != nullptr)
+        {
+            if (outputIndex == 0)
+            {
+                return MIRPrimitiveType::GetFloat4();
+            }
+            if (outputIndex == 1)
+            {
+                return MIRPrimitiveType::GetFloat3();
+            }
+            return nullptr;
+        }
+
         if (dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(nodeDef) != nullptr)
         {
             return MIRObjectType::GetTexture2D();

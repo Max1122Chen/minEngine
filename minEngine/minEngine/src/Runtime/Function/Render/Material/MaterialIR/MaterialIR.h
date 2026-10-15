@@ -199,6 +199,7 @@ namespace minEngine
     {
         EI_TexCoord0 = 0,
         EI_WorldNormal,
+        EI_VertexColor,
     };
 
     struct MIRExternalInput : public TMIRInstruction<VK_ExternalInput>

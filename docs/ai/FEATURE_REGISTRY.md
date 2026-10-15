@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-14（CORE-F35 引擎侧 Done）
+Last updated: 2026-10-15（RND-F24 S01 In Progress）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -62,6 +62,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F33` | 运行期结构变更（Spawn 即时入世 · Destroy 延迟 · EOF swap） | **In Progress** | — | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) · `feat/core` · S01+S02 已合入；待个人 review / S03 可选 |
 | `CORE-F34` | GameInstance + Subsystem 作用域生命周期（引擎机制 · 游戏 App 契约） | **Done** | — | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) · L3 · S00–S06 主链 Done；S07 LocalPlayer 后置 |
 | `CORE-F35` | GameInstance 会话中枢 · 项目可选派生类（Hub vs Subsystem） | **Done** | — | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) · L2 · S01–S03；S04 minCraft Deferred |
+| `CORE-F36` | Gameplay FixedTick + 变步 Tick 相位对齐（唯一逻辑时钟 · 分层派发） | **In Progress** | — | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · L2 · S00–S04 on `feat/core-f36-gameplay-fixed-tick` · suite `gameplay-fixed-tick` |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -83,6 +84,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F21` | Shadow 光视锥 / CSM cascade caster 剔除 | **Deferred** | — | [Design](./Render/RND-F21_SHADOW_FRUSTUM_CASTER_CULLING_DESIGN.md) · 复用 F19 `Frustum`；F19 后开工 |
 | `RND-F22` | Texture / Sampler 分离升级（RHI→Material；TextureSample 可编） | **Done** | — | [Design](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md) |
 | `RND-F23` | Scene Mesh Pass 默认背面剔除（Opaque/Translucent） | **Done** | — | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) |
+| `RND-F24` | 程序化网格顶点语义属性（Color → CustomN · Material 消费） | **In Progress** | — | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) · L2 · S01–S02 on `feat/render` · suites `vertex-attribute-semantics` / `material-ir` · minCraft `ENG-GAP-MESH-VERTEX-ATTR` |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |

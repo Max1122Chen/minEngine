@@ -65,8 +65,9 @@ namespace minEngine
         RHICommandList cmdList(rhi);
 
         m_VertexLayout = cmdList.CreateVertexInputLayout({
-            {"a_Position", VertexElementType::Float3, false},
-            {"a_Color", VertexElementType::Float4, false},
+            // Specialty path: dense locations 0/1 (not product Color@4).
+            RHIVertexElement("a_Position", VertexElementType::Float3, false, 0),
+            RHIVertexElement("a_Color", VertexElementType::Float4, false, 1),
         });
 
         m_BindingSetLayout = cmdList.CreateShaderBindingSetLayout({

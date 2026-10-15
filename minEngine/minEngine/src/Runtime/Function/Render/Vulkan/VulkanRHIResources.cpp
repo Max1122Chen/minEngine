@@ -1540,11 +1540,17 @@ namespace minEngine
     VulkanRHIVertexInputLayout::VulkanRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements)
     {
         uint32_t offset = 0;
+        uint32_t denseFallback = 0;
         for (const RHIVertexElement& element : elements)
         {
             RHIVertexElement copy = element;
             copy.Offset = offset;
             offset += VertexElementTypeSize(element.Type);
+            if (copy.Location == VertexAttr::kUnsetLocation)
+            {
+                copy.Location = denseFallback;
+            }
+            ++denseFallback;
             m_Elements.push_back(copy);
         }
         m_Stride = offset;
@@ -1983,7 +1989,7 @@ namespace minEngine
             for (uint32_t i = 0; i < elements.size(); ++i)
             {
                 VkVertexInputAttributeDescription attribute{};
-                attribute.location = i;
+                attribute.location = elements[i].Location;
                 attribute.binding = 0;
                 attribute.format = ToVkVertexFormat(elements[i].Type);
                 attribute.offset = elements[i].Offset;

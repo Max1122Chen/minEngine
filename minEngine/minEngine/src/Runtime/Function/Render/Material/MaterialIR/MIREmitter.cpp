@@ -1077,6 +1077,10 @@ namespace minEngine
         {
             resultType = MIRPrimitiveType::GetFloat3();
         }
+        else if (inputId == EI_VertexColor)
+        {
+            resultType = MIRPrimitiveType::GetFloat4();
+        }
 
         MIRExternalInput* instruction = m_Graph->CreateValue<MIRExternalInput>();
         InitializeMIRInstruction(instruction, VK_ExternalInput, resultType);

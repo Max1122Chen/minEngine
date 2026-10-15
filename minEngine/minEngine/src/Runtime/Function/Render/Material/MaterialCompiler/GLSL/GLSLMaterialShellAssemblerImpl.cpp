@@ -62,7 +62,9 @@ namespace minEngine
         return declaration;
     }
 
-    std::string GLSLMaterialShellAssemblerImpl::BuildVertexTexCoordSetup(int numTexCoords)
+    std::string GLSLMaterialShellAssemblerImpl::BuildVertexTexCoordSetup(
+        int numTexCoords,
+        bool usesVertexColor)
     {
         std::string setup;
         for (int texCoordIndex = 0; texCoordIndex < numTexCoords; ++texCoordIndex)
@@ -75,6 +77,10 @@ namespace minEngine
             setup += " = ";
             setup += GetGLSLMaterialParametersTexCoordAccess(texCoordIndex);
             setup += ";\n";
+        }
+        if (usesVertexColor)
+        {
+            setup += "    v_Color = a_Color;\n";
         }
         return setup;
     }
@@ -143,9 +149,11 @@ namespace minEngine
         int numTexCoords,
         bool includeSceneLightingVaryings,
         bool usesTangentFrame,
+        bool usesVertexColor,
         bool skinned)
     {
         std::string ioBlock;
+        // Vertex *in* locations follow VertexAttr canonical table (not dense-packed).
         ioBlock += "layout(location = 0) in vec3 a_Position;\n";
         int outLocation = 0;
         if (numTexCoords > 0)
@@ -159,14 +167,18 @@ namespace minEngine
             }
         }
 
+        if (usesVertexColor)
+        {
+            ioBlock += "layout(location = 4) in vec4 a_Color;\n";
+            ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec4 v_Color;\n";
+        }
+
         if (includeSceneLightingVaryings)
         {
-            const int normalLocation = (numTexCoords > 0) ? 2 : 1;
-            ioBlock += "layout(location = " + std::to_string(normalLocation) + ") in vec3 a_Normal;\n";
+            ioBlock += "layout(location = 2) in vec3 a_Normal;\n";
             if (usesTangentFrame)
             {
-                const int tangentLocation = normalLocation + 1;
-                ioBlock += "layout(location = " + std::to_string(tangentLocation) + ") in vec4 a_Tangent;\n";
+                ioBlock += "layout(location = 3) in vec4 a_Tangent;\n";
             }
             ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec3 v_WorldFragPos;\n";
             ioBlock += "layout(location = " + std::to_string(outLocation++) + ") out vec3 v_WorldNormal;\n";
@@ -180,9 +192,9 @@ namespace minEngine
 
         if (skinned)
         {
-            // Matches SkeletalMesh GPU layout: after P/UV/N/T.
-            ioBlock += "layout(location = 4) in ivec4 a_BoneIndices;\n";
-            ioBlock += "layout(location = 5) in vec4 a_BoneWeights;\n";
+            // Bone slots reserved at 9/10 so Color@4 / Custom@5+ stay stable.
+            ioBlock += "layout(location = 9) in ivec4 a_BoneIndices;\n";
+            ioBlock += "layout(location = 10) in vec4 a_BoneWeights;\n";
         }
 
         return ioBlock;
@@ -190,9 +202,10 @@ namespace minEngine
 
     std::string GLSLMaterialShellAssemblerImpl::BuildFragmentLightingVaryings(
         int numTexCoords,
+        bool usesVertexColor,
         bool usesTangentFrame)
     {
-        int inLocation = numTexCoords;
+        int inLocation = numTexCoords + (usesVertexColor ? 1 : 0);
         std::string block = "layout(location = " + std::to_string(inLocation++) + ") in vec3 v_WorldFragPos;\n";
         block += "layout(location = " + std::to_string(inLocation++) + ") in vec3 v_WorldNormal;\n";
         if (usesTangentFrame)
@@ -268,7 +281,9 @@ namespace minEngine
         return sceneLighting;
     }
 
-    std::string GLSLMaterialShellAssemblerImpl::BuildFragmentInTexCoords(int numTexCoords)
+    std::string GLSLMaterialShellAssemblerImpl::BuildFragmentInTexCoords(
+        int numTexCoords,
+        bool usesVertexColor)
     {
         std::string block;
         for (int texCoordIndex = 0; texCoordIndex < numTexCoords; ++texCoordIndex)
@@ -276,6 +291,10 @@ namespace minEngine
             block += "layout(location = " + std::to_string(texCoordIndex) + ") in vec2 ";
             block += GetGLSLMaterialTexCoordVaryingName(texCoordIndex);
             block += ";\n";
+        }
+        if (usesVertexColor)
+        {
+            block += "layout(location = " + std::to_string(numTexCoords) + ") in vec4 v_Color;\n";
         }
         if (!block.empty())
         {
@@ -308,6 +327,7 @@ namespace minEngine
         }
 
         const int numTexCoords = GetRequiredMaterialTexCoordCount(compiled.UsesTexCoord0);
+        const bool usesVertexColor = compiled.UsesVertexColor;
         const std::filesystem::path assetsRoot = ResolveEngineDefaultAssetsRoot(env);
 
         std::string meshVertexUniforms;
@@ -343,14 +363,21 @@ namespace minEngine
         }
 
         const MaterialStageSource& vertexStage = compiled.Stages[Stage_Vertex];
+        const bool needsVertexAttributeSetup = (numTexCoords > 0) || usesVertexColor;
         const std::vector<std::pair<std::string, std::string>> vertexAnchors = {
             { "VERTEX_IO_BLOCK",
-                BuildVertexIoBlock(numTexCoords, includeSceneLightingVaryings, env.UsesTangentFrame, skinned) },
+                BuildVertexIoBlock(
+                    numTexCoords,
+                    includeSceneLightingVaryings,
+                    env.UsesTangentFrame,
+                    usesVertexColor,
+                    skinned) },
             { "VERTEX_MATERIAL_PARAMETERS_STRUCT",
                 (numTexCoords > 0) ? BuildMaterialParametersStructGlobal(numTexCoords) : std::string{} },
             { "VERTEX_UNIFORMS", meshVertexUniforms },
             { "VERTEX_TEXCOORD_SETUP",
-                (numTexCoords > 0) ? BuildVertexTexCoordSetup(numTexCoords) : std::string{} },
+                needsVertexAttributeSetup ? BuildVertexTexCoordSetup(numTexCoords, usesVertexColor)
+                                          : std::string{} },
             { "VERTEX_LIGHTING_VARYINGS", meshVertexLightingVaryings },
             { "VERTEX_STAGE_BODY", EnsureTrailingNewline(vertexStage.Body) },
             { "VERTEX_POSITION", meshVertexPosition },
@@ -381,10 +408,10 @@ namespace minEngine
         }
 
         std::vector<std::pair<std::string, std::string>> fragmentAnchors = {
-            { "FRAGMENT_IN_TEXCOORDS", BuildFragmentInTexCoords(numTexCoords) },
+            { "FRAGMENT_IN_TEXCOORDS", BuildFragmentInTexCoords(numTexCoords, usesVertexColor) },
             { "FRAGMENT_LIGHTING_VARYINGS",
                 includeSceneLightingVaryings
-                    ? BuildFragmentLightingVaryings(numTexCoords, env.UsesTangentFrame)
+                    ? BuildFragmentLightingVaryings(numTexCoords, usesVertexColor, env.UsesTangentFrame)
                     : std::string{} },
             { "FRAGMENT_PREAMBLE", preamble },
             { "FRAGMENT_SCENE_LIGHTING", fragmentSceneLighting },

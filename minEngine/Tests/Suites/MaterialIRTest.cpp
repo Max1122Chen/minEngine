@@ -465,7 +465,7 @@ namespace minEngine
                     shadingModel,
                     blendMode))
             {
-                ME_LOG(LogTest, Error, "MaterialIR Constant3‚ÜíNormal: failed to connect Normal pin.");
+                ME_LOG(LogTest, Error, "MaterialIR Constant3?Normal: failed to connect Normal pin.");
                 return false;
             }
 
@@ -478,16 +478,16 @@ namespace minEngine
             {
                 for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
                 {
-                    ME_LOG(LogTest, Error, "MaterialIR Constant3‚ÜíNormal diagnostic: {}", diagnostic.Message);
+                    ME_LOG(LogTest, Error, "MaterialIR Constant3?Normal diagnostic: {}", diagnostic.Message);
                 }
                 return false;
             }
 
             bool passed = AssertAllContains(compiled.FullFragmentShader, {
-                { "BuildWorldNormalFromTangentSpace", "Constant3‚ÜíNormal uses TBN" },
+                { "BuildWorldNormalFromTangentSpace", "Constant3?Normal uses TBN" },
             });
             passed = AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
-                { "FragmentMaterialInputs.Normal =", "Constant3‚ÜíNormal body assign" },
+                { "FragmentMaterialInputs.Normal =", "Constant3?Normal body assign" },
                 { "vec3(", "Constant3 vector literal" },
             }) && passed;
             passed = AssertTrue(
@@ -499,18 +499,18 @@ namespace minEngine
             if (!passed)
             {
                 LogCompiledShaders(compiled);
-                ME_LOG(LogTest, Error, "MaterialIR Constant3‚ÜíNormal compile content check FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR Constant3?Normal compile content check FAILED.");
                 return false;
             }
 
             if (!VerifySmokeGpuCompile(compiled))
             {
                 LogCompiledShaders(compiled);
-                ME_LOG(LogTest, Error, "MaterialIR Constant3‚ÜíNormal GPU compile FAILED.");
+                ME_LOG(LogTest, Error, "MaterialIR Constant3?Normal GPU compile FAILED.");
                 return false;
             }
 
-            ME_LOG(LogTest, Info, "MaterialIR Constant3‚ÜíNormal BlinnPhong: compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR Constant3?Normal BlinnPhong: compile + GPU link PASSED.");
             return true;
         }
 
@@ -593,7 +593,7 @@ namespace minEngine
                 return false;
             }
 
-            ME_LOG(LogTest, Info, "MaterialIR IfThenElse‚ÜíAlbedo BlinnPhong: compile + GPU link PASSED.");
+            ME_LOG(LogTest, Info, "MaterialIR IfThenElse?Albedo BlinnPhong: compile + GPU link PASSED.");
             return true;
         }
 
@@ -652,6 +652,75 @@ namespace minEngine
             }
 
             ME_LOG(LogTest, Info, "MaterialIR TextureSample dual-output: compile + GPU link PASSED.");
+            return true;
+        }
+
+        bool VerifyVertexColorUnlit(const MaterialCompileContext& ctx)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& vertexColor = graph.AddNode<MaterialGraphNodeDef_VertexColor>();
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+            const MaterialShadingModel shadingModel = MaterialShadingModel::Unlit;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            // RGB (float3) ? Albedo; RGBA remains available for Mask / opacity paths.
+            if (!graph.ConnectToMaterialProperty(
+                    vertexColor,
+                    1,
+                    outputNode,
+                    MP_Albedo,
+                    shadingModel,
+                    blendMode))
+            {
+                ME_LOG(LogTest, Error, "MaterialIR VertexColor RGB?Albedo: failed to connect.");
+                return false;
+            }
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_LOG(LogTest, Error, "MaterialIR VertexColor diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            bool passed = AssertTrue(compiled.UsesVertexColor, "UsesVertexColor flag")
+                && AssertAllContains(compiled.FullVertexShader, {
+                    { "layout(location = 4) in vec4 a_Color", "canonical Color attribute" },
+                    { "out vec4 v_Color", "vertex color varying out" },
+                    { "v_Color = a_Color", "copy Color to varying" },
+                })
+                && AssertAllContains(compiled.FullFragmentShader, {
+                    { "in vec4 v_Color", "fragment color varying in" },
+                })
+                && AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
+                    { "v_Color", "fragment body reads vertex color" },
+                });
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_LOG(LogTest, Error, "MaterialIR VertexColor content check FAILED.");
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_LOG(LogTest, Error, "MaterialIR VertexColor GPU compile FAILED.");
+                return false;
+            }
+
+            ME_LOG(LogTest, Info, "MaterialIR VertexColor?Albedo Unlit: compile + GPU link PASSED.");
             return true;
         }
 
@@ -992,19 +1061,19 @@ namespace minEngine
 
         bool VerifyEngineIBLEnvironmentInit()
         {
-            ME_LOG(LogTest, Info, "MaterialIR IBL environment: skipped (F03-M4 P0 ‚Ä?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL environment: skipped (F03-M4 P0 ù?EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLEnvironmentFallbackChain()
         {
-            ME_LOG(LogTest, Info, "MaterialIR IBL fallback chain: skipped (F03-M4 P0 ‚Ä?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL fallback chain: skipped (F03-M4 P0 ù?EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLGpuConvolutionAndPrefilter()
         {
-            ME_LOG(LogTest, Info, "MaterialIR IBL GPU passes: skipped (F03-M4 P0 ‚Ä?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL GPU passes: skipped (F03-M4 P0 ù?EnvMap removed from engine link).");
             return true;
         }
 
@@ -1251,6 +1320,11 @@ namespace minEngine
         }
 
         if (!VerifyTextureSampleSharedByTwoOutputs(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyVertexColorUnlit(ctx))
         {
             return false;
         }
