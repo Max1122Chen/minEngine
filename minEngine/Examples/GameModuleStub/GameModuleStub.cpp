@@ -1,4 +1,7 @@
-// Sample module entry + touch reflected types so aggressive LTO/GC keeps registration TUs.
+// Sample module entry: fixed MinEngine_GameModuleEntry (BUILD-F01 S07) + touch
+// reflected types so aggressive LTO/GC keeps registration TUs.
+
+#include "Runtime/Core/Module/MinEngineGameModuleEntry.h"
 
 #include "StubGameInstance.h"
 #include "StubGameInstanceSubsystem.h"
@@ -13,11 +16,14 @@
 #    define GAMEMODULESTUB_API __attribute__((visibility("default")))
 #endif
 
-extern "C" GAMEMODULESTUB_API int MinEngine_GameModuleStub_Marker(void)
+MINENGINE_IMPLEMENT_GAME_MODULE_ENTRY(GAMEMODULESTUB_API)
+
+// Keep type TUs alive under LTO (optional; Entry alone is enough for force-load).
+extern "C" GAMEMODULESTUB_API int MinEngine_GameModuleStub_TouchReflectedTypes(void)
 {
     (void)sizeof(GameModuleStub::StubGamePrimitiveComponent);
     (void)sizeof(GameModuleStub::StubGameInstance);
     (void)sizeof(GameModuleStub::StubGameInstanceSubsystem);
     (void)sizeof(GameModuleStub::StubTickableWorldSubsystem);
-    return 1;
+    return MinEngine_GameModuleEntry();
 }

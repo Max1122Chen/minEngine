@@ -1,4 +1,6 @@
-// {{PROJECT_NAME}} game module entry (generated template).
+// {{PROJECT_NAME}} game module entry (BUILD-F01 S07 force-load contract).
+
+#include "Runtime/Core/Module/MinEngineGameModuleEntry.h"
 
 #if defined(_WIN32) && defined({{GAME_MODULE_NAME}}_BUILD)
 #    define {{GAME_MODULE_NAME}}_API __declspec(dllexport)
@@ -8,7 +10,4 @@
 #    define {{GAME_MODULE_NAME}}_API __attribute__((visibility("default")))
 #endif
 
-extern "C" {{GAME_MODULE_NAME}}_API int {{GAME_MODULE_NAME}}_ModuleMarker(void)
-{
-    return 1;
-}
+MINENGINE_IMPLEMENT_GAME_MODULE_ENTRY({{GAME_MODULE_NAME}}_API)

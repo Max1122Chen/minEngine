@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-14 (CORE-F35 引擎侧 Done)
+Last updated: 2026-10-15 (BUILD-F01 S07 Done)
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,14 +11,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** 可选（F33 review / ASSET-F04）。F34 / F35 / BUILD-F01 **Done**（F35-S04 minCraft 后置）。
+**Primary：** 可选（F33 review / ASSET-F04）。F34 / F35 / BUILD-F01 **Done**（F35-S04 minCraft 后置；外仓可迁 Entry 替 Marker）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
 | 1 | ASSET-F04 | CB Workflow + Automation | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
 | — | CORE-F35 | GI 会话中枢 · 项目可选派生类 | **Done**（S01–S03；S04 Deferred） | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) |
-| — | BUILD-F01 | 产品构建链 · Editor/Game · 模板 · Stage | **Done**（S01–S06） | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) |
+| — | BUILD-F01 | 产品构建链 · Editor/Game · 模板 · Stage | **Done**（S01–S07） | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) |
 | — | CORE-F34 | GameInstance · Subsystem | **Done**（S00–S06） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
 | — | ASSET-F06 | AssetManager Facade 重构 | **Done** | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) |
 | — | ASSET-F05 | Texture2D cook 资产 | **Done** | [Design](./Asset/ASSET-F05_TEXTURE_COOKED_ASSET_DESIGN.md) |
@@ -27,7 +27,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）F33 个人 review；（2）ASSET-F04 人手验收；（3）可选 minCraft F35-S04 派生 GI。F34 S07 LocalPlayer **不排期**。
+**下一动作：**（1）F33 个人 review；（2）ASSET-F04 人手验收；（3）可选 minCraft 迁 `MinEngine_GameModuleEntry` / F35-S04 派生 GI。F34 S07 LocalPlayer **不排期**。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）。
 

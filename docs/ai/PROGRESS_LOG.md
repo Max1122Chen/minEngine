@@ -1,3 +1,15 @@
+## 2026-10-15 — BUILD-F01 S07：GameModuleEntry 强制加载
+
+- **Scope:** 引擎收口「游戏 SHARED 进进程」；去掉各游戏手写 Marker 的推荐路径
+- **Completed:**
+  - `MinEngineGameModuleEntry.h` + `MINENGINE_IMPLEMENT_GAME_MODULE_ENTRY`
+  - `minengine_link_game_module`：`-Wl,-uMinEngine_GameModuleEntry`（CACHE INTERNAL 符号名；避免 CMake 拆逗号 / include_guard 空串）
+  - GameModuleStub + Launcher 模板 `Module.cpp` 实现 Entry
+  - SampleGame / SampleEditor PE 导入表含 `libGameModuleStubd.dll` + `MinEngine_GameModuleEntry`
+- **Caveat:** 若 `libMaximumEditorLibd.a` 成员残缺（Windows `ar` 长命令行），删 `.a` 后重建即可
+- **Verification:** build SampleGame/SampleEditor/Editor；`objdump -p` 导入表
+- **Next:** 可选 minCraft 迁 Entry；或 F33 review / ASSET-F04
+
 ## 2026-10-14 — CORE-F35：GI 中枢 + 项目可选派生类
 
 - **Scope:** Hub vs Subsystem；`ProjectSettings.GameInstanceClass`；Standalone/PIE 按类创建

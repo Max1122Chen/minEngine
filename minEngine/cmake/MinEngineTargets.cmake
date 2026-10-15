@@ -3,6 +3,44 @@
 
 include_guard(GLOBAL)
 
+# Fixed C symbol every GAME_MODULE SHARED must export (see MinEngineGameModuleEntry.h).
+# CACHE INTERNAL: include_guard(GLOBAL) skips re-include; a plain set() would live only
+# in the first includer's directory scope (Editor/), leaving SampleGameHost empty.
+set(MINENGINE_GAME_MODULE_ENTRY_SYMBOL "MinEngine_GameModuleEntry" CACHE INTERNAL
+    "C export forced by host link (-u /INCLUDE) so game DLL stays in PE import table")
+
+# Link a game SHARED into a host so the DLL is loaded at process start (ME_CLASS regs).
+function(minengine_link_game_module HOST_TARGET GAME_MODULE)
+    if(NOT TARGET "${HOST_TARGET}")
+        message(FATAL_ERROR "minengine_link_game_module: host '${HOST_TARGET}' missing")
+    endif()
+    if(NOT TARGET "${GAME_MODULE}")
+        message(FATAL_ERROR "minengine_link_game_module: GAME_MODULE '${GAME_MODULE}' missing")
+    endif()
+
+    if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # --no-as-needed alone is insufficient when the host references zero symbols.
+        # Attach the name to -u (no comma): CMake splits "-Wl,-u,sym" and drops the name.
+        target_link_libraries(${HOST_TARGET} PRIVATE
+            "-Wl,--no-as-needed"
+            ${GAME_MODULE}
+            "-Wl,--as-needed"
+        )
+        target_link_options(${HOST_TARGET} PRIVATE
+            "-Wl,-u${MINENGINE_GAME_MODULE_ENTRY_SYMBOL}"
+        )
+    elseif(MSVC)
+        target_link_libraries(${HOST_TARGET} PRIVATE ${GAME_MODULE})
+        target_link_options(${HOST_TARGET} PRIVATE
+            "/INCLUDE:${MINENGINE_GAME_MODULE_ENTRY_SYMBOL}"
+        )
+    else()
+        target_link_libraries(${HOST_TARGET} PRIVATE ${GAME_MODULE})
+    endif()
+
+    add_dependencies(${HOST_TARGET} ${GAME_MODULE})
+endfunction()
+
 # minengine_add_game_executable(<name>
 #   SOURCES <files...>
 #   [GAME_MODULE <target>]
@@ -35,22 +73,7 @@ function(minengine_add_game_executable TARGET_NAME)
     )
     target_link_libraries(${TARGET_NAME} PRIVATE minEngine)
     if(ARG_GAME_MODULE)
-        if(NOT TARGET "${ARG_GAME_MODULE}")
-            message(FATAL_ERROR
-                "minengine_add_game_executable(${TARGET_NAME}): GAME_MODULE '${ARG_GAME_MODULE}' not a target")
-        endif()
-        # MinGW/ld --as-needed drops unreferenced SHARED deps; ME_CLASS static
-        # registration then never runs. Keep the game DLL in the link.
-        if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            target_link_libraries(${TARGET_NAME} PRIVATE
-                "-Wl,--no-as-needed"
-                ${ARG_GAME_MODULE}
-                "-Wl,--as-needed"
-            )
-        else()
-            target_link_libraries(${TARGET_NAME} PRIVATE ${ARG_GAME_MODULE})
-        endif()
-        add_dependencies(${TARGET_NAME} ${ARG_GAME_MODULE})
+        minengine_link_game_module(${TARGET_NAME} ${ARG_GAME_MODULE})
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE:${ARG_GAME_MODULE}>"
@@ -95,21 +118,7 @@ function(minengine_add_editor_executable TARGET_NAME)
     )
     target_link_libraries(${TARGET_NAME} PRIVATE MaximumEditorLib)
     if(ARG_GAME_MODULE)
-        if(NOT TARGET "${ARG_GAME_MODULE}")
-            message(FATAL_ERROR
-                "minengine_add_editor_executable(${TARGET_NAME}): GAME_MODULE '${ARG_GAME_MODULE}' not a target")
-        endif()
-        # See minengine_add_game_executable: keep game DLL under --as-needed.
-        if(MINGW OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            target_link_libraries(${TARGET_NAME} PRIVATE
-                "-Wl,--no-as-needed"
-                ${ARG_GAME_MODULE}
-                "-Wl,--as-needed"
-            )
-        else()
-            target_link_libraries(${TARGET_NAME} PRIVATE ${ARG_GAME_MODULE})
-        endif()
-        add_dependencies(${TARGET_NAME} ${ARG_GAME_MODULE})
+        minengine_link_game_module(${TARGET_NAME} ${ARG_GAME_MODULE})
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE:${ARG_GAME_MODULE}>"

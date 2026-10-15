@@ -6,7 +6,7 @@
 - **Complexity:** `L3`
 - **Status:** `Done`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-14`（S05 minCraft 迁项目根 Done；Feature 收口）
+- **Last updated:** `2026-10-15`（S07 Done：GameModuleEntry + `-u` 强制加载）
 - **Related:**
   - 取代/收敛权宜：[ED-F20](../../Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md)（引擎反向 add 游戏）、KeepAlive/Marker
   - 对称链接文档：[ED-F21](../../Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)
@@ -246,13 +246,33 @@ Launcher `create`：复制 + 替换 → configure/build 两个 exe；文档写�
 | **S04** | `package-game` Stage 最小拷贝（Sample + 模板） | **Done**（`package-SampleGame` → Staging） |
 | **S05** | minCraft 迁项目根；双 exe | **Done**（外仓 `ENGINE_ROOT` + `MinCraftGame`/`MinCraftEditor`；产物 `MinCraft.exe`） |
 | **S06** | 移除 `MINENGINE_GAME_DIR` / KeepAlive | **Done** |
+| **S07** | 游戏模块强制进进程（固定 `MinEngine_GameModuleEntry` + 宿主 `-u`） | **Done** |
+
+### S07 — Game module force-load（设计钉死）
+
+**问题：** MinGW 下宿主即使 `link` 了游戏 SHARED，若**零符号引用**，`--no-as-needed` 仍可能不把 DLL 写入 PE 导入表 → DLL 不加载 → `ME_CLASS` 静态注册不跑。各游戏手写 `*_ModuleMarker` + 宿主调用是权宜。
+
+**机制（引擎收口）：**
+
+| 角色 | 约定 |
+|------|------|
+| 游戏 SHARED | 导出固定 C 符号 `MinEngine_GameModuleEntry`（宏 `MINENGINE_IMPLEMENT_GAME_MODULE_ENTRY(API)`） |
+| `minengine_add_*_executable(... GAME_MODULE …)` | GNU/MinGW/Clang：`--no-as-needed` + **`-Wl,-uMinEngine_GameModuleEntry`**（符号贴在 `-u` 后、无逗号；CMake 会拆 `-Wl,-u,sym`）；MSVC：`/INCLUDE:MinEngine_GameModuleEntry` |
+| 符号名变量 | `MINENGINE_GAME_MODULE_ENTRY_SYMBOL` 用 **CACHE INTERNAL**（`include_guard(GLOBAL)` 下目录作用域 `set()` 会让后 includer 看到空串） |
+| 宿主源码 | **不必**再手调 Marker（Stub 可选 `TouchReflectedTypes` 防 LTO） |
+
+**落地：** `MinEngineGameModuleEntry.h`；`GameModuleStub` + 模板 `Module.cpp`；SampleGame/SampleEditor PE 导入表含 `libGameModuleStubd.dll` 且导入 `MinEngine_GameModuleEntry`。
+
+**非目标：** LoadLibrary 热插拔；改反射发现算法；强制每个模块调 `StaticClass`。
+
+**验证：** SampleEditor/SampleGame `objdump -p` 导入表含游戏 DLL + Entry 符号 — **Done**（2026-10-15）。
 
 ## Verification Strategy
 
 - 干净 clone：仅引擎 → Sample Editor + Sample Game 可编。  
 - Launcher create → configure → build 两 exe。  
 - `package-game` → Staging 含 Game exe + DLL。  
-- 无 KeepAlive TU；显式 link 可见。  
+- 无 KeepAlive TU；显式 link 可见；**S07：导入表含 GAME_MODULE DLL**。  
 - `verify.ps1` 默认无外仓游戏；Sample 可选 job。
 
 ## Open Questions
@@ -283,10 +303,11 @@ Launcher `create`：复制 + 替换 → configure/build 两个 exe；文档写�
 ## Acceptance Checklist
 
 - [x] Design Review（Ready with deferred）
-- [ ] 新项目不依赖引擎反向 add 游戏  
-- [ ] 模板含 Editor + Game 两可执行目标  
-- [ ] `package-game` Stage 最小可用  
-- [ ] Launcher 可从模板生成可配置工程  
-- [ ] KeepAlive/Marker 从推荐路径消失  
-- [ ] Handbook / BOOTSTRAP 更新  
-- [x] CORE-F34 开工前本 Feature 主链（至少 S02–S04）可用  
+- [x] 新项目不依赖引擎反向 add 游戏（S06）
+- [x] 模板含 Editor + Game 两可执行目标（S03）
+- [x] `package-game` Stage 最小可用（S04）
+- [x] Launcher 可从模板生成可配置工程（S03）
+- [x] KeepAlive/Marker 从推荐路径消失（S06 退役 + S07 Entry/`-u`）
+- [ ] Handbook / BOOTSTRAP 更新（可选后置）
+- [x] CORE-F34 开工前本 Feature 主链（至少 S02–S04）可用
+- [x] S07：宿主 PE 导入表含 GAME_MODULE DLL（Sample 已验） 
