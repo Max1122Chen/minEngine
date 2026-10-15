@@ -213,7 +213,7 @@ namespace minEngine
             ME_LOG(
                 LogEditor,
                 Info,
-                "Editor: automation pipe requested ('{}'); Host Listen/ready-file belong to ED-F17.",
+                "Editor: automation pipe requested ('{}'); Host Listen/ready-file are Editor automation Host responsibilities.",
                 *m_AutomationPipeName);
         }
     }
@@ -391,7 +391,7 @@ namespace minEngine
         if (RHIBackendSelection::IsVulkan())
         {
             RenderSystem::Get().GetRHI()->RHISetBackbufferClearColor(Vector3(0.1f, 0.1f, 0.1f));
-            ME_LOG(LogEditor, Info, "Editor: Vulkan full Editor path (ED-F01); scene renders to viewport RT.");
+            ME_LOG(LogEditor, Info, "Editor: Vulkan full Editor path; scene renders to viewport RT.");
         }
 
         ImGui::CreateContext();

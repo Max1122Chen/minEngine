@@ -189,8 +189,8 @@ namespace minEngine
 
 
 
-        // ED-F01-S06: Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
-        // BUG-EDITOR-002 workaround: omit EnableDebugDraw until EnqueueBox cold-start AV is fixed.
+        // Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
+        // Workaround: omit EnableDebugDraw until EnqueueBox cold-start AV is fixed.
         const SceneDrawFlags flags =
             SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
             SceneDrawFlags::EnableSkyBox;
@@ -936,7 +936,7 @@ namespace minEngine
             }
         }
 
-        // Cursor hide/clip applied in EndFrame via ApplyPointerPolicy (ED-F23).
+        // Cursor hide/clip applied in EndFrame via ApplyPointerPolicy.
     }
 
 

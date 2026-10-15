@@ -313,7 +313,7 @@ namespace minEngine
         MaterialGraphNodeDef_TextureSample();
         void BuildIR(MIREmitter& emitter) override;
 
-        /** false = Inherit Texture Preferred / DefaultLinearRepeat (RND-F22). */
+        /** false = Inherit Texture Preferred/DefaultLinearRepeat. */
         ME_PROPERTY()
         bool bOverrideSampler = false;
 

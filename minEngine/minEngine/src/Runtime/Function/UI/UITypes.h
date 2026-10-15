@@ -63,7 +63,7 @@ namespace minEngine
     };
 
     /**
-     * ScreenUI ImageComponent source mode (UI-F06).
+     * ScreenUI ImageComponent source mode.
      * Raw = full Texture2D; Sprite = Sprite runtime texture + UV rect.
      */
     ME_ENUM()

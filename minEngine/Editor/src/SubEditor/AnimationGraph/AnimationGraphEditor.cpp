@@ -93,7 +93,7 @@ namespace minEngine
 
     void AnimationGraphEditor::OnExitMode()
     {
-        // Keep graph sessions alive for multi-document host (ED-F11).
+        // Keep graph sessions alive for multi-document host.
         StashActiveSession();
         ClearSelection();
     }

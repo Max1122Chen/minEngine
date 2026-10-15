@@ -305,7 +305,7 @@ namespace minEngine
                         }
                     }
 
-                    // Promotes Root and rebinds GO-parent / child-GO Roots (CORE-F09).
+                    // Promotes Root and rebinds GO-parent/child-GO Roots.
                     SetRootComponent(newRootCandidate);
 
                     if (newRootCandidate != nullptr)
@@ -376,7 +376,7 @@ namespace minEngine
             newIndex = count - 1;
         }
 
-        // Keep Root pinned (Design ED-F05 §10.4): non-root may not land at/before Root.
+        // Keep Root pinned (Design §10.4): non-root may not land at/before Root.
         if (m_RootComponent != nullptr)
         {
             const size_t rootIndex = FindComponentIndex(*m_RootComponent);

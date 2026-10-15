@@ -24,7 +24,7 @@ namespace minEngine
         m_PhysicalDims.clear();
         m_BoundPhysicalTextures = nullptr;
         m_ActiveViewKey = {};
-        // RND-F17: keep per-view physical caches across topology rebuilds.
+        // keep per-view physical caches across topology rebuilds.
         m_SwapchainPhysicalIndex = RDGResource::kUnused;
         m_IsBaked = false;
         m_ImplSetupDone = false;
@@ -333,7 +333,7 @@ namespace minEngine
         }
         else
         {
-            throw std::logic_error("RenderGraph::Bake: InputRelative size is deferred (RND-F07).");
+            throw std::logic_error("RenderGraph::Bake: InputRelative size is deferred.");
         }
 
         if (dims.Format == TextureFormat::None)

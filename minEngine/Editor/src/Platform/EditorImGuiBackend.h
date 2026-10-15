@@ -7,7 +7,7 @@ namespace minEngine
     class RHI;
     class VulkanRHI;
 
-    /** ED-F01: OpenGL vs Vulkan ImGui renderer backend selection. */
+    /** OpenGL vs Vulkan ImGui renderer backend selection. */
     class EditorImGuiBackend
     {
     public:

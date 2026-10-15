@@ -12,7 +12,7 @@ namespace minEngine
     DECLARE_MULTICAST_DELEGATE(DOnUIDrop);
 
     /**
-     * Marks a ScreenUI Widget GO as a drop target (UI-F05).
+     * Marks a ScreenUI Widget GO as a drop target.
      * Listeners use UISystem::GetDragSession() for source / UserId context.
      */
     ME_CLASS()

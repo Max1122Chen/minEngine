@@ -45,7 +45,7 @@ namespace minEngine
 
     void TranslucencyPass::Prepare(RenderGraph& graph)
     {
-        // RND-F20: queues sorted in ForwardRenderer::SortMeshDrawQueues before Pass assignment.
+        // queues sorted in ForwardRenderer::SortMeshDrawQueues before Pass assignment.
         m_DrawPackets.clear();
         if (!pipeline)
         {
@@ -117,6 +117,6 @@ namespace minEngine
 
     void TranslucencyPass::SortDrawCommands()
     {
-        // RND-F20: sorting moved to ForwardRenderer::SortMeshDrawQueues (world Bounds distance).
+        // sorting moved to ForwardRenderer::SortMeshDrawQueues (world Bounds distance).
     }
 }

@@ -255,7 +255,7 @@ namespace minEngine
 
     void ForwardRenderer::EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height)
     {
-        // RND-F07 Phase 1: do not allocate frame post buffers.
+        // Phase 1: do not allocate frame post buffers.
         (void)rhi;
         (void)width;
         (void)height;
@@ -393,7 +393,7 @@ namespace minEngine
             BuildFrameRenderGraph(enablePostProcess, presentToBackBuffer, enableDebugDraw);
         }
 
-        // RND-F17: bind per-view physical cache after topology rebuild (Reset unbinds).
+        // bind per-view physical cache after topology rebuild (Reset unbinds).
         m_FrameRenderGraph.SetActiveViewKey(desc.ViewId, desc.RenderTarget);
 
         if (m_FrameRenderGraph.GetBackbufferWidth() != width
@@ -404,7 +404,7 @@ namespace minEngine
 
         AssignShadowGraphPassCommands(ctx);
 
-        // RND-F12: Granite-aligned �?re-run setup_dependencies + pass order every frame.
+        // Granite-aligned �?re-run setup_dependencies + pass order every frame.
         const bool enableSky = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox);
         m_BasePass.SetClearSceneTargets(!enableSky);
 
@@ -644,7 +644,7 @@ namespace minEngine
 
         UpdatePerFrameUBO(ctx);
 
-        // RND-F08: allocate graph shadow maps before Set1 samples them.
+        // allocate graph shadow maps before Set1 samples them.
         SetupFrameRenderGraph(cmdList, desc, ctx);
         BindGraphShadowTextures(ctx);
 

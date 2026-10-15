@@ -60,7 +60,7 @@ namespace minEngine
 
         bool IsNavigating() const { return m_IsNavigating; }
 
-        /** ED-F23: PIE pointer captured into game (hidden+clip); false when Released to Editor. */
+        /** PIE pointer captured into game (hidden+clip); false when Released to Editor. */
         bool IsPlayPointerCaptured() const;
 
         void SetInputBlockedByGizmo(bool blocked);

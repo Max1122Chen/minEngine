@@ -68,7 +68,7 @@ namespace minEngine
             .FileDialogFilterLabel = "Texture2D (*.metex)"});
         m_AssetTypeIdByClass[Texture2D::StaticClass()] = "Texture2D";
 
-        // Engine-owned geometry only. FBX/glTF are Import Sources (ASSET-F01), not AssetTypes.
+        // Engine-owned geometry only. FBX/glTF are Import Sources, not AssetTypes.
         RegisterType(AssetTypeDescriptor{
             .AssetTypeId = "StaticMesh",
             .RuntimeClassName = GetClassName<StaticMesh>(),

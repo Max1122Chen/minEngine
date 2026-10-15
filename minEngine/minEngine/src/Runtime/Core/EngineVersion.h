@@ -32,7 +32,7 @@ namespace minEngine
     // Single source of truth for this engine build.
     inline constexpr EngineVersion kEngineVersion{0, 0, 9};
 
-    // Disk JSON schema algebra (CORE-F10/F18). Bump only for breaking on-disk shape.
+    // Disk JSON schema algebra. Bump only for breaking on-disk shape.
     inline constexpr uint32_t kDiskSchemaVersion = 1u;
 
     inline EngineVersion GetEngineVersion()

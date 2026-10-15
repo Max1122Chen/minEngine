@@ -6,8 +6,8 @@
 namespace minEngine
 {
     /// Type-erased script/runtime callable stored in Dynamic multicast slots.
-    /// Named to avoid colliding with ME_FUNCTION(ScriptCallable) specifier (CORE-F02).
-    /// Core must not depend on sol2; Lua fills this in CORE-F21.
+    /// Named to avoid colliding with ME_FUNCTION(ScriptCallable) specifier.
+    /// Core must not depend on sol2; Lua runtime fills this hook.
     class CallableScriptFunction
     {
     public:

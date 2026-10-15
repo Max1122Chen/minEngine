@@ -402,7 +402,7 @@ namespace minEngine
             {
                 g_SkippedCollectingOnlyRegistrationTests = true;
                 ME_LOG(LogTest, Info, 
-                    "ReflectionFunctionTest: skipping A6/A7 (reflection already finalized; TEST-F03 fixture B).");
+                    "ReflectionFunctionTest: skipping A6/A7 (reflection already finalized; fixture B).");
             }
 
             if (!EnsureReflectionReadyWithFunctionFixtures())

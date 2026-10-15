@@ -8,7 +8,7 @@
 
 namespace minEngine::Serialization
 {
-    // Disk JSON (CORE-F10/F18) recommended: skipUnknownField=true, strictTypeCheck=false,
+    // Disk JSON recommended: skipUnknownField=true, strictTypeCheck=false,
     // writeSchemaVersion=true, writeEngineVersion=true.
     // Transient Binary buffer / PIE: Serializer forces skipUnknownField=false and strictTypeCheck=true.
     struct MINENGINE_API SerializerOptions

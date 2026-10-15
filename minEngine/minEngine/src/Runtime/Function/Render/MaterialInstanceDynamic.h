@@ -10,7 +10,7 @@ namespace minEngine
     /**
      * Runtime-created material instance (UE UMaterialInstanceDynamic analogue).
      * Reuses MaterialInstance storage and InstanceMaterialRenderProxy; usually not serialized.
-     * Prefer this for per-frame Set*; use Material for asset defaults; MIC (.memi) is MAT-F06.
+     * Prefer this for per-frame Set*; use Material for asset defaults; MIC (.memi) is.
      */
     class MaterialInstanceDynamic : public MaterialInstance
     {

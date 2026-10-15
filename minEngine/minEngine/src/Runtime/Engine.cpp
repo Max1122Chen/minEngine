@@ -115,7 +115,7 @@ namespace minEngine
             // Eager-init DebugDrawService on the main thread before efsw / first frame enqueue.
             (void)DebugDrawService::Get();
 
-            // Sky / EnvMap shaders and validation resources — required on every RHI (ED-F01 VK parity).
+            // Sky/EnvMap shaders and validation resources — required on every RHI (VK parity).
             if (m_RenderSystem && m_EnginePathConfigLoaded)
             {
                 ME_PROFILE_SCOPE("Engine.LoadEngineRenderingAssets");

@@ -146,9 +146,9 @@ namespace minEngine
         EnginePipelineLayouts m_PipelineLayouts;
         uint64_t m_FrameIndex = 0;
         bool m_EnablePresentPass = true;
-        /** RND-F19: cull proxies against main-camera frustum before Collect (default on). */
+        /** cull proxies against main-camera frustum before Collect (default on). */
         bool m_bFrustumCullMainView = true;
-        /** RND-F20: sort Opaque/Translucent queues before Pass consume (default on). */
+        /** sort Opaque/Translucent queues before Pass consume (default on). */
         bool m_bSortMeshDraws = true;
 
         void BindSceneRenderTarget(SceneRenderTarget& target);

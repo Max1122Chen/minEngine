@@ -44,7 +44,7 @@ namespace minEngine
             switch (sceneRenderer)
             {
             case SceneRendererKind::Manual:
-                ME_LOG(LogRender, Info, "RenderSystem: using ManualRenderer (RND-F13 diagnostic; no RenderGraph).");
+                ME_LOG(LogRender, Info, "RenderSystem: using ManualRenderer (diagnostic; no RenderGraph).");
                 return std::make_unique<ManualRenderer>();
             case SceneRendererKind::Forward:
             default:

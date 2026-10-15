@@ -688,7 +688,7 @@ namespace minEngine
 
         glBindTexture(target, textureId);
         glGenerateMipmap(target);
-        // RND-F22: sampling filter lives on RHISampler, not the texture object.
+        // sampling filter lives on RHISampler, not the texture object.
         glBindTexture(target, 0);
     }
 

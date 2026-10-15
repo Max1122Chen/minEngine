@@ -381,7 +381,7 @@ namespace minEngine
         {
             *outError =
                 "glslangValidator not found. Set VULKAN_SDK or configure MINENGINE_GLSLANG_VALIDATOR "
-                "(RND-F05 ShaderCompiler).";
+                "(ShaderCompiler).";
         }
         return false;
     }

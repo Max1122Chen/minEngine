@@ -57,7 +57,7 @@ namespace minEngine
     }
 
     TEST_CASE("game-module-stub-subsystem [game-module-stub]" *
-              doctest::description("CORE-F34 S06: external GI/World subsystem discovery"))
+              doctest::description("external GI/World subsystem discovery"))
     {
         EngineReflectionFixture reflectionFixture;
         REQUIRE(reflectionFixture.IsReflectionReady());

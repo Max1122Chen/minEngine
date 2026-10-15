@@ -77,7 +77,7 @@ namespace minEngine
     class SceneRenderTarget;
 
     /**
-     * RND-F17: physical attachment reuse key (ViewId AND SceneRenderTarget*).
+     * physical attachment reuse key (ViewId AND SceneRenderTarget*).
      * Both must match to reuse; partial match is logged and treated as a cache miss.
      */
     struct RDGViewKey

@@ -192,7 +192,7 @@ namespace minEngine
     }
 
     
-    // BUG-ASSET-002: AssetSerializeHelper must use object.GetClass(), not MEObject::StaticClass().
+    // AssetSerializeHelper must use object.GetClass, not MEObject::StaticClass.
     TEST_CASE("prefab scene AssetSerializeHelper keeps game objects [smoke]")
     {
         PrefabTestScope scope;

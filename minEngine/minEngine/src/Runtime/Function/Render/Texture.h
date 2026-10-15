@@ -46,7 +46,7 @@ namespace minEngine
         TextureFiltering GetFiltering() const { return m_Filtering; }
         uint32_t GetChannels() const { return m_Channels; }
 
-        /** Preferred sampling when Material TextureSample inherits (RND-F22). */
+        /** Preferred sampling when Material TextureSample inherits. */
         const RHISamplerDesc& GetPreferredSamplerDesc() const { return m_PreferredSamplerDesc; }
         void SetPreferredSamplerDesc(const RHISamplerDesc& desc);
 

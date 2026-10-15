@@ -121,7 +121,7 @@ namespace minEngine
 
         /**
          * Resolve project (or override) GameInstance class. Always non-null; invalid names
-         * fall back to GameInstance. Standalone and PIE share this path (CORE-F35).
+         * fall back to GameInstance. Standalone and PIE share this path.
          */
         const Reflection::MEClass* ResolveGameInstanceClass() const;
 

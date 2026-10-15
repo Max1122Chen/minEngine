@@ -20,9 +20,9 @@ namespace minEngine
     class SceneRenderTarget;
 
     /**
-     * Granite-style frame render graph (RND-F07).
+     * Granite-style frame render graph.
      * Owns logical→physical texture mapping after Bake/SetupAttachments.
-     * RND-F17: physical textures are cached per ViewKey (ViewId + SceneRenderTarget*).
+     * physical textures are cached per ViewKey (ViewId + SceneRenderTarget*).
      */
     class RenderGraph
     {

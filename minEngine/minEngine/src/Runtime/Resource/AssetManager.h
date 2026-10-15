@@ -50,20 +50,20 @@ namespace minEngine
         AssetMeta Meta;
     };
 
-    // ASSET-F02: untyped Load dispatch by AssetTypeId (replaces if-chain in AssetManager).
+    // untyped Load dispatch by AssetTypeId (replaces if-chain in AssetManager).
     using AssetLoadHandlerFn = std::shared_ptr<Asset> (*)(
         AssetManager& manager,
         const AssetMeta& meta,
         std::string& outErrorMessage);
 
-    // ASSET-F06 S03: untyped Save dispatch (Saver). No template specialization spine.
+    // S03: untyped Save dispatch (Saver). No template specialization spine.
     using AssetSaveHandlerFn = bool (*)(
         const AssetManager& manager,
         const AssetMeta& meta,
         const Asset& asset,
         std::string& outError);
 
-    // ASSET-F06 S06: Create belongs to Saver (optional). Empty = cannot Create.
+    // S06: Create belongs to Saver (optional). Empty = cannot Create.
     using AssetCreateHandlerFn = std::shared_ptr<Asset> (*)(
         AssetManager& manager,
         const std::string& assetName,
@@ -132,7 +132,7 @@ namespace minEngine
         const ImportProductDescriptor* FindImportProduct(std::string_view productId) const;
         const std::vector<ImportProductDescriptor>& GetImportProducts() const { return m_ImportProducts; }
 
-        // ASSET-F02: dispatch by registered ProductId.
+        // dispatch by registered ProductId.
         ImportResult Import(const ImportRequest& request);
 
         // Re-cook from meta.SourcePath; overwrites product in place and keeps Guid.
@@ -216,7 +216,7 @@ namespace minEngine
 
         void MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const;
 
-        // ASSET-F08: LoadAsset<T> removed — use LoadAssetByPath/ByGUID/ByMeta + cast.
+        // LoadAsset<T> removed — use LoadAssetByPath/ByGUID/ByMeta + cast.
 
         template<typename T>
         bool SaveAsset(const std::string& path, const T& asset) const
@@ -239,7 +239,7 @@ namespace minEngine
             const std::string& directoryRel,
             std::string& outError);
 
-        // ASSET-F08: CreateAsset<T> removed — use CreateAssetByTypeId.
+        // CreateAsset<T> removed — use CreateAssetByTypeId.
 
         /** Helper for Saver Create implementations (unique Content-relative path). */
         std::string AllocateUniqueAssetRelativePath(

@@ -10,7 +10,7 @@ namespace minEngine
     class DataAssetLoader;
 
     /**
-     * Thin editable definition asset (ASSET-F07).
+     * Thin editable definition asset.
      * Game modules derive and register their own typeId + handlers; Core stays mechanism-only.
      */
     ME_CLASS()

@@ -32,7 +32,7 @@ namespace minEngine
         Stopping,
     };
 
-    /** Reason passed to GameObject/Component EndPlay (CORE-F31). */
+    /** Reason passed to GameObject/Component EndPlay. */
     enum class EEndPlayReason : uint8_t
     {
         Stopped = 0,

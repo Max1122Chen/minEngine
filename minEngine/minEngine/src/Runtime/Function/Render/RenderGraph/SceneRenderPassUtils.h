@@ -9,7 +9,7 @@
 
 namespace minEngine
 {
-    /** Declare shadow atlas read edges for lit scene passes (RND-F12-S01 / Granite generic_texture_input). */
+    /** Declare shadow atlas read edges for lit scene passes (Granite generic_texture_input). */
     inline void AddSceneLitShadowTextureInputs(RenderPass& self)
     {
         self.AddTextureInput(kRDGDirShadowAtlas);

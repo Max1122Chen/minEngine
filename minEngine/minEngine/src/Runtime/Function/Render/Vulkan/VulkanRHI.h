@@ -16,7 +16,7 @@
 namespace minEngine
 {
     /**
-     * Vulkan backend (RND-F05): frame recording + descriptor/PSO/cmd path (S07b–d).
+     * Vulkan backend: frame recording + descriptor/PSO/cmd path (S07b–d).
      * Frame sync (semaphore/fence) stays private — not exposed on RHI.
      */
     class VulkanRHI final : public RHI
@@ -87,7 +87,7 @@ namespace minEngine
         void NotifyAttachmentResourcesDiscarded() override;
 
 #if defined(MINENGINE_HAS_VULKAN)
-        /** ED-F01: Editor / ImGui integration (not part of neutral RHI contract). */
+        /** Editor/ImGui integration (not part of neutral RHI contract). */
         struct VulkanEditorFrameInfo
         {
             VkInstance Instance = VK_NULL_HANDLE;

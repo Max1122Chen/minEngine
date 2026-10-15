@@ -19,7 +19,7 @@ namespace minEngine
 
         case EPrefabEditOpKind::AddComponent:
             result.bAllowed = false;
-            result.Error = "Adding components to Prefab instances is not supported in CORE-F24 MVP.";
+            result.Error = "Adding components to Prefab instances is not supported in Prefab MVP.";
             return result;
 
         case EPrefabEditOpKind::AddTopLevelGameObject:
@@ -35,7 +35,7 @@ namespace minEngine
                 return result;
             }
             result.bAllowed = false;
-            result.Error = "Deleting mapped Prefab nodes is not supported in CORE-F24 MVP.";
+            result.Error = "Deleting mapped Prefab nodes is not supported in Prefab MVP.";
             return result;
 
         case EPrefabEditOpKind::Reparent:
@@ -65,14 +65,14 @@ namespace minEngine
             }
 
             result.bAllowed = false;
-            result.Error = "Reparenting within a Prefab instance is restricted in CORE-F24 MVP.";
+            result.Error = "Reparenting within a Prefab instance is restricted in Prefab MVP.";
             return result;
         }
 
         case EPrefabEditOpKind::RemoveComponent:
         {
             result.bAllowed = false;
-            result.Error = "Removing components from Prefab instances is not supported in CORE-F24 MVP.";
+            result.Error = "Removing components from Prefab instances is not supported in Prefab MVP.";
             return result;
         }
         }

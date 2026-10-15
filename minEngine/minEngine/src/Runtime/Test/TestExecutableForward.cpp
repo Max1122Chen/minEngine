@@ -76,7 +76,7 @@ namespace minEngine
 
         std::fprintf(
             stderr,
-            "Note: Editor.exe test mode forwards to minEngineTests.exe (see TEST-F02).\n");
+            "Note: Editor.exe test mode forwards to minEngineTests.exe.\n");
 
         std::vector<std::string> argumentStrings;
         argumentStrings.push_back(testsExecutable.string());

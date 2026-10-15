@@ -87,7 +87,7 @@ namespace minEngine
             RHIShaderBindingSetLayout* layout,
             const std::vector<RHIShaderBinding>& resources) = 0;
 
-        /** RND-F22: create or return cached sampler for desc (shared across textures). */
+        /** create or return cached sampler for desc (shared across textures). */
         virtual std::shared_ptr<RHISampler> RHIGetOrCreateSampler(const RHISamplerDesc& desc) = 0;
 
         virtual std::shared_ptr<RHIVertexInputLayout> RHICreateVertexInputLayout(

@@ -658,7 +658,7 @@ namespace minEngine
                 if (component)
                 {
                     // Reconcile runtime activation with m_bActive after deserialize.
-                    // Scene load assigns m_Owner via pending ref without SetOwner (TD-026).
+                    // Scene load assigns m_Owner via pending ref without SetOwner.
                     component->SyncActivationWithActiveFlag();
                 }
             }

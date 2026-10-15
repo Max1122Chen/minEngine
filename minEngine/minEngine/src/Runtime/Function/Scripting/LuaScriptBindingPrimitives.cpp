@@ -11,7 +11,7 @@ namespace minEngine
 {
     void RegisterLuaScriptBindingPrimitives(sol::state& state)
     {
-        // Hand-written math POD bindings (CORE-F02-S05). Not ME_STRUCT/ScriptType —
+        // Hand-written math POD bindings. Not ME_STRUCT/ScriptType
         // VectorN are glm typedefs under minEngine::Math; wrapping them is a separate domain.
 
         const auto isUsertypeRegistered = [&state](const char* name) -> bool

@@ -64,7 +64,7 @@ namespace minEngine
         RHIShaderBindingSetRef m_MaterialShaderBindingSet;
         RHITextureViewCache m_TextureViewCache;
         std::vector<std::shared_ptr<RHIShaderResourceView>> m_TextureSRVs;
-        /** Pins GetOrCreateSampler results for Binding.Sampler lifetime (RND-F22). */
+        /** Pins GetOrCreateSampler results for Binding.Sampler lifetime. */
         std::vector<RHISamplerRef> m_BoundSamplers;
         RHIBufferRef m_ScalarParamsUBO;
         uint32_t m_ScalarParamsUBOSize = 0;

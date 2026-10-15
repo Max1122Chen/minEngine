@@ -8,7 +8,7 @@
 namespace minEngine::DebugCommand
 {
     // Context for DebugCommand completion and parse adaptation only.
-    // Not the same as EditorCommand execution payload (see ED-F12 §0.5).
+    // Not the same as EditorCommand execution payload.
     struct DebugParseContext
     {
         uint64_t ActiveSessionId = 0;

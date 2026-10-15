@@ -600,7 +600,7 @@ namespace minEngine
             return {};
         }
 
-        // Default Time mode uses Push-side displayTime (TD-032); avoid per-frame localtime.
+        // Default Time mode uses Push-side displayTime; avoid per-frame localtime.
         if (m_TimestampDisplay == TimestampDisplayMode::Time)
         {
             return entry.displayTime;

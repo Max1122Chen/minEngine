@@ -10,7 +10,7 @@ namespace minEngine
 {
     class RHI;
 
-    /** Owned by SceneViewport (P2+). GPU color/depth via modern RHI only (RND-F03-S1). */
+    /** Owned by SceneViewport (P2+). GPU color/depth via modern RHI only. */
     class SceneRenderTarget
     {
     public:
@@ -24,7 +24,7 @@ namespace minEngine
         const RHITextureRef& GetDepthTexture() const { return m_DepthTexture; }
 
         /**
-         * Publish a graph-owned color texture for viewport display (RND-F07-S05).
+         * Publish a graph-owned color texture for viewport display.
          * Does not allocate; shares ownership with RenderGraph physical table.
          */
         void PublishGraphColorTexture(RHITextureRef colorTexture);

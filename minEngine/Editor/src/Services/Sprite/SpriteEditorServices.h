@@ -21,7 +21,7 @@ namespace minEngine
     class Texture2D;
 
     /**
-     * Sprite / SpriteAtlas authoring primitives (SPR-F04).
+     * Sprite/SpriteAtlas authoring primitives.
      * Undoable ops push onto the caller-provided command stack (document session when F05 opens tabs).
      * Rebuild / Save are non-undo. No ImGui / no Automation JSON parsing.
      */

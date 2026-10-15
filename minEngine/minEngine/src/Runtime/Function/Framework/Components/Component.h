@@ -67,7 +67,7 @@ namespace minEngine
         void SetMarkedForNeededEndOfFrameUpdate(ComponentMarkedForNeededEndOfFrameUpdate marked) { m_MarkedForNeededEndOfFrameUpdate = marked; }
         virtual void DoEndOfFrameUpdate() {}
 
-        /** Simulation lifecycle (CORE-F31). Orthogonal to Activate. */
+        /** Simulation lifecycle. Orthogonal to Activate. */
         void BeginPlay();
         void EndPlay(EEndPlayReason reason);
         bool HasBegunPlay() const { return m_bHasBegunPlay; }

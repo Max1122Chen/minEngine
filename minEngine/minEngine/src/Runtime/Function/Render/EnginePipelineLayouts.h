@@ -15,7 +15,7 @@ namespace minEngine
     class RHIShader;
     class RHIVertexInputLayout;
 
-    /** Engine-owned pipeline layouts (RND-F04-S01). */
+    /** Engine-owned pipeline layouts. */
     class EnginePipelineLayouts
     {
     public:

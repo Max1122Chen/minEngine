@@ -115,7 +115,7 @@ namespace minEngine
             return false;
         }
 
-        // ED-F01: Vulkan irradiance/prefilter convolution deferred; sky only needs environment cube.
+        // Vulkan irradiance/prefilter convolution deferred; sky only needs environment cube.
         if (RHIBackendSelection::IsVulkan())
         {
             m_Irradiance = m_Environment;

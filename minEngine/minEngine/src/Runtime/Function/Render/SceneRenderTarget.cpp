@@ -41,7 +41,7 @@ namespace minEngine
 
     void SceneRenderTarget::Resize(RHI* rhi, uint32_t width, uint32_t height)
     {
-        // RND-F07: size bookkeeping only; graph owns/creates frame RTs via SetupAttachments.
+        // size bookkeeping only; graph owns/creates frame RTs via SetupAttachments.
         if (!rhi || width == 0 || height == 0)
         {
             return;

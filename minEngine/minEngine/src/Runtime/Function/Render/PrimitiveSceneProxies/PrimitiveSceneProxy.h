@@ -35,7 +35,7 @@ namespace minEngine
         MaterialRenderProxy* m_MaterialProxy = nullptr;
 
         /**
-         * World-space AABB for visibility / sorting (RND-F19+).
+         * World-space AABB for visibility/sorting (+).
          * Default: component local box transformed by m_Transform.
          */
         virtual Math::Geometry::AABB ResolveWorldBounds() const;

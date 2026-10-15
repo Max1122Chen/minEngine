@@ -1062,7 +1062,7 @@ namespace minEngine
         if (newGO)
         {
             newGO->Rename("GameObject");
-            // CORE-F09: GO parenting requires a Root SceneComponent.
+            // GO parenting requires a Root SceneComponent.
             newGO->AddComponent<SceneComponent>();
             if (attachParent != nullptr)
             {

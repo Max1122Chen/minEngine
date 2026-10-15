@@ -26,7 +26,7 @@ namespace minEngine::DebugCommand
         DebugCommandStatus Status = DebugCommandStatus::Ok;
         std::string Message;
         std::vector<DebugCommandOutputLine> Lines;
-        // Machine-readable JSON object/array (ED-F12). Empty when not provided.
+        // Machine-readable JSON object/array. Empty when not provided.
         // Headless/Agent consumers must prefer this over parsing Lines.
         std::string PayloadJson;
 

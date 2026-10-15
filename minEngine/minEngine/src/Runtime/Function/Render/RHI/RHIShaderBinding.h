@@ -71,7 +71,7 @@ namespace minEngine
         uint32_t BufferOffset = 0;
         /** Byte range; 0 means use the full buffer size from Buffer->GetDesc(). */
         uint32_t BufferRange = 0;
-        /** Null uses RHI default LinearRepeat sampler (RND-F22). */
+        /** Null uses RHI default LinearRepeat sampler. */
         RHISampler* Sampler = nullptr;
     };
 

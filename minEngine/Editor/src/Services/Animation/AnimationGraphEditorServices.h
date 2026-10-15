@@ -17,7 +17,7 @@ namespace minEngine
     class IEditorContext;
 
     /**
-     * Animation graph primitives (ED-F19).
+     * Animation graph primitives.
      * Topology writes go through undo commands. No graph JSON on this type.
      */
     class AnimationGraphEditorServices

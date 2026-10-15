@@ -5,7 +5,7 @@
 namespace GameModuleStub
 {
     /**
-     * Sample session hub (CORE-F35). Set ProjectSettings.GameInstanceClass to
+     * Sample session hub. Set ProjectSettings.GameInstanceClass to
      * "GameModuleStub::StubGameInstance", or Engine::SetGameInstanceClassOverride in tests.
      */
     ME_CLASS()

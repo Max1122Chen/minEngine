@@ -13,7 +13,7 @@ namespace minEngine
     /**
      * Owns Prefab Stage Scenes keyed by asset path.
      * SceneEditor binds InspectingScene to the active stage while a Prefab document is focused.
-     * Dirty is per-stage; Undo uses the Prefab EditorDocumentSession CommandStack (ED-F11).
+     * Dirty is per-stage; Undo uses the Prefab EditorDocumentSession CommandStack.
      */
     class PrefabStageController
     {

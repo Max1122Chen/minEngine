@@ -33,7 +33,7 @@ namespace minEngine
                 return;
             }
 
-            // CORE-F21 MVP: only zero-argument Broadcast → Lua.
+            // MVP: only zero-argument Broadcast → Lua.
             if (arity != 0)
             {
                 ME_LOG(LogScript,

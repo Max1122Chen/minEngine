@@ -124,7 +124,7 @@ namespace minEngine
 
         void Configure2DTextureSampling(GLenum target, TextureFormat format, TextureUsage usage, bool generateMipmaps)
         {
-            // RND-F22: author sampling lives on RHISampler (glBindSampler). Texture object
+            // author sampling lives on RHISampler (glBindSampler). Texture object
             // keeps only attachment-safe defaults; depth still needs NEAREST for FBO completeness.
             (void)generateMipmaps;
             if (IsDepthLikeTexture(format, usage))

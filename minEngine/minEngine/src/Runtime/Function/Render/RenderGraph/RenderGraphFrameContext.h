@@ -9,7 +9,7 @@ namespace minEngine
     class SceneDrawDesc;
     class SceneRenderContext;
 
-    /** Per-frame host pointers for IRenderPass::Prepare / NeedRenderPass (RND-F07). */
+    /** Per-frame host pointers for IRenderPass::Prepare/NeedRenderPass. */
     struct RenderGraphFrameContext
     {
         const SceneDrawDesc* DrawDesc = nullptr;

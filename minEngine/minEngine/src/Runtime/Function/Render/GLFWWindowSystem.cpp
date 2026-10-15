@@ -272,7 +272,7 @@ namespace minEngine
         }
 #else
         (void)rect;
-        // Non-Win32: no ClipCursor / Raw Input equivalent wired yet (BUG-EDITOR-004 MVP is Win32-first).
+        // Non-Win32: no ClipCursor/Raw Input equivalent wired yet (MVP is Win32-first).
 #endif
     }
 

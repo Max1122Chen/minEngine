@@ -6,10 +6,10 @@
 
 namespace minEngine
 {
-    // User-facing product display name (WF-F03). Not the C++ namespace / repo path.
+    // User-facing product display name. Not the C++ namespace/repo path.
     inline constexpr const char* kProductDisplayName = "Maximum";
 
-    // Shipping editor process stem (no extension). Avoid bare "Maximum" — BUG-EDITOR-003.
+    // Shipping editor process stem (no extension). Avoid colliding with bare product display name.
     inline constexpr const char* kProductEditorExecutableStem = "MaximumEditor";
 
     inline const char* GetProductDisplayName()

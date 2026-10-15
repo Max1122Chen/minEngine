@@ -166,7 +166,7 @@ namespace minEngine
             return false;
         }
 
-        // Swallow self-triggered watcher events (BUG-ASSET-001).
+        // Swallow self-triggered watcher events.
         EditorFilesystemMutationPass::NoteMutatedAbsolutePath(absolutePath.parent_path());
         EditorFilesystemMutationPass::NoteMutatedAbsolutePath(absolutePath);
         EditorFilesystemMutationPass::NoteMutatedAbsolutePath(metaAbsolutePath);

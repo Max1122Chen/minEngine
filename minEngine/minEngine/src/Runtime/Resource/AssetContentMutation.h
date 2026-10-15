@@ -8,7 +8,7 @@ namespace minEngine
 
     /**
      * Content workspace mutations: disk + .meta + AssetRegistry + load-cache invalidation.
-     * Not a generic filesystem facade. AssetManager keeps same-named public forwards (F06).
+     * Not a generic filesystem facade. AssetManager keeps same-named public forwards.
      */
     class AssetContentMutation
     {

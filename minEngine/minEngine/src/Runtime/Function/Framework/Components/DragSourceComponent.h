@@ -13,7 +13,7 @@ namespace minEngine
     DECLARE_MULTICAST_DELEGATE(DOnUIDrag);
 
     /**
-     * Marks a ScreenUI Widget GO as a drag source (UI-F05).
+     * Marks a ScreenUI Widget GO as a drag source.
      * Session / threshold / click suppress are owned by UISystem.
      * Listeners use UISystem::GetDragSession() for pointer / UserId context.
      */

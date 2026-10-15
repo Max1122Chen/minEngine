@@ -69,7 +69,7 @@ namespace minEngine
 
     
         SceneComponent* GetRootComponent() const { return m_RootComponent; }
-        /** CORE-F09: swapping Root rebinds GO-parent Root↔Root (KeepWorld) or dissolves edges. */
+        /** swapping Root rebinds GO-parent Root↔Root (KeepWorld) or dissolves edges. */
         void SetRootComponent(SceneComponent* rootComponent);
         std::vector<std::shared_ptr<Component>>& GetAllComponents() { return m_Components; }
 
@@ -115,7 +115,7 @@ namespace minEngine
         void InsertRestoredComponent(std::shared_ptr<Component> component, size_t index);
 
         /**
-         * CORE-F09: GO parent means child Root attaches under parent Root.
+         * GO parent means child Root attaches under parent Root.
          * Both GOs must have a Root SceneComponent; otherwise returns false.
          */
         bool AttachToParent(GameObject* parent, AttachmentTransformRules rules);

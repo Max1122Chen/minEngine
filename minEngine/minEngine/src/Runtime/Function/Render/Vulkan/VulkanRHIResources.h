@@ -23,7 +23,7 @@ namespace minEngine
 #if defined(MINENGINE_HAS_VULKAN)
     class VulkanRHI;
 
-    /** Shared Vulkan device handles for resource create/upload (RND-F05-S07a). */
+    /** Shared Vulkan device handles for resource create/upload. */
     struct VulkanDeviceContext
     {
         VkDevice Device = VK_NULL_HANDLE;
@@ -161,7 +161,7 @@ namespace minEngine
     };
 #endif
 
-    /** Vulkan bytecode shader modules (RND-F05). No GLSL string path. */
+    /** Vulkan bytecode shader modules. No GLSL string path. */
     class VulkanRHIShader final : public RHIShader
     {
     public:

@@ -11,7 +11,7 @@ namespace minEngine
 
     /**
      * Pass implementation hook (Granite RenderPassInterface).
-     * RND-F07: SetupDependencies → Bake → Setup → Prepare → BuildRenderPass.
+     * SetupDependencies → Bake → Setup → Prepare → BuildRenderPass.
      */
     class IRenderPass
     {

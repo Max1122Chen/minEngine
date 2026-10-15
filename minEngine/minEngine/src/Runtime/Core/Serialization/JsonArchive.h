@@ -53,9 +53,9 @@ namespace minEngine::Serialization
         };
         Json&& MoveRoot() { return std::move(m_Root); };
 
-        // Inject "$schemaVersion" on the root object if present (CORE-F10).
+        // Inject "$schemaVersion" on the root object if present.
         void ApplyRootSchemaVersion(uint32_t schemaVersion);
-        // Inject "$engineVersion" string stamp on the root (CORE-F18).
+        // Inject "$engineVersion" string stamp on the root.
         void ApplyRootEngineVersion(const std::string& engineVersion);
 
     private:
@@ -117,9 +117,9 @@ namespace minEngine::Serialization
         bool ReadFromFile(const std::string& filePath) override;
         const std::string& GetLastArchiveError() const override { return m_LastArchiveError; }
 
-        // Parsed from root "$schemaVersion"; missing => 0 (CORE-F10).
+        // Parsed from root "$schemaVersion"; missing => 0.
         uint32_t GetReadSchemaVersion() const { return m_ReadSchemaVersion; }
-        // Parsed from root "$engineVersion"; missing => empty (CORE-F18).
+        // Parsed from root "$engineVersion"; missing => empty.
         const std::string& GetReadEngineVersion() const { return m_ReadEngineVersion; }
 
     private:

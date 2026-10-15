@@ -10,7 +10,7 @@
 
 namespace minEngine
 {
-    /** Complete GPU state for a single draw submission (RND-F04). */
+    /** Complete GPU state for a single draw submission. */
     struct MeshDrawPacket
     {
         RHIGraphicsPipelineStateRef PipelineState;

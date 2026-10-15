@@ -44,7 +44,7 @@ namespace minEngine
     /**
      * Asset thumbnail service (Inspector + Content Browser tiles).
      * - Texture2D: direct RHI texture id (no scene submit).
-     * - Material / StaticMesh Scene3D previews: disabled (TD-027); CB/Inspector fall back to icons.
+     * Material/StaticMesh Scene3D previews: disabled; CB/Inspector fall back to icons.
      */
     class AssetThumbnailService
     {

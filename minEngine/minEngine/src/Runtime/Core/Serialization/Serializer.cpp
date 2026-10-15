@@ -646,7 +646,7 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::MulticastDelegate:
         {
-            // Binding persistence deferred (CORE-F20 §3.4.1). Direct calls succeed as no-op.
+            // Binding persistence deferred (§3.4.1). Direct calls succeed as no-op.
             (void)valuePtr;
             (void)ownerObjectPtr;
             (void)archive;
@@ -780,7 +780,7 @@ namespace minEngine::Serialization
 
             if (property.GetCategory() == MEPropertyCategory::MulticastDelegate)
             {
-                // CORE-F20: binding list not serialized yet; skip like Transient.
+                // binding list not serialized yet; skip like Transient.
                 return true;
             }
 
@@ -1265,7 +1265,7 @@ namespace minEngine::Serialization
 
             if (property.GetCategory() == MEPropertyCategory::MulticastDelegate)
             {
-                // CORE-F20: skip bind-list persistence; unread JSON fields are ignored by named EnterField.
+                // skip bind-list persistence; unread JSON fields are ignored by named EnterField.
                 return true;
             }
 

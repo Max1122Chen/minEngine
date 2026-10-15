@@ -1,4 +1,4 @@
-// Sample module entry: fixed MinEngine_GameModuleEntry (BUILD-F01 S07) + touch
+// Sample module entry: fixed MinEngine_GameModuleEntry symbol + touch marker.
 // reflected types so aggressive LTO/GC keeps registration TUs.
 
 #include "Runtime/Core/Module/MinEngineGameModuleEntry.h"

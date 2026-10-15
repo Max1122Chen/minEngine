@@ -4,7 +4,7 @@
 
 namespace minEngine
 {
-    /// Tag-described gameplay message. Payload is deferred (GP-F02).
+    /// Tag-described gameplay message. Payload is deferred.
     struct GameplayEvent
     {
         GameplayTagContainer Tags;

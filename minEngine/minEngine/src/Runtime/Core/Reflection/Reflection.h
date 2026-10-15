@@ -553,7 +553,7 @@ namespace minEngine::Reflection
                 }
                 return property;
             }
-            // Dynamic multicast (CORE-F20) — before generic MEObjectProperty class path.
+            // Dynamic multicast — before generic MEObjectProperty class path.
             // Trait is specialized when DynamicMulticastDelegate.h is visible at the instantiation site.
             else if constexpr (::minEngine::IsDynamicMulticastDelegateField<RawFieldType>::value)
             {

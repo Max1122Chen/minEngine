@@ -114,7 +114,7 @@ namespace minEngine
 
     void MaterialEditor::OnExitMode()
     {
-        // Keep material sessions/preview alive for multi-document host (ED-F11).
+        // Keep material sessions/preview alive for multi-document host.
         StashActiveSession();
         FlushPendingCompile();
         ClearSelectedEdNode();

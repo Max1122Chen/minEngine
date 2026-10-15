@@ -86,7 +86,7 @@ namespace minEngine
             return ThumbnailBackendKind::Texture2DDirect;
         }
 
-        // RND-F17: Scene3D thumbnails safe when RDG physical caches are keyed by ViewId+SRT.
+        // Scene3D thumbnails safe when RDG physical caches are keyed by ViewId+SRT.
         if (meta.AssetType == "Material" || meta.AssetType == "StaticMesh")
         {
             return ThumbnailBackendKind::Scene3D;

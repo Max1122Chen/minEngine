@@ -97,7 +97,7 @@ namespace minEngine
         std::array<std::shared_ptr<RHIShaderResourceView>, MAX_POINT_SHADOW_MAPS> m_PointShadowSRVs{};
         std::array<std::shared_ptr<RHIShaderResourceView>, 3> m_IblSRVs{};
 
-        /** Pinned set1 samplers (RND-F22). */
+        /** Pinned set1 samplers. */
         RHISamplerRef m_ShadowCompareSampler;
         RHISamplerRef m_IblLinearClampSampler;
 

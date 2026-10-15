@@ -10,7 +10,7 @@ namespace minEngine
 {
     class SceneEditor;
 
-    /** Prefab Stage edit policy (ED-F16): single root, no Save-As Scene, no delete root. */
+    /** Prefab Stage edit policy: single root, no Save-As Scene, no delete root. */
     class PrefabEditConstraints
     {
     public:

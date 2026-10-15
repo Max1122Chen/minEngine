@@ -10,7 +10,7 @@
 #include "Runtime/Test/TestSuiteMetadata.h"
 #include "Runtime/Test/TestSuiteRegistry.h"
 
-// TEST-F05 stub: proves EXTRA sources can register a suite.
+// stub: proves EXTRA sources can register a suite.
 // Suite id must use the game.* prefix. InSmoke=false so verify.ps1 stays unchanged.
 // Do NOT define DOCTEST_CONFIG_IMPLEMENT here (only TestMain.cpp may).
 

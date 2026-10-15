@@ -1283,7 +1283,7 @@ namespace minEngine
     {
         // RDG SceneColor is a single physical texture shared across frames. Waiting only on
         // the current slot's fence allows frame N and N+1 to write/sample it concurrently
-        // (Editor ImGui path). Serialize until SceneColor is double-buffered (TD-024).
+        // (Editor ImGui path). Serialize until SceneColor is double-buffered.
         vkWaitForFences(
             m_Device,
             kMaxFramesInFlight,

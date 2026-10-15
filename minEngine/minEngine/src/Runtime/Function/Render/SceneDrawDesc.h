@@ -38,7 +38,7 @@ namespace minEngine
         class Scene* GameplayScene = nullptr;
         RenderCamera* Camera = nullptr;
         SceneRenderTarget* RenderTarget = nullptr;
-        /** RND-F17: stable view identity from SceneViewport; 0 = invalid. */
+        /** stable view identity from SceneViewport; 0 = invalid. */
         uint64_t ViewId = 0;
         SceneDrawFlags Flags = SceneDrawFlags::Default;
     };

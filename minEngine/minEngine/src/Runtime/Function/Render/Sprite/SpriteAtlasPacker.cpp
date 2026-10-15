@@ -33,7 +33,7 @@ namespace minEngine
             return result;
         }
 
-        // SPR-F07: padding is an exclusive inset ring per sprite (not a shared gap).
+        // padding is an exclusive inset ring per sprite (not a shared gap).
         const int32_t pad = std::max(0, padding);
         std::vector<SpritePackLayoutEntry> sorted = sizes;
         std::stable_sort(
@@ -210,7 +210,7 @@ namespace minEngine
         }
 
         std::string loadError;
-        // Prefer cooked .metex (ASSET-F05); legacy PNG path remains for migration only.
+        // Prefer cooked.metex; legacy PNG path remains for migration only.
         if (!Texture2DLoader::TryGetCookedPixels(*meta, outPixels, &loadError))
         {
             if (outError)

@@ -119,7 +119,7 @@ namespace minEngine
             Testing::TestAccess<InputSystem>::Tick(scope.GetInput(), 1.0f / 60.0f);
             if (Testing::TestAccess<InputSystem>::IsMouseScrollDown(scope.GetInput()))
             {
-                ME_LOG(LogTest, Error, "GameplayInputGate: gated Tick must clear MouseScroll (BUG-CORE-004).");
+                ME_LOG(LogTest, Error, "GameplayInputGate: gated Tick must clear MouseScroll.");
                 SceneManager::Get().SetEditorSceneViewport(nullptr);
                 return false;
             }
@@ -148,7 +148,7 @@ namespace minEngine
             scope.GetInput().SetEditorGameplayCaptureActive(false);
             if (scope.GetInput().IsGameplayInputEnabled())
             {
-                ME_LOG(LogTest, Error, "GameplayInputGate: capture false while Playing must disable IMC (ED-F23).");
+                ME_LOG(LogTest, Error, "GameplayInputGate: capture false while Playing must disable IMC.");
                 SceneManager::Get().SetEditorSceneViewport(nullptr);
                 return false;
             }

@@ -7,7 +7,7 @@ namespace minEngine
     class RHI;
     class RHITexture;
 
-    /** ED-F01: RHITexture to ImGui::Image ImTextureID (GL handle or VkDescriptorSet). */
+    /** RHITexture to ImGui::Image ImTextureID (GL handle or VkDescriptorSet). */
     class EditorRHIImGuiTexture
     {
     public:
@@ -45,7 +45,7 @@ namespace minEngine
         ImTextureID Pin(RHI* rhi, RHITexture* texture);
         void Reset(RHI* rhi);
 
-        /** BUG-EDITOR-002: drop cached bindings after ImGui device-object invalidation. */
+        /** Drop cached bindings after ImGui device-object invalidation. */
         static void InvalidateAllBindings();
 
     private:

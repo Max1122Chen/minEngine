@@ -7,7 +7,7 @@
 
 namespace minEngine
 {
-    /** ASSET-F06: copy registered native extensions into Content (no cook). */
+    /** copy registered native extensions into Content (no cook). */
     class NativeCopyImporter
     {
     public:

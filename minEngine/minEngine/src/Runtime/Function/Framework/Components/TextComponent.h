@@ -65,7 +65,7 @@ namespace minEngine
         bool EnsureRuntimeMaterial();
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetContent", Getter = "GetContent"))
-        std::string m_Content{ "Hello UI-F04" };
+        std::string m_Content{ "Hello" };
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetFont", Getter = "GetFontShared"))
         std::shared_ptr<Font> m_Font{ nullptr };

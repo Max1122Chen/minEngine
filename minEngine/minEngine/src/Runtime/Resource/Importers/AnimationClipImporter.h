@@ -13,7 +13,7 @@ namespace minEngine
     class Skeleton;
 
     /**
-     * ASSET-F06: Assimp source → .meaclip cook + Register.
+     * Assimp source →.meaclip cook + Register.
      * Clip Assimp parse lives here (Import), not on AnimationClipLoader (Load .meaclip).
      */
     class AnimationClipImporter

@@ -29,7 +29,7 @@ namespace minEngine
         int SlotIndex = 0;
         std::string ShaderSymbolName;
         std::shared_ptr<Texture2D> Value;
-        /** Compile-time sampler intent from TextureSample Override (RND-F22). */
+        /** Compile-time sampler intent from TextureSample Override. */
         bool bOverrideSampler = false;
         RHISamplerDesc SamplerDesc{};
     };

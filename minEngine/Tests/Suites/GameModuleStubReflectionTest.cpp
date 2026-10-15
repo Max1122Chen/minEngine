@@ -46,7 +46,7 @@ namespace minEngine
     }
 
     TEST_CASE("game-module-stub-reflection [game-module-stub]" *
-              doctest::description("CORE-F27: external ME_CLASS AddComponent path"))
+              doctest::description("external ME_CLASS AddComponent path"))
     {
         EngineReflectionFixture reflectionFixture;
         (void)reflectionFixture;

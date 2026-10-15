@@ -42,16 +42,16 @@ namespace minEngine
         void Tick(float deltaTime);
 
         /**
-         * CORE-F29: whether gameplay IMC→IA should update this frame.
+         * whether gameplay IMC→IA should update this frame.
          * - HasBegunPlayWorld → true (PIE / host after DispatchBeginPlay), and when an Editor
-         *   viewport exists, also requires EditorGameplayCaptureActive (ED-F23).
+         * viewport exists, also requires EditorGameplayCaptureActive.
          * - Editor shell (viewport registered) without begun world → false (Edit)
          * - No editor shell → true (standalone / Playground compat until host DispatchBeginPlay)
          */
         bool IsGameplayInputEnabled() const;
 
         /**
-         * ED-F23: Editor sets false while PIE pointer is Released (still Playing).
+         * Editor sets false while PIE pointer is Released (still Playing).
          * Ignored when no Editor scene viewport is registered (standalone stays on).
          * Default true so BeginPlay without an explicit release still enables gameplay.
          */

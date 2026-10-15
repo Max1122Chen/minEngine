@@ -39,7 +39,7 @@ namespace minEngine
 
     /**
      * Runtime / MIC material with a parent Material and local overrides.
-     * Draw code must use GetRenderProxy(). Disk form is .memi (MAT-F06).
+     * Draw code must use GetRenderProxy. Disk form is.memi.
      */
     ME_CLASS()
     class MaterialInstance : public MaterialInterface

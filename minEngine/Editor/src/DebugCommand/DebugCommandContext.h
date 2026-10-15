@@ -18,7 +18,7 @@ namespace minEngine::DebugCommand
     struct DebugCommandContext
     {
         // Transitional execution convenience for scene-scoped Debug handlers.
-        // Prefer explicit EditorCommand payload fields going forward (ED-F12).
+        // Prefer explicit EditorCommand payload fields going forward.
         Scene* ActiveScene = nullptr;
 
         // Debug REPL only: Active Edit Session snapshot for parse/completion.

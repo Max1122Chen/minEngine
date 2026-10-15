@@ -23,7 +23,7 @@ namespace minEngine
             ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
         }
 
-        // ASSET-F05: images are Texture2D Product only (never NativeCopy identity).
+        // images are Texture2D Product only (never NativeCopy identity).
         if (normalized == ".png" || normalized == ".jpg" || normalized == ".jpeg")
         {
             return false;

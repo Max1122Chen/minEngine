@@ -10,7 +10,7 @@ namespace minEngine
     class RHICommandList;
     class RHITexture;
 
-    /** Flyweight cache for texture SRVs (RND-F04-S04). Keyed by texture + array slice. */
+    /** Flyweight cache for texture SRVs. Keyed by texture + array slice. */
     class RHITextureViewCache
     {
     public:

@@ -12,7 +12,7 @@ namespace minEngine
         uint32_t LevelCount = 1;
     };
 
-    /** Placeholder barrier descriptor; OpenGL backend ignores contents (RND-F04-S04). */
+    /** Placeholder barrier descriptor; OpenGL backend ignores contents. */
     struct RHITextureTransitionInfo
     {
         RHITexture* Texture = nullptr;

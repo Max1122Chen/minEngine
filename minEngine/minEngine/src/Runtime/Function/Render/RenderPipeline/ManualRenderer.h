@@ -8,7 +8,7 @@
 namespace minEngine
 {
     /**
-     * RND-F13 diagnostic renderer: reuses ForwardRenderer scene/shadow/UBO setup but
+     * diagnostic renderer: reuses ForwardRenderer scene/shadow/UBO setup but
      * executes Shadow -> Base -> Present manually (no RenderGraph).
      * EXPERIMENTAL — not a production rendering path.
      */

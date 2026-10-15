@@ -10,7 +10,7 @@ namespace minEngine
         Vulkan,
     };
 
-    /** Process-wide backend chosen from CLI before Window/Render init (RND-F05-S03). */
+    /** Process-wide backend chosen from CLI before Window/Render init. */
     class RHIBackendSelection
     {
     public:

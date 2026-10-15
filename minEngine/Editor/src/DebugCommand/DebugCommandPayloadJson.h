@@ -7,7 +7,7 @@
 
 namespace minEngine::DebugCommand
 {
-    // Minimal JSON string helpers for command PayloadJson (ED-F12). Not a full JSON library.
+    // Minimal JSON string helpers for command PayloadJson. Not a full JSON library.
     class DebugCommandPayloadJson
     {
     public:

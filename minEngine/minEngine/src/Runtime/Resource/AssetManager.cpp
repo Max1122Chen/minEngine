@@ -345,7 +345,7 @@ namespace minEngine
                 continue;
             }
 
-            // ASSET-F05 migration: re-register legacy Texture2D that still live as Content PNG/JPG
+            // migration: re-register legacy Texture2D that still live as Content PNG/JPG
             // with an existing .meta (new imports are .metex only).
             std::string extension = assetPath.extension().string();
             for (char& ch : extension)

@@ -70,7 +70,7 @@ namespace minEngine
             Testing::TestAccess<InputSystem>::Tick(input, 1.0f / 60.0f);
             if (Testing::TestAccess<InputSystem>::GetTriggerEvent(input, &sneak) != InputTriggerEvent::Started)
             {
-                ME_LOG(LogTest, Error, "InputTriggerDown: press should emit Started (CORE-F32 A).");
+                ME_LOG(LogTest, Error, "InputTriggerDown: press should emit Started.");
                 return false;
             }
 
@@ -91,7 +91,7 @@ namespace minEngine
             Testing::TestAccess<InputSystem>::Tick(input, 1.0f / 60.0f);
             if (Testing::TestAccess<InputSystem>::GetTriggerEvent(input, &sneak) != InputTriggerEvent::Canceled)
             {
-                ME_LOG(LogTest, Error, "InputTriggerDown: release should emit Canceled (CORE-F32 B).");
+                ME_LOG(LogTest, Error, "InputTriggerDown: release should emit Canceled.");
                 return false;
             }
 

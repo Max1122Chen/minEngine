@@ -16,7 +16,7 @@ namespace minEngine
     class Material;
 
     /**
-     * Material graph primitives (ED-F19).
+     * Material graph primitives.
      * No graph JSON. Commands go on the given document session stack, not the implicit Active stack.
      */
     class MaterialEditorServices

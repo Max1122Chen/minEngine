@@ -40,7 +40,7 @@ namespace minEngine
 
     /**
      * GLSL -> SPIR-V via Vulkan SDK glslangValidator.
-     * Produces separate Vulkan (-V) and OpenGL (-G) artifacts (RND-F05).
+     * Produces separate Vulkan (-V) and OpenGL (-G) artifacts.
      */
     class ShaderCompiler
     {

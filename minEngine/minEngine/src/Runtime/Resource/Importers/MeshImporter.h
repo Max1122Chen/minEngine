@@ -13,7 +13,7 @@ namespace minEngine
         SkeletalMesh
     };
 
-    /** ASSET-F06: external mesh cook (obj/glb) + Register + SourcePath meta. */
+    /** external mesh cook (obj/glb) + Register + SourcePath meta. */
     class MeshImporter
     {
     public:

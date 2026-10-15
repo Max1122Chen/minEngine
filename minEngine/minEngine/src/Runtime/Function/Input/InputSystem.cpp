@@ -45,7 +45,7 @@ namespace minEngine
 
         if (sceneManager.HasBegunPlayWorld())
         {
-            // ED-F23: while Editor shell is up, Released PIE must gate IMC even though BeginPlay is true.
+            // while Editor shell is up, Released PIE must gate IMC even though BeginPlay is true.
             if (hasEditorShell)
             {
                 return m_bEditorGameplayCaptureActive;
@@ -262,7 +262,7 @@ namespace minEngine
             }
         }
 
-        // CORE-F32: release / idle frames must still finalize actions that were Ongoing/Triggered
+        // release/idle frames must still finalize actions that were Ongoing/Triggered
         // so Ongoing→None (Canceled) and Triggered→None (Completed) can fire.
         for (auto& [action, instance] : m_ActionInstances)
         {
@@ -298,7 +298,7 @@ namespace minEngine
                 InputActionValue modifiedValue = ApplyModifiers(action->GetModifiers(), instance.Value, deltaTime);
                 instance.Value = modifiedValue;
 
-                // Stable previous frame state — do not use the mapping-polluted tracker (CORE-F32).
+                // Stable previous frame state — do not use the mapping-polluted tracker.
                 const InputTriggerState prevState = instance.LastState;
 
                 instance.TriggerStateTracker.Reset();

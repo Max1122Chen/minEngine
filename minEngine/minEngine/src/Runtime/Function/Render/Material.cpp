@@ -348,7 +348,7 @@ namespace minEngine
         m_TextureParameters.clear();
         m_ScalarParameters.clear();
 
-        // RND-F22: compile-time slot → SamplerDesc from TextureSample Override (first wins).
+        // compile-time slot → SamplerDesc from TextureSample Override (first wins).
         std::unordered_map<int, RHISamplerDesc> slotOverrideSamplers;
         if (m_Graph)
         {

@@ -10,7 +10,7 @@
 namespace minEngine
 {
     /**
-     * Editor-side read-only type catalog (MCP-F04).
+     * Editor-side read-only type catalog.
      * Returns live reflection pointers. Callers apply their own semantics (e.g. addable components).
      */
     class TypeQueryServices

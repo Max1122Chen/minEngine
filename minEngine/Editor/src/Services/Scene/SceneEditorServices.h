@@ -24,7 +24,7 @@ namespace minEngine
     class TypeQueryServices;
 
     /**
-     * Native Scene editor capability surface (ED-F18).
+     * Native Scene editor capability surface.
      * No JSON, no protocol strings, no hierarchy assembly, no Active-session focus.
      */
     class SceneEditorServices

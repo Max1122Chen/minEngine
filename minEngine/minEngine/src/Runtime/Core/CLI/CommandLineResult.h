@@ -35,14 +35,14 @@ namespace minEngine
         /** Default OpenGL; set by global `--rhi opengl|vulkan` (aliases gl|vk). */
         RHIBackendType RHIBackend = RHIBackendType::OpenGL;
 
-        /** Default ForwardRenderer; `--renderer manual` selects RND-F13 diagnostic path. */
+        /** Default ForwardRenderer; `--renderer manual` selects diagnostic path. */
         SceneRendererKind SceneRenderer = SceneRendererKind::Forward;
 
         TestRunKind TestKind = TestRunKind::Smoke;
         std::string SuiteId;
         std::optional<std::string> ReflectionSuiteFilter;
 
-        /** Editor automation (CLI-F02): Named Pipe name for ED-F17 Host. */
+        /** Editor automation: Named Pipe name for Host. */
         std::optional<std::string> AutomationPipeName;
         /** Main ready channel path; written by Host after Listen (not by CLI parse). */
         std::optional<std::filesystem::path> AutomationReadyFilePath;

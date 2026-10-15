@@ -52,7 +52,7 @@ namespace minEngine
             return gameInstance->GetSubsystem<T>();
         }
 
-        /** Called after GI SubsystemCollection Initialize (CORE-F35 hub hook). */
+        /** Called after GI SubsystemCollection Initialize (hub hook). */
         virtual void OnInit() {}
         /** Called before GI SubsystemCollection Deinitialize. */
         virtual void OnShutdown() {}
