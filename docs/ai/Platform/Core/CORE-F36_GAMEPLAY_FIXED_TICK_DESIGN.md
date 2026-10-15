@@ -4,9 +4,9 @@
 - **ID:** `CORE-F36`
 - **Type:** Feature
 - **Complexity:** `L2`
-- **Status:** `In Progress`
+- **Status:** `Done`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-15`（S00–S04 已落码于 `feat/core`）
+- **Last updated:** `2026-10-15`（S00–S04 已合入 `master`；S05 Stub Deferred）
 - **Related:**
   - 前置：[CORE-F34](./CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md)、[CORE-F35](./CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md)（GI Hub / 派生类）
   - 正交：[CORE-F33](./CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md)（Fixed/变步内结构变更沿用 F33）
@@ -18,7 +18,7 @@
 
 ## TL;DR
 
-本 Feature 两件事：**（A）引擎唯一 Gameplay Fixed 时钟**（追赶、可调 Interval/Scale；默认关）；**（B）修正变步 Tick 时序**：把错位的 GI/World Tickable **拉回 Physics 前**，与 GO→Comp 组成同一玩法块，并与 Fixed **共用层序**（GI → WorldTickable → GO→Comp）。同帧：`Input → Fixed 0..N → Variable → Physics → …`。GI Fixed 顺序由派生 GI 编排。不内置 Minecraft 20 / 随机刻倍率。Status：In Progress（S00–S04 在 feat 分支；S05 / 维护者验收待办）。
+本 Feature 两件事：**（A）引擎唯一 Gameplay Fixed 时钟**（追赶、可调 Interval/Scale；默认关）；**（B）修正变步 Tick 时序**：把错位的 GI/World Tickable **拉回 Physics 前**，与 GO→Comp 组成同一玩法块，并与 Fixed **共用层序**（GI → WorldTickable → GO→Comp）。同帧：`Input → Fixed 0..N → Variable → Physics → …`。GI Fixed 顺序由派生 GI 编排。不内置 Minecraft 20 / 随机刻倍率。Status：**Done**（S00–S04 on master；S05 Stub Deferred）。
 
 ## Reader quick start
 
@@ -378,7 +378,7 @@ frameDt → × FixedTimeScale → Accum
 | S02 | Layer A `OnFixedTick` + GI Subsystem `FixedTick` API | 派生 GI 顺序测试 | **Done** |
 | S03 | Layer B WorldTickable Fixed（`m_Instances` 序） | 与变步序一致 | **Done** |
 | S04 | Layer C GO←Comp Fixed 汇聚 + Participants | 不全量遍历 | **Done**（API+汇聚；suite 覆盖时钟/GI/World） |
-| S05 | Stub/Sample + 文档（随机刻 + Tickable 前移说明）+ Progress | 可读 | Pending |
+| S05 | Stub/Sample + 文档（随机刻 + Tickable 前移说明）+ Progress | 可读 | **Deferred** |
 
 ## Open Questions
 
@@ -415,15 +415,15 @@ frameDt → × FixedTimeScale → Accum
 - [x] Verification strategy exists  
 - [x] Open questions deferred/accepted  
 
-**Ready for implementation?** `yes` — 维护者已指示在 `feat/core` 实现；合入 master 前再验收。勿与 F33 混 PR。
+**Ready for implementation?** `n/a` — S00–S04 已合入 `master`。
 
 ## Acceptance Checklist
 
 - [x] Design review 维护者确认（文档 commit + 实现指示）  
-- [ ] Implementation plan traces to design（L2；本波直接按 Design slices 落地）  
+- [x] Implementation plan traces to design（L2；本波直接按 Design slices 落地）  
 - [x] Progress log when status changes  
 - [x] Feature registry status synced  
-- [ ] 维护者验收 feat 分支后合入 master  
+- [x] 维护者验收后合入 master  
 
 ## 变更记录
 
@@ -434,3 +434,4 @@ frameDt → × FixedTimeScale → Accum
 | 2026-10-15 | 修订：R13/S00 变步相位（初稿误写 GO 后移） |
 | 2026-10-15 | **修订：** 纠正为 **Tickable 前移**；玩法块在 Physics 前；同帧 `Input→Fixed→Variable→Physics` |
 | 2026-10-15 | S00–S04 实现于 feat；suite `gameplay-fixed-tick`；MinGW PE export 去掉 imgui_demo + exclude-modules |
+| 2026-10-15 | S00–S04 合入 `master`；Feature **Done**；S05 Stub **Deferred** |

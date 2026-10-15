@@ -1,12 +1,21 @@
+## 2026-10-15 — CORE-F36 合入 master（S00–S04 Done）
+
+- **Scope:** `feat/core` → `master`（ff）；文档收口
+- **Completed:**
+  - FixedTick 主链合入；Registry / ACTIVE_WORK / Design → **Done**
+  - S05 Stub **Deferred**
+- **Verification:** `gameplay-fixed-tick` / `tickable-subsystem` PASS（合入前）
+- **Next:** RND-F24 S03 / F33 review / ASSET-F04
+
 ## 2026-10-15 — CORE-F36 S00–S04：FixedTick 时钟 + 分层派发（feat/core）
 
-- **Scope:** `feat/core` 实现（不合 master 直至验收）
+- **Scope:** `feat/core` 实现 → 已合入 `master`
 - **Completed:**
   - `LogicalTick`：`Input → Fixed → Variable(GI→WorldTickable→GO) → Physics → …`
   - `GameplayFixedTickClock` + Engine Fixed API；GI `OnFixedTick`；World/GO←Comp Fixed 汇聚
   - suite `gameplay-fixed-tick`；回归 `tickable-subsystem`
 - **Verification:** `minEngineTests.exe test gameplay-fixed-tick` / `tickable-subsystem` PASS
-- **Next:** 维护者验收 → 合 master；S05 Stub/外仓说明
+- **Next:** （已合 master；S05 Deferred）
 
 ## 2026-10-15 — RND-F24 S01–S02：Canonical locations + VertexColor
 
