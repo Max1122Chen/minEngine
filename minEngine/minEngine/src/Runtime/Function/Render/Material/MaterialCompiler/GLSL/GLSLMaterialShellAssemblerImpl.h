@@ -17,13 +17,30 @@ namespace minEngine
             const char* FragmentTemplateFile = nullptr;
         };
 
+        struct VertexAttributeUsage
+        {
+            bool UsesVertexColor = false;
+            bool UsesCustom0 = false;
+            bool UsesCustom1 = false;
+
+            int DenseAttributeVaryingCount() const
+            {
+                return (UsesVertexColor ? 1 : 0) + (UsesCustom0 ? 1 : 0) + (UsesCustom1 ? 1 : 0);
+            }
+
+            bool Any() const
+            {
+                return UsesVertexColor || UsesCustom0 || UsesCustom1;
+            }
+        };
+
         static bool ResolveTemplateSet(
             MaterialShadingModel shadingModel,
             TemplateSet& outSet,
             MaterialCompileResult& compiled);
 
         static std::string BuildMaterialParametersStructGlobal(int numTexCoords);
-        static std::string BuildVertexTexCoordSetup(int numTexCoords, bool usesVertexColor);
+        static std::string BuildVertexTexCoordSetup(int numTexCoords, const VertexAttributeUsage& usage);
         static std::string BuildFragmentTexCoordSetup(int numTexCoords);
         static std::string BuildFragmentMaterialInputsStructGlobal(
             MaterialShadingModel shadingModel,
@@ -33,12 +50,12 @@ namespace minEngine
             int numTexCoords,
             bool includeSceneLightingVaryings,
             bool usesTangentFrame,
-            bool usesVertexColor,
+            const VertexAttributeUsage& usage,
             bool skinned);
-        static std::string BuildFragmentInTexCoords(int numTexCoords, bool usesVertexColor);
+        static std::string BuildFragmentInTexCoords(int numTexCoords, const VertexAttributeUsage& usage);
         static std::string BuildFragmentLightingVaryings(
             int numTexCoords,
-            bool usesVertexColor,
+            const VertexAttributeUsage& usage,
             bool usesTangentFrame);
         static std::string BuildFragmentWorldNormal(const MaterialCompileEnvironment& env);
         static std::string BuildFragmentSceneLighting(

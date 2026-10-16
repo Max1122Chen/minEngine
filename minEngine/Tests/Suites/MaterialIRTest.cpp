@@ -724,6 +724,108 @@ namespace minEngine
             return true;
         }
 
+        bool VerifyVertexCustomUnlit(const MaterialCompileContext& ctx, int customIndex)
+        {
+            Material material;
+            material.m_Graph = NewObject<MaterialEdGraph>("", &material);
+            MaterialEdGraph& graph = *material.m_Graph;
+
+            MaterialEdGraphNode& vertexCustom = graph.AddNode<MaterialGraphNodeDef_VertexCustom>();
+            static_cast<MaterialGraphNodeDef_VertexCustom*>(vertexCustom.GetNodeDef())->CustomIndex = customIndex;
+            MaterialEdGraphNode& outputNode = graph.AddNode<MaterialGraphNodeDef_MaterialOutput>();
+            const MaterialShadingModel shadingModel = MaterialShadingModel::Unlit;
+            const MaterialBlendMode blendMode = MaterialBlendMode::Opaque;
+
+            if (!graph.ConnectToMaterialProperty(
+                    vertexCustom,
+                    1,
+                    outputNode,
+                    MP_Albedo,
+                    shadingModel,
+                    blendMode))
+            {
+                ME_LOG(LogTest, Error, "MaterialIR VertexCustom RGB->Albedo: failed to connect (index {}).", customIndex);
+                return false;
+            }
+
+            const MaterialCompileResult compiled = MaterialCompiler::CompileForDiagnostics(
+                graph,
+                shadingModel,
+                blendMode,
+                ctx);
+            if (!compiled.Succeeded)
+            {
+                for (const MaterialCompileDiagnostic& diagnostic : compiled.Diagnostics)
+                {
+                    ME_LOG(LogTest, Error, "MaterialIR VertexCustom diagnostic: {}", diagnostic.Message);
+                }
+                return false;
+            }
+
+            const bool expectCustom0 = (customIndex == 0);
+            const bool expectCustom1 = (customIndex == 1);
+            const char* attributeName = expectCustom0 ? "a_Custom0" : "a_Custom1";
+            const char* varyingName = expectCustom0 ? "v_Custom0" : "v_Custom1";
+            const char* location = expectCustom0 ? "5" : "6";
+
+            const std::string inAttribute =
+                std::string("layout(location = ") + location + ") in vec4 " + attributeName;
+            const std::string outVarying = std::string("out vec4 ") + varyingName;
+            const std::string copyVarying = std::string(varyingName) + " = " + attributeName;
+            const std::string inVarying = std::string("in vec4 ") + varyingName;
+
+            bool passed = AssertTrue(compiled.UsesCustom0 == expectCustom0, "UsesCustom0 flag")
+                && AssertTrue(compiled.UsesCustom1 == expectCustom1, "UsesCustom1 flag")
+                && AssertTrue(!compiled.UsesVertexColor, "VertexColor not implied by Custom")
+                && AssertAllContains(compiled.FullVertexShader, {
+                    { inAttribute, "canonical Custom attribute" },
+                    { outVarying, "custom varying out" },
+                    { copyVarying, "copy Custom to varying" },
+                })
+                && AssertAllContains(compiled.FullFragmentShader, {
+                    { inVarying, "fragment custom varying in" },
+                })
+                && AssertAllContains(compiled.Stages[Stage_Fragment].Body, {
+                    { varyingName, "fragment body reads custom attribute" },
+                });
+
+            if (expectCustom0)
+            {
+                passed = AssertTrue(
+                             compiled.FullVertexShader.find("a_Custom1") == std::string::npos,
+                             "Custom1 absent when unused")
+                    && passed;
+            }
+            if (expectCustom1)
+            {
+                passed = AssertTrue(
+                             compiled.FullVertexShader.find("a_Custom0") == std::string::npos,
+                             "Custom0 absent when unused")
+                    && passed;
+            }
+
+            if (!passed)
+            {
+                LogCompiledShaders(compiled);
+                ME_LOG(LogTest, Error, "MaterialIR VertexCustom content check FAILED (index {}).", customIndex);
+                return false;
+            }
+
+            if (!VerifySmokeGpuCompile(compiled))
+            {
+                LogCompiledShaders(compiled);
+                ME_LOG(LogTest, Error, "MaterialIR VertexCustom GPU compile FAILED (index {}).", customIndex);
+                return false;
+            }
+
+            ME_LOG(
+                LogTest,
+                Info,
+                "MaterialIR VertexCustom{}->Albedo Unlit: compile + GPU link PASSED.",
+                customIndex);
+            return true;
+        }
+
         bool VerifyDivideByZeroPoisonDiagnostic(const MaterialCompileContext& ctx)
         {
             Material material;
@@ -1061,19 +1163,19 @@ namespace minEngine
 
         bool VerifyEngineIBLEnvironmentInit()
         {
-            ME_LOG(LogTest, Info, "MaterialIR IBL environment: skipped (F03-M4 P0 ù?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL environment: skipped (F03-M4 P0 ??EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLEnvironmentFallbackChain()
         {
-            ME_LOG(LogTest, Info, "MaterialIR IBL fallback chain: skipped (F03-M4 P0 ù?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL fallback chain: skipped (F03-M4 P0 ??EnvMap removed from engine link).");
             return true;
         }
 
         bool VerifyIBLGpuConvolutionAndPrefilter()
         {
-            ME_LOG(LogTest, Info, "MaterialIR IBL GPU passes: skipped (F03-M4 P0 ù?EnvMap removed from engine link).");
+            ME_LOG(LogTest, Info, "MaterialIR IBL GPU passes: skipped (F03-M4 P0 ??EnvMap removed from engine link).");
             return true;
         }
 
@@ -1325,6 +1427,11 @@ namespace minEngine
         }
 
         if (!VerifyVertexColorUnlit(ctx))
+        {
+            return false;
+        }
+
+        if (!VerifyVertexCustomUnlit(ctx, 0) || !VerifyVertexCustomUnlit(ctx, 1))
         {
             return false;
         }

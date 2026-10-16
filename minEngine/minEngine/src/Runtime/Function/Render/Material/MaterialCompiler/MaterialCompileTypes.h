@@ -102,6 +102,8 @@ namespace minEngine
         std::vector<MaterialCompileDiagnostic> Diagnostics;
         bool UsesTexCoord0 = false;
         bool UsesVertexColor = false;
+        bool UsesCustom0 = false;
+        bool UsesCustom1 = false;
         MaterialShaderParameterLayout ParameterLayout;
     };
 }

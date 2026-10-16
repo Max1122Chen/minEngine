@@ -42,6 +42,8 @@ namespace minEngine
         m_UsedScalarUniformSlots.clear();
         m_UsesTexCoord0 = false;
         m_UsesVertexColor = false;
+        m_UsesCustom0 = false;
+        m_UsesCustom1 = false;
 
         BeginStage(Stage_Vertex);
         if (MIRBlock* vertexRootBlock = graph.GetRootBlock(Stage_Vertex);
@@ -59,6 +61,8 @@ namespace minEngine
         result.Stages[Stage_Fragment].Body = m_Printer.TakeBuffer();
         result.UsesTexCoord0 = m_UsesTexCoord0;
         result.UsesVertexColor = m_UsesVertexColor;
+        result.UsesCustom0 = m_UsesCustom0;
+        result.UsesCustom1 = m_UsesCustom1;
         FillParameterLayout(result);
 
         m_ActiveResult = nullptr;
@@ -398,6 +402,20 @@ namespace minEngine
         {
             m_UsesVertexColor = true;
             m_Printer.Append("v_Color");
+            return;
+        }
+
+        if (externalInput.InputId == EI_Custom0)
+        {
+            m_UsesCustom0 = true;
+            m_Printer.Append("v_Custom0");
+            return;
+        }
+
+        if (externalInput.InputId == EI_Custom1)
+        {
+            m_UsesCustom1 = true;
+            m_Printer.Append("v_Custom1");
             return;
         }
 

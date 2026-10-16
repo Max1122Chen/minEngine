@@ -1072,7 +1072,7 @@ namespace minEngine
         {
             resultType = MIRPrimitiveType::GetFloat3();
         }
-        else if (inputId == EI_VertexColor)
+        else if (inputId == EI_VertexColor || inputId == EI_Custom0 || inputId == EI_Custom1)
         {
             resultType = MIRPrimitiveType::GetFloat4();
         }

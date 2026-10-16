@@ -1,3 +1,21 @@
+## 2026-10-16 — RND-F24-S03 Done：VertexCustom Custom0/1
+
+- **Scope:** 材质图消费 Custom0@5 / Custom1@6（镜像 VertexColor）
+- **Completed:**
+  - `EI_Custom0/1`、`UsesCustom0/1`、Translator → `v_CustomN`
+  - Shell：canonical `a_CustomN` + dense varying；私有 `VertexAttributeUsage`
+  - `MaterialGraphNodeDef_VertexCustom`（`CustomIndex` 0/1；非法 → Poison+诊断）
+  - Editor 调色板；`material-ir` Custom0+Custom1 金样
+- **Verification:** `minEngineTests.exe test material-ir`（从 `minEngine/bin`）PASSED
+- **Next:** 可选 S04 工厂糖衣；或换轨
+
+## 2026-10-16 — RND-F24-S03 Design：Vertex Custom（Review）
+
+- **Scope:** Custom0/1 材质消费（镜像 S02 Color）
+- **Completed:** [RND-F24_S03_VERTEX_CUSTOM_DESIGN.md](./Render/RND-F24_S03_VERTEX_CUSTOM_DESIGN.md) Status **Review**
+- **Verification:** docs only；对照 VertexColor / shell / VertexAttr
+- **Next:** 维护者审阅批准 → 实现
+
 ## 2026-10-16 — CORE-F37-S02 Done：RHI `dynamic_cast` → `static_cast`
 
 - **Scope:** OpenGLRHI / VulkanRHI / VulkanRHIResources / RHICommandList

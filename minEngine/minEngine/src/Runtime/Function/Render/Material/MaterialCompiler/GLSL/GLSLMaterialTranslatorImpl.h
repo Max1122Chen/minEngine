@@ -57,5 +57,7 @@ namespace minEngine
         std::unordered_set<int> m_UsedScalarUniformSlots;
         bool m_UsesTexCoord0 = false;
         bool m_UsesVertexColor = false;
+        bool m_UsesCustom0 = false;
+        bool m_UsesCustom1 = false;
     };
 }

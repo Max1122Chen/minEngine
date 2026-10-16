@@ -302,6 +302,22 @@ namespace minEngine
     };
 
     ME_CLASS()
+    class MaterialGraphNodeDef_VertexCustom : public MaterialGraphNodeDef
+    {
+        ME_GENERATED_BODY()
+
+    public:
+        MaterialGraphNodeDef_VertexCustom();
+        explicit MaterialGraphNodeDef_VertexCustom(int customIndex);
+        void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
+
+        // MVP legal domain: 0 or 1 (Custom0 / Custom1).
+        ME_PROPERTY()
+        int CustomIndex = 0;
+    };
+
+    ME_CLASS()
     class MaterialGraphNodeDef_TextureObject : public MaterialGraphNodeDef
     {
         ME_GENERATED_BODY()

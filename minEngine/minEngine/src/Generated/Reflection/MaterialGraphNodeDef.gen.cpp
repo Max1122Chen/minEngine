@@ -99,6 +99,12 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_VertexColor, GR
     ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_VertexColor)
 
+ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_VertexCustom, GReflectionClassRegister_MaterialGraphNodeDef_VertexCustom_4bf1521a)
+    ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
+    ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::MaterialGraphNodeDef_VertexCustom, CustomIndex, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+ME_REFLECTION_CLASS_DEFINE_END(minEngine::MaterialGraphNodeDef_VertexCustom)
+
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::MaterialGraphNodeDef_TextureObject, GReflectionClassRegister_MaterialGraphNodeDef_TextureObject_70c2da68)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::MaterialGraphNodeDef)

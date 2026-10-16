@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-15（CORE-F36 S00–S04 Done on master · RND-F24 S01–S02 on master）
+Last updated: 2026-10-16（RND-F24 S03 Done · CORE-F36 S00–S04 Done on master）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -86,7 +86,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F21` | Shadow 光视锥 / CSM cascade caster 剔除 | **Deferred** | — | [Design](./Render/RND-F21_SHADOW_FRUSTUM_CASTER_CULLING_DESIGN.md) · 复用 F19 `Frustum`；F19 后开工 |
 | `RND-F22` | Texture / Sampler 分离升级（RHI→Material；TextureSample 可编） | **Done** | — | [Design](./Render/RND-F22_TEXTURE_SAMPLER_SEPARATION_DESIGN.md) |
 | `RND-F23` | Scene Mesh Pass 默认背面剔除（Opaque/Translucent） | **Done** | — | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) |
-| `RND-F24` | 程序化网格顶点语义属性（Color → CustomN · Material 消费） | **In Progress** | — | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) · L2 · S01–S02 on `feat/render` · suites `vertex-attribute-semantics` / `material-ir` · minCraft `ENG-GAP-MESH-VERTEX-ATTR` |
+| `RND-F24` | 程序化网格顶点语义属性（Color → CustomN · Material 消费） | **In Progress** | — | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) · S01–S03 **Done** · [S03](./Render/RND-F24_S03_VERTEX_CUSTOM_DESIGN.md) · S04 Pending · `material-ir` |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |

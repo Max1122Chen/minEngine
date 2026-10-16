@@ -350,6 +350,53 @@ namespace minEngine
         return nullptr;
     }
 
+    MaterialGraphNodeDef_VertexCustom::MaterialGraphNodeDef_VertexCustom()
+        : MaterialGraphNodeDef_VertexCustom(0)
+    {
+    }
+
+    MaterialGraphNodeDef_VertexCustom::MaterialGraphNodeDef_VertexCustom(int customIndex)
+        : CustomIndex(customIndex)
+    {
+        m_Outputs.push_back({ "RGBA" });
+        m_Outputs.push_back({ "RGB" });
+    }
+
+    void MaterialGraphNodeDef_VertexCustom::BuildIR(MIREmitter& emitter)
+    {
+        if (CustomIndex < 0 || CustomIndex > 1)
+        {
+            emitter.EmitDiagnostic("CustomIndex must be 0 or 1.");
+            emitter.Output(0, emitter.Poison());
+            if (emitter.IsOutputConnected(1))
+            {
+                emitter.Output(1, emitter.Poison());
+            }
+            return;
+        }
+
+        const MIRExternalInputId inputId = (CustomIndex == 0) ? EI_Custom0 : EI_Custom1;
+        MIRValue* custom = emitter.ExternalInput(inputId);
+        emitter.Output(0, custom);
+        if (emitter.IsOutputConnected(1))
+        {
+            emitter.Output(1, emitter.Cast(custom, MIRPrimitiveType::GetFloat3()));
+        }
+    }
+
+    MaterialValueType MaterialGraphNodeDef_VertexCustom::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex == 0)
+        {
+            return MIRPrimitiveType::GetFloat4();
+        }
+        if (outputIndex == 1)
+        {
+            return MIRPrimitiveType::GetFloat3();
+        }
+        return nullptr;
+    }
+
     MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject()
         : MaterialGraphNodeDef_TextureObject("", 0)
     {

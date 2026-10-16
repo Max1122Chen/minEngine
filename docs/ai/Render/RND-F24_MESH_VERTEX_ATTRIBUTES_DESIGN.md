@@ -6,7 +6,7 @@
 - **Complexity:** `L2`
 - **Status:** `In Progress`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-15`（S01–S02 on `feat/render`）
+- **Last updated:** `2026-10-16`（S01–S03 Done；S04 Pending）
 - **Related:**
   - Material 消费面：`MAT-F01`–`F06`（Done）；本 Feature 扩展 shell / 图节点
   - Mesh 提交：`RND-F18` MeshBatch（Done）
@@ -19,7 +19,7 @@
 
 ## TL;DR
 
-RHI 已能声明任意 `RHIVertexElement`，但 **Material GLSL/SPIR-V shell 写死 P/UV/N/T**，且 Vulkan 按 layout **数组下标**绑 `location`，导致可选属性与 skinning 冲突、材质无法消费顶点色。本 Feature 建立 **语义→固定 location 契约**，先交付一等 **Color**，再交付 **Custom0..N**；材质图提供消费节点。不内置体素 LightEngine。Status：In Progress（S01 契约+RHI；S02 Color 节点待做）。
+RHI 已能声明任意 `RHIVertexElement`，但 **Material GLSL/SPIR-V shell 写死 P/UV/N/T**，且 Vulkan 按 layout **数组下标**绑 `location`，导致可选属性与 skinning 冲突、材质无法消费顶点色。本 Feature 建立 **语义→固定 location 契约**，先交付一等 **Color**，再交付 **Custom0..N**；材质图提供消费节点。不内置体素 LightEngine。Status：In Progress（S01–S03 **Done**；S04 工厂糖衣 Pending）。
 
 ## Reader quick start
 
@@ -311,7 +311,7 @@ namespace VertexAttr {
 |-------|------|--------|--------|
 | S01 | Location 字段 + GL/VK 按 Location 绑定；表常量；骨骼迁 9/10 | suite `vertex-attribute-semantics` + mesh/skin 回归 | **Done** |
 | S02 | Shell `a_Color` + VertexColor 节点 + 编译金样 | `material-ir` VertexColor；无 Color 材质零回归 | **Done**（画面梯度金样可后置） |
-| S03 | Custom0..1 + VertexCustom 节点 | 金样读 Custom0 | Pending |
+| S03 | Custom0..1 + VertexCustom 节点 | 金样读 Custom0 | **Done** — [S03 Design](./RND-F24_S03_VERTEX_CUSTOM_DESIGN.md) |
 | S04 | 工厂糖衣 + 外仓文档段落 | 手册/Progress | Pending |
 
 `UByte4Norm`：S05 或下 Feature。

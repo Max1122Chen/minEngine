@@ -20,7 +20,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | CORE-F36 | FixedTick + 变步 Tick 相位对齐 | **Done**（S00–S04；S05 Stub Deferred） | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) |
 | — | CORE-F37 | RTTI hygiene | **In Progress**（S01/B1-a/MAT-F07/S02 Done；B2/B1-b 后置） | [Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) · [S02](./Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) |
 | — | MAT-F07 | NodeDef pin value type | **Done** | [Design](./Render/Material/MAT-F07_NODEDEF_PIN_VALUE_TYPE_DESIGN.md) |
-| — | RND-F24 | 网格顶点语义属性 Color→Custom | **In Progress**（S01–S02 on master；S03 Custom） | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) |
+| — | RND-F24 | 网格顶点语义属性 Color→Custom | **In Progress**（S01–S03 Done；S04 工厂 Pending） | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) · [S03](./Render/RND-F24_S03_VERTEX_CUSTOM_DESIGN.md) |
 | — | CORE-F35 | GI 会话中枢 · 项目可选派生类 | **Done**（S01–S03；S04 Deferred） | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) |
 | — | BUILD-F01 | 产品构建链 · Editor/Game · 模板 · Stage | **Done**（S01–S07） | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) |
 | — | CORE-F34 | GameInstance · Subsystem | **Done**（S00–S06） | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) |
@@ -31,7 +31,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：**（1）**RND-F24 S03**；（2）F33 个人 review；（3）ASSET-F04 人手验收。CORE-F37 本战役代码已收口（B2/B1-b 后置；TD-033 不排期）。F34 S07 LocalPlayer **不排期**。
+**下一动作：**（1）RND-F24 **S04**（工厂糖衣，可选）或换轨；（2）F33 个人 review；（3）ASSET-F04 人手验收。CORE-F37 本战役代码已收口（B2/B1-b 后置；TD-033 不排期）。F34 S07 LocalPlayer **不排期**。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）；CORE-F36 S05 Stub。
 

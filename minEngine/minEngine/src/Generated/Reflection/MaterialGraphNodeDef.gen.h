@@ -103,6 +103,12 @@ ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_VertexColor, GReflectionClassRegister_MaterialGraphNodeDef_VertexColor_7322102f)
 
+ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_VertexCustom)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_VertexCustom, CustomIndex)
+ME_REFLECTION_ACCESSOR_END()
+
+ME_REFLECTION_CLASS_DECLARE(minEngine::MaterialGraphNodeDef_VertexCustom, GReflectionClassRegister_MaterialGraphNodeDef_VertexCustom_4bf1521a)
+
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::MaterialGraphNodeDef_TextureObject)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureObject, ParameterName)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::MaterialGraphNodeDef_TextureObject, TextureSlotIndex)
