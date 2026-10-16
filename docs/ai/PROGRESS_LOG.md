@@ -1,3 +1,22 @@
+## 2026-10-16 — CORE-F37-S02 Done：RHI `dynamic_cast` → `static_cast`
+
+- **Scope:** OpenGLRHI / VulkanRHI / VulkanRHIResources / RHICommandList
+- **Completed:**
+  - 27 处直接 `static_cast`；无包装、无 Debug `dynamic_cast`
+  - Design → **Done**；RDG cast 未动；TD-033 仍 Open
+- **Verification:** `minEngineTests` build OK；`test smoke` PASS；范围文件 `dynamic_cast` = 0
+- **Next:** RND-F24 S03；B2/B1-b 后置
+
+## 2026-10-16 — CORE-F37-S02 Design：RHI static downcast（Review）
+
+- **Scope:** 簇 C1；单后端不变量 → **纯 `static_cast`**（修订后 Debug 亦无 RTTI 认亲）
+- **Completed:**
+  - [CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md](./Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) Status **Review**
+  - 拒 MIR `As` / Debug `dynamic_cast` assert；排除 RDG；typed handle → **TD-033**
+  - Survey / Registry / ACTIVE_WORK 同步
+- **Verification:** docs only
+- **Next:** 批准 → S02 实现
+
 ## 2026-10-16 — MAT-F07 Done：虚 Get*PinType + 删 Util 梯子
 
 - **Scope:** CORE-F37 簇 A1 / MAT-F07 S01+S02

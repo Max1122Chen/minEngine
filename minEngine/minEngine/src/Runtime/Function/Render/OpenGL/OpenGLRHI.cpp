@@ -53,7 +53,7 @@ namespace minEngine
                 return GL_TRIANGLES;
             }
 
-            if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(boundPipeline))
+            if (auto* fallback = static_cast<RHIGraphicsPSOStateFallback*>(boundPipeline))
             {
                 return ToGLPrimitiveType(fallback->GetDesc().PrimitiveType);
             }
@@ -216,7 +216,7 @@ namespace minEngine
     void OpenGLRHI::ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
     {
         m_BoundPipeline = pipelineState;
-        auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(pipelineState);
+        auto* fallback = static_cast<RHIGraphicsPSOStateFallback*>(pipelineState);
         if (!fallback)
         {
             return;
@@ -225,7 +225,7 @@ namespace minEngine
         const RHIGraphicsPSODesc& desc = fallback->GetDesc();
 
         // Set shader program
-        if (auto* vs = dynamic_cast<OpenGLRHIShader*>(desc.VertexShader))
+        if (auto* vs = static_cast<OpenGLRHIShader*>(desc.VertexShader))
         {
             glUseProgram(vs->GetProgramId());
         }
@@ -351,7 +351,7 @@ namespace minEngine
                 }
 
                 GLenum target = GL_TEXTURE_2D;
-                if (auto* glTexture = dynamic_cast<OpenGLRHITexture*>(srvDesc.Texture))
+                if (auto* glTexture = static_cast<OpenGLRHITexture*>(srvDesc.Texture))
                 {
                     target = glTexture->GetTextureTarget();
                 }
@@ -362,14 +362,14 @@ namespace minEngine
                 GLuint samplerId = 0;
                 if (resource.Sampler != nullptr)
                 {
-                    if (auto* glSampler = dynamic_cast<OpenGLRHISampler*>(resource.Sampler))
+                    if (auto* glSampler = static_cast<OpenGLRHISampler*>(resource.Sampler))
                     {
                         samplerId = glSampler->GetSamplerId();
                     }
                 }
                 else if (m_DefaultLinearSampler)
                 {
-                    if (auto* glSampler = dynamic_cast<OpenGLRHISampler*>(m_DefaultLinearSampler.get()))
+                    if (auto* glSampler = static_cast<OpenGLRHISampler*>(m_DefaultLinearSampler.get()))
                     {
                         samplerId = glSampler->GetSamplerId();
                     }
@@ -378,7 +378,7 @@ namespace minEngine
             }
             else if (resource.Type == RHIShaderBindingType::UniformBuffer && resource.Buffer)
             {
-                auto* ubo = dynamic_cast<OpenGLRHIBuffer*>(resource.Buffer);
+                auto* ubo = static_cast<OpenGLRHIBuffer*>(resource.Buffer);
                 if (ubo)
                 {
                     if (resource.BufferRange != 0)
@@ -574,7 +574,7 @@ namespace minEngine
 
         if (bindingSet && m_BoundPipeline)
         {
-            if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(m_BoundPipeline))
+            if (auto* fallback = static_cast<RHIGraphicsPSOStateFallback*>(m_BoundPipeline))
             {
                 RHIPipelineLayout* pipelineLayout = fallback->GetDesc().PipelineLayout;
                 if (pipelineLayout && setIndex >= pipelineLayout->GetShaderBindingSetLayoutCount())

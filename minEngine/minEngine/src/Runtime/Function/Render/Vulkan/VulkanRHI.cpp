@@ -1269,7 +1269,7 @@ namespace minEngine
         vkCmdBindPipeline(GetCurrentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
         if (auto* vertexLayout =
-                dynamic_cast<VulkanRHIVertexInputLayout*>(m_BoundGraphicsPSO->GetDesc().VertexInputLayout))
+                static_cast<VulkanRHIVertexInputLayout*>(m_BoundGraphicsPSO->GetDesc().VertexInputLayout))
         {
             m_BoundVertexStride = vertexLayout->GetStride();
         }
@@ -1961,9 +1961,9 @@ namespace minEngine
             return;
         }
 
-        auto* colorTexture = hasColor ? dynamic_cast<VulkanRHITexture*>(color0.RenderTarget) : nullptr;
+        auto* colorTexture = hasColor ? static_cast<VulkanRHITexture*>(color0.RenderTarget) : nullptr;
         auto* depthTexture =
-            hasDepth ? dynamic_cast<VulkanRHITexture*>(info.DepthStencil.DepthStencilTarget) : nullptr;
+            hasDepth ? static_cast<VulkanRHITexture*>(info.DepthStencil.DepthStencilTarget) : nullptr;
         if ((hasColor && (colorTexture == nullptr || !colorTexture->IsValid())) ||
             (hasDepth && (depthTexture == nullptr || !depthTexture->IsValid())))
         {
@@ -2150,7 +2150,7 @@ namespace minEngine
             return;
         }
 
-        m_BoundGraphicsPSO = dynamic_cast<VulkanRHIGraphicsPipelineState*>(pipelineState);
+        m_BoundGraphicsPSO = static_cast<VulkanRHIGraphicsPipelineState*>(pipelineState);
         BindPipelineForCurrentRenderPass();
 #endif
     }
@@ -2166,7 +2166,7 @@ namespace minEngine
             return;
         }
 
-        auto* vulkanSet = dynamic_cast<VulkanRHIShaderBindingSet*>(bindingSet);
+        auto* vulkanSet = static_cast<VulkanRHIShaderBindingSet*>(bindingSet);
         VkPipelineLayout pipelineLayout = m_BoundGraphicsPSO->GetVkPipelineLayout();
         if (vulkanSet == nullptr || !vulkanSet->IsValid() || pipelineLayout == VK_NULL_HANDLE)
         {
@@ -2196,7 +2196,7 @@ namespace minEngine
             return;
         }
 
-        auto* texture = dynamic_cast<VulkanRHITexture*>(transition.Texture);
+        auto* texture = static_cast<VulkanRHITexture*>(transition.Texture);
         if (texture == nullptr || !texture->IsValid())
         {
             return;
@@ -2268,7 +2268,7 @@ namespace minEngine
             return;
         }
 
-        auto* buffer = dynamic_cast<VulkanRHIBuffer*>(vertexBuffer);
+        auto* buffer = static_cast<VulkanRHIBuffer*>(vertexBuffer);
         if (buffer == nullptr || !buffer->IsValid())
         {
             return;
@@ -2291,7 +2291,7 @@ namespace minEngine
             return;
         }
 
-        auto* buffer = dynamic_cast<VulkanRHIBuffer*>(indexBuffer);
+        auto* buffer = static_cast<VulkanRHIBuffer*>(indexBuffer);
         if (buffer == nullptr || !buffer->IsValid())
         {
             return;

@@ -4,7 +4,7 @@
 - **ID:** `CORE-F37`
 - **Type:** Survey / campaign umbrella（非单一切片实现案）
 - **Complexity:** L2（跨 Material / Core / RHI / Editor；子项再拆 Design）
-- **Status:** `In Progress`（S01 + B1-a + A1/MAT-F07 Done；余 C1 TD）
+- **Status:** `In Progress`（S01/B1-a/MAT-F07/S02 Done；B2/B1-b 后置；TD-033 Open）
 - **Owner:** project maintainer
 - **Last updated:** 2026-10-16
 - **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ObjectCast.h](../../../../minEngine/minEngine/src/Runtime/Core/Object/ObjectCast.h) · Material pin 相关见簇 A1
@@ -96,15 +96,13 @@ Top 文件（按处数）：
 | **本战役** | **放过**（无法干净消灭且收益低）；见 **§7.4** |
 | **维护者裁定** | Deferred（2026-10-15） |
 
-### 簇 C1 — RHI 后端 downcast — **Legitimate（暂留）**
+### 簇 C1 — RHI 后端 downcast — **Done（S02）**
 
 | | |
 |--|--|
-| **证据** | `OpenGLRHI.cpp`、`VulkanRHI.cpp`、`VulkanRHIResources.cpp`：`RHI*` → `OpenGL*` / `Vulkan*` |
-| **为何 C** | RHI 资源非 MEObject；当前抽象即“后端实现类” |
-| **长期可选** | typed handle / CRTP / 后端私有接口；**非本战役必做** |
-| **Agent 推荐** | 见 **§7.5** |
-| **维护者裁定** | _（待填）_ |
+| **落地** | 范围文件 `dynamic_cast` → 直接 `static_cast`（无包装、无 Debug RTTI） |
+| **长期** | typed handle → TD-033 |
+| **Design** | [CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md](../../Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) **Done** |
 
 ### 簇 C2 — 其他 / 待你点名
 
@@ -184,13 +182,9 @@ Editor / Tests（B1-b）**本战役放过**（与 B2 一并后置）。
 
 ---
 
-### 7.5 簇 C1 — RHI（推荐默认）
+### 7.5 簇 C1 — RHI — **S02 Done**
 
-**接受暂留；登记一条 Open TD，不排期实现。**
-
-- 文案大意：RHI 抽象→后端具体类型依赖 C++ RTTI；退出条件 = typed backend handle 或后端私有 downcast API 设计落地。
-- **不**把 RHI 资源塞进 `MEObject`。
-- 本战役零代码触碰 OpenGL/Vulkan cast。
+纯 `static_cast`（无包装）。详见 [Design](../../Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md)。typed handle → **TD-033**。
 
 ---
 
@@ -200,8 +194,8 @@ Editor / Tests（B1-b）**本战役放过**（与 B2 一并后置）。
 1) CORE-F37-S01  MIR As<T>()           Done
 2) B1-a          Runtime MEObject → Cast<>  Done
 3) A1            MAT-F07                     Done
-4) C1            仅登记 TD
-— 后置：B2 Editor；B1-b Editor/Tests
+4) C1 / S02      RHI static_cast               Done
+— 后置：B2 Editor；B1-b Editor/Tests；typed handle (TD-033)
 ```
 
 ---
@@ -218,3 +212,6 @@ Editor / Tests（B1-b）**本战役放过**（与 B2 一并后置）。
 | 2026-10-16 | A1 → MAT-F07 Design Spec（Review）；虚 Get*PinType + pin transient 字段 |
 | 2026-10-16 | MAT-F07 修订：纯虚 override；删 Util GetNode*；取消 pin 字段/Refresh |
 | 2026-10-16 | MAT-F07 S01+S02 Done；`material-ir` PASS；余 C1 TD |
+| 2026-10-16 | C1 → S02 Design（static_cast + Debug assert）；TD-033 typed handle |
+| 2026-10-16 | S02 修订：纯 static_cast；取消 Debug dynamic_cast assert |
+| 2026-10-16 | S02 Done：直接 static_cast（27 处）；无包装 |

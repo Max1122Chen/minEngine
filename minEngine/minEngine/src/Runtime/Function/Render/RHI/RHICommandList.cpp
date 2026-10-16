@@ -10,7 +10,7 @@ namespace minEngine
             RHIPipelineLayout* pipelineLayout = nullptr;
             if (pipelineState)
             {
-                if (auto* fallback = dynamic_cast<RHIGraphicsPSOStateFallback*>(pipelineState))
+                if (auto* fallback = static_cast<RHIGraphicsPSOStateFallback*>(pipelineState))
                 {
                     pipelineLayout = fallback->GetDesc().PipelineLayout;
                 }

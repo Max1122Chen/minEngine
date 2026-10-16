@@ -1467,7 +1467,7 @@ namespace minEngine
             return;
         }
 
-        auto* vulkanTexture = dynamic_cast<VulkanRHITexture*>(m_Desc.Texture);
+        auto* vulkanTexture = static_cast<VulkanRHITexture*>(m_Desc.Texture);
         if (vulkanTexture == nullptr || !vulkanTexture->IsValid())
         {
             ME_LOG(LogRHI, Error, "VulkanRHIShaderResourceView: Texture is not a valid VulkanRHITexture.");
@@ -1636,7 +1636,7 @@ namespace minEngine
         vkLayouts.reserve(m_SetLayouts.size());
         for (RHIShaderBindingSetLayout* setLayout : m_SetLayouts)
         {
-            auto* vulkanLayout = dynamic_cast<VulkanRHIShaderBindingSetLayout*>(setLayout);
+            auto* vulkanLayout = static_cast<VulkanRHIShaderBindingSetLayout*>(setLayout);
             if (vulkanLayout == nullptr || !vulkanLayout->IsValid())
             {
                 ME_LOG(LogRHI, Error, "VulkanRHIPipelineLayout: set layout is invalid.");
@@ -1732,7 +1732,7 @@ namespace minEngine
             }
         };
 
-        auto* vulkanLayout = dynamic_cast<VulkanRHIShaderBindingSetLayout*>(layout);
+        auto* vulkanLayout = static_cast<VulkanRHIShaderBindingSetLayout*>(layout);
         if (m_Device == VK_NULL_HANDLE || m_Pool == VK_NULL_HANDLE || vulkanLayout == nullptr ||
             !vulkanLayout->IsValid())
         {
@@ -1780,7 +1780,7 @@ namespace minEngine
                 VkDeviceSize offset = 0;
                 if (resource.Buffer != nullptr)
                 {
-                    if (auto* vulkanBuffer = dynamic_cast<VulkanRHIBuffer*>(resource.Buffer))
+                    if (auto* vulkanBuffer = static_cast<VulkanRHIBuffer*>(resource.Buffer))
                     {
                         buffer = vulkanBuffer->GetBuffer();
                         offset = resource.BufferOffset;
@@ -1802,7 +1802,7 @@ namespace minEngine
                 VkImageView imageView = selectDummyImageView(entry);
                 if (resource.TextureSRV != nullptr)
                 {
-                    if (auto* vulkanSrv = dynamic_cast<VulkanRHIShaderResourceView*>(resource.TextureSRV))
+                    if (auto* vulkanSrv = static_cast<VulkanRHIShaderResourceView*>(resource.TextureSRV))
                     {
                         if (vulkanSrv->IsValid())
                         {
@@ -1814,7 +1814,7 @@ namespace minEngine
                 imageInfos[i].sampler = defaultSampler;
                 if (resource.Sampler != nullptr)
                 {
-                    if (auto* vulkanSampler = dynamic_cast<VulkanRHISampler*>(resource.Sampler))
+                    if (auto* vulkanSampler = static_cast<VulkanRHISampler*>(resource.Sampler))
                     {
                         if (vulkanSampler->IsValid())
                         {
@@ -1876,7 +1876,7 @@ namespace minEngine
 
     VkPipelineLayout VulkanRHIGraphicsPipelineState::GetVkPipelineLayout() const
     {
-        auto* vulkanLayout = dynamic_cast<VulkanRHIPipelineLayout*>(GetDesc().PipelineLayout);
+        auto* vulkanLayout = static_cast<VulkanRHIPipelineLayout*>(GetDesc().PipelineLayout);
         return vulkanLayout != nullptr ? vulkanLayout->GetVkPipelineLayout() : VK_NULL_HANDLE;
     }
 
@@ -1947,8 +1947,8 @@ namespace minEngine
         }
 
         const RHIGraphicsPSODesc& desc = GetDesc();
-        auto* vertexShader = dynamic_cast<VulkanRHIShader*>(desc.VertexShader);
-        auto* pixelShader = dynamic_cast<VulkanRHIShader*>(desc.PixelShader);
+        auto* vertexShader = static_cast<VulkanRHIShader*>(desc.VertexShader);
+        auto* pixelShader = static_cast<VulkanRHIShader*>(desc.PixelShader);
         if (vertexShader == nullptr || pixelShader == nullptr || !vertexShader->IsValid() || !pixelShader->IsValid())
         {
             ME_LOG(LogRHI, Error, "VulkanRHIGraphicsPipelineState: invalid shader modules.");
@@ -1981,7 +1981,7 @@ namespace minEngine
         bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         std::vector<VkVertexInputAttributeDescription> attributes;
-        if (auto* vertexLayout = dynamic_cast<VulkanRHIVertexInputLayout*>(desc.VertexInputLayout))
+        if (auto* vertexLayout = static_cast<VulkanRHIVertexInputLayout*>(desc.VertexInputLayout))
         {
             bindingDesc.stride = vertexLayout->GetStride();
             const std::vector<RHIVertexElement>& elements = vertexLayout->GetElements();
