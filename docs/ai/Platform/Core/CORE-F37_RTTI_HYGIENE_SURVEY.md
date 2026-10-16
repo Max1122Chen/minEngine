@@ -4,9 +4,9 @@
 - **ID:** `CORE-F37`
 - **Type:** Survey / campaign umbrella（非单一切片实现案）
 - **Complexity:** L2（跨 Material / Core / RHI / Editor；子项再拆 Design）
-- **Status:** `In Progress`（S01 + B1-a Done；余 A1 Design / C1 TD）
+- **Status:** `In Progress`（S01 + B1-a + A1/MAT-F07 Done；余 C1 TD）
 - **Owner:** project maintainer
-- **Last updated:** 2026-10-15
+- **Last updated:** 2026-10-16
 - **Related:** [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ObjectCast.h](../../../../minEngine/minEngine/src/Runtime/Core/Object/ObjectCast.h) · Material pin 相关见簇 A1
 - **Trust:** Tier A while Status is Review / In Progress — 驱动讨论与后续 Feature 登记；**不要**把本文件 checkbox 当强制 TODO
 
@@ -55,18 +55,15 @@ Top 文件（按处数）：
 对每个 **NeedsDesign** 簇：请在「维护者方案」填空，或注明 Deferred。  
 **Mechanical** 簇可不写方案，仅确认是否允许开机械切片。
 
-### 簇 A1 — Material NodeDef pin 类型全知函数 — **NeedsDesign**
+### 簇 A1 — Material NodeDef pin 类型全知函数 — **Done（MAT-F07）**
 
 | | |
 |--|--|
-| **证据** | `MaterialValueTypeUtil::GetNodeOutputPinType` / `GetNodeInputPinType`：对每个 `MaterialGraphNodeDef_*` 做 `dynamic_cast` 梯子 |
-| **为何是 A** | pin 类型知识应属 NodeDef（或 pin 数据）；Util 闭世界，新节点必改中央函数 |
-| **连带** | `Material.cpp`、`MaterialTestGraph.cpp` 等对 TextureObject / ScalarParameter / TextureSample 的同类探测 |
-| **已有资产** | `MaterialGraphNodeDef` : `MEObject` + `ME_CLASS`；`BuildIR` 已在子类；Input/Output 现仅有 `Name` |
-| **开放问题** | ① pin 类型放 **Output/Input 数据字段**（ctor 写入）还是 **虚函数**？② 多态节点（Multiply/Select）如何表达“推断 / nullptr”？③ Util 是否保留为薄转发？④ 与 Editor 连线校验、IR 的关系？ |
-| **Agent 推荐** | 见 **§7.1** |
-| **维护者裁定** | _（待填：Approve / Amend / Reject）_ |
-| **建议后续** | 独立 Feature（候选 `MAT-F07`）+ 薄 L2 Design；验收：`material-ir` + 删梯子 |
+| **证据** | （历史）`MaterialValueTypeUtil::GetNode*PinType` 中央 `dynamic_cast` 梯子 |
+| **为何是 A** | pin 类型知识应属 NodeDef；Util 闭世界 |
+| **落地** | 虚 `Get*PinType`；删 Util `GetNode*`；`Material.cpp` / TestGraph → `Cast<>` |
+| **维护者裁定** | Approve → Done（2026-10-16） |
+| **Design** | [MAT-F07](../../Render/Material/MAT-F07_NODEDEF_PIN_VALUE_TYPE_DESIGN.md) **Done** |
 
 ### 簇 A2 — MIR 已有 Kind 仍用 `dynamic_cast` — **NeedsDesign（轻）或 Mechanical-if-policy**
 
@@ -151,50 +148,9 @@ Top 文件（按处数）：
 
 > 以下是 partner 默认路径，不是定稿。你改一刀或整段 Reject 即可。批准前不开码。
 
-### 7.1 簇 A1 — Material pin 类型（推荐默认）
+### 7.1 簇 A1 — Material pin 类型 — **MAT-F07 Done**
 
-**目标契约**
-
-- 每个 NodeDef **自己声明**固定 pin 的 value type；中央 Util **不再**认识任何具体 `MaterialGraphNodeDef_*`。
-- `nullptr` 语义保持现状：`AreConnectable` 把「未知 / 推断」当宽类型（两端都已知才硬比）。
-
-**推荐形态：数据优先，几乎不要虚函数**
-
-1. 扩展 pin 结构（非序列化 / 或 Transient）：
-   - `MaterialGraphNodeDefOutput` 增加 `MaterialValueType DeclaredType = nullptr;`
-   - `MaterialGraphNodeDefInput` 增加 `MaterialValueType ExpectedType = nullptr;`
-2. 各子类 **ctor** 在 `push_back` Name 的同时写入类型（与今日 `BuildIR`/梯子语义对齐），例如：
-   - Constant：Output0 = Float  
-   - Constant3：Out0 = Float3，Out1–3 = Float  
-   - MakeFloat2：In = Float，Out = Float2  
-   - TextureSample：In Texture=Texture2D，UV=Float2；Out RGBA/RGB/A 对应 Float4/3/1  
-   - Multiply / Add / Select / …：**两侧 ExpectedType / DeclaredType 保持 `nullptr`**（推断）
-3. `MaterialValueTypeUtil::GetNode*PinType` 退化为：
-   - 边界检查 → 读对应 pin 的字段 → 返回  
-   - **删除全部 `dynamic_cast` 梯子**
-4. MaterialOutput 输入：继续复用现有 `GetMaterialPropertyInputDescription`（按 input Name 查 ExpectedType），在 **MaterialOutput 的 ctor / EnsureInputs** 里写入各 shading pin 的 ExpectedType，而不是在 Util 里 `dynamic_cast` MaterialOutput。
-
-**为何不首选「每节点虚函数 GetOutputPinType」**
-
-- 固定类型与 Name 同生同灭，数据更贴 ctor 真源；虚函数容易再长出第二份 switch。
-- 仅当日后出现「实例状态改变 pin 类型」再加虚覆盖；今天没有。
-
-**连带（同 Feature 内小切片，勿另起全知表）**
-
-- `Material.cpp` / `MaterialTestGraph` 里对 TextureObject / ScalarParameter 的探测：改为  
-  - 读 pin 类型 / 或  
-  - `Cast<MaterialGraphNodeDef_TextureObject>` **单点**业务查询（合法 B：知道要找哪一种类），**禁止**再堆中央 switch。
-
-**Feature / 验收**
-
-- 登记 `MAT-F07`（或挂在 CORE-F37-Sxx，但推荐独立 MAT）；薄 L2 Design 一页即可。
-- 验收：`material-ir`；Editor 连线拒绝错误类型；梯子文件无 `dynamic_cast`。
-
-**刻意不做**
-
-- 不为 pin 类型引入 visitor / 反射查询表。
-- 不把 MIR 类型系统与 pin DeclaredType 强行双写进磁盘（DeclaredType 运行时填充即可；反序列化后 ctor/工厂重建图时写好）。
-
+虚 `Get*PinType` + 删 Util `GetNode*`；无 pin 字段 / Refresh。详见 [MAT-F07 Design](../../Render/Material/MAT-F07_NODEDEF_PIN_VALUE_TYPE_DESIGN.md)（**Done**）。
 ---
 
 ### 7.2 簇 A2 — MIR Kind — **S01 Done**
@@ -243,7 +199,7 @@ Editor / Tests（B1-b）**本战役放过**（与 B2 一并后置）。
 ```text
 1) CORE-F37-S01  MIR As<T>()           Done
 2) B1-a          Runtime MEObject → Cast<>  Done
-3) A1            MAT-F07 pin 数据声明（另 Design）
+3) A1            MAT-F07                     Done
 4) C1            仅登记 TD
 — 后置：B2 Editor；B1-b Editor/Tests
 ```
@@ -259,3 +215,6 @@ Editor / Tests（B1-b）**本战役放过**（与 B2 一并后置）。
 | 2026-10-15 | 澄清 A2：`As*` 是药不是病；B2 + Editor 侧 B1-b 本战役 Deferred |
 | 2026-10-15 | A2 锁定 UE `As<T>()`；Design Spec Review 待审批 |
 | 2026-10-15 | S01 Done；B1-a Runtime `Cast<>` Done（20 文件 / 34 处）；余 A1 / C1 TD |
+| 2026-10-16 | A1 → MAT-F07 Design Spec（Review）；虚 Get*PinType + pin transient 字段 |
+| 2026-10-16 | MAT-F07 修订：纯虚 override；删 Util GetNode*；取消 pin 字段/Refresh |
+| 2026-10-16 | MAT-F07 S01+S02 Done；`material-ir` PASS；余 C1 TD |

@@ -99,9 +99,8 @@ namespace minEngine
             return false;
         }
 
-        MaterialValueType fromType =
-            MaterialValueTypeUtil::GetNodeOutputPinType(fromDef, fromOutputIndex);
-        MaterialValueType toType = MaterialValueTypeUtil::GetNodeInputPinType(toDef, toInputIndex);
+        MaterialValueType fromType = fromDef->GetOutputPinType(fromOutputIndex);
+        MaterialValueType toType = toDef->GetInputPinType(toInputIndex);
         if (!MaterialValueTypeUtil::AreConnectable(fromType, toType))
         {
             if (outReason != nullptr)

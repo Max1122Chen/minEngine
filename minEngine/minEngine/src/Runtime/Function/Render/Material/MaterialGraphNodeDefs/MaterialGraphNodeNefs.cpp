@@ -1,5 +1,8 @@
 #include "MaterialGraphNodeDef.h"
 #include "Render/Material/MaterialIR/MIREmitter.h"
+#include "Render/Material/MaterialIR/MaterialIRTypes.h"
+#include "Render/Material/MaterialPropertyUtil.h"
+#include "Render/Material/MaterialTypes.h"
 
 namespace minEngine
 {
@@ -17,6 +20,15 @@ namespace minEngine
     void MaterialGraphNodeDef_Constant::BuildIR(MIREmitter& emitter)
     {
         emitter.Output(0, emitter.ConstantFloat(Value));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_Constant::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat();
     }
 
     MaterialGraphNodeDef_Constant3::MaterialGraphNodeDef_Constant3()
@@ -53,6 +65,19 @@ namespace minEngine
         }
     }
 
+    MaterialValueType MaterialGraphNodeDef_Constant3::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex == 0)
+        {
+            return MIRPrimitiveType::GetFloat3();
+        }
+        if (outputIndex >= 1 && outputIndex <= 3)
+        {
+            return MIRPrimitiveType::GetFloat();
+        }
+        return nullptr;
+    }
+
     MaterialGraphNodeDef_MakeFloat2::MaterialGraphNodeDef_MakeFloat2()
     {
         m_Inputs.push_back({ "X" });
@@ -65,6 +90,24 @@ namespace minEngine
         MIRValue* x = emitter.Input(GetInput(0));
         MIRValue* y = emitter.Input(GetInput(1));
         emitter.Output(0, emitter.Vector2(x, y));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_MakeFloat2::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat2();
+    }
+
+    MaterialValueType MaterialGraphNodeDef_MakeFloat2::GetInputPinType(int32_t inputIndex) const
+    {
+        if (GetInput(inputIndex) == nullptr)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat();
     }
 
     MaterialGraphNodeDef_MakeFloat3::MaterialGraphNodeDef_MakeFloat3()
@@ -81,6 +124,24 @@ namespace minEngine
         MIRValue* g = emitter.Input(GetInput(1));
         MIRValue* b = emitter.Input(GetInput(2));
         emitter.Output(0, emitter.Vector3(r, g, b));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_MakeFloat3::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat3();
+    }
+
+    MaterialValueType MaterialGraphNodeDef_MakeFloat3::GetInputPinType(int32_t inputIndex) const
+    {
+        if (GetInput(inputIndex) == nullptr)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat();
     }
 
     MaterialGraphNodeDef_ConstantInt::MaterialGraphNodeDef_ConstantInt(int64_t value)
@@ -142,6 +203,15 @@ namespace minEngine
     void MaterialGraphNodeDef_Not::BuildIR(MIREmitter& emitter)
     {
         emitter.Output(0, emitter.Not(emitter.Input(GetInput(0))));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_Not::GetInputPinType(int32_t inputIndex) const
+    {
+        if (GetInput(inputIndex) == nullptr)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetBool();
     }
 
     MaterialGraphNodeDef_Subtract::MaterialGraphNodeDef_Subtract()
@@ -242,6 +312,15 @@ namespace minEngine
         emitter.Output(0, emitter.ExternalInput(EI_TexCoord0));
     }
 
+    MaterialValueType MaterialGraphNodeDef_TextureCoordinate::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat2();
+    }
+
     MaterialGraphNodeDef_VertexColor::MaterialGraphNodeDef_VertexColor()
     {
         m_Outputs.push_back({ "RGBA" });
@@ -256,6 +335,19 @@ namespace minEngine
         {
             emitter.Output(1, emitter.Cast(color, MIRPrimitiveType::GetFloat3()));
         }
+    }
+
+    MaterialValueType MaterialGraphNodeDef_VertexColor::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex == 0)
+        {
+            return MIRPrimitiveType::GetFloat4();
+        }
+        if (outputIndex == 1)
+        {
+            return MIRPrimitiveType::GetFloat3();
+        }
+        return nullptr;
     }
 
     MaterialGraphNodeDef_TextureObject::MaterialGraphNodeDef_TextureObject()
@@ -275,6 +367,15 @@ namespace minEngine
     void MaterialGraphNodeDef_TextureObject::BuildIR(MIREmitter& emitter)
     {
         emitter.Output(0, emitter.TextureObject(TextureSlotIndex));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_TextureObject::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRObjectType::GetTexture2D();
     }
 
     MaterialGraphNodeDef_TextureSample::MaterialGraphNodeDef_TextureSample()
@@ -302,6 +403,41 @@ namespace minEngine
         }
     }
 
+    MaterialValueType MaterialGraphNodeDef_TextureSample::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex == 0)
+        {
+            return MIRPrimitiveType::GetFloat4();
+        }
+        if (outputIndex == 1)
+        {
+            return MIRPrimitiveType::GetFloat3();
+        }
+        if (outputIndex == 2)
+        {
+            return MIRPrimitiveType::GetFloat();
+        }
+        return nullptr;
+    }
+
+    MaterialValueType MaterialGraphNodeDef_TextureSample::GetInputPinType(int32_t inputIndex) const
+    {
+        const Input* input = GetInput(inputIndex);
+        if (input == nullptr)
+        {
+            return nullptr;
+        }
+        if (input->Name == "Texture")
+        {
+            return MIRObjectType::GetTexture2D();
+        }
+        if (input->Name == "UV")
+        {
+            return MIRPrimitiveType::GetFloat2();
+        }
+        return nullptr;
+    }
+
     MaterialGraphNodeDef_ScalarParameter::MaterialGraphNodeDef_ScalarParameter()
         : MaterialGraphNodeDef_ScalarParameter("", 0, 0.0f)
     {
@@ -323,6 +459,15 @@ namespace minEngine
         emitter.Output(0, emitter.UniformScalar(UniformSlotIndex, DefaultValue));
     }
 
+    MaterialValueType MaterialGraphNodeDef_ScalarParameter::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat();
+    }
+
     MaterialGraphNodeDef_ComponentMask::MaterialGraphNodeDef_ComponentMask()
         : MaterialGraphNodeDef_ComponentMask(0)
     {
@@ -339,6 +484,15 @@ namespace minEngine
     {
         MIRValue* vector = emitter.Input(GetInput(0));
         emitter.Output(0, emitter.SubscriptChannel(vector, ChannelIndex));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_ComponentMask::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat();
     }
 
     MaterialGraphNodeDef_Lerp::MaterialGraphNodeDef_Lerp()
@@ -365,6 +519,20 @@ namespace minEngine
         emitter.Output(0, emitter.Add(a, scaled));
     }
 
+    MaterialValueType MaterialGraphNodeDef_Lerp::GetInputPinType(int32_t inputIndex) const
+    {
+        const Input* input = GetInput(inputIndex);
+        if (input == nullptr)
+        {
+            return nullptr;
+        }
+        if (input->Name == "Alpha")
+        {
+            return MIRPrimitiveType::GetFloat();
+        }
+        return nullptr;
+    }
+
     MaterialGraphNodeDef_NormalUnpack::MaterialGraphNodeDef_NormalUnpack()
     {
         m_Inputs.push_back({ "RGB" });
@@ -384,6 +552,24 @@ namespace minEngine
         emitter.Output(0, emitter.Subtract(scaled, emitter.ConstantFloat3(1.0f, 1.0f, 1.0f)));
     }
 
+    MaterialValueType MaterialGraphNodeDef_NormalUnpack::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat3();
+    }
+
+    MaterialValueType MaterialGraphNodeDef_NormalUnpack::GetInputPinType(int32_t inputIndex) const
+    {
+        if (GetInput(inputIndex) == nullptr)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat3();
+    }
+
     MaterialGraphNodeDef_MaterialOutput::MaterialGraphNodeDef_MaterialOutput()
     {
         m_Inputs.push_back({ "Albedo" });
@@ -401,5 +587,38 @@ namespace minEngine
         // Attribute values are wired in MIRBuilder::Step_FlowValuesIntoMaterialOutputs.
         MIRValue* result = emitter.Input(GetInput(0));
         emitter.Output(0, result != nullptr ? result : emitter.ConstantFloat(0.0f));
+    }
+
+    MaterialValueType MaterialGraphNodeDef_MaterialOutput::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex != 0)
+        {
+            return nullptr;
+        }
+        return MIRPrimitiveType::GetFloat();
+    }
+
+    MaterialValueType MaterialGraphNodeDef_MaterialOutput::GetInputPinType(int32_t inputIndex) const
+    {
+        const Input* input = GetInput(inputIndex);
+        if (input == nullptr)
+        {
+            return nullptr;
+        }
+
+        for (int32_t propertyIndex = 0; propertyIndex < MaterialShadingPropertyCount; ++propertyIndex)
+        {
+            const MaterialProperty property = static_cast<MaterialProperty>(propertyIndex);
+            MaterialPropertyInputDescription description;
+            if (!GetMaterialPropertyInputDescription(property, description))
+            {
+                continue;
+            }
+            if (input->Name == description.InputName)
+            {
+                return description.ExpectedType;
+            }
+        }
+        return nullptr;
     }
 }

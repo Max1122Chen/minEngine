@@ -2,6 +2,7 @@
 
 #include "../Material.h"
 #include "MaterialCapability.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "../RHI/RHI.h"
 #include "../Texture.h"
@@ -101,7 +102,7 @@ namespace minEngine
             }
 
             if (const MaterialGraphNodeDef_MaterialOutput* outputNode =
-                    dynamic_cast<const MaterialGraphNodeDef_MaterialOutput*>(node->GetDefinition()))
+                    Cast<MaterialGraphNodeDef_MaterialOutput>(node->GetDefinition()))
             {
                 return outputNode;
             }
@@ -142,7 +143,7 @@ namespace minEngine
             }
 
             if (MaterialGraphNodeDef_TextureObject* textureObject =
-                    dynamic_cast<MaterialGraphNodeDef_TextureObject*>(graphNode->GetNodeDef()))
+                    Cast<MaterialGraphNodeDef_TextureObject>(graphNode->GetNodeDef()))
             {
                 if (textureObject->ParameterName == "BaseColor" && textureObject->DefaultTexture == nullptr)
                 {

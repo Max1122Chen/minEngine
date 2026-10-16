@@ -1,6 +1,7 @@
 #include "Material.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Function/Render/Material/MaterialCompiler/MaterialCompiler.h"
 #include "Runtime/Function/Render/Material/MaterialGraphNodeDefs/MaterialGraphNodeDef.h"
 #include "Runtime/Function/Render/Material/MaterialCapability.h"
@@ -274,7 +275,7 @@ namespace minEngine
             }
 
             if (const MaterialGraphNodeDef_TextureObject* textureNode =
-                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(graphNode->GetDefinition()))
+                    Cast<MaterialGraphNodeDef_TextureObject>(graphNode->GetDefinition()))
             {
                 if (textureNode->TextureSlotIndex == slotIndex)
                 {
@@ -301,7 +302,7 @@ namespace minEngine
             }
 
             if (const MaterialGraphNodeDef_ScalarParameter* scalarNode =
-                    dynamic_cast<const MaterialGraphNodeDef_ScalarParameter*>(graphNode->GetDefinition()))
+                    Cast<MaterialGraphNodeDef_ScalarParameter>(graphNode->GetDefinition()))
             {
                 if (scalarNode->UniformSlotIndex == slotIndex)
                 {
@@ -359,8 +360,8 @@ namespace minEngine
                     continue;
                 }
 
-                const auto* sampleNode =
-                    dynamic_cast<const MaterialGraphNodeDef_TextureSample*>(graphNode->GetDefinition());
+                const MaterialGraphNodeDef_TextureSample* sampleNode =
+                    Cast<MaterialGraphNodeDef_TextureSample>(graphNode->GetDefinition());
                 if (sampleNode == nullptr || !sampleNode->bOverrideSampler)
                 {
                     continue;
@@ -372,8 +373,8 @@ namespace minEngine
                     continue;
                 }
 
-                const auto* textureObject =
-                    dynamic_cast<const MaterialGraphNodeDef_TextureObject*>(textureInput->NodeDef);
+                const MaterialGraphNodeDef_TextureObject* textureObject =
+                    Cast<MaterialGraphNodeDef_TextureObject>(textureInput->NodeDef);
                 if (textureObject == nullptr)
                 {
                     continue;

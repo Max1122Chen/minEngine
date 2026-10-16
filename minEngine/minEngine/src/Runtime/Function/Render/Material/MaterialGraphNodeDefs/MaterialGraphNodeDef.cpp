@@ -29,5 +29,23 @@ namespace minEngine
     {
         return const_cast<MaterialGraphNodeDef*>(this)->FindInputByName(name);
     }
+
+    MaterialValueType MaterialGraphNodeDef::GetOutputPinType(int32_t outputIndex) const
+    {
+        if (outputIndex < 0 || outputIndex >= GetOutputCount())
+        {
+            return nullptr;
+        }
+        return nullptr;
+    }
+
+    MaterialValueType MaterialGraphNodeDef::GetInputPinType(int32_t inputIndex) const
+    {
+        if (inputIndex < 0 || inputIndex >= GetInputCount())
+        {
+            return nullptr;
+        }
+        return nullptr;
+    }
 }
 

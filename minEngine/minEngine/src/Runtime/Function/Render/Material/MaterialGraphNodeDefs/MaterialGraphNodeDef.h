@@ -4,6 +4,7 @@
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "../MaterialTypes.h"
+#include "../MaterialValueType.h"
 
 #include <cstdint>
 #include <memory>
@@ -67,6 +68,11 @@ namespace minEngine
         virtual void BuildIR(MIREmitter& emitter) = 0;
         virtual bool IsMaterialOutputNode() const { return false; }
 
+        /** Declared output type; nullptr = polymorphic / unknown (wide). */
+        virtual MaterialValueType GetOutputPinType(int32_t outputIndex) const;
+        /** Expected input type; nullptr = polymorphic / unknown (wide). */
+        virtual MaterialValueType GetInputPinType(int32_t inputIndex) const;
+
         int32_t GetInputCount() const { return static_cast<int32_t>(m_Inputs.size()); }
         Input* FindInputByName(const char* name);
         const Input* FindInputByName(const char* name) const;
@@ -97,6 +103,7 @@ namespace minEngine
         MaterialGraphNodeDef_Constant();
         explicit MaterialGraphNodeDef_Constant(float value);
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
 
         ME_PROPERTY()
         float Value = 0.0f;
@@ -111,6 +118,7 @@ namespace minEngine
         MaterialGraphNodeDef_Constant3();
         MaterialGraphNodeDef_Constant3(float r, float g, float b);
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
 
         ME_PROPERTY()
         float R = 0.0f;
@@ -130,6 +138,8 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_MakeFloat2();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
     };
 
     ME_CLASS()
@@ -140,6 +150,8 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_MakeFloat3();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
     };
 
     class MaterialGraphNodeDef_ConstantInt : public MaterialGraphNodeDef
@@ -181,6 +193,7 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_Not();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
     };
 
     ME_CLASS()
@@ -231,6 +244,7 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_Lerp();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
     };
 
     ME_CLASS()
@@ -241,6 +255,8 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_NormalUnpack();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
     };
 
     ME_CLASS()
@@ -271,6 +287,7 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_TextureCoordinate();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
     };
 
     ME_CLASS()
@@ -281,6 +298,7 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_VertexColor();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
     };
 
     ME_CLASS()
@@ -292,6 +310,7 @@ namespace minEngine
         MaterialGraphNodeDef_TextureObject();
         MaterialGraphNodeDef_TextureObject(std::string parameterName, int textureSlotIndex = 0);
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
 
         ME_PROPERTY()
         std::string ParameterName;
@@ -312,6 +331,8 @@ namespace minEngine
     public:
         MaterialGraphNodeDef_TextureSample();
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
 
         /** false = Inherit Texture Preferred/DefaultLinearRepeat. */
         ME_PROPERTY()
@@ -353,6 +374,7 @@ namespace minEngine
             int uniformSlotIndex = 0,
             float defaultValue = 0.0f);
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
 
         ME_PROPERTY()
         std::string ParameterName;
@@ -373,6 +395,7 @@ namespace minEngine
         MaterialGraphNodeDef_ComponentMask();
         explicit MaterialGraphNodeDef_ComponentMask(int channelIndex);
         void BuildIR(MIREmitter& emitter) override;
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
 
         ME_PROPERTY()
         int ChannelIndex = 0;
@@ -387,6 +410,8 @@ namespace minEngine
         MaterialGraphNodeDef_MaterialOutput();
         void BuildIR(MIREmitter& emitter) override;
         bool IsMaterialOutputNode() const override { return true; }
+        MaterialValueType GetOutputPinType(int32_t outputIndex) const override;
+        MaterialValueType GetInputPinType(int32_t inputIndex) const override;
     };
 }
 

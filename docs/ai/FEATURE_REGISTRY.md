@@ -64,7 +64,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F34` | GameInstance + Subsystem 作用域生命周期（引擎机制 · 游戏 App 契约） | **Done** | — | [Design](./Platform/Core/CORE-F34_GAME_INSTANCE_AND_SUBSYSTEM_LIFECYCLE_DESIGN.md) · L3 · S00–S06 主链 Done；S07 LocalPlayer 后置 |
 | `CORE-F35` | GameInstance 会话中枢 · 项目可选派生类（Hub vs Subsystem） | **Done** | — | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) · L2 · S01–S03；S04 minCraft Deferred |
 | `CORE-F36` | Gameplay FixedTick + 变步 Tick 相位对齐（唯一逻辑时钟 · 分层派发） | **Done** | — | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · L2 · S00–S04；S05 Stub Deferred · suite `gameplay-fixed-tick` · minCraft `ENG-GAP-FIXED-TICK` |
-| `CORE-F37` | RTTI hygiene 战役（Survey → 分簇 Design/机械波） | **In Progress** | — | [Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) · S01 MIR Kind Cast **Done**；B1-a Runtime `Cast<>` **Done**；余 A1/C1 |
+| `CORE-F37` | RTTI hygiene 战役（Survey → 分簇 Design/机械波） | **In Progress** | — | [Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) · S01 MIR **Done**；B1-a **Done**；A1=[MAT-F07](./Render/Material/MAT-F07_NODEDEF_PIN_VALUE_TYPE_DESIGN.md) **Done**；余 C1 TD |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -93,6 +93,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `MAT-F04` | MaterialInstance（Parent + 覆盖 + Instance Proxy） | **Done** | — | [Design](./Render/Material/MAT-F04_MATERIAL_INSTANCE_DESIGN.md) |
 | `MAT-F05` | MaterialInstanceDynamic | **Done** | — | [Design](./Render/Material/MAT-F05_MATERIAL_INSTANCE_DYNAMIC_DESIGN.md) |
 | `MAT-F06` | MIC 资产 / Editor（`.memi`） | **Done** | — | [Design](./Render/Material/MAT-F06_MATERIAL_INSTANCE_CONSTANT_DESIGN.md) |
+| `MAT-F07` | NodeDef pin value type（虚 Get*PinType · 删 Util GetNode*） | **Done** | — | [Design](./Render/Material/MAT-F07_NODEDEF_PIN_VALUE_TYPE_DESIGN.md) · CORE-F37 簇 A1 · L2 · `material-ir` PASS |
 | `SPR-F01` | Sprite System MVP（Asset + Runtime + Editor）**路线图** | **Done** | — | [Roadmap](./Sprite/SPR-F01_SPRITE_SYSTEM_ROADMAP.md) |
 | `SPR-F02` | Sprite / SpriteAtlas 资产真源 + Rebuild + Runtime 解析 | **Done** | — | [Design](./Sprite/SPR-F02_SPRITE_ATLAS_ASSET_DESIGN.md) · suite `sprite-atlas` |
 | `SPR-F03` | Sprite 运行时消费（Component + UVRect→GPU） | **Done** | — | [Design](./Sprite/SPR-F03_SPRITE_RUNTIME_CONSUME_DESIGN.md) · suite `sprite-runtime-consume` |

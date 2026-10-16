@@ -1,3 +1,32 @@
+## 2026-10-16 — MAT-F07 Done：虚 Get*PinType + 删 Util 梯子
+
+- **Scope:** CORE-F37 簇 A1 / MAT-F07 S01+S02
+- **Completed:**
+  - `MaterialGraphNodeDef::GetOutputPinType` / `GetInputPinType`；固定类型子类 override
+  - 删除 `MaterialValueTypeUtil::GetNode*PinType`；EdGraph / Validate 直调虚接口
+  - `Material.cpp` / `MaterialTestGraph` → `Cast<>`
+  - Design / Registry / ACTIVE_WORK / Survey → **Done**
+- **Verification:** `minEngineTests` build OK；`test material-ir` PASS（5/5）
+- **Next:** CORE-F37 C1 TD；战役其余后置
+
+## 2026-10-16 — MAT-F07 Design 修订：纯虚 PinType + 删 Util 类型 API
+
+- **Scope:** 修订 [MAT-F07 Design](./Render/Material/MAT-F07_NODEDEF_PIN_VALUE_TYPE_DESIGN.md)（仍 **Review**）
+- **Completed:**
+  - 锁定改为：虚 `Get*PinType` override；删除 `MaterialValueTypeUtil::GetNode*PinType`
+  - 取消 pin transient 字段与 `RefreshPinTypes`
+  - Survey §7.1 / Changelog 同步
+- **Verification:** docs only
+- **Next:** 批准 → S01 实现
+
+## 2026-10-16 — MAT-F07 Design：NodeDef pin value type（Review）
+
+- **Scope:** CORE-F37 簇 A1 → 独立 Feature `MAT-F07`
+- **Completed:**
+  - 初稿 Design + Registry / ACTIVE_WORK / Survey 链接（后经修订，见上条）
+- **Verification:** docs only
+- **Next:** （见修订条）
+
 ## 2026-10-15 — CORE-F37 B1-a：Runtime MEObject → `Cast<>`
 
 - **Scope:** 簇 B1-a（仅 Runtime；不含 A1/C1/Editor/Tests）
