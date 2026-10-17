@@ -175,12 +175,13 @@ namespace minEngine
         bool RemoveMetaFileOnDisk(const std::string& assetPath, std::string& outError);
 
         // Write .meta before RegisterAsset so Guid stays stable (matches serialized MEObject::m_Guid).
-        bool WriteOrUpdateMetaFile(const AssetMeta& meta);
+        bool WriteOrUpdateMetaFile(const AssetMeta& meta) const;
 
         // After asset deserialize, force identity from registry meta (file may embed a stale m_Guid).
         void ApplyMetaIdentity(MEObject& object, const AssetMeta& meta);
 
         void ClearProjectRegistry();
+        void EvictLoadedAssetCache(std::string_view projectRelativePath);
 
         class AssetRegistryBroadcastBatchScope
         {
@@ -235,6 +236,13 @@ namespace minEngine
         /** Untyped Create via registered Saver.Create (fails if no Save/Create). */
         std::shared_ptr<Asset> CreateAssetByTypeId(
             std::string_view assetTypeId,
+            const std::string& assetName,
+            const std::string& directoryRel,
+            std::string& outError);
+
+        /** Create a DataAsset (or derived) instance; AssetType stays "DataAsset". */
+        std::shared_ptr<Asset> CreateDataAsset(
+            const Reflection::MEClass* classInfo,
             const std::string& assetName,
             const std::string& directoryRel,
             std::string& outError);
@@ -343,6 +351,14 @@ namespace minEngine
 
         std::shared_ptr<Asset> LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage);
 
+        /** True when AssetType can map to more than one runtime class (today: DataAsset). */
+        static bool RequiresRuntimeClassNameForLoad(std::string_view assetTypeId);
+        void SyncRuntimeClassNameAfterSave(const AssetMeta& meta, const Asset& asset) const;
+        bool ValidateOrHealRuntimeClassNameAfterLoad(
+            const AssetMeta& meta,
+            const Asset& asset,
+            std::string& outErrorMessage);
+
         std::string NormalizeProjectRelativeAssetPath(const std::string& path) const;
         bool IsUnderProjectContentRoot(const std::filesystem::path& absolutePath) const;
         bool IsUnderEngineDefaultAssetsRoot(const std::filesystem::path& absolutePath) const;
@@ -350,7 +366,6 @@ namespace minEngine
         void CacheMeta(const AssetMeta& meta, bool alreadyRegistered);
         void UncacheMeta(std::string_view projectRelativePath);
 
-        void EvictLoadedAssetCache(std::string_view projectRelativePath);
         void MoveLoadedAssetCacheKey(std::string_view oldRel, std::string_view newRel);
         bool LogReferenceWarningsForDelete(const AssetMeta& meta) const;
         bool MoveRegistryEntry(std::string_view oldRel, std::string_view newRel, AssetMeta& inOutMeta);

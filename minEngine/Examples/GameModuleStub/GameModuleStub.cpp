@@ -3,6 +3,7 @@
 
 #include "Runtime/Core/Module/MinEngineGameModuleEntry.h"
 
+#include "SampleTableDataAsset.h"
 #include "StubGameInstance.h"
 #include "StubGameInstanceSubsystem.h"
 #include "StubGamePrimitiveComponent.h"
@@ -25,5 +26,7 @@ extern "C" GAMEMODULESTUB_API int MinEngine_GameModuleStub_TouchReflectedTypes(v
     (void)sizeof(GameModuleStub::StubGameInstance);
     (void)sizeof(GameModuleStub::StubGameInstanceSubsystem);
     (void)sizeof(GameModuleStub::StubTickableWorldSubsystem);
+    (void)sizeof(GameModuleStub::SampleTableDataAsset);
+    (void)GameModuleStub::SampleTableDataAsset::StaticClass();
     return MinEngine_GameModuleEntry();
 }

@@ -40,12 +40,12 @@
 4. **Editor Create：** AES allowlist + `TryCreateDataAssetInDirectory` + CB Create + `asset.create` 同源。
 5. **Editor Edit：** 选中 typeId `DataAsset` → Load → `PropertyValueWidget` → 显式 Save 按钮。
 6. **Runtime：** ByPath/ByGUID/ByMeta；窄化用 `Cast<T>`（禁止恢复 AM `LoadAsset<T>`）。
-7. **扩展契约：** 游戏模块派生 `T : DataAsset`，自注册 typeId + 扩展名 + handlers（AES creatable 动态注册 Deferred）。
+7. **扩展契约（已由 ASSET-F10 修正）：** 游戏模块派生 `T : DataAsset` 即可；**不要**为每个派生类自注册 typeId / 扩展名 / Load·Save·Create handlers。官方路径见 [ASSET-F10](./ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md)（meta.`RuntimeClassName` + 多态 NewObject）。AES creatable 类选择仍 Deferred（F10-S03）。
 8. **验证：** suite Create → 改字段 → Save → 丢缓存 → Load → 断言。
 
 ### Should
 
-9. 派生类型 Inspector：基类按 typeId；派生以后续 cast/`IsA` 扩展（本期仅基类 typeId）。
+9. 派生类型 Inspector：基类按 typeId；派生 `IsA(DataAsset)` 扩展见 F10-S03。
 
 ### Must not / Non-Goals
 
@@ -119,6 +119,7 @@ class DataAsset : public Asset {
 
 | Date | Note |
 |------|------|
+| 2026-10-16 | 扩展契约勘误：指向 ASSET-F10；废弃「自注册 handlers」主路径 |
 | 2026-10-08 | Draft：薄 DataAsset + 同质 AM；Import/Cook Out |
 | 2026-10-08 | Self-review Ready with deferred；依赖 F08 |
 | 2026-10-08 | **Done**：S01–S03 实现 + suite `data-asset`；文档重建（误清空后按 Review+实现恢复） |

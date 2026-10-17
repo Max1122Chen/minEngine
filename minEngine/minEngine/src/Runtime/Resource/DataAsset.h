@@ -11,7 +11,7 @@ namespace minEngine
 
     /**
      * Thin editable definition asset.
-     * Game modules derive and register their own typeId + handlers; Core stays mechanism-only.
+     * Game modules may derive T : DataAsset; load uses AssetMeta::RuntimeClassName (shared .medata pipeline).
      */
     ME_CLASS()
     class DataAsset : public Asset

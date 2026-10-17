@@ -8,6 +8,11 @@
 
 namespace minEngine
 {
+    namespace Reflection
+    {
+        class MEClass;
+    }
+
     class Asset;
     class AssetManager;
     class DataAsset;
@@ -24,6 +29,12 @@ namespace minEngine
             std::string& outError);
         static std::shared_ptr<Asset> CreateHandler(
             AssetManager& manager,
+            const std::string& assetName,
+            const std::string& directoryRel,
+            std::string& outError);
+        static std::shared_ptr<Asset> Create(
+            AssetManager& manager,
+            const Reflection::MEClass* classInfo,
             const std::string& assetName,
             const std::string& directoryRel,
             std::string& outError);

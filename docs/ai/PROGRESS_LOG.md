@@ -1,3 +1,63 @@
+## 2026-10-17 — ASSET-F10 S01/S02：多态 DataAsset Load/Create
+
+- **Scope:** `AssetMeta::RuntimeClassName` 通用字段；Save 统一写入；Load 两档；`CreateDataAsset`；按类查询
+- **Completed:**
+  - 可恢复资产缺字段 Warning 并重写 meta；类名不符则失败
+  - DataAsset 缺字段 / 错类 / 非派生则失败；按 `MEClass` 构造
+  - `GameModuleStub::SampleTableDataAsset`（`vector` of `ME_STRUCT`）roundtrip，无 handler 注册
+  - `FindAssetMetasByRuntimeClass` 改扫 meta 字段
+- **Verification:** `minEngine/bin/minEngineTests.exe test data-asset` PASSED
+- **Next:** S03 AES/Inspector 派生（Deferred）；minCraft 去掉 Bootstrap
+
+## 2026-10-17 — ASSET-F10：缺 RuntimeClassName 分两档
+
+- **Scope:** 存量 `.meta` 没有类名字段时的失败策略
+- **Completed:** Design 改为按「AssetType 能否唯一推出类」分档：1:1 资产 Warning 并在 Load 成功后尝试重写；DataAsset 缺字段 Error 失败（避免猜成基类再焊死）。本 Feature 之前的基类 `.medata` 走一次性迁移
+- **Verification:** docs only
+- **Next:** 审阅 Design → Planned → S01
+
+## 2026-10-17 — ASSET-F10：RuntimeClassName 升为通用 AssetMeta 字段
+
+- **Scope:** 设计修订（对照 UE `FAssetData::AssetClassPath`、Godot 资源头、Unity `.meta` 分工）
+- **Completed:** [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) 改为：所有资产 Save 写入实际类名；DataAsset 用它 `NewObject`；其它 Loader 只做不符即失败的冗余校验；空字段仅表示旧 meta
+- **Verification:** docs only
+- **Next:** 维护者审阅 → Planned → S01
+
+## 2026-10-16 — ASSET-F10 DataAsset 多态 Load Design Draft
+
+- **Scope:** minCraft 反馈：派生 DataAsset Load 写死基类；否定游戏仓 per-type handler 注册
+- **Completed:** 登记 `ASSET-F10`；[Design Draft](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md)（meta.`RuntimeClassName` + 共享 Loader；零派生管线注册）；F07 扩展契约勘误；ACTIVE_WORK Primary 紧急轨；Registry next ASSET → F11
+- **Verification:** docs only
+- **Next:** 维护者审阅 → Planned → S01（Load/Create/Save + 派生 roundtrip 单测）
+
+## 2026-10-17 — CORE-F38 Design：Drain 讲解 + DataAsset 首客户 + UE/Godot 锚点
+
+- **Scope:** 回应「Drain 是什么 / Texture2D 是否太险 / 是否对标 UE·Godot」
+- **Completed:** Design 已含 Drain 定义、UE TaskGraph / Godot WorkerThreadPool+MessageQueue 源码锚点；首资产客户锁定 DataAsset；合成作业为性能门闩；对齐 ASSET-F10；Learning path 四步
+- **Verification:** docs only
+- **Next:** 维护者确认 Open Questions → Planned；实现仍后置（当前 Primary 为 ASSET-F10）
+
+## 2026-10-16 — CORE-F38 TaskSystem Design Draft
+
+- **Scope:** 登记 `CORE-F38` + `ASSET-F09`；撰写 TaskSystem Design
+- **Completed:** [CORE-F38_TASK_SYSTEM_DESIGN.md](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) Status **Draft**；Registry / ACTIVE_WORK / Digest / PROJECT_CONTEXT 同步
+- **Verification:** docs only；对照 `Engine::TickOneFrame`、`LoadAssetByMeta_Internal`、`Texture2DLoader::LoadFromAssetMeta`（CPU+RHI 同路径）
+- **Next:** 维护者审阅 Open Questions → Planned → Impl Plan（勿开工码）
+
+## 2026-10-16 — 记录三条后续目标；多线程先 TaskSystem
+
+- **Scope:** ACTIVE_WORK / PROJECT_CONTEXT / BOOTSTRAP_DIGEST
+- **Completed:** 三条轨落成目标（未登记 Feature）。多线程拆成 TaskSystem（先）与逻辑/渲染/RHI 线程（后）。验收要求：同一工作上 1 worker 对 N worker，不靠空场景 FPS
+- **Verification:** docs only
+- **Next:** 讨论 TaskSystem 设计，再决定是否开 Design
+
+## 2026-10-16 — 引导文档对齐当前 master
+
+- **Scope:** `BOOTSTRAP_DIGEST`、`PROJECT_CONTEXT`、`ACTIVE_WORK`、Capability Roadmap 阶段判断
+- **Completed:** 快照从 9 月 Sprite Primary 改到 10 月已落地能力；记下三条未立项方向（多线程 / Atmosphere / Plugin）
+- **Verification:** docs only
+- **Next:** 与维护者讨论后再决定是否登记 Feature
+
 ## 2026-10-16 — RND-F24-S03 Done：VertexCustom Custom0/1
 
 - **Scope:** 材质图消费 Custom0@5 / Custom1@6（镜像 VertexColor）

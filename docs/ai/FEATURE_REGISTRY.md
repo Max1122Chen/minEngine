@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-16（RND-F24 S03 Done · CORE-F36 S00–S04 Done on master）
+Last updated: 2026-10-17（ASSET-F10 S01/S02 Done）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -65,6 +65,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F35` | GameInstance 会话中枢 · 项目可选派生类（Hub vs Subsystem） | **Done** | — | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) · L2 · S01–S03；S04 minCraft Deferred |
 | `CORE-F36` | Gameplay FixedTick + 变步 Tick 相位对齐（唯一逻辑时钟 · 分层派发） | **Done** | — | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · L2 · S00–S04；S05 Stub Deferred · suite `gameplay-fixed-tick` · minCraft `ENG-GAP-FIXED-TICK` |
 | `CORE-F37` | RTTI hygiene 战役（Survey → 分簇 Design/机械波） | **In Progress** | — | [Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) · S01/B1-a/MAT-F07/S02 **Done**；B2/B1-b 后置 · [S02 Design](./Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) · TD-033 |
+| `CORE-F38` | TaskSystem（TaskFlow 薄包装 · 完成队列回流游戏线程） | **Draft** | — | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · L2 · 不含逻辑/渲染线程分离 · 证明客户 `ASSET-F09` |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -140,6 +141,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET-F06` | AssetManager Facade 重构（开闭 / 去上帝对象；Import≠Load；模块自注册；ContentMutation） | **Done** | — | [Design](./Asset/ASSET-F06_ASSET_MANAGER_FACADE_REFACTOR_DESIGN.md) · S01–S06 |
 | `ASSET-F07` | Thin DataAsset（`.medata`；Create/反射编辑/同质 AM 生命周期） | **Done** | — | [Design](./Asset/ASSET-F07_DATA_ASSET_DESIGN.md) · [Review](./Asset/ASSET-F07_DATA_ASSET_DESIGN_REVIEW.md) · Depends [F08](./Asset/ASSET-F08_LOADASSET_TYPED_SUGAR_REMOVAL_DESIGN.md) · Import/Cook/Primary **Out** |
 | `ASSET-F08` | 移除 `LoadAsset<T>` 类型糖衣（默认含 `CreateAsset<T>`；`Cast<T>` 窄化） | **Done** | — | [Design](./Asset/ASSET-F08_LOADASSET_TYPED_SUGAR_REMOVAL_DESIGN.md) · [Review](./Asset/ASSET-F08_LOADASSET_TYPED_SUGAR_REMOVAL_DESIGN_REVIEW.md) · `ObjectCast.h` · 解锁 F07 |
+| `ASSET-F09` | 异步 DataAsset 加载（worker 读文件字节；NewObject/反序列化在游戏线程 Drain；无 RHI） | **Draft** | — | Depends [CORE-F38](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md)；独立 Design 待开 · Texture2D 异步后置 · 同步多态前提 [ASSET-F10](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
+| `ASSET-F10` | DataAsset 多态 Load/Create（meta.RuntimeClassName；共享管线；游戏零 handler 注册） | **In Progress**（S01/S02 Done；S03 AES/Inspector Deferred） | — | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) · suite `data-asset` |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Pose → palette → GPU） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · 旧 Placeholder `ANIM-F01_ANIMATION_SYSTEM_DESIGN.md` 已废弃勿用 |
 | `ANIM-F02` | Clip Playback（Track / Player / SMC / `.meaclip`） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
 | `ANIM-F03` | Animation Graph MVP（FSM + Params + Pose Blend + Editor） | **In Progress** *(runtime+Editor 已合入；人型闭环 smoke 收口)* | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
@@ -193,8 +196,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F37** | F27–F32/F34–**F36 Done**；**F33** In Progress（Deferred Spawn/Destroy）；F29/F30；F23–F26 Prefab MVP **Done** |
-| `ASSET` | **F09** | F01–F03/F05–F08 Done；**F04** In Progress；Async Lifetime 愿景见 Capability Roadmap |
+| `CORE` | **F39** | F27–F32/F34–**F36 Done**；**F33** In Progress；**F37** In Progress（战役收口）；**F38** Draft TaskSystem；F29/F30；Prefab MVP **Done** |
+| `ASSET` | **F11** | F01–F03/F05–F08 Done；**F04** In Progress；**F09** Draft（async DataAsset · 依赖 F38）；**F10** Draft（多态 DataAsset）；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
 | `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F12 Deferred |

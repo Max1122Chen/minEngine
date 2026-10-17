@@ -1,10 +1,21 @@
 {
   "tool_cache_version": 17,
   "files": {
+    "SampleTableDataAsset.h": {
+      "mtime_ns": 1792202768493168000,
+      "size": 1074,
+      "file_hash": "98732b7a97b7118e4d1b4f218ac19f6596972ca10ad2a4538f84d5c7732ace77",
+      "has_markers": true,
+      "class_keys": [
+        "GameModuleStub::SampleTableDataAsset",
+        "GameModuleStub::SampleTableRow"
+      ],
+      "enum_keys": []
+    },
     "StubGameInstance.h": {
-      "mtime_ns": 1791976941702910400,
-      "size": 673,
-      "file_hash": "25c714a927b2fb67196f2a1c3db5fe4e1f2a753f67fbed3023c384023de756b8",
+      "mtime_ns": 1792056975127293400,
+      "size": 636,
+      "file_hash": "0c087957618cbde983212a77d70cd43de612351ff358fa9a81b61d5552be1df5",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::StubGameInstance"
@@ -43,10 +54,73 @@
     }
   },
   "classes": {
+    "GameModuleStub::SampleTableDataAsset": {
+      "namespace": "GameModuleStub",
+      "class_name": "SampleTableDataAsset",
+      "decl_pos": 477,
+      "class_hash": "5171f1dde3089815c6bd0b6afad39842b2a3d52cfcb025b3aa078338564262f8",
+      "specifiers": [],
+      "metadata": {},
+      "base_types": [
+        "minEngine::DataAsset"
+      ],
+      "has_virtual_inheritance": false,
+      "content_hash": "f68cf1481717ed63ebeddf671cd629d26fc2aca12c70e5fab2de9dfa4a56df35",
+      "output_header": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/SampleTableDataAsset.gen.h",
+      "output_source": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/SampleTableDataAsset.gen.cpp",
+      "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/SampleTableDataAsset.h",
+      "source_include": "SampleTableDataAsset.h",
+      "source_rel": "SampleTableDataAsset.h",
+      "properties": [
+        {
+          "name": "m_Rows",
+          "type_name": "std::vector<SampleTableRow>",
+          "specifiers": [
+            "EditAnywhere"
+          ],
+          "metadata": {
+            "Setter": "SetRows",
+            "Getter": "GetRows"
+          }
+        }
+      ],
+      "functions": []
+    },
+    "GameModuleStub::SampleTableRow": {
+      "namespace": "GameModuleStub",
+      "class_name": "SampleTableRow",
+      "decl_pos": 139,
+      "class_hash": "e978294de6ed56dacdcbc16c9b53c18183abf32d98fdd0e677024e9b329fac2d",
+      "specifiers": [],
+      "metadata": {},
+      "base_types": [],
+      "has_virtual_inheritance": false,
+      "content_hash": "fb4f6b6ed6afda8c78f714a631db70b3a69110110ea07c855045a1d5185046ca",
+      "output_header": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/SampleTableDataAsset.gen.h",
+      "output_source": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/Generated/Reflection/SampleTableDataAsset.gen.cpp",
+      "source_file": "D:/Dev/GitRepo/minEngine/minEngine/Examples/GameModuleStub/src/SampleTableDataAsset.h",
+      "source_include": "SampleTableDataAsset.h",
+      "source_rel": "SampleTableDataAsset.h",
+      "properties": [
+        {
+          "name": "Id",
+          "type_name": "std::string",
+          "specifiers": [],
+          "metadata": {}
+        },
+        {
+          "name": "Value",
+          "type_name": "int32_t",
+          "specifiers": [],
+          "metadata": {}
+        }
+      ],
+      "functions": []
+    },
     "GameModuleStub::StubGameInstance": {
       "namespace": "GameModuleStub",
       "class_name": "StubGameInstance",
-      "decl_pos": 315,
+      "decl_pos": 304,
       "class_hash": "e8406e43cd2a4f5b79193fb658992e5f3b9210ac95d8c261f4345f345d9c6211",
       "specifiers": [],
       "metadata": {},

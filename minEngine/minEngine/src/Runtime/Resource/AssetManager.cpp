@@ -22,7 +22,9 @@
 #include "Runtime/Resource/Loaders/SpriteLoader.h"
 #include "Runtime/Resource/Loaders/StaticMeshLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
+#include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Core/Serialization/JsonArchive.h"
 
@@ -573,9 +575,115 @@ namespace minEngine
         m_LoadedAssetCache[registryKey] = asset;
     }
 
-    bool AssetManager::WriteOrUpdateMetaFile(const AssetMeta& meta)
+    bool AssetManager::WriteOrUpdateMetaFile(const AssetMeta& meta) const
     {
         return WriteMetaFile(meta);
+    }
+
+    bool AssetManager::RequiresRuntimeClassNameForLoad(std::string_view assetTypeId)
+    {
+        return assetTypeId == "DataAsset";
+    }
+
+    void AssetManager::SyncRuntimeClassNameAfterSave(const AssetMeta& meta, const Asset& asset) const
+    {
+        const Reflection::MEClass* classInfo = asset.GetClass();
+        if (classInfo == nullptr)
+        {
+            ME_LOG(
+                LogAsset,
+                Warn,
+                "SaveAsset: '{}' has null GetClass(); RuntimeClassName not written.",
+                meta.AssetPath);
+            return;
+        }
+
+        const std::string className = classInfo->GetName();
+        AssetMeta metaToWrite = meta;
+        metaToWrite.RuntimeClassName = className;
+
+        if (!WriteOrUpdateMetaFile(metaToWrite))
+        {
+            ME_LOG(
+                LogAsset,
+                Warn,
+                "SaveAsset: failed to write RuntimeClassName for '{}'.",
+                meta.AssetPath);
+            return;
+        }
+
+        AssetMeta* liveMeta = const_cast<AssetMeta*>(FindAssetMetaByPath(meta.AssetPath));
+        if (liveMeta != nullptr)
+        {
+            liveMeta->RuntimeClassName = className;
+        }
+    }
+
+    bool AssetManager::ValidateOrHealRuntimeClassNameAfterLoad(
+        const AssetMeta& meta,
+        const Asset& asset,
+        std::string& outErrorMessage)
+    {
+        const Reflection::MEClass* classInfo = asset.GetClass();
+        if (classInfo == nullptr)
+        {
+            outErrorMessage = "loaded asset has null GetClass()";
+            return false;
+        }
+
+        const std::string loadedClassName = classInfo->GetName();
+        if (!meta.RuntimeClassName.empty())
+        {
+            if (meta.RuntimeClassName != loadedClassName)
+            {
+                outErrorMessage = "RuntimeClassName mismatch: meta='" + meta.RuntimeClassName
+                    + "' loaded='" + loadedClassName + "'";
+                ME_LOG(
+                    LogAsset,
+                    Error,
+                    "LoadAsset: {} ({})",
+                    outErrorMessage,
+                    meta.AssetPath);
+                return false;
+            }
+            return true;
+        }
+
+        if (RequiresRuntimeClassNameForLoad(meta.AssetType))
+        {
+            outErrorMessage = "DataAsset load requires RuntimeClassName in meta";
+            return false;
+        }
+
+        ME_LOG(
+            LogAsset,
+            Warn,
+            "LoadAsset: '{}' missing RuntimeClassName; rewriting meta as '{}'.",
+            meta.AssetPath,
+            loadedClassName);
+
+        AssetMeta* liveMeta = const_cast<AssetMeta*>(FindAssetMetaByPath(meta.AssetPath));
+        if (liveMeta == nullptr)
+        {
+            ME_LOG(
+                LogAsset,
+                Warn,
+                "LoadAsset: '{}' not in registry; cannot heal RuntimeClassName.",
+                meta.AssetPath);
+            return true;
+        }
+
+        liveMeta->RuntimeClassName = loadedClassName;
+        if (!WriteOrUpdateMetaFile(*liveMeta))
+        {
+            ME_LOG(
+                LogAsset,
+                Warn,
+                "LoadAsset: failed to rewrite RuntimeClassName for '{}'.",
+                meta.AssetPath);
+        }
+
+        return true;
     }
 
     void AssetManager::ApplyMetaIdentity(MEObject& object, const AssetMeta& meta)
@@ -905,14 +1013,24 @@ namespace minEngine
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasByRuntimeClass(
         const std::string& runtimeClassName) const
     {
-        const std::string assetTypeId =
-            AssetTypeRegistry::Get().InferAssetTypeFromRuntimeClassName(runtimeClassName);
-        if (assetTypeId.empty())
+        std::vector<const AssetMeta*> result;
+        if (runtimeClassName.empty())
         {
-            return {};
+            return result;
         }
 
-        return FindAssetMetasByType(assetTypeId);
+        for (const AssetTypeDescriptor& descriptor : AssetTypeRegistry::Get().GetDescriptors())
+        {
+            for (const AssetMeta* meta : FindAssetMetasByType(descriptor.AssetTypeId))
+            {
+                if (meta != nullptr && meta->RuntimeClassName == runtimeClassName)
+                {
+                    result.push_back(meta);
+                }
+            }
+        }
+
+        return result;
     }
 
     std::vector<const AssetMeta*> AssetManager::FindAssetMetasUnderDirectory(
@@ -990,6 +1108,7 @@ namespace minEngine
             return false;
         }
 
+        SyncRuntimeClassNameAfterSave(meta, asset);
         return true;
     }
 
@@ -1340,6 +1459,11 @@ namespace minEngine
             return nullptr;
         }
 
+        if (!ValidateOrHealRuntimeClassNameAfterLoad(meta, *asset, outErrorMessage))
+        {
+            return nullptr;
+        }
+
         if (!registryKey.empty())
         {
             m_LoadedAssetCache[registryKey] = asset;
@@ -1459,5 +1583,13 @@ namespace minEngine
         return create(*this, assetName, directoryRel, outError);
     }
 
+    std::shared_ptr<Asset> AssetManager::CreateDataAsset(
+        const Reflection::MEClass* classInfo,
+        const std::string& assetName,
+        const std::string& directoryRel,
+        std::string& outError)
+    {
+        return DataAssetLoader::Create(*this, classInfo, assetName, directoryRel, outError);
+    }
 
 }

@@ -19,6 +19,7 @@ add_library(GameModuleStub SHARED
     src/StubGameInstance.cpp
     src/StubGameInstanceSubsystem.cpp
     src/StubTickableWorldSubsystem.cpp
+    src/SampleTableDataAsset.cpp
 )
 
 set_target_properties(GameModuleStub PROPERTIES

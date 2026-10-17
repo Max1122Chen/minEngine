@@ -18,6 +18,10 @@ namespace minEngine
         ME_PROPERTY()
         std::string AssetType; // e.g., "Texture2D", "StaticMesh", "Scene"
 
+        /** Actual MEClass name of the asset instance. Empty only on legacy meta not yet rewritten. */
+        ME_PROPERTY()
+        std::string RuntimeClassName;
+
         // Project-relative Import Source path (e.g. Assets/Sources/Hero.fbx). Empty if native-authored.
         ME_PROPERTY()
         std::string SourcePath;
