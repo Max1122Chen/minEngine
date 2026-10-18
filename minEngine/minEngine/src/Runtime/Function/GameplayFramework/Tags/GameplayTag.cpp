@@ -6,26 +6,45 @@
 
 namespace minEngine
 {
-    GameplayTag::GameplayTag(const GameplayTagManager* manager, uint32_t index)
-        : m_Manager(manager)
+    GameplayTag::GameplayTag(const GameplayTagManager* manager, uint32_t index, std::string tagName)
+        : TagName(std::move(tagName))
         , m_Index(index)
+        , m_Manager(manager)
     {
+    }
+
+    void GameplayTag::ClearRuntimeBinding()
+    {
+        m_Index = UINT32_MAX;
+        m_Manager = nullptr;
+    }
+
+    bool GameplayTag::TryBindToManager()
+    {
+        if (TagName.empty())
+        {
+            ClearRuntimeBinding();
+            return false;
+        }
+
+        if (!GameplayTagManager::HasInstance())
+        {
+            ClearRuntimeBinding();
+            return false;
+        }
+
+        return GameplayTagManager::Get().BindTag(*this);
+    }
+
+    void GameplayTag::SetTagName(std::string name)
+    {
+        TagName = std::move(name);
+        TryBindToManager();
     }
 
     bool GameplayTag::IsValid() const
     {
         return m_Manager != nullptr && m_Manager->IsValidTag(*this);
-    }
-
-    const std::string& GameplayTag::GetName() const
-    {
-        static const std::string s_EmptyTagName;
-        if (!IsValid())
-        {
-            return s_EmptyTagName;
-        }
-
-        return m_Manager->GetTagName(*this);
     }
 
     bool GameplayTag::Matches(const GameplayTag& query) const
@@ -70,6 +89,13 @@ namespace minEngine
 
     bool GameplayTag::operator==(const GameplayTag& other) const
     {
-        return m_Manager == other.m_Manager && m_Index == other.m_Index;
+        const bool selfValid = IsValid();
+        const bool otherValid = other.IsValid();
+        if (selfValid && otherValid)
+        {
+            return m_Manager == other.m_Manager && m_Index == other.m_Index;
+        }
+
+        return !selfValid && !otherValid && TagName.empty() && other.TagName.empty();
     }
 }

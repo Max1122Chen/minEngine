@@ -1,6 +1,6 @@
 # minEngine Project Context (for AI)
 
-Last updated: 2026-09-10
+Last updated: 2026-10-16
 
 ## 1) Project Goal
 
@@ -15,18 +15,21 @@ Primary objective:
 ## 2) Current High-Level Architecture
 
 Main structure observed in repository:
-- Engine core under minEngine/minEngine/src/Runtime.
-- Playground app under minEngine/Playground/src as testbed.
-- Rendering: Manual **RenderGraph** on the main frame path; frame strategy still lives in **`RenderPipeline`** (to become **`ForwardRenderer`** under **RND-F06**). Passes under `RenderPipeline/RenderPasses/`.
-- Third-party dependencies include glfw, glad, glm, imgui, assimp, spdlog.
+- Engine core under `minEngine/minEngine/src/Runtime`. Editor under `Editor/`.
+- Product hosts own Editor + Game executables and link a game SHARED library (`GameModuleEntry`). In-tree sample: `SampleGame` / `SampleEditor`. `Playground/` remains in tree; it is not the product path.
+- Frame path: manual **RenderGraph**; strategy host is **`ForwardRenderer`** (`RND-F06` Done). Passes under the render pipeline.
+- Execution today is **single-threaded and synchronous**. Mutexes exist around log, profiling names, native tags, and editor filesystem mutations. Physics uses Jolt's single-threaded job system. There is no engine TaskSystem and no logic/render thread split.
+- Third-party dependencies include glfw, glad, glm, imgui, assimp, spdlog, Jolt, efsw. TaskFlow is **not** vendored yet.
 
 ## 3) Rendering Status (Current Understanding)
 
 Implemented or in-progress capabilities:
-- Modern RHI + MeshDrawPacket (RND-F02/F04 Done).
-- Manual RenderGraph: Shadow → Scene → Post → Present (RND-F01 S0–S04 Done).
-- Base / translucency / present / directional (and related) shadows.
-- Next render side-track: Sort/Batch (Capability Roadmap); **RND-F06** continues without blocking experience tracks. Animation / Sprite / ScreenUI MVP already on `master`.
+- Modern RHI + MeshDrawPacket; OpenGL and Vulkan backends. RHI downcasts in the backend are `static_cast` (`CORE-F37` S02).
+- Manual RenderGraph: Shadow → Scene → Post → Present. `ForwardRenderer` hosts the frame (`RND-F06` Done).
+- CPU mesh visibility, cull, and sort (`RND-F18`–`F20` Done). CSM / light frustum (`RND-F21`) stays Deferred.
+- Material graph product path including `.memi` (`MAT-F01`–`F07` Done). Vertex Color and Custom0/1 consumption (`RND-F24` S01–S03 Done; S04 factory sugar optional).
+- Environment map asset exists. **Skylight / Atmosphere / height fog are not scheduled** — research only, until a new Feature is registered.
+- Animation, Sprite, and ScreenUI MVP are on `master`.
 
 Known risk themes from recent work:
 - Per-frame container cleanup must be explicit.
@@ -62,13 +65,15 @@ When finishing a task, AI should:
 - Create or update a session note under docs/ai/sessions/ if the task is non-trivial.
 - Place new design docs in the correct docs/ai/ subtree per docs-ai-layout rule.
 
-## 6) Current product direction (2026-09-10)
+## 6) Current product direction (2026-10-16)
 
-- **Stage:** M1 Animation + M2 2D + M3 UI MVP **landed on `master`**; next Primary **unset** — choose in [ACTIVE_WORK.md](./ACTIVE_WORK.md). Parallel Infra / Render / DX — see [ENGINE_CAPABILITY_ROADMAP.md](./ENGINE_CAPABILITY_ROADMAP.md).
+- **Stage:** M1 Animation + M2 2D + M3 UI MVP are on `master`. A minCraft-driven catch-up wave (lifecycle, FixedTick, GI hub, product build, mesh vertex semantics, RTTI hygiene) has also landed. **Primary is unset.**
+- **Open leftovers (do not treat as the next theme):** `CORE-F33` personal review, `ASSET-F04` human acceptance, optional `RND-F24` S04. `CORE-F37` code for this campaign is closed; remaining clusters are deferred.
+- **Next multithread candidate:** `CORE-F38` TaskSystem ([Design Draft](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md)) — TaskFlow wrapper + game-thread Drain, proved only by **synthetic CPU jobs** (1 vs N wall-clock). Real async asset load (`ASSET-F09`) is **Deferred**. Logic/render split, Atmosphere, Plugin/Package remain later goals. See [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 - **Play Mode:** **CORE-F05** MVP Done (dual Scene PIE, Inspecting Context).
-- **Platform Core:** Lua + script binding Done；**CORE-F19** Call-by-name **Done**；Dynamic multicast **CORE-F20** Done（Lua `Add(fn)` = **CORE-F21** Planned）；serialization usable (Binary protocol debt)；Parameter Store **CORE-F13** Done；Hierarchy **CORE-F14/F15** Done.
-- **Editor:** Console MVP (**ED-F04**); Workflow **ED-F02** In Progress（S03/S05 余量）; Inspector UX **ED-F05** Done; Anim SM Canvas **ED-F06/F07** Done; Hierarchy Tree **ED-F08** Done.
-- **Gameplay Framework / Networking:** Future, plugin-oriented — light Tag/Event (**GP-F01/F02**) only; do not rush full Framework into Core.
+- **Platform Core:** Lua + script binding Done; call-by-name and Dynamic multicast subscribe Done (`CORE-F19`–`F21`). GameInstance + subsystems + project GI class Done (`CORE-F34`/`F35`). FixedTick Done (`CORE-F36`). Serialization usable (binary protocol still debt). Game module SHARED is force-loaded via `GameModuleEntry` (`BUILD-F01`).
+- **Editor:** Console MVP; workflow leftovers `ED-F02` S03/S05; tab host mostly landed (`ED-F11`).
+- **Gameplay Framework / Networking:** still plugin-oriented. Tag/Event (`GP-F01`/`F02`) only. Do not put gameplay business types into Core.
 - **Active backlog:** [ACTIVE_WORK.md](./ACTIVE_WORK.md) · IDs [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md).
 
 ## 7) Material Editor (stable)

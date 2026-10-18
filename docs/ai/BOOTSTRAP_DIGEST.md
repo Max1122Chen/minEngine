@@ -4,7 +4,7 @@ Last updated: 2026-10-16
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Workflow **`learning-mentor`** ([WORKFLOW_PROFILE.md](./WORKFLOW_PROFILE.md)). Branch **`master`** (local ahead of `origin/master`). **Primary：** `ASSET-F10` DataAsset 多态 Load（S01/S02 **Done**；[Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md)）— minCraft 可去掉 Bootstrap。并行候选：`CORE-F38` TaskSystem + `ASSET-F09`。收尾不挡：`CORE-F33` review、`ASSET-F04`、`RND-F24` S04。详见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。
+**Snapshot:** Workflow **`learning-mentor`**. Branch **`master`**. **Primary：** `ASSET-F10`（S01/S02 Done）。并行候选：`CORE-F38` TaskSystem（**仅** TaskFlow + 合成证明；**不含** Asset 异步）。`ASSET-F09` **Deferred**。详见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。
 
 ---
 

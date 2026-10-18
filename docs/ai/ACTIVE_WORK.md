@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-17（ASSET-F10 S01/S02 Done）
+Last updated: 2026-10-18（GP-F03 Done；CORE-F39 Cancelled）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,13 +11,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（紧急）：** `ASSET-F10` DataAsset 多态 Load/Create（minCraft 派生表阻塞）。`CORE-F38` 仍为并行候选（Design Draft）。收尾项不挡：F33 review / ASSET-F04。
+**Primary（紧急）：** `ASSET-F10` DataAsset 多态 Load/Create（minCraft 派生表阻塞）。`CORE-F38` 并行候选（Design 已收窄）。收尾项不挡：F33 review / ASSET-F04。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
-| 1 | CORE-F38 | TaskSystem · TaskFlow 薄包装 | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
-| 2 | ASSET-F09 | 异步 DataAsset（F38 首资产客户；依赖 F10 同步多态） | **Draft** | 契约写在 F38；独立 Design 待开 |
+| 1 | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
+| — | GP-F03 | GameplayTag → ME_STRUCT + TagName | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
+| — | CORE-F39 | 值类型 Codec 注册 | **Cancelled** | 由 GP-F03 取代；勿开工 |
+| — | ASSET-F09 | 异步 DataAsset | **Deferred** | 等 F38 站稳后另开 Design |
 | — | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |
 | — | ASSET-F04 | CB Workflow + Automation | **In Progress** | [Design](./Asset/ASSET-F04_CONTENT_WORKFLOW_DESIGN.md) |
 | — | CORE-F36 | FixedTick + 变步 Tick 相位对齐 | **Done**（S00–S04；S05 Stub Deferred） | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) |
@@ -34,18 +36,19 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** ASSET-F10 主链已可用；minCraft 可去掉 per-type Bootstrap。S03 AES/Inspector 派生 Deferred。并行：审阅 [CORE-F38 Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md)。收尾项仍在：RND-F24 **S04**（可选）、F33 review、ASSET-F04 验收。
+**下一动作：** ASSET-F10 主链已可用；minCraft 可去掉 per-type Bootstrap。并行：确认收窄后的 [CORE-F38](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) → Impl Plan（S00–S02）。收尾：RND-F24 S04 / F33 / ASSET-F04。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
 | 轨 | 意图 | 状态 |
 |----|------|------|
-| 多线程 · TaskSystem | TaskFlow 薄包装；Drain 完成队列；合成 CPU 作业做 1 vs N 门闩；`ASSET-F09` 异步 **DataAsset**（Texture2D 后置） | **CORE-F38 / ASSET-F09 Draft** |
-| 多线程 · 帧线程 | 逻辑/渲染分离；更晚的 RHI 线程 | 后置，另 Feature |
+| 多线程 · TaskSystem | 引入 TaskFlow；Drain；合成作业 1 vs N。**本波不做 Asset 异步** | **CORE-F38 Draft（已收窄）** |
+| 多线程 · 资产异步 | DataAsset 等真实客户 | **ASSET-F09 Deferred** |
+| 多线程 · 帧线程 | 逻辑/渲染分离 | 后置 |
 | 光照 | Atmosphere | 后置 |
-| 模块边界 | Plugin / Package | 后置；先有租户 |
+| 模块边界 | Plugin / Package | 后置 |
 
-**多线程验收：** 同一工作上 1 worker 对 N worker（wall-clock）；空场景 FPS 不算异步加载成绩。
+**F38 验收：** 合成作业 1 worker 对 N 的 wall-clock；空场景 FPS 不算。
 
 **后置（不升 Primary）：** Skylight / Atmosphere / 高度雾（仅后续研究）；CORE-F36 S05 Stub。
 

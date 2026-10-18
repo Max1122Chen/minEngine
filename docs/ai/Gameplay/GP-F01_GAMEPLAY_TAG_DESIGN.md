@@ -6,7 +6,7 @@
 - **Status:** Done
 - **Owner:** project maintainer
 - **Last updated:** 2026-09-05
-- **Related:** [Implementation](./GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md), [GP-F02 Event](./GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md), [FEATURE_REGISTRY](../FEATURE_REGISTRY.md), [ENGINE_DESIGN_PHILOSOPHY](../ENGINE_DESIGN_PHILOSOPHY.md)
+- **Related:** [Implementation](./GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md), [GP-F02 Event](./GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md), [GP-F03 ME_STRUCT + TagName](./GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md)（句柄形状修正）, [FEATURE_REGISTRY](../FEATURE_REGISTRY.md), [ENGINE_DESIGN_PHILOSOPHY](../ENGINE_DESIGN_PHILOSOPHY.md)
 - **Reference:** CardGameDemo `CORE-F02`（`packages/core/src/tags/`）；UE `FGameplayTag` / `FGameplayTagContainer` 语义
 
 ## TL;DR

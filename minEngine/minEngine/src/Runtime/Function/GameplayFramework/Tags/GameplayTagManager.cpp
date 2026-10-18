@@ -80,6 +80,32 @@ namespace minEngine
         return m_TagsByIndex[it->second];
     }
 
+    bool GameplayTagManager::BindTag(GameplayTag& tag) const
+    {
+        if (!m_Initialized)
+        {
+            tag.ClearRuntimeBinding();
+            return false;
+        }
+
+        if (tag.TagName.empty())
+        {
+            tag.ClearRuntimeBinding();
+            return false;
+        }
+
+        const auto it = m_IndexByName.find(tag.TagName);
+        if (it == m_IndexByName.end())
+        {
+            tag.ClearRuntimeBinding();
+            return false;
+        }
+
+        tag.m_Index = it->second;
+        tag.m_Manager = this;
+        return true;
+    }
+
     GameplayTag GameplayTagManager::GetParent(const GameplayTag& tag) const
     {
         if (!IsValidTag(tag))
@@ -103,8 +129,17 @@ namespace minEngine
             return false;
         }
 
-        return tag.m_Index < m_TagsByIndex.size()
-            && m_TagsByIndex[tag.m_Index].m_Index == tag.m_Index;
+        if (tag.m_Index >= m_TagsByIndex.size())
+        {
+            return false;
+        }
+
+        if (m_TagsByIndex[tag.m_Index].m_Index != tag.m_Index)
+        {
+            return false;
+        }
+
+        return m_Nodes[tag.m_Index].Name == tag.TagName;
     }
 
     const std::string& GameplayTagManager::GetTagName(const GameplayTag& tag) const
@@ -138,7 +173,7 @@ namespace minEngine
             node.Name = sortedNames[index];
             m_IndexByName.emplace(node.Name, index);
             m_Nodes.push_back(std::move(node));
-            m_TagsByIndex.push_back(GameplayTag(this, index));
+            m_TagsByIndex.push_back(GameplayTag(this, index, sortedNames[index]));
         }
 
         for (uint32_t index = 0; index < m_Nodes.size(); ++index)

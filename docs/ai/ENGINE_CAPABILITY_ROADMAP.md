@@ -4,7 +4,7 @@
 - **ID:** N/A（跨 Feature 阶段路线图）
 - **Status:** In Progress
 - **Owner:** project maintainer
-- **Last updated:** 2026-09-10
+- **Last updated:** 2026-10-16
 - **Related:** [ENGINE_DESIGN_PHILOSOPHY.md](./ENGINE_DESIGN_PHILOSOPHY.md), [ACTIVE_WORK.md](./ACTIVE_WORK.md), [FEATURE_REGISTRY.md](./FEATURE_REGISTRY.md)
 - **Trust:** Tier A — 高层方向与并行关系；**具体下一刀**仍以 ACTIVE_WORK 为准
 
@@ -49,8 +49,8 @@ CORE-F05 Play Mode MVP 已收口。**M1 动画垂直切片 + M2 2D + M3 UI MVP �
 
 ### 当前 WIP 张力（需显式选择）
 
-Registry **In Progress / Review**：`ANIM-F03`（收口）、`ANIM-F04`（Review）、`ED-F02`（余量）、`ED-F04`（MVP 已收）、`ED-F01`（VK 阴影 defer）、`RND-F06`、`WF-F02`。  
-**推荐：** 先选定 ACTIVE_WORK 一条 Primary；支线不升主线（见 §7）。
+2026-10 之后，minCraft 反哺（生命周期、FixedTick、产品构建、顶点语义、RTTI 卫生）已在 `master`。`RND-F06` **Done**。仍挂着且不挡换轨：`CORE-F33` review、`ASSET-F04` 验收、`RND-F24` S04 可选、`ANIM-F03` 收口、`ED-F02` 余量、`WF-F02`。  
+**推荐：** Primary 未锁定。下一条候选是三条独立高级轨（多线程 + TaskFlow 薄包装、Atmosphere 光照、Plugin/Package），见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。一次只升一条；支线不升主线（见 §7）。
 
 ---
 
@@ -150,7 +150,7 @@ Prefab 与网络复制的长期底座；不阻塞 Animation 起步。
 | **P1** | 若选动画：ANIM-F03 smoke 收口 → 审批 ANIM-F04 | 机制加深，勿上完整 AnimBP |
 | **P1** | 若选 DX：ED-F02 S03/S05；可选 ED-F04 标 Done | 短 sprint |
 | **P1∥** | Binary / Asset Lifetime 调查或小切片（Infra） | 不挡体验轨；需先登记 Feature |
-| **P2∥** | RND-F06 续作或 Sort/Batch 新 Feature | Rendering track |
+| **P2∥** | Sort/Batch 已有 MVP（`RND-F18`–`F20`）；Atmosphere 仅在单独开 Design 后进入渲染轨 | Rendering track |
 | **P3** | Prefab / GC / Gameplay Plugin / Net | 延后；见 §6 |
 
 ---

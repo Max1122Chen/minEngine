@@ -1,3 +1,31 @@
+## 2026-10-18 — GP-F03 Done：GameplayTag ME_STRUCT + SetTagName 绑定
+
+- **Scope:** 持久 `TagName`；比较仍走 index；反序列化经 Invisible Setter 绑定
+- **Completed:** `GameplayTag` 升 `ME_STRUCT`；`SetTagName` → `BindTag`；`CORE-F39` Cancelled。Design / Registry / ACTIVE_WORK → **Done**
+- **Verification:** `minEngineTests.exe test gameplay-tags` / `gameplay-events` PASSED
+- **Next:** minCraft 去掉 string 旁路（游戏仓）
+
+## 2026-10-18 — GP-F03 Design 重写：持久名 + 强制运行时 index
+
+- **Scope:** 纠正「按 TagName 比较 / index 可选」的偏差
+- **Completed:** [GP-F03](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) 重写为双层身份：`TagName` 仅存档；`==`/`Matches` 只走 Bind 后的 index；反序列化后强制 Bind
+- **Verification:** docs only
+- **Next:** design review
+
+## 2026-10-18 — GP-F03：GameplayTag 升 ME_STRUCT；CORE-F39 取消
+
+- **Scope:** minCraft Tag 不可序列化；根因是句柄只存 index，非缺 codec 机制
+- **Completed:** `CORE-F39` → **Cancelled**；初版 GP-F03 Draft（后被上条重写）
+- **Verification:** docs only
+- **Next:** 见上条
+
+## 2026-10-18 — CORE-F39：值类型 Codec 注册 Design Draft（已取消）
+
+- **Scope:** （历史）曾规划可扩展 value codec；后改由 GP-F03 修正 Tag 形状
+- **Completed:** 初稿后 **Cancelled**（见上条）
+- **Verification:** docs only
+- **Next:** 无
+
 ## 2026-10-17 — ASSET-F10 S01/S02：多态 DataAsset Load/Create
 
 - **Scope:** `AssetMeta::RuntimeClassName` 通用字段；Save 统一写入；Load 两档；`CreateDataAsset`；按类查询
@@ -29,6 +57,20 @@
 - **Completed:** 登记 `ASSET-F10`；[Design Draft](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md)（meta.`RuntimeClassName` + 共享 Loader；零派生管线注册）；F07 扩展契约勘误；ACTIVE_WORK Primary 紧急轨；Registry next ASSET → F11
 - **Verification:** docs only
 - **Next:** 维护者审阅 → Planned → S01（Load/Create/Save + 派生 roundtrip 单测）
+
+## 2026-10-17 — CORE-F38 收窄：不含 Asset 异步
+
+- **Scope:** 维护者要求第一刀更谨慎
+- **Completed:** Design 只保留 TaskFlow + Drain + 合成 CPU 证明；`ASSET-F09` → **Deferred**；Registry / ACTIVE_WORK / Digest / PROJECT_CONTEXT 同步
+- **Verification:** docs only
+- **Next:** F38 Impl Plan（S00–S02）；F09 等 F38 站稳后再开 Design
+
+## 2026-10-17 — CORE-F38 Design Review：OQ 按默认锁定
+
+- **Scope:** 维护者确认 Open Questions 用默认；agent design-review
+- **Completed:** Decisions 表；同步 Load 改为等字节 future 再在游戏线程装盘（避免与 Drain 死锁）；MVP 不暴露依赖图；Shutdown 必须 Drain；Verdict **Ready with deferred items**（S00–S02）
+- **Verification:** docs only；对照 `AssetSerializeHelper::ReadObjectFromFile`（尚无从内存读，属 F09）
+- **Next:** Implementation Plan（S00–S02）；F09 等 ASSET-F10
 
 ## 2026-10-17 — CORE-F38 Design：Drain 讲解 + DataAsset 首客户 + UE/Godot 锚点
 

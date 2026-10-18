@@ -1,8 +1,14 @@
 #include "GameplayTagTest.h"
 
+#include "EngineTestFixture.h"
+
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTagContainer.h"
+#include "Runtime/Function/GameplayFramework/Tags/GameplayTagListProbe.h"
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTagManager.h"
 #include "Runtime/Function/GameplayFramework/Tags/NativeGameplayTags.h"
+
+#include "Runtime/Core/Serialization/Json.h"
+#include "Runtime/Core/Serialization/Serializer.h"
 
 #include "doctest.h"
 
@@ -52,6 +58,66 @@ TEST_CASE("gameplay-tags: native macros and hierarchy matching [full]")
     CHECK_FALSE(container.Has(vulnerable));
 
     CHECK_FALSE(manager.TryResolve("Does.Not.Exist").IsValid());
+
+    manager.Shutdown();
+    GameplayTagManager::SetInstance(nullptr);
+}
+
+TEST_CASE("gameplay-tags: json roundtrip binds by SetTagName [full]")
+{
+    using namespace minEngine;
+    using namespace minEngine::Serialization;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+
+    GameplayTagManager manager;
+    GameplayTagManager::SetInstance(&manager);
+    manager.Initialize();
+
+    const GameplayTag source = manager.Resolve("Status.Debuff.Vulnerable");
+    REQUIRE(source.IsValid());
+
+    Json json;
+    const SerializeResult writeResult =
+        Serializer::SerializeObjectToJson("minEngine::GameplayTag", &source, json);
+    REQUIRE(writeResult.ok);
+
+    GameplayTag loaded;
+    std::vector<PendingObjectRef> unresolvedRefs;
+    const SerializeResult readResult =
+        Serializer::DeserializeObjectFromJson("minEngine::GameplayTag", &loaded, json, unresolvedRefs);
+    REQUIRE(readResult.ok);
+    CHECK(unresolvedRefs.empty());
+
+    CHECK(loaded.IsValid());
+    CHECK(loaded == source);
+    CHECK(loaded.Matches(manager.Resolve("Status.Debuff")));
+
+    GameplayTag unknown;
+    unknown.SetTagName("Does.Not.Exist");
+    CHECK_FALSE(unknown.IsValid());
+    CHECK(unknown.GetName() == "Does.Not.Exist");
+
+    GameplayTagListProbe probe;
+    probe.Tag = source;
+    probe.Tags.push_back(source);
+    probe.Tags.push_back(manager.Resolve("Status"));
+
+    Json probeJson;
+    REQUIRE(Serializer::SerializeObjectToJson("minEngine::GameplayTagListProbe", &probe, probeJson).ok);
+
+    GameplayTagListProbe loadedProbe;
+    std::vector<PendingObjectRef> probeRefs;
+    REQUIRE(Serializer::DeserializeObjectFromJson(
+                "minEngine::GameplayTagListProbe", &loadedProbe, probeJson, probeRefs)
+                .ok);
+    CHECK(probeRefs.empty());
+    CHECK(loadedProbe.Tag == source);
+    REQUIRE(loadedProbe.Tags.size() == 2);
+    CHECK(loadedProbe.Tags[0].IsValid());
+    CHECK(loadedProbe.Tags[0] == source);
+    CHECK(loadedProbe.Tags[1].Matches(manager.Resolve("Status")));
 
     manager.Shutdown();
     GameplayTagManager::SetInstance(nullptr);
