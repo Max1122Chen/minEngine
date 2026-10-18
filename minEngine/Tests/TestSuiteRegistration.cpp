@@ -35,6 +35,7 @@
 #include "Suites/DeferredStructuralEditTest.h"
 #include "Suites/GameplayInputGateTest.h"
 #include "Suites/InputTriggerDownTest.h"
+#include "Suites/InputKeyCatalogTest.h"
 #include "Suites/PlayMainCameraTest.h"
 #include "Suites/AutomationPipeInterruptTest.h"
 #include "Suites/MeshDrawSortTest.h"
@@ -559,6 +560,23 @@ namespace minEngine
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "input-trigger-down",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct InputKeyCatalogTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"input-key-catalog", "Input Key Catalog / Synthetic Modifiers", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'input-key-catalog'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "input-key-catalog",
                     context.GetCommandLine().TestKind);
             }
         };
@@ -1103,6 +1121,7 @@ namespace minEngine
         using DeferredStructuralEditSuite = TypedTestSuite<DeferredStructuralEditTestSuiteTraits>;
         using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
         using InputTriggerDownSuite = TypedTestSuite<InputTriggerDownTestSuiteTraits>;
+        using InputKeyCatalogSuite = TypedTestSuite<InputKeyCatalogTestSuiteTraits>;
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
         using AutomationPipeInterruptSuite = TypedTestSuite<AutomationPipeInterruptTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
@@ -1172,6 +1191,7 @@ namespace minEngine
             registry.Register(DeferredStructuralEditSuite::Get());
             registry.Register(GameplayInputGateSuite::Get());
             registry.Register(InputTriggerDownSuite::Get());
+            registry.Register(InputKeyCatalogSuite::Get());
             registry.Register(PlayMainCameraSuite::Get());
             registry.Register(AutomationPipeInterruptSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());

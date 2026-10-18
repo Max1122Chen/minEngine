@@ -99,7 +99,19 @@ namespace minEngine
         InputKeyAction CalculateKeyAction(InputKeyAction prevAction, InputKeyAction newAction);
         InputKeyState* GetKeyState(const InputKey& key) { return &m_KeyStateMap[key]; }
         const InputKeyState* GetKeyState(const InputKey& key) const { return &m_KeyStateMap.at(key); }
-        
+
+        bool IsKeyHeld(const InputKey& key) const;
+        void RefreshSyntheticModifier(
+            const InputKey& synthetic,
+            const InputKey& left,
+            const InputKey& right);
+        void RefreshSyntheticModifiersForSideKey(const InputKey& sideKey);
+        void ApplySyntheticEdge(const InputKey& synthetic, bool anySideHeld);
+        void PollGamepadDevices();
+        void WriteGamepadButton(const InputKey& key, bool bPressed);
+        void WriteGamepadAxis(const InputKey& key, float value);
+        void ClearGamepadStates();
+
         InputActionValue ApplyModifiers(const std::vector<std::shared_ptr<InputModifier>>& modifiers, const InputActionValue& rawValue, float deltaTime);
         InputTriggerEvent GetTriggerStateChangeEvent(InputTriggerState lastState, InputTriggerState newState);
         void ClearGameplayActionEvents();
@@ -131,5 +143,7 @@ namespace minEngine
         Vector2 m_VirtualMousePos = Vector2(0.0f, 0.0f);
         bool m_bPreserveMouseIntentBeyondClip = false;
         bool m_bEditorGameplayCaptureActive = true;
+        bool m_bUpdatingSynthetic = false;
+        bool m_bGamepadConnected = false;
     };
 }

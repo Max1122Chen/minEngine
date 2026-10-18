@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-18（GP-F03 Done；CORE-F39 Cancelled）
+Last updated: 2026-10-18（登记 CORE-F40 + UI-F08 Draft）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -36,7 +36,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** ASSET-F10 主链已可用；minCraft 可去掉 per-type Bootstrap。并行：确认收窄后的 [CORE-F38](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) → Impl Plan（S00–S02）。收尾：RND-F24 S04 / F33 / ASSET-F04。
+**下一动作：** ASSET-F10 主链。并行：审阅 [CORE-F40](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) + [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md)（建议 F40 S01 略先或并行 F08）；审批 [CORE-F38](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md)。收尾：RND-F24 S04 / F33 / ASSET-F04。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
@@ -58,6 +58,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 轨 | ID | 说明 |
 |----|-----|------|
 | ui | `UI-F05` / `UI-F06` | **Done**；已合入 `master`；解锁 minCraft 拖拽 + 图集图标 |
+| ui | `UI-F08` | **Draft** — Widget 多键指针 + 修饰键；Button 糖；Drag 发起键；[Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
+| input | `CORE-F40` | **Done** — 全量键表 + 合成修饰 + Gamepad；`test input-key-catalog` · [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) |
 | ui | `UI-F07` | FillAmount Planned；F06 后可开 Design |
 | asset | `ASSET-F08` / `ASSET-F07` | **Done**；已合入 `master`（去 typed Load 糖衣 + DataAsset） |
 | editor | `ED-F11` | Tab Host 余量（可选） |

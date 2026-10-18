@@ -199,6 +199,9 @@ namespace minEngine
         // Apply Raw Input deltas before IMC so look-at-edge still advances Mouse2D while clipped.
         ApplyRelativeMouseIntentFromWindow();
 
+        // Device state (gamepad) stays fresh even when gameplay IMC is gated off.
+        PollGamepadDevices();
+
         if (!IsGameplayInputEnabled())
         {
             ClearGameplayActionEvents();
@@ -476,16 +479,229 @@ namespace minEngine
         scrollState->RawValue = Vector3(static_cast<float>(xOffset), static_cast<float>(yOffset), 0.0f);
     }
 
-    void InputSystem::OnKeyOrMouseButton_Internal(InputKey key, int scancode, InputKeyAction action, int mods)
+    bool InputSystem::IsKeyHeld(const InputKey& key) const
+    {
+        const auto it = m_KeyStateMap.find(key);
+        if (it == m_KeyStateMap.end())
+        {
+            return false;
+        }
+        return (it->second.action & (InputKeyAction::Press | InputKeyAction::Down)) != 0;
+    }
+
+    void InputSystem::ApplySyntheticEdge(const InputKey& synthetic, bool anySideHeld)
+    {
+        auto it = m_KeyStateMap.find(synthetic);
+        if (it == m_KeyStateMap.end())
+        {
+            return;
+        }
+
+        InputKeyState& syn = it->second;
+        const bool wasHeld = (syn.action & (InputKeyAction::Press | InputKeyAction::Down)) != 0;
+
+        if (anySideHeld && !wasHeld)
+        {
+            syn.action = CalculateKeyAction(syn.action, InputKeyAction::Press);
+        }
+        else if (!anySideHeld && wasHeld)
+        {
+            syn.action = CalculateKeyAction(syn.action, InputKeyAction::Release);
+        }
+        else if (anySideHeld && wasHeld && syn.action == InputKeyAction::Press)
+        {
+            // Promote Press→Down once either side reports sustained Down.
+            syn.action = CalculateKeyAction(syn.action, InputKeyAction::Down);
+        }
+
+        syn.RawValue = (syn.action & (InputKeyAction::Press | InputKeyAction::Down)) != 0
+            ? Vector3(1.0f, 0.0f, 0.0f)
+            : Vector3(0.0f, 0.0f, 0.0f);
+    }
+
+    void InputSystem::RefreshSyntheticModifier(
+        const InputKey& synthetic,
+        const InputKey& left,
+        const InputKey& right)
+    {
+        ApplySyntheticEdge(synthetic, IsKeyHeld(left) || IsKeyHeld(right));
+    }
+
+    void InputSystem::RefreshSyntheticModifiersForSideKey(const InputKey& sideKey)
+    {
+        if (sideKey == InputKeys::Key_LeftShift || sideKey == InputKeys::Key_RightShift)
+        {
+            RefreshSyntheticModifier(InputKeys::Key_Shift, InputKeys::Key_LeftShift, InputKeys::Key_RightShift);
+        }
+        else if (sideKey == InputKeys::Key_LeftControl || sideKey == InputKeys::Key_RightControl)
+        {
+            RefreshSyntheticModifier(InputKeys::Key_Control, InputKeys::Key_LeftControl, InputKeys::Key_RightControl);
+        }
+        else if (sideKey == InputKeys::Key_LeftAlt || sideKey == InputKeys::Key_RightAlt)
+        {
+            RefreshSyntheticModifier(InputKeys::Key_Alt, InputKeys::Key_LeftAlt, InputKeys::Key_RightAlt);
+        }
+        else if (sideKey == InputKeys::Key_LeftSuper || sideKey == InputKeys::Key_RightSuper)
+        {
+            RefreshSyntheticModifier(InputKeys::Key_Super, InputKeys::Key_LeftSuper, InputKeys::Key_RightSuper);
+        }
+    }
+
+    void InputSystem::WriteGamepadButton(const InputKey& key, bool bPressed)
     {
         auto it = m_KeyStateMap.find(key);
-        if(it != m_KeyStateMap.end())
+        if (it == m_KeyStateMap.end())
         {
-            InputKeyState& keyState = it->second;
-            InputKeyAction prevAction = keyState.action;
-            
-            keyState.action = CalculateKeyAction(prevAction, action);
-            keyState.RawValue = keyState.action & (InputKeyAction::Press | InputKeyAction::Down) ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 0.0f, 0.0f);
+            return;
+        }
+
+        InputKeyState& state = it->second;
+        const bool wasHeld = (state.action & (InputKeyAction::Press | InputKeyAction::Down)) != 0;
+        if (bPressed && !wasHeld)
+        {
+            state.action = CalculateKeyAction(state.action, InputKeyAction::Press);
+        }
+        else if (bPressed && wasHeld)
+        {
+            state.action = CalculateKeyAction(state.action, InputKeyAction::Down);
+        }
+        else if (!bPressed && wasHeld)
+        {
+            state.action = CalculateKeyAction(state.action, InputKeyAction::Release);
+        }
+        else if (!bPressed && state.action == InputKeyAction::Release)
+        {
+            state.action = InputKeyAction::Idle;
+        }
+
+        state.RawValue = bPressed ? Vector3(1.0f, 0.0f, 0.0f) : Vector3(0.0f, 0.0f, 0.0f);
+    }
+
+    void InputSystem::WriteGamepadAxis(const InputKey& key, float value)
+    {
+        auto it = m_KeyStateMap.find(key);
+        if (it == m_KeyStateMap.end())
+        {
+            return;
+        }
+
+        InputKeyState& state = it->second;
+        const bool bActive = Math::abs(value) > 0.0001f;
+        state.action = bActive ? InputKeyAction::Down : InputKeyAction::Idle;
+        state.RawValue = Vector3(value, 0.0f, 0.0f);
+    }
+
+    void InputSystem::ClearGamepadStates()
+    {
+        WriteGamepadButton(InputKeys::Gamepad_A, false);
+        WriteGamepadButton(InputKeys::Gamepad_B, false);
+        WriteGamepadButton(InputKeys::Gamepad_X, false);
+        WriteGamepadButton(InputKeys::Gamepad_Y, false);
+        WriteGamepadButton(InputKeys::Gamepad_LeftBumper, false);
+        WriteGamepadButton(InputKeys::Gamepad_RightBumper, false);
+        WriteGamepadButton(InputKeys::Gamepad_Back, false);
+        WriteGamepadButton(InputKeys::Gamepad_Start, false);
+        WriteGamepadButton(InputKeys::Gamepad_Guide, false);
+        WriteGamepadButton(InputKeys::Gamepad_LeftThumb, false);
+        WriteGamepadButton(InputKeys::Gamepad_RightThumb, false);
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Up, false);
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Right, false);
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Down, false);
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Left, false);
+        WriteGamepadAxis(InputKeys::Gamepad_LeftX, 0.0f);
+        WriteGamepadAxis(InputKeys::Gamepad_LeftY, 0.0f);
+        WriteGamepadAxis(InputKeys::Gamepad_RightX, 0.0f);
+        WriteGamepadAxis(InputKeys::Gamepad_RightY, 0.0f);
+        WriteGamepadAxis(InputKeys::Gamepad_LeftTrigger, 0.0f);
+        WriteGamepadAxis(InputKeys::Gamepad_RightTrigger, 0.0f);
+    }
+
+    void InputSystem::PollGamepadDevices()
+    {
+        int foundJoystick = -1;
+        for (int jid = GLFW_JOYSTICK_1; jid <= GLFW_JOYSTICK_LAST; ++jid)
+        {
+            if (glfwJoystickIsGamepad(jid) == GLFW_TRUE)
+            {
+                foundJoystick = jid;
+                break;
+            }
+        }
+
+        if (foundJoystick < 0)
+        {
+            if (m_bGamepadConnected)
+            {
+                ClearGamepadStates();
+                m_bGamepadConnected = false;
+            }
+            return;
+        }
+
+        GLFWgamepadstate pad{};
+        if (glfwGetGamepadState(foundJoystick, &pad) != GLFW_TRUE)
+        {
+            if (m_bGamepadConnected)
+            {
+                ClearGamepadStates();
+                m_bGamepadConnected = false;
+            }
+            return;
+        }
+
+        m_bGamepadConnected = true;
+
+        auto buttonDown = [&pad](int button) -> bool {
+            return pad.buttons[button] == GLFW_PRESS;
+        };
+
+        WriteGamepadButton(InputKeys::Gamepad_A, buttonDown(GLFW_GAMEPAD_BUTTON_A));
+        WriteGamepadButton(InputKeys::Gamepad_B, buttonDown(GLFW_GAMEPAD_BUTTON_B));
+        WriteGamepadButton(InputKeys::Gamepad_X, buttonDown(GLFW_GAMEPAD_BUTTON_X));
+        WriteGamepadButton(InputKeys::Gamepad_Y, buttonDown(GLFW_GAMEPAD_BUTTON_Y));
+        WriteGamepadButton(InputKeys::Gamepad_LeftBumper, buttonDown(GLFW_GAMEPAD_BUTTON_LEFT_BUMPER));
+        WriteGamepadButton(InputKeys::Gamepad_RightBumper, buttonDown(GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER));
+        WriteGamepadButton(InputKeys::Gamepad_Back, buttonDown(GLFW_GAMEPAD_BUTTON_BACK));
+        WriteGamepadButton(InputKeys::Gamepad_Start, buttonDown(GLFW_GAMEPAD_BUTTON_START));
+        WriteGamepadButton(InputKeys::Gamepad_Guide, buttonDown(GLFW_GAMEPAD_BUTTON_GUIDE));
+        WriteGamepadButton(InputKeys::Gamepad_LeftThumb, buttonDown(GLFW_GAMEPAD_BUTTON_LEFT_THUMB));
+        WriteGamepadButton(InputKeys::Gamepad_RightThumb, buttonDown(GLFW_GAMEPAD_BUTTON_RIGHT_THUMB));
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Up, buttonDown(GLFW_GAMEPAD_BUTTON_DPAD_UP));
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Right, buttonDown(GLFW_GAMEPAD_BUTTON_DPAD_RIGHT));
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Down, buttonDown(GLFW_GAMEPAD_BUTTON_DPAD_DOWN));
+        WriteGamepadButton(InputKeys::Gamepad_DPad_Left, buttonDown(GLFW_GAMEPAD_BUTTON_DPAD_LEFT));
+
+        WriteGamepadAxis(InputKeys::Gamepad_LeftX, pad.axes[GLFW_GAMEPAD_AXIS_LEFT_X]);
+        WriteGamepadAxis(InputKeys::Gamepad_LeftY, pad.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+        WriteGamepadAxis(InputKeys::Gamepad_RightX, pad.axes[GLFW_GAMEPAD_AXIS_RIGHT_X]);
+        WriteGamepadAxis(InputKeys::Gamepad_RightY, pad.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+        WriteGamepadAxis(InputKeys::Gamepad_LeftTrigger, pad.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER]);
+        WriteGamepadAxis(InputKeys::Gamepad_RightTrigger, pad.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER]);
+    }
+
+    void InputSystem::OnKeyOrMouseButton_Internal(InputKey key, int scancode, InputKeyAction action, int mods)
+    {
+        (void)scancode;
+        (void)mods;
+
+        auto it = m_KeyStateMap.find(key);
+        if (it == m_KeyStateMap.end())
+        {
+            return;
+        }
+
+        InputKeyState& keyState = it->second;
+        const InputKeyAction prevAction = keyState.action;
+        keyState.action = CalculateKeyAction(prevAction, action);
+        keyState.RawValue = (keyState.action & (InputKeyAction::Press | InputKeyAction::Down)) != 0
+            ? Vector3(1.0f, 0.0f, 0.0f)
+            : Vector3(0.0f, 0.0f, 0.0f);
+
+        if (!m_bUpdatingSynthetic)
+        {
+            m_bUpdatingSynthetic = true;
+            RefreshSyntheticModifiersForSideKey(key);
+            m_bUpdatingSynthetic = false;
         }
     }
 

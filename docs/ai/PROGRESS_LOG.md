@@ -1,3 +1,35 @@
+## 2026-10-18 — CORE-F40 Done：全量键表 + 合成修饰 + Gamepad
+
+- **Scope:** 全量扩展 InputKeys / GLFW 映射；合成 Shift/Ctrl/Alt/Super；canonical Gamepad poll；未知码忽略（不再写 AnyKey）
+- **Completed:**
+  - `InputKeys`：导航/标点/KP/F13–24/Mouse_4–8/Super/Menu/锁键 + Gamepad 键轴；PS 四键同 Name 别名
+  - `GLFWWindowSystem::TryConvertGLFWKeyToInputKey`；未映射 return false
+  - `InputSystem`：侧键更新后刷新合成修饰；Tick 内 poll 第一只 gamepad（不受 gameplay gate）
+  - suite `input-key-catalog`；回归 `input-trigger-down`；Status → **Done**
+- **Verification:** `minEngineTests.exe test input-key-catalog` / `input-trigger-down` PASSED
+- **Next:** UI-F08 指针交互实现
+
+## 2026-10-18 — CORE-F40 Draft：Input Key Catalog
+
+- **Scope:** 补全 InputKeys / GLFW 映射；激活合成修饰键；canonical Gamepad（拒多厂商平行状态）
+- **Completed:** 登记 `CORE-F40`；[Design Draft](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md)；ACTIVE_WORK 并行 input 轨；与 UI-F08 软依赖写清
+- **Verification:** docs only
+- **Next:** 与 UI-F08 一并 design-review → Planned
+
+## 2026-10-18 — UI-F08 Draft：Widget 指针交互（多键 + 修饰键）
+
+- **Scope:** minCraft ScreenUI 反馈；Button 仅为糖，机制沉到可命中 Widget
+- **Completed:** 登记 `UI-F08`；[Design Draft](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md)（多键状态机、Modifiers、Widget Enter/Leave/Down/Up/Click、Button 兼容、Drag `InitiatingButton`；非目标含库存算法与 FReply 冒泡）；ACTIVE_WORK 并行 UI 轨
+- **Verification:** docs only
+- **Next:** 维护者审阅 / design-review → Planned → Impl Plan S01–S04
+
+## 2026-10-18 — CORE-F38 评审修订（仍 Draft）
+
+- **Scope:** 吸收 TaskSystem MVP 评审；只改 Design
+- **Completed:** 明确 Submit/Wait/完成事件/Drain、Shutdown、异常、Worker 禁止再 Submit、功能与性能测试分离；S00–S02 完成标准写清
+- **Verification:** docs only
+- **Next:** 维护者审批 → Planned → 再写 Impl Plan
+
 ## 2026-10-18 — GP-F03 Done：GameplayTag ME_STRUCT + SetTagName 绑定
 
 - **Scope:** 持久 `TagName`；比较仍走 index；反序列化经 Invisible Setter 绑定
@@ -57,6 +89,20 @@
 - **Completed:** 登记 `ASSET-F10`；[Design Draft](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md)（meta.`RuntimeClassName` + 共享 Loader；零派生管线注册）；F07 扩展契约勘误；ACTIVE_WORK Primary 紧急轨；Registry next ASSET → F11
 - **Verification:** docs only
 - **Next:** 维护者审阅 → Planned → S01（Load/Create/Save + 派生 roundtrip 单测）
+
+## 2026-10-18 — CORE-F38：单 Task 冒烟；无依赖图；待审批
+
+- **Scope:** 维护者确认不要依赖图验收；sleep 封装另域
+- **Completed:** Verification 改为单 Task sleep+log；Non-Goals 含依赖图与引擎 Sleep；Verdict Ready with deferred items，**等审批** 再 Planned / Impl Plan
+- **Verification:** docs only
+- **Next:** 维护者批准 Design → Status Planned → Impl Plan S00–S02
+
+## 2026-10-18 — CORE-F38 再审：教学冒烟 A→B
+
+- **Scope:** 收窄后二次 review；维护者问最小 sleep+log / 依赖顺序测试
+- **Completed:** （已被下一条修订）曾写入 Drain 串联 A→B
+- **Verification:** docs only
+- **Next:** （见上条）
 
 ## 2026-10-17 — CORE-F38 收窄：不含 Asset 异步
 

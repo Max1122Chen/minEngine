@@ -67,6 +67,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F37` | RTTI hygiene 战役（Survey → 分簇 Design/机械波） | **In Progress** | — | [Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) · S01/B1-a/MAT-F07/S02 **Done**；B2/B1-b 后置 · [S02 Design](./Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) · TD-033 |
 | `CORE-F38` | TaskSystem（TaskFlow 薄包装 · Drain · 合成作业证明） | **Draft** | — | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · L2 · **不含** Asset 异步 · 不含逻辑/渲染分离 |
 | `CORE-F39` | 值类型 Codec 注册（特征分类 + 运行期表） | **Cancelled** | — | [Design](./Platform/Serialization/CORE-F39_VALUE_CODEC_REGISTRATION_DESIGN.md) · 根因改为句柄形状；由 [GP-F03](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) 承接 · ID 不回收 |
+| `CORE-F40` | Input Key Catalog（键盘/鼠侧键补全 · 合成修饰键 · canonical Gamepad） | **Done** | — | [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) · [Impl](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_IMPLEMENTATION.md) · `test input-key-catalog` · 软解锁 [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -156,6 +157,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI-F05` | ScreenUI Drag-Drop（session + Source/Target；Click 互斥） | **Done** | — | [Design](./Platform/UI/UI-F05_SCREENUI_DRAG_DROP_DESIGN.md) · `test screen-ui-drag` · minCraft `TD-015` |
 | `UI-F06` | ScreenUI Image Sprite / Raw source + UV | **Done** | — | [Design](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md) · `test screen-ui-image` |
 | `UI-F07` | ScreenUI Image FillAmount（进度条） | **Planned** | — | Design 未开；依赖 UI-F06；炉进度等 |
+| `UI-F08` | ScreenUI Widget 指针交互（多键+修饰键；Widget 统一事件；Button 糖；Drag 发起键） | **Draft** | — | [Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) · 解锁 minCraft 槽右键/Shift/右拖；不挡 ASSET-F10 |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |

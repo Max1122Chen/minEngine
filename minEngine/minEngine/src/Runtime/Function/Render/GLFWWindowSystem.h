@@ -51,23 +51,37 @@ namespace minEngine
         static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
         {
             GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
-            if (windowSystem)
+            if (windowSystem == nullptr)
             {
-                const InputKey& inputKey = ConvertGLFWKeyToInputKey(key);
-                InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
-                windowSystem->OnKey(inputKey, scancode, keyAction, mods);
+                return;
             }
+
+            const InputKey* inputKey = nullptr;
+            if (!TryConvertGLFWKeyToInputKey(key, inputKey) || inputKey == nullptr)
+            {
+                return;
+            }
+
+            const InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
+            windowSystem->OnKey(*inputKey, scancode, keyAction, mods);
         }
 
         static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         {
             GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
-            if (windowSystem)
+            if (windowSystem == nullptr)
             {
-                const InputKey& inputKey = ConvertGLFWKeyToInputKey(button);
-                InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
-                windowSystem->OnKey(inputKey, 0, keyAction, mods);
+                return;
             }
+
+            const InputKey* inputKey = nullptr;
+            if (!TryConvertGLFWKeyToInputKey(button, inputKey) || inputKey == nullptr)
+            {
+                return;
+            }
+
+            const InputKeyAction keyAction = ConvertGLFWKeyActionToInputKeyAction(action);
+            windowSystem->OnKey(*inputKey, 0, keyAction, mods);
         }
 
         static void CursorPosCallback(GLFWwindow* window, double xPos, double yPos)
@@ -116,7 +130,8 @@ namespace minEngine
         void SetupWindowEventCallbacks();
         void SetRelativeMouseCaptureEnabled(bool enabled);
         void SyncMouseIntentPreserveWithClip(bool clipActive);
-        const static InputKey& ConvertGLFWKeyToInputKey(int glfwKey);
-        const static InputKeyAction ConvertGLFWKeyActionToInputKeyAction(int action);
+        /** Returns false for unmapped codes (do not write AnyKey). */
+        static bool TryConvertGLFWKeyToInputKey(int glfwKey, const InputKey*& outKey);
+        static InputKeyAction ConvertGLFWKeyActionToInputKeyAction(int action);
     };
 }

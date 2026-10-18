@@ -27,6 +27,16 @@ namespace minEngine::Testing
             input.OnKey(key, 0, action, 0);
         }
 
+        static InputKeyAction GetKeyAction(const InputSystem& input, const InputKey& key)
+        {
+            return input.GetKeyState(key)->action;
+        }
+
+        static bool KeyDown(const InputSystem& input, const InputKey& key)
+        {
+            return (input.GetKeyState(key)->action & (InputKeyAction::Press | InputKeyAction::Down)) != 0;
+        }
+
         static void Tick(InputSystem& input, float deltaTime)
         {
             input.Tick(deltaTime);
