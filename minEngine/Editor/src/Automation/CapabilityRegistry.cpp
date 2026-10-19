@@ -23,6 +23,7 @@ namespace minEngine
 
         Add({"editor", "ping", "query", "editor.ping", false, false, "Internal connectivity check"});
         Add({"editor", "get_state", "query", "editor.get_state", false, false, "Project path and open sessions"});
+        Add({"editor", "get_log", "query", "editor.get_log", false, false, "Recent console records and session log path"});
         Add({"editor", "get_capabilities", "query", "editor.get_capabilities", false, false, ""});
 
         Add({"scene", "get_hierarchy", "query", "scene.get_hierarchy", true, false, ""});

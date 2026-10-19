@@ -18,6 +18,10 @@ namespace minEngine
         static void CopyInto(std::vector<LogRecord>& out);
         static uint64_t GetGeneration();
         static void Clear();
+        /** True after the ring has overwritten an older record since the last Clear. */
+        static bool IsTruncated();
+        /** Chronological tail of records at or above minSeverity, at most limit entries. */
+        static std::vector<LogRecord> Tail(size_t limit, LogSeverity minSeverity);
 
     private:
         static void AppendChronologicalUnlocked(std::vector<LogRecord>& out);
@@ -28,6 +32,7 @@ namespace minEngine
         static size_t s_Begin;
         static size_t s_Count;
         static uint64_t s_Generation;
+        static bool s_Truncated;
     };
 
     class LogConsoleSink final : public ILogSink

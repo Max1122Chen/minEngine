@@ -1,5 +1,6 @@
 #include "ProjectManager.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Core/Serialization/Serializer.h"
@@ -126,6 +127,7 @@ namespace minEngine
             }
             
             PathRegistry::Get().SetProjectRoots(std::filesystem::path(descriptor.ProjectRoot));
+            LogSystem::PublishSessionPointer(PathRegistry::Get().GetProjectRoot());
 
             const std::filesystem::path& assetsPath = PathRegistry::Get().GetProjectContentRoot();
             if (std::filesystem::exists(assetsPath) && std::filesystem::is_directory(assetsPath))

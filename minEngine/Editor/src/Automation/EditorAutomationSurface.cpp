@@ -3,6 +3,8 @@
 #include "Automation/AutomationProtocol.h"
 #include "Core.h"
 #include "Runtime/Core/EngineVersion.h"
+#include "Runtime/Core/Log/LogConsole.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/ProductBranding.h"
@@ -69,6 +71,11 @@ namespace minEngine
             "editor.get_state",
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleGetState(context, request);
+            });
+        m_Handlers.emplace(
+            "editor.get_log",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleGetLog(context, request);
             });
         m_Handlers.emplace(
             "editor.get_capabilities",
@@ -583,6 +590,93 @@ namespace minEngine
             {"ready", true},
             {"sessions", std::move(sessions)},
             {"defaultSessionId", defaultSessionId}};
+        return response;
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleGetLog(
+        IEditorContext& /*context*/,
+        const AutomationRequest& request) const
+    {
+        size_t limit = 200;
+        if (request.Payload.contains("limit"))
+        {
+            if (!request.Payload["limit"].is_number_integer())
+            {
+                return MakeError(request, "InvalidPayload", "limit must be an integer.");
+            }
+            long long rawLimit = request.Payload["limit"].get<long long>();
+            if (rawLimit < 1)
+            {
+                rawLimit = 1;
+            }
+            if (rawLimit > 500)
+            {
+                rawLimit = 500;
+            }
+            limit = static_cast<size_t>(rawLimit);
+        }
+
+        LogSeverity minSeverity = LogSeverity::Trace;
+        if (request.Payload.contains("minSeverity"))
+        {
+            if (!request.Payload["minSeverity"].is_string())
+            {
+                return MakeError(request, "InvalidPayload", "minSeverity must be a string.");
+            }
+            const std::string severityText = request.Payload["minSeverity"].get<std::string>();
+            if (severityText == "Trace")
+            {
+                minSeverity = LogSeverity::Trace;
+            }
+            else if (severityText == "Debug")
+            {
+                minSeverity = LogSeverity::Debug;
+            }
+            else if (severityText == "Info")
+            {
+                minSeverity = LogSeverity::Info;
+            }
+            else if (severityText == "Warn")
+            {
+                minSeverity = LogSeverity::Warn;
+            }
+            else if (severityText == "Error")
+            {
+                minSeverity = LogSeverity::Error;
+            }
+            else if (severityText == "Fatal")
+            {
+                minSeverity = LogSeverity::Fatal;
+            }
+            else
+            {
+                return MakeError(request, "InvalidPayload", "minSeverity is not a known level.");
+            }
+        }
+
+        const std::vector<LogRecord> records = LogConsoleStorage::Tail(limit, minSeverity);
+        Json entries = Json::array();
+        for (const LogRecord& record : records)
+        {
+            const char* sourceFile = record.source.file != nullptr ? record.source.file : "";
+            entries.push_back(Json{
+                {"timestamp", LogSystem::FormatLocalTimestamp(record.timestamp)},
+                {"channel", record.GetChannelName()},
+                {"severity", LogChannelBase::SeverityToString(record.severity)},
+                {"message", record.message},
+                {"sourceFile", sourceFile},
+                {"sourceLine", record.source.line}});
+        }
+
+        AutomationResponse response;
+        response.ProtocolVersion = kAutomationProtocolVersion;
+        response.RequestId = request.RequestId;
+        response.Ok = true;
+        response.Result = Json{
+            {"logFile", LogSystem::GetSessionLogPath().string()},
+            {"sessionPointer", LogSystem::GetSessionPointerPath().string()},
+            {"ringTruncated", LogConsoleStorage::IsTruncated()},
+            {"entries", std::move(entries)}};
         return response;
     }
 

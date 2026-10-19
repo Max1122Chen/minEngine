@@ -4,6 +4,10 @@
 
 #include <algorithm>
 #include <cctype>
+#if defined(_WIN32)
+#include <windows.h>
+#include <shellapi.h>
+#endif
 #include <cfloat>
 #include <cstdio>
 #include <cstring>
@@ -150,10 +154,22 @@ namespace minEngine
                 m_ClearedAt = std::chrono::system_clock::now();
             }
             ImGui::SameLine();
-            if (ImGui::Button("Copy"))
+            if (ImGui::Button("Copy Visible"))
             {
                 requestCopyVisible = true;
             }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Copy filtered rows, one per line.");
+            }
+            ImGui::SameLine();
+            const std::filesystem::path sessionLogPath = LogSystem::GetSessionLogPath();
+            ImGui::BeginDisabled(sessionLogPath.empty());
+            if (ImGui::Button("Show Log File"))
+            {
+                RevealSessionLog(sessionLogPath);
+            }
+            ImGui::EndDisabled();
             ImGui::SameLine();
             ImGui::Checkbox("AutoScroll", &m_AutoScroll);
             ImGui::SameLine();
@@ -272,8 +288,10 @@ namespace minEngine
 
         const int visibleCount = static_cast<int>(drawIndices.size());
         std::string clipboardText;
+        bool requestCopyLine = false;
 
         ImGui::BeginChild("ConsoleScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        const bool listHovered = ImGui::IsWindowHovered();
         const bool wasAtBottom = (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f);
 
         ImGuiListClipper clipper;
@@ -293,6 +311,15 @@ namespace minEngine
                         EditorWindowTheme::SubduedSectionHeader(m_Context.GetEditorAppearance());
                     ImGui::PushID(rowIndex);
                     ImGui::Selectable("##ConsoleRow", false, ImGuiSelectableFlags_SpanAllColumns);
+                    if (ImGui::BeginPopupContextItem("ConsoleRowCopy"))
+                    {
+                        if (ImGui::MenuItem("Copy Line"))
+                        {
+                            clipboardText = FormatClipboardLine(entry, row.count);
+                            requestCopyLine = true;
+                        }
+                        ImGui::EndPopup();
+                    }
                     if (ImGui::IsItemHovered() && entry.source.file != nullptr && entry.source.file[0] != '\0')
                     {
                         ImGui::SetTooltip("%s:%d", entry.source.file, entry.source.line);
@@ -342,32 +369,19 @@ namespace minEngine
             }
         }
 
-        if (requestCopyVisible)
+        if (!requestCopyLine && listHovered && !ImGui::GetIO().WantTextInput
+            && ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_C))
         {
+            requestCopyVisible = true;
+        }
+
+        if (requestCopyVisible && !requestCopyLine)
+        {
+            clipboardText.clear();
             for (size_t drawIndex : drawIndices)
             {
                 const CollapsedRow& row = rows[drawIndex];
-                const LogRecord& entry = *row.record;
-                const std::string timestamp = FormatTimestamp(entry);
-                if (!timestamp.empty())
-                {
-                    clipboardText += "[";
-                    clipboardText += timestamp;
-                    clipboardText += "] ";
-                }
-                clipboardText += "[";
-                clipboardText += entry.GetChannelName();
-                clipboardText += "] [";
-                clipboardText += LogChannelBase::SeverityToString(entry.severity);
-                clipboardText += "] ";
-                if (row.count > 1)
-                {
-                    clipboardText += "(x";
-                    clipboardText += std::to_string(row.count);
-                    clipboardText += ") ";
-                }
-                clipboardText += entry.message;
-                clipboardText += "\n";
+                clipboardText += FormatClipboardLine(*row.record, row.count);
             }
         }
 
@@ -379,11 +393,67 @@ namespace minEngine
 
         ImGui::Separator();
         ImGui::Text("Visible: %d / Total: %d", visibleCount, static_cast<int>(entries.size()));
+        if (std::chrono::steady_clock::now() < m_CopyNoticeUntil && !m_CopyNotice.empty())
+        {
+            ImGui::SameLine();
+            ImGui::TextUnformatted(m_CopyNotice.c_str());
+        }
 
-        if (requestCopyVisible)
+        if (requestCopyVisible || requestCopyLine)
         {
             ImGui::SetClipboardText(clipboardText.c_str());
+            int lineCount = 0;
+            for (char character : clipboardText)
+            {
+                if (character == '\n')
+                {
+                    ++lineCount;
+                }
+            }
+            NoteCopiedLines(lineCount);
         }
+    }
+
+    std::string ConsoleWindow::FormatClipboardLine(const LogRecord& entry, int count) const
+    {
+        std::string line;
+        const std::string timestamp = FormatTimestamp(entry);
+        if (!timestamp.empty())
+        {
+            line += "[";
+            line += timestamp;
+            line += "] ";
+        }
+        line += "[";
+        line += entry.GetChannelName();
+        line += "] [";
+        line += LogChannelBase::SeverityToString(entry.severity);
+        line += "] ";
+        if (count > 1)
+        {
+            line += "(x";
+            line += std::to_string(count);
+            line += ") ";
+        }
+        line += entry.message;
+        line += "\n";
+        return line;
+    }
+
+    void ConsoleWindow::RevealSessionLog(const std::filesystem::path& logPath) const
+    {
+#if defined(_WIN32)
+        const std::wstring parameter = L"/select," + logPath.wstring();
+        ShellExecuteW(nullptr, L"open", L"explorer.exe", parameter.c_str(), nullptr, SW_SHOWNORMAL);
+#else
+        (void)logPath;
+#endif
+    }
+
+    void ConsoleWindow::NoteCopiedLines(int lineCount)
+    {
+        m_CopyNotice = "Copied " + std::to_string(lineCount) + " lines";
+        m_CopyNoticeUntil = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     }
 
     void ConsoleWindow::BuildCollapsedRows(const std::vector<LogRecord>& entries,

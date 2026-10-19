@@ -1,3 +1,21 @@
+## 2026-10-19 — CORE-F41 Review：会话日志文件与读回已落地
+
+- **Scope:** 磁盘会话日志、项目指针、`editor.get_log`、Console Copy Visible / Copy Line / Ctrl+C / Show Log File
+- **Completed:**
+  - `LogSystem`：`<exe>/Logs/minEngine-…-pid.log`；Warn 立即 flush + 1s 周期；保留最近 20 个会话文件；`PublishSessionPointer` → `Saved/Logs/latest-session-<stem>.txt`
+  - 环：`IsTruncated` / `Tail`；Automation `editor.get_log`（经现有 `editor_query`）
+  - Console：Copy Visible、右键 Copy Line、Ctrl+C、Show Log File
+  - Design → **Review**；无独立 Impl 文档（切片在 Design Must）
+- **Verification:** `minEngineTests.exe test logging-channels` → 6 passed / 37 assertions
+- **Next:** 手工点验 Console 剪贴板 → Done；再提交（勿混入无关 WIP）
+
+## 2026-10-19 — CORE-F41 Draft：会话日志文件与读回
+
+- **Scope:** 磁盘会话日志、项目指针、`editor.get_log`、Console 单条复制
+- **Completed:** 登记 `CORE-F41`；[Design Draft](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md)。结论：Copy 按钮已用换行拼接过滤结果；缺的是 Copy Line / Ctrl+C。MCP 走现有 `editor_query`，不新增 TS tool
+- **Verification:** docs only
+- **Next:** design-review → 实现
+
 ## 2026-10-18 — UI-F08 Review：Widget 多键指针交互
 
 - **Scope:** ScreenUI 多键状态机 + 修饰键；Widget Enter/Leave/Down/Up/Click；Button 糖；Drag `InitiatingButton`

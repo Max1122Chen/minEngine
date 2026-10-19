@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-18（登记 CORE-F40 + UI-F08 Draft）
+Last updated: 2026-10-19（CORE-F41 Review）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -111,6 +111,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | ID | 状态 | 说明 |
 |----|------|------|
+| `CORE-F41` | **Review** | 会话日志落盘 + `editor.get_log` + Console Copy Visible/Line；待手工点验 Console · [Design](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md) |
 | `WF-F02` | In Progress | handbook 子系统文档按需 |
 | `ED-F01` | In Progress | VK 阴影质量 **Deferred**；勿当主航道 |
 | `RND-F17` | **Done** | ViewId+SRT；TD-027 Done |

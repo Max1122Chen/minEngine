@@ -7,6 +7,7 @@ namespace minEngine
     size_t LogConsoleStorage::s_Begin = 0;
     size_t LogConsoleStorage::s_Count = 0;
     uint64_t LogConsoleStorage::s_Generation = 0;
+    bool LogConsoleStorage::s_Truncated = false;
 
     void LogConsoleStorage::AppendChronologicalUnlocked(std::vector<LogRecord>& out)
     {
@@ -38,6 +39,7 @@ namespace minEngine
         {
             s_Ring[s_Begin] = std::move(stored);
             s_Begin = (s_Begin + 1) % kMaxEntries;
+            s_Truncated = true;
         }
         ++s_Generation;
     }
@@ -67,7 +69,37 @@ namespace minEngine
         std::lock_guard<std::mutex> lock(s_Mutex);
         s_Begin = 0;
         s_Count = 0;
+        s_Truncated = false;
         ++s_Generation;
+    }
+
+    bool LogConsoleStorage::IsTruncated()
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+        return s_Truncated;
+    }
+
+    std::vector<LogRecord> LogConsoleStorage::Tail(size_t limit, LogSeverity minSeverity)
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::vector<LogRecord> chronological;
+        AppendChronologicalUnlocked(chronological);
+
+        std::vector<LogRecord> filtered;
+        filtered.reserve(chronological.size());
+        for (const LogRecord& record : chronological)
+        {
+            if (record.severity >= minSeverity)
+            {
+                filtered.push_back(record);
+            }
+        }
+
+        if (limit < filtered.size())
+        {
+            filtered.erase(filtered.begin(), filtered.end() - static_cast<std::ptrdiff_t>(limit));
+        }
+        return filtered;
     }
 
     void LogConsoleSink::Write(const LogRecord& record)

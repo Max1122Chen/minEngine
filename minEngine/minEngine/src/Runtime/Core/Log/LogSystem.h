@@ -5,6 +5,8 @@
 
 #include "spdlog/fmt/fmt.h"
 
+#include <chrono>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -18,6 +20,15 @@ namespace minEngine
         static void Initialize();
         static void Shutdown();
         static LogSystem& Get();
+
+        /** Directory for the session file. Empty uses <process exe>/Logs. Ignored after Initialize. */
+        static void SetSessionLogDirectory(const std::filesystem::path& directory);
+        static std::filesystem::path GetSessionLogPath();
+        static std::filesystem::path GetSessionPointerPath();
+        /** Writes Saved/Logs/latest-session-<exe-stem>.txt under projectRoot. False if no session file or the write fails. */
+        static bool PublishSessionPointer(const std::filesystem::path& projectRoot);
+
+        static std::string FormatLocalTimestamp(std::chrono::system_clock::time_point timePoint);
 
         static void AddSink(std::shared_ptr<ILogSink> sink);
         static void Emit(

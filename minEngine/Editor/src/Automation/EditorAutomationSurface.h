@@ -58,6 +58,7 @@ namespace minEngine
 
         AutomationResponse HandlePing(IEditorContext& context, const AutomationRequest& request) const;
         AutomationResponse HandleGetState(IEditorContext& context, const AutomationRequest& request) const;
+        AutomationResponse HandleGetLog(IEditorContext& context, const AutomationRequest& request) const;
         AutomationResponse HandleGetCapabilities(IEditorContext& context, const AutomationRequest& request) const;
         AutomationResponse HandleGetHierarchy(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleGetObject(IEditorContext& context, const AutomationRequest& request);

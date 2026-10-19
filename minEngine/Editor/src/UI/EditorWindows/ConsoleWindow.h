@@ -21,6 +21,7 @@
 #include "Runtime/Function/Framework/Project/EditorTypographyRole.h"
 
 #include <chrono>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -76,6 +77,9 @@ namespace minEngine
         bool PassTimeFilter(const LogRecord& entry, const std::chrono::system_clock::time_point& now) const;
         static bool ContainsIgnoreCase(const std::string& text, const char* keyword);
         std::string FormatTimestamp(const LogRecord& entry) const;
+        std::string FormatClipboardLine(const LogRecord& entry, int count) const;
+        void RevealSessionLog(const std::filesystem::path& logPath) const;
+        void NoteCopiedLines(int lineCount);
         ImVec4 GetLevelColor(LogSeverity severity) const;
         void BuildCollapsedRows(const std::vector<LogRecord>& entries,
                                 const std::chrono::system_clock::time_point& now,
@@ -104,6 +108,8 @@ namespace minEngine
         std::vector<LogRecord> m_LiveCache;
         uint64_t m_LiveCacheGeneration = static_cast<uint64_t>(-1);
         char m_SearchText[128] = {};
+        std::string m_CopyNotice;
+        std::chrono::steady_clock::time_point m_CopyNoticeUntil{};
 
         TimestampDisplayMode m_TimestampDisplay = TimestampDisplayMode::Time;
         TimeWindowMode m_TimeWindowMode = TimeWindowMode::Off;

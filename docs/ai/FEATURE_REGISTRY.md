@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-18（GP-F03 Done；CORE-F39 Cancelled）
+Last updated: 2026-10-19（CORE-F41 Review）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -68,6 +68,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F38` | TaskSystem（TaskFlow 薄包装 · Drain · 合成作业证明） | **Draft** | — | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · L2 · **不含** Asset 异步 · 不含逻辑/渲染分离 |
 | `CORE-F39` | 值类型 Codec 注册（特征分类 + 运行期表） | **Cancelled** | — | [Design](./Platform/Serialization/CORE-F39_VALUE_CODEC_REGISTRATION_DESIGN.md) · 根因改为句柄形状；由 [GP-F03](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) 承接 · ID 不回收 |
 | `CORE-F40` | Input Key Catalog（键盘/鼠侧键补全 · 合成修饰键 · canonical Gamepad） | **Done** | — | [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) · [Impl](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_IMPLEMENTATION.md) · `test input-key-catalog` · 软解锁 [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
+| `CORE-F41` | 会话日志文件 + Automation 读环 + Console 单条复制 | **Review** | — | [Design](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md) · L2 · `test logging-channels` · Console 手工待点验 |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
