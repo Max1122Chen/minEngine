@@ -58,7 +58,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 轨 | ID | 说明 |
 |----|-----|------|
 | ui | `UI-F05` / `UI-F06` | **Done**；已合入 `master`；解锁 minCraft 拖拽 + 图集图标 |
-| ui | `UI-F08` | **Draft** — Widget 多键指针 + 修饰键；Button 糖；Drag 发起键；[Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
+| ui | `UI-F08` | **Review** — Widget 多键指针 + 修饰键；Button 糖；Drag 发起键已实现；`test screen-ui-pointer`；待验收 · [Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
 | input | `CORE-F40` | **Done** — 全量键表 + 合成修饰 + Gamepad；`test input-key-catalog` · [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) |
 | ui | `UI-F07` | FillAmount Planned；F06 后可开 Design |
 | asset | `ASSET-F08` / `ASSET-F07` | **Done**；已合入 `master`（去 typed Load 糖衣 + DataAsset） |

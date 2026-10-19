@@ -3,6 +3,9 @@
 #include "Runtime/Function/UI/ScreenUIDragTypes.h"
 #include "Runtime/Function/UI/ScreenUIHitTester.h"
 #include "Runtime/Function/UI/ScreenUIHitTypes.h"
+#include "Runtime/Function/UI/ScreenUIPointerTypes.h"
+
+#include <chrono>
 
 namespace minEngine
 {
@@ -10,6 +13,7 @@ namespace minEngine
     class DragSourceComponent;
     class DropTargetComponent;
     class CanvasComponent;
+    class WidgetComponent;
 
     class UISystem
     {
@@ -69,10 +73,22 @@ namespace minEngine
         friend class ScreenUIHitTestScope;
         friend class ScreenUIButtonTestScope;
         friend class ScreenUIDragTestScope;
+        friend class ScreenUIPointerTestScope;
 
         static void SetInstance(UISystem* instance);
 
         void UpdatePointerFromInput(Scene* scene);
+        void UpdatePointerFrame(
+            Scene* scene,
+            const ScreenUIHitResult& hit,
+            const Vector2& referencePx,
+            bool bHaveReferencePx,
+            EUIPointerButton button,
+            bool buttonPressed,
+            bool buttonDown,
+            bool buttonReleased);
+
+        /** Legacy Left-only helper for existing drag tests. */
         void UpdatePointerFrame(
             Scene* scene,
             const ScreenUIHitResult& hit,
@@ -84,6 +100,25 @@ namespace minEngine
 
         Scene* ResolvePointerScene() const;
         void TryDispatchButtonClick(WidgetComponent* pressedWidget);
+        void TryDispatchPointerClick(WidgetComponent* widget, const UIPointerEvent& event);
+
+        void SampleModifiers();
+        UIPointerEvent MakePointerEvent(
+            EUIPointerButton button,
+            WidgetComponent* widget,
+            const Vector2& referencePx,
+            int32_t clickCount) const;
+        void UpdateHover(WidgetComponent* newHovered, const Vector2& referencePx);
+        void ProcessButtonEdges(
+            EUIPointerButton button,
+            bool buttonPressed,
+            bool buttonDown,
+            bool buttonReleased,
+            WidgetComponent* hitWidget,
+            const Vector2& referencePx,
+            bool bHaveReferencePx);
+        void SyncLegacyPointerFlags();
+        int32_t ResolveClickCount(WidgetComponent* widget, EUIPointerButton button);
 
         bool TryUnmapReferencePx(
             CanvasComponent& canvas,
@@ -95,7 +130,7 @@ namespace minEngine
         DragSourceComponent* FindDragSource(WidgetComponent* widget) const;
         DropTargetComponent* FindDropTarget(WidgetComponent* widget) const;
 
-        void BeginPendingDrag(WidgetComponent* widget, const Vector2& referencePx);
+        void BeginPendingDrag(WidgetComponent* widget, const Vector2& referencePx, EUIPointerButton button);
         void TryPromotePendingDrag();
         void UpdateDragging(WidgetComponent* hoveredWidget, const Vector2& referencePx);
         void FinishDragging(WidgetComponent* hoveredWidget, bool bReleased);
@@ -107,11 +142,16 @@ namespace minEngine
         bool m_Initialized = false;
         bool m_bPointerRoutingEnabled = false;
         float m_DefaultDragThresholdPx = 6.0f;
+        float m_DoubleClickSeconds = 0.3f;
 
         ScreenUIHitTester m_HitTester;
         ScreenUIPointerState m_PointerState;
         ScreenUIPointerViewportContext m_ViewportContext;
         ScreenUIDragSession m_DragSession;
         Scene* m_PIEScene = nullptr;
+
+        WidgetComponent* m_LastClickWidget = nullptr;
+        EUIPointerButton m_LastClickButton = EUIPointerButton::None;
+        std::chrono::steady_clock::time_point m_LastClickTime{};
     };
 }

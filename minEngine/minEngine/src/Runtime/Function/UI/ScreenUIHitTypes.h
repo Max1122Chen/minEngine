@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/UI/ScreenUIPointerTypes.h"
 
 namespace minEngine
 {
@@ -41,29 +42,75 @@ namespace minEngine
         Scene* Scene = nullptr;
     };
 
+    struct ScreenUIPerButtonPointerState
+    {
+        WidgetComponent* Pressed = nullptr;
+        bool bDown = false;
+
+        void Reset()
+        {
+            Pressed = nullptr;
+            bDown = false;
+        }
+    };
+
     /**
-     * Thin pointer interaction state owned by UISystem.
+     * Pointer interaction state owned by UISystem.
      * Click is an edge flag cleared by the consumer or next Tick.
      */
     struct ScreenUIPointerState
     {
         WidgetComponent* Hovered = nullptr;
+        /** Convenience: Left.Pressed (Button tint / legacy). */
         WidgetComponent* Pressed = nullptr;
         /** Widget that owned the Click edge this frame (valid while bClickThisFrame). */
         WidgetComponent* Clicked = nullptr;
+        EUIPointerButton ClickButton = EUIPointerButton::None;
         bool bPointerDown = false;
         bool bClickThisFrame = false;
         /** True when any ButtonComponent::OnClicked was broadcast this frame. */
         bool bButtonOnClickedThisFrame = false;
+        UIKeyModifiers Modifiers{};
+
+        ScreenUIPerButtonPointerState Left{};
+        ScreenUIPerButtonPointerState Right{};
+        ScreenUIPerButtonPointerState Middle{};
 
         void Reset()
         {
             Hovered = nullptr;
             Pressed = nullptr;
             Clicked = nullptr;
+            ClickButton = EUIPointerButton::None;
             bPointerDown = false;
             bClickThisFrame = false;
             bButtonOnClickedThisFrame = false;
+            Modifiers = UIKeyModifiers{};
+            Left.Reset();
+            Right.Reset();
+            Middle.Reset();
+        }
+
+        ScreenUIPerButtonPointerState& GetButtonState(EUIPointerButton button)
+        {
+            switch (button)
+            {
+                case EUIPointerButton::Right: return Right;
+                case EUIPointerButton::Middle: return Middle;
+                case EUIPointerButton::Left:
+                default: return Left;
+            }
+        }
+
+        const ScreenUIPerButtonPointerState& GetButtonState(EUIPointerButton button) const
+        {
+            switch (button)
+            {
+                case EUIPointerButton::Right: return Right;
+                case EUIPointerButton::Middle: return Middle;
+                case EUIPointerButton::Left:
+                default: return Left;
+            }
         }
     };
 

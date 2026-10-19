@@ -4,6 +4,7 @@
 #include "Runtime/Core/Delegates/DelegateMacros.h"
 #include "Runtime/Core/Math/Color.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/UI/ScreenUIPointerTypes.h"
 
 #include <memory>
 
@@ -13,6 +14,7 @@ namespace minEngine
     class WidgetComponent;
 
     DECLARE_DYNAMIC_MULTICAST_DELEGATE(DOnButtonClicked);
+    DECLARE_MULTICAST_DELEGATE_OneParam(DOnButtonPointerClick, const UIPointerEvent&);
 
     /**
      * ScreenUI button policy on the same GameObject as Widget (hit) + optional Image (skin).
@@ -31,8 +33,14 @@ namespace minEngine
         DOnButtonClicked& OnClicked() { return m_OnClicked; }
         const DOnButtonClicked& OnClicked() const { return m_OnClicked; }
 
+        DOnButtonPointerClick& OnPointerClick() { return m_OnPointerClick; }
+        const DOnButtonPointerClick& OnPointerClick() const { return m_OnPointerClick; }
+
         /** Broadcast OnClicked when interactable and a sibling Widget exists. */
         void NotifyClicked();
+
+        /** Payload click; also broadcasts OnClicked for Left. */
+        void NotifyPointerClick(const UIPointerEvent& event);
 
         bool IsInteractable() const { return m_bInteractable; }
         void SetInteractable(bool interactable);
@@ -73,6 +81,8 @@ namespace minEngine
 
         ME_PROPERTY(ScriptAssignable, meta = (ScriptGetter = "OnClicked"))
         DOnButtonClicked m_OnClicked;
+
+        DOnButtonPointerClick m_OnPointerClick;
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetTargetGraphic", Getter = "GetTargetGraphicShared"))
         std::shared_ptr<ImageComponent> m_TargetGraphic{ nullptr };

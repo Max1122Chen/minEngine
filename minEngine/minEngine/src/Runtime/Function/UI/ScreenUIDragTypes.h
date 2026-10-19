@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/UI/ScreenUIPointerTypes.h"
 
 #include <cstdint>
 
@@ -30,6 +31,7 @@ namespace minEngine
         Vector2 CurrentReferencePx{ 0.0f, 0.0f };
         Vector2 PointerDeltaPx{ 0.0f, 0.0f };
         bool bSuppressClick = false;
+        EUIPointerButton InitiatingButton = EUIPointerButton::None;
 
         void Reset()
         {
@@ -42,6 +44,7 @@ namespace minEngine
             CurrentReferencePx = Vector2(0.0f, 0.0f);
             PointerDeltaPx = Vector2(0.0f, 0.0f);
             bSuppressClick = false;
+            InitiatingButton = EUIPointerButton::None;
         }
     };
 }

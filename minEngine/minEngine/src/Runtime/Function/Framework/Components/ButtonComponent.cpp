@@ -45,6 +45,20 @@ namespace minEngine
         m_OnClicked.Broadcast();
     }
 
+    void ButtonComponent::NotifyPointerClick(const UIPointerEvent& event)
+    {
+        if (!CanAcceptClick())
+        {
+            return;
+        }
+
+        m_OnPointerClick.Broadcast(event);
+        if (event.Button == EUIPointerButton::Left)
+        {
+            m_OnClicked.Broadcast();
+        }
+    }
+
     void ButtonComponent::SetInteractable(bool interactable)
     {
         if (m_bInteractable == interactable)
@@ -176,7 +190,8 @@ namespace minEngine
         }
 
         const ScreenUIPointerState& pointer = UISystem::Get().GetPointerState();
-        if (pointer.Pressed == widget)
+        if (pointer.Left.Pressed == widget || pointer.Right.Pressed == widget
+            || pointer.Middle.Pressed == widget)
         {
             ApplyTint(m_PressedColor);
             return;

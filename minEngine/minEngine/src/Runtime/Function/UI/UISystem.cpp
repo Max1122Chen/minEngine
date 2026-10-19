@@ -86,6 +86,7 @@ namespace minEngine
 
         m_PointerState.bClickThisFrame = false;
         m_PointerState.Clicked = nullptr;
+        m_PointerState.ClickButton = EUIPointerButton::None;
         m_PointerState.bButtonOnClickedThisFrame = false;
 
         if (!m_bPointerRoutingEnabled)
@@ -213,6 +214,93 @@ namespace minEngine
         CancelDragSession();
     }
 
+    void UISystem::SampleModifiers()
+    {
+        UIKeyModifiers mods{};
+        if (InputSystem::HasInstance())
+        {
+            mods.bLeftShift = InputSystem::KeyDown(InputKeys::Key_LeftShift);
+            mods.bRightShift = InputSystem::KeyDown(InputKeys::Key_RightShift);
+            mods.bLeftCtrl = InputSystem::KeyDown(InputKeys::Key_LeftControl);
+            mods.bRightCtrl = InputSystem::KeyDown(InputKeys::Key_RightControl);
+            mods.bLeftAlt = InputSystem::KeyDown(InputKeys::Key_LeftAlt);
+            mods.bRightAlt = InputSystem::KeyDown(InputKeys::Key_RightAlt);
+            mods.bShift = InputSystem::KeyDown(InputKeys::Key_Shift);
+            mods.bCtrl = InputSystem::KeyDown(InputKeys::Key_Control);
+            mods.bAlt = InputSystem::KeyDown(InputKeys::Key_Alt);
+            if (!mods.bShift)
+            {
+                mods.bShift = mods.bLeftShift || mods.bRightShift;
+            }
+            if (!mods.bCtrl)
+            {
+                mods.bCtrl = mods.bLeftCtrl || mods.bRightCtrl;
+            }
+            if (!mods.bAlt)
+            {
+                mods.bAlt = mods.bLeftAlt || mods.bRightAlt;
+            }
+        }
+        m_PointerState.Modifiers = mods;
+    }
+
+    UIPointerEvent UISystem::MakePointerEvent(
+        EUIPointerButton button,
+        WidgetComponent* widget,
+        const Vector2& referencePx,
+        int32_t clickCount) const
+    {
+        UIPointerEvent event{};
+        event.Button = button;
+        event.Modifiers = m_PointerState.Modifiers;
+        event.ReferencePx = referencePx;
+        event.ClickCount = clickCount;
+        event.Widget = widget;
+        return event;
+    }
+
+    void UISystem::UpdateHover(WidgetComponent* newHovered, const Vector2& referencePx)
+    {
+        WidgetComponent* oldHovered = m_PointerState.Hovered;
+        if (oldHovered == newHovered)
+        {
+            return;
+        }
+
+        if (oldHovered != nullptr)
+        {
+            oldHovered->NotifyPointerLeave(MakePointerEvent(EUIPointerButton::None, oldHovered, referencePx, 0));
+        }
+
+        m_PointerState.Hovered = newHovered;
+        if (newHovered != nullptr)
+        {
+            newHovered->NotifyPointerEnter(MakePointerEvent(EUIPointerButton::None, newHovered, referencePx, 0));
+        }
+    }
+
+    int32_t UISystem::ResolveClickCount(WidgetComponent* widget, EUIPointerButton button)
+    {
+        const auto now = std::chrono::steady_clock::now();
+        int32_t clickCount = 1;
+        if (widget != nullptr
+            && widget == m_LastClickWidget
+            && button == m_LastClickButton
+            && m_LastClickWidget != nullptr)
+        {
+            const float elapsed = std::chrono::duration<float>(now - m_LastClickTime).count();
+            if (elapsed <= m_DoubleClickSeconds)
+            {
+                clickCount = 2;
+            }
+        }
+
+        m_LastClickWidget = widget;
+        m_LastClickButton = button;
+        m_LastClickTime = now;
+        return clickCount;
+    }
+
     void UISystem::TryDispatchButtonClick(WidgetComponent* pressedWidget)
     {
         if (pressedWidget == nullptr)
@@ -220,7 +308,20 @@ namespace minEngine
             return;
         }
 
-        GameObject* owner = pressedWidget->GetOwner();
+        UIPointerEvent event = MakePointerEvent(EUIPointerButton::Left, pressedWidget, Vector2(0.0f, 0.0f), 1);
+        TryDispatchPointerClick(pressedWidget, event);
+    }
+
+    void UISystem::TryDispatchPointerClick(WidgetComponent* widget, const UIPointerEvent& event)
+    {
+        if (widget == nullptr)
+        {
+            return;
+        }
+
+        widget->NotifyPointerClick(event);
+
+        GameObject* owner = widget->GetOwner();
         if (owner == nullptr)
         {
             return;
@@ -235,9 +336,19 @@ namespace minEngine
                 continue;
             }
 
-            button->NotifyClicked();
-            m_PointerState.bButtonOnClickedThisFrame = true;
+            button->NotifyPointerClick(event);
+            if (event.Button == EUIPointerButton::Left)
+            {
+                m_PointerState.bButtonOnClickedThisFrame = true;
+            }
         }
+    }
+
+    void UISystem::SyncLegacyPointerFlags()
+    {
+        m_PointerState.Pressed = m_PointerState.Left.Pressed;
+        m_PointerState.bPointerDown =
+            m_PointerState.Left.bDown || m_PointerState.Right.bDown || m_PointerState.Middle.bDown;
     }
 
     bool UISystem::TryUnmapReferencePx(
@@ -304,8 +415,16 @@ namespace minEngine
         return nullptr;
     }
 
-    void UISystem::BeginPendingDrag(WidgetComponent* widget, const Vector2& referencePx)
+    void UISystem::BeginPendingDrag(
+        WidgetComponent* widget,
+        const Vector2& referencePx,
+        EUIPointerButton button)
     {
+        if (m_DragSession.Phase != EUIDragPhase::None)
+        {
+            return;
+        }
+
         DragSourceComponent* source = FindDragSource(widget);
         if (source == nullptr)
         {
@@ -322,6 +441,7 @@ namespace minEngine
         m_DragSession.CurrentReferencePx = referencePx;
         m_DragSession.PointerDeltaPx = Vector2(0.0f, 0.0f);
         m_DragSession.bSuppressClick = false;
+        m_DragSession.InitiatingButton = button;
     }
 
     void UISystem::TryPromotePendingDrag()
@@ -416,8 +536,7 @@ namespace minEngine
 
         Vector2 referencePx = hit.PointInReferenceSpace;
         bool bHaveReferencePx = hit.bHit;
-        if (!bHaveReferencePx && m_DragSession.SourceCanvas != nullptr && m_ViewportContext.bValid
-            && InputSystem::HasInstance())
+        if (!bHaveReferencePx && m_DragSession.SourceCanvas != nullptr && m_ViewportContext.bValid)
         {
             const Vector2 windowMouse = InputSystem::GetMousePosition();
             const Vector2 viewportPoint = windowMouse - m_ViewportContext.ImageMin;
@@ -429,14 +548,33 @@ namespace minEngine
                 referencePx);
         }
 
-        UpdatePointerFrame(
-            scene,
-            hit,
-            referencePx,
-            bHaveReferencePx,
-            InputSystem::MouseButtonPressed(InputKeys::Mouse_Left),
-            InputSystem::MouseButtonDown(InputKeys::Mouse_Left),
-            InputSystem::MouseButtonReleased(InputKeys::Mouse_Left));
+        SampleModifiers();
+        UpdateHover(hit.bHit ? hit.Widget : nullptr, referencePx);
+
+        const struct
+        {
+            EUIPointerButton Button;
+            const InputKey* Key;
+        } tracked[] = {
+            { EUIPointerButton::Left, &InputKeys::Mouse_Left },
+            { EUIPointerButton::Right, &InputKeys::Mouse_Right },
+            { EUIPointerButton::Middle, &InputKeys::Mouse_Middle },
+        };
+
+        for (const auto& entry : tracked)
+        {
+            ProcessButtonEdges(
+                entry.Button,
+                InputSystem::MouseButtonPressed(*entry.Key),
+                InputSystem::MouseButtonDown(*entry.Key),
+                InputSystem::MouseButtonReleased(*entry.Key),
+                hit.bHit ? hit.Widget : nullptr,
+                referencePx,
+                bHaveReferencePx);
+        }
+
+        SyncLegacyPointerFlags();
+        (void)scene;
     }
 
     void UISystem::UpdatePointerFrame(
@@ -448,24 +586,78 @@ namespace minEngine
         bool buttonDown,
         bool buttonReleased)
     {
-        (void)scene;
+        UpdatePointerFrame(
+            scene,
+            hit,
+            referencePx,
+            bHaveReferencePx,
+            EUIPointerButton::Left,
+            buttonPressed,
+            buttonDown,
+            buttonReleased);
+    }
 
-        m_PointerState.Hovered = hit.bHit ? hit.Widget : nullptr;
+    void UISystem::UpdatePointerFrame(
+        Scene* scene,
+        const ScreenUIHitResult& hit,
+        const Vector2& referencePx,
+        bool bHaveReferencePx,
+        EUIPointerButton button,
+        bool buttonPressed,
+        bool buttonDown,
+        bool buttonReleased)
+    {
+        (void)scene;
+        SampleModifiers();
+        UpdateHover(hit.bHit ? hit.Widget : nullptr, referencePx);
+        ProcessButtonEdges(
+            button,
+            buttonPressed,
+            buttonDown,
+            buttonReleased,
+            hit.bHit ? hit.Widget : nullptr,
+            referencePx,
+            bHaveReferencePx);
+        SyncLegacyPointerFlags();
+    }
+
+    void UISystem::ProcessButtonEdges(
+        EUIPointerButton button,
+        bool buttonPressed,
+        bool buttonDown,
+        bool buttonReleased,
+        WidgetComponent* hitWidget,
+        const Vector2& referencePx,
+        bool bHaveReferencePx)
+    {
+        if (button == EUIPointerButton::None)
+        {
+            return;
+        }
+
+        ScreenUIPerButtonPointerState& buttonState = m_PointerState.GetButtonState(button);
 
         if (buttonPressed)
         {
-            m_PointerState.bPointerDown = true;
-            m_PointerState.Pressed = hit.bHit ? hit.Widget : nullptr;
-            if (m_PointerState.Pressed != nullptr && bHaveReferencePx)
+            buttonState.bDown = true;
+            buttonState.Pressed = hitWidget;
+            if (hitWidget != nullptr)
             {
-                BeginPendingDrag(m_PointerState.Pressed, referencePx);
+                hitWidget->NotifyPointerDown(MakePointerEvent(button, hitWidget, referencePx, 0));
+            }
+            if (hitWidget != nullptr && bHaveReferencePx)
+            {
+                BeginPendingDrag(hitWidget, referencePx, button);
             }
         }
 
         if (buttonReleased)
         {
-            const bool bWasDragging = m_DragSession.Phase == EUIDragPhase::Dragging;
-            const bool bSuppressClick = m_DragSession.bSuppressClick;
+            const bool bIsInitiator = m_DragSession.InitiatingButton == button;
+            const bool bWasDragging =
+                bIsInitiator && m_DragSession.Phase == EUIDragPhase::Dragging;
+            const bool bSuppressClick =
+                bIsInitiator && m_DragSession.bSuppressClick;
 
             if (bWasDragging)
             {
@@ -476,43 +668,59 @@ namespace minEngine
                 }
                 FinishDragging(m_PointerState.Hovered, true);
             }
-            else if (m_DragSession.Phase == EUIDragPhase::Pending)
+            else if (bIsInitiator && m_DragSession.Phase == EUIDragPhase::Pending)
             {
                 ClearDragSession();
             }
 
-            WidgetComponent* pressedWidget = m_PointerState.Pressed;
-            if (pressedWidget != nullptr && !bSuppressClick && !bWasDragging)
+            WidgetComponent* pressedWidget = buttonState.Pressed;
+            if (pressedWidget != nullptr)
             {
-                m_PointerState.bClickThisFrame = true;
-                m_PointerState.Clicked = pressedWidget;
-                TryDispatchButtonClick(pressedWidget);
+                pressedWidget->NotifyPointerUp(MakePointerEvent(button, pressedWidget, referencePx, 0));
             }
 
-            m_PointerState.Pressed = nullptr;
-            m_PointerState.bPointerDown = false;
+            if (pressedWidget != nullptr && !bSuppressClick && !bWasDragging)
+            {
+                const int32_t clickCount = ResolveClickCount(pressedWidget, button);
+                UIPointerEvent clickEvent =
+                    MakePointerEvent(button, pressedWidget, referencePx, clickCount);
+                m_PointerState.bClickThisFrame = true;
+                m_PointerState.Clicked = pressedWidget;
+                m_PointerState.ClickButton = button;
+                TryDispatchPointerClick(pressedWidget, clickEvent);
+            }
+
+            buttonState.Pressed = nullptr;
+            buttonState.bDown = false;
+            SyncLegacyPointerFlags();
             return;
         }
 
         if (buttonDown || buttonPressed)
         {
-            m_PointerState.bPointerDown = true;
+            buttonState.bDown = true;
 
-            if (m_DragSession.Phase == EUIDragPhase::Pending && bHaveReferencePx)
+            if (m_DragSession.Phase == EUIDragPhase::Pending
+                && m_DragSession.InitiatingButton == button
+                && bHaveReferencePx)
             {
                 m_DragSession.CurrentReferencePx = referencePx;
                 m_DragSession.PointerDeltaPx = referencePx - m_DragSession.PressReferencePx;
                 TryPromotePendingDrag();
             }
 
-            if (m_DragSession.Phase == EUIDragPhase::Dragging && bHaveReferencePx)
+            if (m_DragSession.Phase == EUIDragPhase::Dragging
+                && m_DragSession.InitiatingButton == button
+                && bHaveReferencePx)
             {
                 UpdateDragging(m_PointerState.Hovered, referencePx);
             }
         }
         else
         {
-            m_PointerState.bPointerDown = false;
+            buttonState.bDown = false;
         }
+
+        SyncLegacyPointerFlags();
     }
 }

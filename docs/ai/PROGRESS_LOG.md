@@ -1,3 +1,14 @@
+## 2026-10-18 — UI-F08 Review：Widget 多键指针交互
+
+- **Scope:** ScreenUI 多键状态机 + 修饰键；Widget Enter/Leave/Down/Up/Click；Button 糖；Drag `InitiatingButton`
+- **Completed:**
+  - 类型：`UIPointerEvent` / `UIKeyModifiers` / `EUIPointerButton`（无 F 前缀）
+  - `UISystem` 跟踪 Left/Right/Middle；采样 CORE-F40 合成修饰键
+  - Widget / Button 委托；无参 `OnClicked` 仅 Left
+  - Drag session 记发起键；suite `screen-ui-pointer`；button/drag 回归绿
+- **Verification:** `test screen-ui-pointer` / `screen-ui-button` / `screen-ui-drag` PASSED
+- **Next:** 维护者验收 → Done；与 UI docs 一并提交
+
 ## 2026-10-18 — CORE-F40 Done：全量键表 + 合成修饰 + Gamepad
 
 - **Scope:** 全量扩展 InputKeys / GLFW 映射；合成 Shift/Ctrl/Alt/Super；canonical Gamepad poll；未知码忽略（不再写 AnyKey）

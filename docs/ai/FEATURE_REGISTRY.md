@@ -157,7 +157,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI-F05` | ScreenUI Drag-Drop（session + Source/Target；Click 互斥） | **Done** | — | [Design](./Platform/UI/UI-F05_SCREENUI_DRAG_DROP_DESIGN.md) · `test screen-ui-drag` · minCraft `TD-015` |
 | `UI-F06` | ScreenUI Image Sprite / Raw source + UV | **Done** | — | [Design](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md) · `test screen-ui-image` |
 | `UI-F07` | ScreenUI Image FillAmount（进度条） | **Planned** | — | Design 未开；依赖 UI-F06；炉进度等 |
-| `UI-F08` | ScreenUI Widget 指针交互（多键+修饰键；Widget 统一事件；Button 糖；Drag 发起键） | **Draft** | — | [Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) · 解锁 minCraft 槽右键/Shift/右拖；不挡 ASSET-F10 |
+| `UI-F08` | ScreenUI Widget 指针交互（多键+修饰键；Widget 统一事件；Button 糖；Drag 发起键） | **Review**（Must 已实现；待维护者验收） | — | [Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) · [Impl](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_IMPLEMENTATION.md) · `test screen-ui-pointer` / button / drag |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
 | `PHYS-F03` | Contact gameplay dispatch | Deferred | — | [Placeholder](./Physics/PHYS-F03_CONTACT_GAMEPLAY_DISPATCH_DESIGN.md) |

@@ -20,6 +20,31 @@ namespace minEngine
         MarkRenderStateDirty();
     }
 
+    void WidgetComponent::NotifyPointerEnter(const UIPointerEvent& event)
+    {
+        m_OnPointerEnter.Broadcast(event);
+    }
+
+    void WidgetComponent::NotifyPointerLeave(const UIPointerEvent& event)
+    {
+        m_OnPointerLeave.Broadcast(event);
+    }
+
+    void WidgetComponent::NotifyPointerDown(const UIPointerEvent& event)
+    {
+        m_OnPointerDown.Broadcast(event);
+    }
+
+    void WidgetComponent::NotifyPointerUp(const UIPointerEvent& event)
+    {
+        m_OnPointerUp.Broadcast(event);
+    }
+
+    void WidgetComponent::NotifyPointerClick(const UIPointerEvent& event)
+    {
+        m_OnPointerClick.Broadcast(event);
+    }
+
     WidgetComponent::~WidgetComponent()
     {
         if (!m_WidgetSceneProxy)

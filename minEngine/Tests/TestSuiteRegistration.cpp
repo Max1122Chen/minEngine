@@ -42,6 +42,7 @@
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
+#include "Suites/ScreenUIPointerTest.h"
 #include "Suites/ScreenUIDragTest.h"
 #include "Suites/ScreenUIImageTest.h"
 #include "Suites/ScreenUITextTest.h"
@@ -770,6 +771,23 @@ namespace minEngine
             }
         };
 
+        struct ScreenUIPointerTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-pointer", "Screen UI Widget Pointer", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-pointer'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-pointer",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct ScreenUIDragTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1133,6 +1151,7 @@ namespace minEngine
         using UILayoutSuite = TypedTestSuite<UILayoutTestSuiteTraits>;
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
+        using ScreenUIPointerSuite = TypedTestSuite<ScreenUIPointerTestSuiteTraits>;
         using ScreenUIDragSuite = TypedTestSuite<ScreenUIDragTestSuiteTraits>;
         using ScreenUIImageSuite = TypedTestSuite<ScreenUIImageTestSuiteTraits>;
         using ScreenUITextSuite = TypedTestSuite<ScreenUITextTestSuiteTraits>;
@@ -1203,6 +1222,7 @@ namespace minEngine
             registry.Register(UILayoutSuite::Get());
             registry.Register(ScreenUIHitSuite::Get());
             registry.Register(ScreenUIButtonSuite::Get());
+            registry.Register(ScreenUIPointerSuite::Get());
             registry.Register(ScreenUIDragSuite::Get());
             registry.Register(ScreenUIImageSuite::Get());
             registry.Register(ScreenUITextSuite::Get());
