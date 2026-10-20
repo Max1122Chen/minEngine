@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "WindowSystem.h"
+#include "PointerConstraintState.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
@@ -8,7 +9,7 @@ struct GLFWwindow;
 
 namespace minEngine
 {
-    class GLFWWindowSystem : public WindowSystem
+    class GLFWWindowSystem : public WindowSystem, private ICursorConstraintSink
     {
     public:
         int m_Width;
@@ -16,7 +17,7 @@ namespace minEngine
         GLFWwindow* m_Window = nullptr;
 
         GLFWWindowSystem(int width = 800, int height = 600)
-            : m_Width(width), m_Height(height), m_Window(nullptr)
+            : m_Width(width), m_Height(height), m_Window(nullptr), m_PointerConstraint(*this)
         {
         }
 
@@ -36,6 +37,7 @@ namespace minEngine
         virtual void SetCursorVisible(bool visible) override;
         virtual void SetCursorClipRect(const WindowCursorClipRect& rect) override;
         virtual Vector2 ConsumeRelativeMouseDelta() override;
+        virtual WindowCursorConstraintState GetCursorConstraintState() const override;
 
         virtual void* GetWindowHandle() const override { return m_Window; }
 
@@ -46,6 +48,13 @@ namespace minEngine
 
         /** Called from Win32 WndProc while Raw Input is registered. */
         void AccumulateRelativeMouseDelta(float deltaX, float deltaY);
+
+        /**
+         * Platform-internal focus entry, forwarded from the GLFW focus callback and from WM_ACTIVATE.
+         * Focus loss revokes every OS-level constraint immediately; focus gain replays the request in force.
+         * Not a game-facing API (CORE-F42 S01).
+         */
+        void OnWindowFocusChanged(bool focused);
 
     protected:
         static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -123,13 +132,20 @@ namespace minEngine
         bool m_IsGlfwInitialized = false;
         bool m_IsInitialized = false;
         bool m_HasOpenGLContext = false;
-        bool m_bCursorClipActive = false;
         bool m_bRawMouseRegistered = false;
         mutable Vector2 m_PendingRelativeMouseDelta = Vector2(0.0f, 0.0f);
+        // Mutable: PollEvents() (const) feeds the watchdog with the platform focus truth every frame.
+        mutable PointerConstraintState m_PointerConstraint;
 
         void SetupWindowEventCallbacks();
         void SetRelativeMouseCaptureEnabled(bool enabled);
         void SyncMouseIntentPreserveWithClip(bool clipActive);
+
+        // ICursorConstraintSink
+        WindowCursorClipRect GetClientScreenRect() const override;
+        void ApplyOsClip(const WindowCursorClipRect& rect) override;
+        void ApplyCursorMode(EWindowCursorMode mode) override;
+        void ApplyRelativeCapture(bool enabled) override;
         /** Returns false for unmapped codes (do not write AnyKey). */
         static bool TryConvertGLFWKeyToInputKey(int glfwKey, const InputKey*& outKey);
         static InputKeyAction ConvertGLFWKeyActionToInputKeyAction(int action);

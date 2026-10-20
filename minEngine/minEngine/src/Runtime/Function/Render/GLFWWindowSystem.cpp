@@ -29,6 +29,7 @@ namespace minEngine
     {
         GLFWWindowSystem* s_RawMouseOwner = nullptr;
         WNDPROC s_PreviousWndProc = nullptr;
+        GLFWwindowfocusfun s_PreviousWindowFocusCallback = nullptr;
 
         LRESULT CALLBACK RawMouseWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
@@ -58,6 +59,18 @@ namespace minEngine
                 }
             }
 
+            // This WndProc exists exactly while raw mouse capture is registered, i.e. while an OS-level
+            // constraint is applied; a focus loss here must revoke it immediately instead of waiting for
+            // the GLFW event pump (CORE-F42 P7 / I6c). The regaining side is handled by the GLFW callback.
+            if ((msg == WM_ACTIVATE || msg == WM_ACTIVATEAPP) && s_RawMouseOwner != nullptr)
+            {
+                const bool bActivating = msg == WM_ACTIVATE ? (LOWORD(wParam) != WA_INACTIVE) : (wParam != 0);
+                if (!bActivating)
+                {
+                    s_RawMouseOwner->OnWindowFocusChanged(false);
+                }
+            }
+
             if (s_PreviousWndProc != nullptr)
             {
                 return ::CallWindowProcW(s_PreviousWndProc, hwnd, msg, wParam, lParam);
@@ -66,6 +79,28 @@ namespace minEngine
         }
     }
 #endif
+
+    namespace
+    {
+        void WindowFocusCallback(GLFWwindow* window, int focused)
+        {
+            GLFWWindowSystem* windowSystem = static_cast<GLFWWindowSystem*>(glfwGetWindowUserPointer(window));
+            if (windowSystem == nullptr)
+            {
+                return;
+            }
+
+            // Single focus entry: revokes immediately on loss, replays the current request on gain.
+            windowSystem->OnWindowFocusChanged(focused == GLFW_TRUE);
+
+            // Chain to the previously installed handler (the ImGui GLFW backend may have installed it first):
+            // swallowing it would silently drop their focus handling.
+            if (s_PreviousWindowFocusCallback != nullptr)
+            {
+                s_PreviousWindowFocusCallback(window, focused);
+            }
+        }
+    }
 
     WindowSystem* WindowSystem::s_Instance = nullptr;
 
@@ -174,10 +209,15 @@ namespace minEngine
             return;
         }
 
-        WindowCursorClipRect clearRect;
-        clearRect.bEnabled = false;
-        SetCursorClipRect(clearRect);
-        SetRelativeMouseCaptureEnabled(false);
+        // Second line of defence (CORE-F42 I5): release the OS-level constraint unconditionally before the
+        // window goes away; never rely on the editor having cleared it first.
+        m_PointerConstraint.ReleaseAllAndForgetRequests();
+
+        if (m_Window != nullptr && s_PreviousWindowFocusCallback != nullptr)
+        {
+            glfwSetWindowFocusCallback(m_Window, s_PreviousWindowFocusCallback);
+            s_PreviousWindowFocusCallback = nullptr;
+        }
 
         if (m_Window)
         {
@@ -235,45 +275,158 @@ namespace minEngine
     }
 
     // Poll events
-    void GLFWWindowSystem::PollEvents() const { glfwPollEvents(); }
+    void GLFWWindowSystem::PollEvents() const
+    {
+        glfwPollEvents();
+
+        // Platform focus truth, sampled every frame: never ImGui's AppFocusLost (CORE-F42 requirement 3).
+        // A missed focus-lost event is caught here by the watchdog (requirement 6).
+        const bool bPlatformActive = m_Window != nullptr && glfwGetWindowAttrib(m_Window, GLFW_FOCUSED) == GLFW_TRUE;
+        m_PointerConstraint.SyncPlatformFocus(bPlatformActive);
+    }
 
     void GLFWWindowSystem::SetCursorVisible(bool visible)
     {
-        glfwSetInputMode(m_Window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+        // Recorded only: the constraint is applied while this window is active and replayed on focus gain
+        // (CORE-F42 S01). Callers keep their existing per-frame call pattern.
+        m_PointerConstraint.SetCursorVisibleRequest(visible);
     }
 
     void GLFWWindowSystem::SetCursorClipRect(const WindowCursorClipRect& rect)
     {
-#if defined(_WIN32)
-        const bool wantClip = rect.bEnabled && rect.Right > rect.Left && rect.Bottom > rect.Top;
-        if (!wantClip)
+        m_PointerConstraint.SetClipRectRequest(rect);
+    }
+
+    WindowCursorConstraintState GLFWWindowSystem::GetCursorConstraintState() const
+    {
+        WindowCursorConstraintState state;
+        state.bWindowActive = m_PointerConstraint.GetDiagnostics().bWindowActive;
+
+        if (m_Window != nullptr)
         {
-            if (m_bCursorClipActive)
+            const int cursorMode = glfwGetInputMode(m_Window, GLFW_CURSOR);
+            if (cursorMode == GLFW_CURSOR_DISABLED)
             {
-                ::ClipCursor(nullptr);
-                m_bCursorClipActive = false;
+                state.NativeCursorMode = EWindowCursorMode::Disabled;
             }
-            SetRelativeMouseCaptureEnabled(false);
-            SyncMouseIntentPreserveWithClip(false);
-            m_PendingRelativeMouseDelta = Vector2(0.0f, 0.0f);
-            return;
+            else if (cursorMode == GLFW_CURSOR_HIDDEN)
+            {
+                state.NativeCursorMode = EWindowCursorMode::Hidden;
+            }
+            else
+            {
+                state.NativeCursorMode = EWindowCursorMode::Normal;
+            }
         }
 
-        RECT clipRect;
-        clipRect.left = rect.Left;
-        clipRect.top = rect.Top;
-        clipRect.right = rect.Right;
-        clipRect.bottom = rect.Bottom;
-        if (::ClipCursor(&clipRect))
+#if defined(_WIN32)
+        WindowCursorClipRect osClipRect;
+        bool bClipActive = false;
+        if (PointerConstraintOs::ReadAppliedClipState(bClipActive, osClipRect))
         {
-            m_bCursorClipActive = true;
-            SetRelativeMouseCaptureEnabled(true);
-            SyncMouseIntentPreserveWithClip(true);
+            // Applied state comes from the OS readback, never from a cached flag: "no clip" is the whole
+            // desktop being reachable, not "we think we released it".
+            state.bObservable = true;
+            state.bClipActive = bClipActive;
+            state.ClipRect = osClipRect;
+        }
+        state.bRawCaptureActive = m_bRawMouseRegistered;
+#endif
+        return state;
+    }
+
+    void GLFWWindowSystem::OnWindowFocusChanged(bool focused)
+    {
+        m_PointerConstraint.OnWindowFocusChanged(focused);
+
+        for (const auto& callback : m_OnWindowFocusCallbacks)
+        {
+            callback(focused);
+        }
+    }
+
+    WindowCursorClipRect GLFWWindowSystem::GetClientScreenRect() const
+    {
+        WindowCursorClipRect rect;
+#if defined(_WIN32)
+        if (m_Window == nullptr)
+        {
+            return rect;
+        }
+
+        HWND hwnd = glfwGetWin32Window(m_Window);
+        if (hwnd == nullptr)
+        {
+            return rect;
+        }
+
+        RECT clientRect{};
+        if (::GetClientRect(hwnd, &clientRect) == FALSE)
+        {
+            return rect;
+        }
+
+        POINT topLeft{clientRect.left, clientRect.top};
+        POINT bottomRight{clientRect.right, clientRect.bottom};
+        if (::ClientToScreen(hwnd, &topLeft) == FALSE || ::ClientToScreen(hwnd, &bottomRight) == FALSE)
+        {
+            return rect;
+        }
+
+        rect.bEnabled = true;
+        rect.Left = topLeft.x;
+        rect.Top = topLeft.y;
+        rect.Right = bottomRight.x;
+        rect.Bottom = bottomRight.y;
+#endif
+        return rect;
+    }
+
+    void GLFWWindowSystem::ApplyOsClip(const WindowCursorClipRect& rect)
+    {
+#if defined(_WIN32)
+        const bool bApplied = PointerConstraintOs::ApplyOsClipRect(rect);
+        if (rect.bEnabled && !bApplied)
+        {
+            ME_LOG(LogPlatform, Warn, "ClipCursor rejected the requested clip rect; the cursor stays unconstrained.");
         }
 #else
         (void)rect;
-        // Non-Win32: no ClipCursor/Raw Input equivalent wired yet (MVP is Win32-first).
+        // Non-Win32: no ClipCursor equivalent wired yet (MVP is Win32-first); focus scoping still applies
+        // to the cursor mode and raw capture below.
 #endif
+    }
+
+    void GLFWWindowSystem::ApplyCursorMode(EWindowCursorMode mode)
+    {
+        if (m_Window == nullptr)
+        {
+            return;
+        }
+
+        switch (mode)
+        {
+        case EWindowCursorMode::Hidden:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            break;
+        case EWindowCursorMode::Disabled:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            break;
+        case EWindowCursorMode::Normal:
+        default:
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            break;
+        }
+    }
+
+    void GLFWWindowSystem::ApplyRelativeCapture(bool enabled)
+    {
+        SetRelativeMouseCaptureEnabled(enabled);
+        SyncMouseIntentPreserveWithClip(enabled);
+        if (!enabled)
+        {
+            m_PendingRelativeMouseDelta = Vector2(0.0f, 0.0f);
+        }
     }
 
     Vector2 GLFWWindowSystem::ConsumeRelativeMouseDelta()
@@ -413,6 +566,12 @@ namespace minEngine
         glfwSetCursorPosCallback(m_Window, CursorPosCallback);
         glfwSetScrollCallback(m_Window, MouseScrollCallback);
         glfwSetWindowSizeCallback(m_Window, WindowSizeCallback);
+        // Keep the previously installed handler (ImGui GLFW backend installs one) and chain to it.
+        s_PreviousWindowFocusCallback = glfwSetWindowFocusCallback(m_Window, WindowFocusCallback);
+
+        // Record the focus truth at creation without applying a request: the window keeps the cursor mode
+        // Initialize() set, so create-time behaviour is unchanged by S01.
+        m_PointerConstraint.InitializeWindowActive(glfwGetWindowAttrib(m_Window, GLFW_FOCUSED) == GLFW_TRUE);
     }
 
     bool GLFWWindowSystem::TryConvertGLFWKeyToInputKey(int glfwKey, const InputKey*& outKey)

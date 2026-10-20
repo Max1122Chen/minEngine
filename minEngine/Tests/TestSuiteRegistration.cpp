@@ -28,6 +28,7 @@
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
+#include "Suites/ScreenUIOrientationTest.h"
 #include "Suites/FrustumTest.h"
 #include "Suites/NoiseTest.h"
 #include "Suites/VertexAttributeSemanticsTest.h"
@@ -43,6 +44,7 @@
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
 #include "Suites/ScreenUIPointerTest.h"
+#include "Suites/PointerPolicyTest.h"
 #include "Suites/ScreenUIDragTest.h"
 #include "Suites/ScreenUIImageTest.h"
 #include "Suites/ScreenUITextTest.h"
@@ -60,6 +62,7 @@
 #include "Suites/SpriteAtlasTest.h"
 #include "Suites/SpriteRuntimeConsumeTest.h"
 #include "Suites/SpriteAuthoringTest.h"
+#include "Suites/MaterialCompileCacheTest.h"
 
 namespace minEngine
 {
@@ -436,6 +439,23 @@ namespace minEngine
             }
         };
 
+        struct ScreenUIOrientationTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"screen-ui-orientation", "Screen UI Orientation", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-orientation'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-orientation",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct FrustumTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -788,6 +808,23 @@ namespace minEngine
             }
         };
 
+        struct PointerPolicyTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"pointer-policy", "Pointer Policy (focus-scoped constraints)", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'pointer-policy'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "pointer-policy",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct ScreenUIDragTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1109,6 +1146,28 @@ namespace minEngine
             }
         };
 
+        struct MaterialCompileCacheTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "material-compile-cache",
+                    "Material compile / program cache",
+                    false,
+                    true,
+                    true};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'material-compile-cache'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "material-compile-cache",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -1132,6 +1191,7 @@ namespace minEngine
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
+        using ScreenUIOrientationSuite = TypedTestSuite<ScreenUIOrientationTestSuiteTraits>;
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
         using VertexAttributeSemanticsSuite = TypedTestSuite<VertexAttributeSemanticsTestSuiteTraits>;
@@ -1152,6 +1212,7 @@ namespace minEngine
         using ScreenUIHitSuite = TypedTestSuite<ScreenUIHitTestSuiteTraits>;
         using ScreenUIButtonSuite = TypedTestSuite<ScreenUIButtonTestSuiteTraits>;
         using ScreenUIPointerSuite = TypedTestSuite<ScreenUIPointerTestSuiteTraits>;
+        using PointerPolicySuite = TypedTestSuite<PointerPolicyTestSuiteTraits>;
         using ScreenUIDragSuite = TypedTestSuite<ScreenUIDragTestSuiteTraits>;
         using ScreenUIImageSuite = TypedTestSuite<ScreenUIImageTestSuiteTraits>;
         using ScreenUITextSuite = TypedTestSuite<ScreenUITextTestSuiteTraits>;
@@ -1170,6 +1231,7 @@ namespace minEngine
         using WorldSubsystemSuite = TypedTestSuite<WorldSubsystemTestSuiteTraits>;
         using TickableSubsystemSuite = TypedTestSuite<TickableSubsystemTestSuiteTraits>;
         using GameplayFixedTickSuite = TypedTestSuite<GameplayFixedTickTestSuiteTraits>;
+        using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1203,6 +1265,7 @@ namespace minEngine
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
+            registry.Register(ScreenUIOrientationSuite::Get());
             registry.Register(FrustumSuite::Get());
             registry.Register(NoiseSuite::Get());
             registry.Register(VertexAttributeSemanticsSuite::Get());
@@ -1223,6 +1286,7 @@ namespace minEngine
             registry.Register(ScreenUIHitSuite::Get());
             registry.Register(ScreenUIButtonSuite::Get());
             registry.Register(ScreenUIPointerSuite::Get());
+            registry.Register(PointerPolicySuite::Get());
             registry.Register(ScreenUIDragSuite::Get());
             registry.Register(ScreenUIImageSuite::Get());
             registry.Register(ScreenUITextSuite::Get());
@@ -1241,6 +1305,7 @@ namespace minEngine
             registry.Register(WorldSubsystemSuite::Get());
             registry.Register(TickableSubsystemSuite::Get());
             registry.Register(GameplayFixedTickSuite::Get());
+            registry.Register(MaterialCompileCacheSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS
