@@ -343,6 +343,7 @@ namespace minEngine::Serialization
         remainingRefs.reserve(unresolvedRefs.size());
 
         size_t resolvedCount = 0;
+        std::string firstUnresolvedReason;
         for (const PendingObjectRef& pendingRef : unresolvedRefs)
         {
             std::shared_ptr<void> resolvedSharedPtr;
@@ -350,6 +351,10 @@ namespace minEngine::Serialization
             std::string resolveError;
             if (!ResolvePendingObjectRef(pendingRef, resolvedSharedPtr, resolvedRawPtr, resolveError))
             {
+                if (firstUnresolvedReason.empty())
+                {
+                    firstUnresolvedReason = resolveError;
+                }
                 remainingRefs.push_back(pendingRef);
                 ME_LOG(LogSerialization, Warn, "Pending object reference unresolved. path='{}', guid='{}', reason='{}'",
                              pendingRef.fieldPath,
@@ -403,7 +408,15 @@ namespace minEngine::Serialization
 
         if (!unresolvedRefs.empty())
         {
-            return SerializeResult::Failure("Resolve pending object references finished with unresolved entries.", "PendingObjectReferences");
+            // Carry the first reason out to the caller: the per-reference reason was log-only, so a
+            // caller could not tell an unknown GUID from a reference of the wrong type.
+            std::string message = "Resolve pending object references finished with unresolved entries.";
+            if (!firstUnresolvedReason.empty())
+            {
+                message += " First unresolved reference: ";
+                message += firstUnresolvedReason;
+            }
+            return SerializeResult::Failure(message, "PendingObjectReferences");
         }
 
         return SerializeResult::Success();
@@ -1432,7 +1445,8 @@ namespace minEngine::Serialization
             return false;
         }
 
-        outResolvedSharedPtr = std::static_pointer_cast<void>(AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, outErrorMessage));
+        const std::shared_ptr<Asset> asset = AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, outErrorMessage);
+        outResolvedSharedPtr = std::static_pointer_cast<void>(asset);
         outResolvedRawPtr = outResolvedSharedPtr.get();
 
         if (outResolvedSharedPtr == nullptr)
@@ -1442,6 +1456,26 @@ namespace minEngine::Serialization
                 outErrorMessage = "asset resolve returned null";
             }
             return false;
+        }
+
+        // A reference names the class its property expects. Binding whatever asset owns the GUID
+        // leaves the property holding a pointer of another type: a shared_ptr<Sprite> taken from a
+        // Texture2D asset crashes on its first dereference, and the raw-pointer write path stores
+        // the wrong asset back into the scene on the next save.
+        if (pendingRef.expectedClass != nullptr)
+        {
+            const MEClass* assetClass = asset->GetClass();
+            if (assetClass != nullptr
+                && !ReflectionSystem::Get().IsClassSameOrDerived(assetClass, pendingRef.expectedClass))
+            {
+                outResolvedSharedPtr.reset();
+                outResolvedRawPtr = nullptr;
+                outErrorMessage = "type mismatch: expected ";
+                outErrorMessage += pendingRef.expectedClass->GetName();
+                outErrorMessage += ", got ";
+                outErrorMessage += assetClass->GetName();
+                return false;
+            }
         }
 
         return true;

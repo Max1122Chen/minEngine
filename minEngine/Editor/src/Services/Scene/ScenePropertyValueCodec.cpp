@@ -475,6 +475,39 @@ namespace minEngine
         }
         if (!pendingRefs.empty())
         {
+            // A reference names the class its property expects, while the serializer binds whatever
+            // object owns the GUID. Reject a class mismatch here, before any binding happens, so the
+            // write fails as an invalid payload instead of leaving a foreign pointer in the slot.
+            for (const Serialization::PendingObjectRef& pendingRef : pendingRefs)
+            {
+                if (pendingRef.expectedClass == nullptr || !AssetManager::HasInstance())
+                {
+                    continue;
+                }
+
+                std::string assetLookupError;
+                const std::shared_ptr<Asset> asset =
+                    AssetManager::Get().LoadAssetByGUID(pendingRef.refGuid, assetLookupError);
+                const Reflection::MEClass* actualClass = asset != nullptr ? asset->GetClass() : nullptr;
+                if (actualClass == nullptr
+                    || Reflection::ReflectionSystem::Get().IsClassSameOrDerived(
+                        actualClass, pendingRef.expectedClass))
+                {
+                    continue;
+                }
+
+                if (outErrorKind != nullptr)
+                {
+                    *outErrorKind = RefError::Invalid;
+                }
+                outError = "Property value reference type mismatch: expected ";
+                outError += pendingRef.expectedClass->GetName();
+                outError += ", got ";
+                outError += actualClass->GetName();
+                outError += ".";
+                return false;
+            }
+
             const Serialization::SerializeResult resolveResult =
                 Serialization::Serializer::ResolvePendingObjectRefs(pendingRefs);
             if (!resolveResult.ok)

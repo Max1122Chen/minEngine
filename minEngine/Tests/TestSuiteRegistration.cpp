@@ -12,6 +12,8 @@
 #include "Suites/SerializationArchiveTest.h"
 #include "Suites/AssetManagerTest.h"
 #include "Suites/DataAssetTest.h"
+#include "Suites/AssetRefTypeTest.h"
+#include "Suites/ScenePropertyRefTypeTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
 #include "Suites/LuaScriptMvpTest.h"
@@ -139,6 +141,36 @@ namespace minEngine
                 ME_LOG(LogTest, Info, "TestRunner: starting suite 'data-asset'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("data-asset", context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct AssetRefTypeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"asset-ref-type", "Asset Reference Type", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'asset-ref-type'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("asset-ref-type", context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScenePropertyRefTypeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"scene-property-ref-type", "Scene Property Reference Type", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-property-ref-type'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("scene-property-ref-type", context.GetCommandLine().TestKind);
             }
         };
 
@@ -1172,6 +1204,8 @@ namespace minEngine
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
         using DataAssetSuite = TypedTestSuite<DataAssetTestSuiteTraits>;
+        using AssetRefTypeSuite = TypedTestSuite<AssetRefTypeTestSuiteTraits>;
+        using ScenePropertyRefTypeSuite = TypedTestSuite<ScenePropertyRefTypeTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
         using RenderGraphSuite = TypedTestSuite<RenderGraphTestSuiteTraits>;
@@ -1246,6 +1280,8 @@ namespace minEngine
             registry.Register(SerializationArchiveSuite::Get());
             registry.Register(AssetManagerSuite::Get());
             registry.Register(DataAssetSuite::Get());
+            registry.Register(AssetRefTypeSuite::Get());
+            registry.Register(ScenePropertyRefTypeSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
             registry.Register(RenderGraphSuite::Get());

@@ -160,11 +160,13 @@ Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 |----------|---------|--------|-------------|-------|
 | `object-manager` | yes | yes | no | `RunObjectManagerTests` |
 | `serialization-archive` | yes | yes | no | `RunSerializationArchiveTests` |
+| `asset-ref-type` | yes | yes | no | `RunAssetRefTypeTests` — 反序列化资产引用的类型校验（含派生类不误杀） |
+| `scene-property-ref-type` | yes | yes | no | `RunScenePropertyRefTypeTests` — `set_property` 写入前校验，错误码 `InvalidPayload` |
 | `asset-manager` | yes | yes | no | `RunAssetManagerTests` |
 | `reflection-function` | yes (meta+invoke) | yes (meta, invoke, ref, types, static) | no | `RunReflection*PhaseTests` per doctest case |
 | `material-ir` | yes | yes | yes | `RunMaterialIRSmokeTests` |
 
-**Smoke run order (fixture B, TEST-F03-S00):** object-manager → serialization-archive → asset-manager → reflection-function → material-ir.
+**Smoke run order (fixture B, TEST-F03-S00):** object-manager → serialization-archive → asset-ref-type → scene-property-ref-type → asset-manager → reflection-function → material-ir.
 
 **Reflection smoke vs full:** Adapter maps `TestContext`:
 

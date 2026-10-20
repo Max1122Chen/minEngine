@@ -49,6 +49,8 @@ namespace minEngine
         static constexpr std::string_view kSmokeOrder[] = {
             "object-manager",
             "serialization-archive",
+            "asset-ref-type",
+            "scene-property-ref-type",
             "asset-manager",
             "reflection-function",
             "material-ir",

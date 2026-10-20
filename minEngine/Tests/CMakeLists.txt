@@ -33,6 +33,12 @@ set(AUTOMATION_PIPE_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Automation/AutomationPipeServer.cpp
 )
 
+# BUG-EDITOR-008: the scene property write codec that scene.set_property drives (Editor source
+# linked into tests, same shape as the automation pipe above).
+set(SCENE_PROPERTY_CODEC_EDITOR_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Scene/ScenePropertyValueCodec.cpp
+)
+
 # TEST-F05: optional external / extra suite sources (off by default).
 set(_MINENGINE_EXTRA_TEST_SOURCES "${MINENGINE_EXTRA_TEST_SOURCES}")
 if(NOT "${MINENGINE_EXTRA_TEST_DIR}" STREQUAL "")
@@ -61,6 +67,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
     ${SPRITE_AUTHORING_EDITOR_SOURCES}
     ${AUTOMATION_PIPE_EDITOR_SOURCES}
+    ${SCENE_PROPERTY_CODEC_EDITOR_SOURCES}
     ${_MINENGINE_EXTRA_TEST_SOURCES}
 )
 
