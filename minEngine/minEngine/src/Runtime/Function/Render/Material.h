@@ -57,6 +57,16 @@ namespace minEngine
         /** Compiles a skinned VS variant; requires a successful rigid Compile() first (reuses material bindings). */
         bool EnsureSkinnedCompiled();
 
+        /**
+         * Creates a runtime sibling that reuses this material's compiled program, parameter layout,
+         * graph and GPU binding-set layout, WITHOUT recompiling (MAT-F08).
+         *
+         * Parameter tables are copied, so each sibling keeps its own tint/opacity/UV values — sharing
+         * the program never shares state. Requires IsCompiledForDraw(); returns nullptr otherwise.
+         * Siblings are runtime-only: not meant for serialization or graph editing.
+         */
+        std::shared_ptr<Material> CreateRuntimeInstance(const std::string& instanceName = {}) const;
+
         void SetTextureParameter(const std::string& parameterName, std::shared_ptr<Texture2D> texture);
         void SetScalarParameter(const std::string& parameterName, float value);
 

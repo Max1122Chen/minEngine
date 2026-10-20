@@ -42,6 +42,34 @@ namespace minEngine
         }
     }
 
+    std::shared_ptr<Material> Material::CreateRuntimeInstance(const std::string& instanceName) const
+    {
+        if (!IsCompiledForDraw() || !m_Graph)
+        {
+            return nullptr;
+        }
+
+        const std::string name = instanceName.empty() ? GetName() : instanceName;
+        std::shared_ptr<Material> instance = NewObject<Material>(name, nullptr, GenerateGUID());
+        if (!instance)
+        {
+            return nullptr;
+        }
+
+        instance->m_ShadingModel = m_ShadingModel;
+        instance->m_BlendMode = m_BlendMode;
+        instance->m_Graph = m_Graph;
+        instance->m_ParameterLayout = m_ParameterLayout;
+        instance->m_TextureParameters = m_TextureParameters;
+        instance->m_ScalarParameters = m_ScalarParameters;
+        instance->m_GPUShader = m_GPUShader;
+        instance->m_GPUShaderSkinned = m_GPUShaderSkinned;
+        instance->m_MaterialShaderBindingSetLayout = m_MaterialShaderBindingSetLayout;
+        instance->m_CompileGeneration = m_CompileGeneration;
+        instance->EnsureRenderProxy();
+        return instance;
+    }
+
     MaterialEdGraph& Material::GetGraph()
     {
         if (!m_Graph)

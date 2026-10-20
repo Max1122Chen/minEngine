@@ -31,5 +31,12 @@ namespace minEngine
             RHI& rhi);
 
         static std::shared_ptr<Texture2D> GetOrCreateWhiteTexture(RHI& rhi);
+
+        /**
+         * Drops the process-lifetime white texture. It owns a GPU texture, so it must be released
+         * while the graphics context is alive (RenderSystem::Shutdown does this).
+         */
+        static void ClearCachedResources();
+        static bool HasCachedWhiteTexture();
     };
 }

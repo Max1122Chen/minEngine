@@ -447,11 +447,58 @@ namespace minEngine
         return stream.str();
     }
 
-    std::filesystem::path ShaderCompiler::MakeCacheFilePath(const ShaderCompileRequest& request) const
+    std::filesystem::path ShaderCompiler::MakeCacheFilePath(
+        const std::string& sourceKey,
+        ShaderCompilerStage stage,
+        ShaderSpirvTarget target) const
     {
-        const char* targetTag = request.Target == ShaderSpirvTarget::OpenGL ? "gl" : "vk";
-        const char* stageTag = ToStageFlag(request.Stage);
-        return m_CacheDirectory / (HashSourceKey(request) + "." + stageTag + "." + targetTag + ".spv");
+        const char* targetTag = target == ShaderSpirvTarget::OpenGL ? "gl" : "vk";
+        const char* stageTag = ToStageFlag(stage);
+        return m_CacheDirectory / (sourceKey + "." + stageTag + "." + targetTag + ".spv");
+    }
+
+    ShaderCompileStats ShaderCompiler::GetCompileStats() const
+    {
+        std::lock_guard<std::mutex> lock(m_StatsMutex);
+        return m_Stats;
+    }
+
+    void ShaderCompiler::ResetCompileStats()
+    {
+        std::lock_guard<std::mutex> lock(m_StatsMutex);
+        m_Stats = ShaderCompileStats{};
+    }
+
+    void ShaderCompiler::ClearMemoryCache()
+    {
+        std::lock_guard<std::mutex> lock(m_MemoryCacheMutex);
+        m_MemoryCache.clear();
+    }
+
+    size_t ShaderCompiler::GetMemoryCacheEntryCount() const
+    {
+        std::lock_guard<std::mutex> lock(m_MemoryCacheMutex);
+        return m_MemoryCache.size();
+    }
+
+    bool ShaderCompiler::TryReadMemoryCache(const std::string& sourceKey, std::vector<uint32_t>& outWords)
+    {
+        std::lock_guard<std::mutex> lock(m_MemoryCacheMutex);
+        const auto found = m_MemoryCache.find(sourceKey);
+        if (found == m_MemoryCache.end())
+        {
+            return false;
+        }
+        outWords = found->second;
+        std::lock_guard<std::mutex> statsLock(m_StatsMutex);
+        ++m_Stats.MemoryCacheHits;
+        return true;
+    }
+
+    void ShaderCompiler::StoreMemoryCache(const std::string& sourceKey, const std::vector<uint32_t>& words)
+    {
+        std::lock_guard<std::mutex> lock(m_MemoryCacheMutex);
+        m_MemoryCache[sourceKey] = words;
     }
 
     bool ShaderCompiler::ReadSpirvFile(
@@ -618,6 +665,11 @@ namespace minEngine
     ShaderCompileResult ShaderCompiler::Compile(const ShaderCompileRequest& request)
     {
         ShaderCompileResult result;
+        {
+            std::lock_guard<std::mutex> lock(m_StatsMutex);
+            ++m_Stats.CompileRequests;
+        }
+
         if (request.Source.empty())
         {
             result.Log = "ShaderCompiler: empty source.";
@@ -645,13 +697,29 @@ namespace minEngine
             return result;
         }
 
+        const std::string sourceKey = HashSourceKey(effectiveRequest);
+
+        if (TryReadMemoryCache(sourceKey, result.SpirvWords))
+        {
+            result.Success = true;
+            result.Log = "ShaderCompiler: memory cache hit " + sourceKey;
+            return result;
+        }
+        result.SpirvWords.clear();
+
         if (!m_CacheDirectory.empty())
         {
-            const std::filesystem::path cachePath = MakeCacheFilePath(effectiveRequest);
+            const std::filesystem::path cachePath =
+                MakeCacheFilePath(sourceKey, effectiveRequest.Stage, effectiveRequest.Target);
             if (std::filesystem::exists(cachePath))
             {
                 if (ReadSpirvFile(cachePath, result.SpirvWords, &result.Log))
                 {
+                    {
+                        std::lock_guard<std::mutex> lock(m_StatsMutex);
+                        ++m_Stats.DiskCacheHits;
+                    }
+                    StoreMemoryCache(sourceKey, result.SpirvWords);
                     result.Success = true;
                     result.Log = "ShaderCompiler: cache hit " + cachePath.string();
                     return result;
@@ -669,9 +737,8 @@ namespace minEngine
             return result;
         }
 
-        const std::string key = HashSourceKey(effectiveRequest);
-        const std::filesystem::path tempGlsl = tempRoot / (key + ".glsl");
-        const std::filesystem::path tempSpv = tempRoot / (key + ".spv");
+        const std::filesystem::path tempGlsl = tempRoot / (sourceKey + ".glsl");
+        const std::filesystem::path tempSpv = tempRoot / (sourceKey + ".spv");
 
         if (!WriteTextFile(tempGlsl, effectiveRequest.Source, &result.Log))
         {
@@ -679,6 +746,10 @@ namespace minEngine
         }
 
         std::string toolLog;
+        {
+            std::lock_guard<std::mutex> lock(m_StatsMutex);
+            ++m_Stats.GlslangInvocations;
+        }
         const bool ok = InvokeGlslang(
             tempGlsl,
             tempSpv,
@@ -707,9 +778,12 @@ namespace minEngine
             return result;
         }
 
+        StoreMemoryCache(sourceKey, result.SpirvWords);
+
         if (!m_CacheDirectory.empty())
         {
-            const std::filesystem::path cachePath = MakeCacheFilePath(effectiveRequest);
+            const std::filesystem::path cachePath =
+                MakeCacheFilePath(sourceKey, effectiveRequest.Stage, effectiveRequest.Target);
             std::filesystem::copy_file(
                 tempSpv,
                 cachePath,

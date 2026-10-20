@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Math/Math.h"
 
+#include <atomic>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
@@ -47,8 +48,14 @@ namespace minEngine
     class RHI
     {
     public:
-        RHI() = default;
+        RHI() : m_InstanceSerial(NextInstanceSerial()) {}
         virtual ~RHI() = default;
+
+        /**
+         * Monotonic per-process serial. GPU resources (shader programs, pipelines) are owned by one
+         * RHI instance and must never be shared with another, so caches key on this value.
+         */
+        uint64_t GetInstanceSerial() const { return m_InstanceSerial; }
 
         virtual void Initialize() = 0;
         virtual void Shutdown() = 0;
@@ -147,5 +154,14 @@ namespace minEngine
 
         /** Drop cached attachment views before RDG physical textures are destroyed/recreated (Vulkan). */
         virtual void NotifyAttachmentResourcesDiscarded() {}
+
+    private:
+        static uint64_t NextInstanceSerial()
+        {
+            static std::atomic<uint64_t> s_NextSerial{0};
+            return ++s_NextSerial;
+        }
+
+        uint64_t m_InstanceSerial = 0;
     };
 }

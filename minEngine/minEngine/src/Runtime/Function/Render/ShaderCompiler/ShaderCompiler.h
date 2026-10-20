@@ -4,7 +4,9 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace minEngine
@@ -38,9 +40,23 @@ namespace minEngine
         std::string Log;
     };
 
+    /** Compile-path counters; the measurable oracle for cache behaviour (MAT-F08). */
+    struct ShaderCompileStats
+    {
+        uint64_t CompileRequests = 0;
+        uint64_t MemoryCacheHits = 0;
+        uint64_t DiskCacheHits = 0;
+        /** Actual glslangValidator process launches — one per emitted "ShaderCompiler: compiled ..." line. */
+        uint64_t GlslangInvocations = 0;
+    };
+
     /**
      * GLSL -> SPIR-V via Vulkan SDK glslangValidator.
      * Produces separate Vulkan (-V) and OpenGL (-G) artifacts.
+     *
+     * Bytecode is memoized in-process by source key (stage/target/entry included), so identical
+     * generated GLSL never re-launches glslang within a session. Artifacts are context-free and
+     * therefore safe to share across RHI instances; GPU programs are not (see EngineShaderUtils).
      */
     class ShaderCompiler
     {
@@ -59,6 +75,12 @@ namespace minEngine
         bool DiscoverGlslangValidator(std::string* outError = nullptr);
 
         ShaderCompileResult Compile(const ShaderCompileRequest& request);
+
+        ShaderCompileStats GetCompileStats() const;
+        void ResetCompileStats();
+        /** Drops in-process bytecode (shader hot-reload / test isolation). Disk cache is untouched. */
+        void ClearMemoryCache();
+        size_t GetMemoryCacheEntryCount() const;
 
         ShaderCompileResult CompileFile(
             const std::filesystem::path& sourcePath,
@@ -89,7 +111,12 @@ namespace minEngine
         ShaderCompiler() = default;
 
         bool EnsureCacheDirectory(std::string* outError) const;
-        std::filesystem::path MakeCacheFilePath(const ShaderCompileRequest& request) const;
+        std::filesystem::path MakeCacheFilePath(
+            const std::string& sourceKey,
+            ShaderCompilerStage stage,
+            ShaderSpirvTarget target) const;
+        bool TryReadMemoryCache(const std::string& sourceKey, std::vector<uint32_t>& outWords);
+        void StoreMemoryCache(const std::string& sourceKey, const std::vector<uint32_t>& words);
         static std::string HashSourceKey(const ShaderCompileRequest& request);
         static bool ReadSpirvFile(const std::filesystem::path& path, std::vector<uint32_t>& outWords, std::string* outError);
         static bool WriteTextFile(const std::filesystem::path& path, const std::string& text, std::string* outError);
@@ -103,5 +130,10 @@ namespace minEngine
 
         std::filesystem::path m_GlslangValidatorPath;
         std::filesystem::path m_CacheDirectory;
+
+        mutable std::mutex m_MemoryCacheMutex;
+        std::unordered_map<std::string, std::vector<uint32_t>> m_MemoryCache;
+        mutable std::mutex m_StatsMutex;
+        ShaderCompileStats m_Stats;
     };
 }

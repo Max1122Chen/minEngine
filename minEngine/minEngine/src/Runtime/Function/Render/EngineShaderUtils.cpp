@@ -7,12 +7,75 @@
 #include "Runtime/Function/Render/ShaderCompiler/ShaderCompiler.h"
 
 #include <fstream>
+#include <mutex>
 #include <sstream>
+#include <unordered_map>
 
 namespace minEngine
 {
     namespace EngineShaderUtils
     {
+        namespace
+        {
+            /** GPU programs are owned by one RHI instance; the cache is pruned when a new instance appears. */
+            std::mutex g_ProgramCacheMutex;
+            std::unordered_map<uint64_t, RHIShaderRef> g_ProgramCache;
+            uint64_t g_ProgramCacheRHISerial = 0;
+            uint64_t g_ProgramCacheHits = 0;
+
+            uint64_t HashProgramSources(
+                const std::string& vertexSource,
+                const std::string& fragmentSource,
+                ShaderSpirvTarget target)
+            {
+                // FNV-1a 64-bit over both stages + backend target (same scheme as ShaderCompiler keys).
+                uint64_t hash = 14695981039346656037ull;
+                auto mix = [&hash](const char* data, size_t size)
+                {
+                    for (size_t i = 0; i < size; ++i)
+                    {
+                        hash ^= static_cast<uint64_t>(static_cast<unsigned char>(data[i]));
+                        hash *= 1099511628211ull;
+                    }
+                };
+
+                mix(vertexSource.data(), vertexSource.size());
+                const char separator = '\0';
+                mix(&separator, 1);
+                mix(fragmentSource.data(), fragmentSource.size());
+                const char targetTag = static_cast<char>(target);
+                mix(&targetTag, 1);
+                return hash;
+            }
+        }
+
+        void ClearProgramCache()
+        {
+            std::lock_guard<std::mutex> lock(g_ProgramCacheMutex);
+            g_ProgramCache.clear();
+            g_ProgramCacheRHISerial = 0;
+            // g_ProgramCacheHits deliberately survives: it is a lifetime diagnostic counter, and
+            // resetting it on every invalidation would make hit-rate readings incomparable.
+        }
+
+        uint64_t GetProgramCacheHits()
+        {
+            std::lock_guard<std::mutex> lock(g_ProgramCacheMutex);
+            return g_ProgramCacheHits;
+        }
+
+        void ResetProgramCacheStats()
+        {
+            std::lock_guard<std::mutex> lock(g_ProgramCacheMutex);
+            g_ProgramCacheHits = 0;
+        }
+
+        size_t GetProgramCacheEntryCount()
+        {
+            std::lock_guard<std::mutex> lock(g_ProgramCacheMutex);
+            return g_ProgramCache.size();
+        }
+
         bool ReadShaderSourceFile(
             const std::filesystem::path& path,
             std::string& outSource,
@@ -139,6 +202,24 @@ namespace minEngine
                 : ShaderSpirvTarget::OpenGL;
 
             const std::string label = debugName.empty() ? "Material" : debugName;
+            const uint64_t programKey = HashProgramSources(vertexSource, fragmentSource, spirvTarget);
+
+            {
+                std::lock_guard<std::mutex> lock(g_ProgramCacheMutex);
+                if (g_ProgramCacheRHISerial != rhi.GetInstanceSerial())
+                {
+                    // A new RHI instance owns its own GPU objects; drop the previous owner's programs.
+                    g_ProgramCache.clear();
+                    g_ProgramCacheRHISerial = rhi.GetInstanceSerial();
+                }
+
+                const auto found = g_ProgramCache.find(programKey);
+                if (found != g_ProgramCache.end())
+                {
+                    ++g_ProgramCacheHits;
+                    return found->second;
+                }
+            }
 
             ShaderCompileRequest vertexRequest;
             vertexRequest.Source = vertexSource;
@@ -176,7 +257,13 @@ namespace minEngine
             desc.DebugName = label;
             desc.Stages.push_back({RHIGraphicsShaderStage::Vertex, vertexResult.SpirvWords});
             desc.Stages.push_back({RHIGraphicsShaderStage::Pixel, fragmentResult.SpirvWords});
-            return rhi.RHICreateShader(desc, outError);
+            RHIShaderRef shader = rhi.RHICreateShader(desc, outError);
+            if (shader != nullptr)
+            {
+                std::lock_guard<std::mutex> lock(g_ProgramCacheMutex);
+                g_ProgramCache[programKey] = shader;
+            }
+            return shader;
         }
 
         bool TryCompileSourcesOnGpu(

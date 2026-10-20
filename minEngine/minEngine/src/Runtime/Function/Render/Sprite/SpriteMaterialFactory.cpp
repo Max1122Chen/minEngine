@@ -9,6 +9,8 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/Texture.h"
 
+#include <mutex>
+
 namespace minEngine
 {
     namespace
@@ -126,24 +128,128 @@ namespace minEngine
         }
     }
 
+    namespace
+    {
+        /**
+         * One compiled template per blend mode per RHI instance. Templates own the GPU program;
+         * per-widget Materials derive from them (Material::CreateRuntimeInstance) and never compile.
+         */
+        struct SpriteTemplateCache
+        {
+            std::mutex Mutex;
+            uint64_t RhiSerial = 0;
+            std::shared_ptr<Material> Opaque;
+            std::shared_ptr<Material> Translucent;
+            SpriteMaterialCacheStats Stats;
+        };
+
+        SpriteTemplateCache& GetTemplateCache()
+        {
+            static SpriteTemplateCache s_Cache;
+            return s_Cache;
+        }
+
+        std::shared_ptr<Material> CompileTemplate(RHI& rhi, bool translucent)
+        {
+            std::shared_ptr<Material> material =
+                NewObject<Material>("SpriteUnlit", nullptr, GenerateGUID());
+            PopulateSpriteMaterialGraph(*material, translucent);
+
+            MaterialCompileContext ctx;
+            ctx.RHI = &rhi;
+            if (!MaterialCompiler::Compile(*material, ctx))
+            {
+                ME_LOG(LogRender, Error, "SpriteMaterialFactory: failed to compile {} sprite material.", translucent ? "translucent" : "opaque");
+                for (const MaterialCompileDiagnostic& diagnostic : material->m_LastCompileDiagnostics)
+                {
+                    ME_LOG(LogRender, Error, "  {}", diagnostic.Message);
+                }
+                return nullptr;
+            }
+
+            return material;
+        }
+    }
+
+    std::shared_ptr<Material> SpriteMaterialFactory::GetOrCreateTemplate(RHI& rhi, bool translucent)
+    {
+        SpriteTemplateCache& cache = GetTemplateCache();
+        std::lock_guard<std::mutex> lock(cache.Mutex);
+
+        if (cache.RhiSerial != rhi.GetInstanceSerial())
+        {
+            // GPU programs belong to the RHI instance that linked them.
+            cache.RhiSerial = rhi.GetInstanceSerial();
+            cache.Opaque.reset();
+            cache.Translucent.reset();
+        }
+
+        std::shared_ptr<Material>& slot = translucent ? cache.Translucent : cache.Opaque;
+        if (slot)
+        {
+            return slot;
+        }
+
+        slot = CompileTemplate(rhi, translucent);
+        if (slot)
+        {
+            ++cache.Stats.TemplateCompiles;
+        }
+        return slot;
+    }
+
     std::shared_ptr<Material> SpriteMaterialFactory::CreateInstance(RHI& rhi, bool translucent)
     {
-        std::shared_ptr<Material> material = NewObject<Material>("SpriteUnlit", nullptr, GenerateGUID());
-        PopulateSpriteMaterialGraph(*material, translucent);
-
-        MaterialCompileContext ctx;
-        ctx.RHI = &rhi;
-        if (!MaterialCompiler::Compile(*material, ctx))
+        std::shared_ptr<Material> templateMaterial = GetOrCreateTemplate(rhi, translucent);
+        if (!templateMaterial)
         {
-            ME_LOG(LogRender, Error, "SpriteMaterialFactory: failed to compile {} sprite material.", translucent ? "translucent" : "opaque");
-            for (const MaterialCompileDiagnostic& diagnostic : material->m_LastCompileDiagnostics)
-            {
-                ME_LOG(LogRender, Error, "  {}", diagnostic.Message);
-            }
             return nullptr;
         }
 
-        return material;
+        std::shared_ptr<Material> instance = templateMaterial->CreateRuntimeInstance();
+        if (!instance)
+        {
+            return nullptr;
+        }
+
+        SpriteTemplateCache& cache = GetTemplateCache();
+        std::lock_guard<std::mutex> lock(cache.Mutex);
+        ++cache.Stats.InstanceDerivations;
+        return instance;
+    }
+
+    SpriteMaterialCacheStats SpriteMaterialFactory::GetCacheStats()
+    {
+        SpriteTemplateCache& cache = GetTemplateCache();
+        std::lock_guard<std::mutex> lock(cache.Mutex);
+        return cache.Stats;
+    }
+
+    void SpriteMaterialFactory::ResetCacheStats()
+    {
+        SpriteTemplateCache& cache = GetTemplateCache();
+        std::lock_guard<std::mutex> lock(cache.Mutex);
+        cache.Stats = SpriteMaterialCacheStats{};
+    }
+
+    size_t SpriteMaterialFactory::GetTemplateCacheEntryCount()
+    {
+        SpriteTemplateCache& cache = GetTemplateCache();
+        std::lock_guard<std::mutex> lock(cache.Mutex);
+        size_t count = 0;
+        count += cache.Opaque ? 1u : 0u;
+        count += cache.Translucent ? 1u : 0u;
+        return count;
+    }
+
+    void SpriteMaterialFactory::ClearTemplateCache()
+    {
+        SpriteTemplateCache& cache = GetTemplateCache();
+        std::lock_guard<std::mutex> lock(cache.Mutex);
+        cache.Opaque.reset();
+        cache.Translucent.reset();
+        cache.RhiSerial = 0;
+        cache.Stats = SpriteMaterialCacheStats{};
     }
 
     void SpriteMaterialFactory::ApplyColorAndTexture(

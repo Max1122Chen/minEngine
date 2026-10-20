@@ -4,7 +4,12 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
+#include "EngineShaderUtils.h"
 #include "OpenGL/OpenGLRHI.h"
+#include "ScreenUI/ScreenUIMaterialFactory.h"
+#include "ShaderCompiler/ShaderCompiler.h"
+#include "Sprite/SpriteMaterialFactory.h"
+#include "Sprite/SpriteQuadMesh.h"
 #include "Vulkan/VulkanRHI.h"
 #include "GLFWWindowSystem.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
@@ -115,6 +120,16 @@ namespace minEngine
 
     void RenderSystem::Shutdown()
     {
+        // MAT-F08: these caches are process-lifetime statics that hold GPU objects (RHIShader,
+        // Material, Texture2D). Their destructors call glDeleteProgram/glDeleteTextures, so they
+        // must be released while the graphics context is still alive. This function runs before
+        // WindowSystem::Shutdown() (the only context destroyer), and before m_RHI->Shutdown().
+        // Clearing is refcount-safe: live Materials keep their own RHIShaderRef and stay valid.
+        EngineShaderUtils::ClearProgramCache();
+        SpriteMaterialFactory::ClearTemplateCache();
+        ScreenUIMaterialFactory::ClearCachedResources();
+        ShaderCompiler::Get().ClearMemoryCache();
+
         m_EngineRenderingAssetsLoaded = false;
 
         if (m_SceneRenderer)
@@ -122,6 +137,11 @@ namespace minEngine
             m_SceneRenderer->Shutdown();
             m_SceneRenderer.reset();
         }
+
+        // Pre-existing static quad mesh (SpriteQuadMesh.cpp:25) also owns GPU buffers and has no
+        // caller for its Shutdown(); release it here (after draw consumers are gone, before the
+        // context dies). The SpriteQuadMesh files themselves are outside this work item's boundary.
+        SpriteQuadMesh::Get().Shutdown();
 
         if (m_RHI)
         {
