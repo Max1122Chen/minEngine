@@ -70,6 +70,44 @@ set(MINENGINE_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH
 set(MINENGINE_HEADER_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/minEngine_header_tool.py" CACHE FILEPATH
     "Path to minEngine_header_tool.py")
 
+# BUILD-F04 S04: the imgui family belongs to the editor DLL, but its HEADERS still have two
+# consumers - the editor DLL (which compiles imgui) and minEngineTests (which compiles a curated
+# subset of Editor/src/**). Before this slice the engine target's PUBLIC include dirs were the
+# accidental provider, which is exactly why removing them from the engine broke minEngineTests
+# with "imgui.h: No such file or directory". Naming the header interface once keeps "who may
+# include imgui.h" explicit instead of re-adding three -I lines per target.
+# IMGUI_ENABLE_FREETYPE rides along so every TU that includes imgui sees ONE configuration
+# (design 4.6; before S04 imgui-node-editor compiled without it).
+add_library(minengine_imgui_headers INTERFACE)
+target_include_directories(minengine_imgui_headers INTERFACE
+    ${THIRD_PARTY_PATH}/imgui
+    ${THIRD_PARTY_PATH}/imgui-upstream/misc/freetype
+    ${THIRD_PARTY_PATH}/ImGuizmo
+)
+target_compile_definitions(minengine_imgui_headers INTERFACE IMGUI_ENABLE_FREETYPE)
+
+# BUILD-F04 S04 (= BUILD-F03 slice 1 step 1, pulled forward because S04 cannot link without it):
+# glfw becomes a SHARED dependency. imgui_impl_glfw.cpp needs ~48 glfw symbols, and glfw's single
+# process-wide instance used to live INSIDE libminEngined.dll (static libglfw3.a: the engine defines
+# the 8 glfw exports and imports no glfw3.dll - measured). A second static copy in the editor DLL
+# would split GLFW window/callback/input state, which is worse than two GImGui contexts. One
+# glfw3.dll, imported by the engine and by the editor DLL, keeps exactly one instance; the side
+# effect is that the glfw bucket leaves the engine export contract (BUILD-F03 C1).
+set(MINENGINE_GLFW_DIR "${THIRD_PARTY_PATH}/glfw/lib-mingw-w64")
+if(NOT EXISTS "${MINENGINE_GLFW_DIR}/glfw3.dll" OR NOT EXISTS "${MINENGINE_GLFW_DIR}/libglfw3dll.a")
+    message(FATAL_ERROR
+        "minEngine needs the prebuilt GLFW DLL: expected glfw3.dll and libglfw3dll.a in "
+        "${MINENGINE_GLFW_DIR}. Both DLLs (engine + editor) import glfw3.dll at runtime.")
+endif()
+# GLOBAL: a project template (Launcher/Templates/GameProject) adds minEngine as a subdirectory and
+# still has to list glfw3.dll in minengine_add_package_game(RUNTIME_TARGETS ...).
+add_library(minengine_glfw SHARED IMPORTED GLOBAL)
+set_target_properties(minengine_glfw PROPERTIES
+    IMPORTED_LOCATION "${MINENGINE_GLFW_DIR}/glfw3.dll"
+    IMPORTED_IMPLIB "${MINENGINE_GLFW_DIR}/libglfw3dll.a"
+    INTERFACE_INCLUDE_DIRECTORIES "${THIRD_PARTY_PATH}/glfw/include"
+)
+
 add_subdirectory(${ENGINE_NAME})
 
 if(BUILD_GAME_MODULE_SAMPLE)

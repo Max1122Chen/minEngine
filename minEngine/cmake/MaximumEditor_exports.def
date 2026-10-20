@@ -1,0 +1,19 @@
+; PE export whitelist for libMaximumEditord.dll - BURNED TO ZERO by BUILD-F04 S03.
+; The editor DLL now runs MINENGINE_EDITOR_EXPORT_MODE=explicit: EDITOR_API
+; (minEngine/Editor/src/EditorAPI.h) is the single source of truth for its export surface, which
+; today is exactly one symbol - minEngine::CreateApplication(). In explicit mode this file is not
+; passed to the linker at all; it exists only so the whitelist state machine stays available.
+;
+; S02 evidence (this file WAS generated from the consumers' PE import tables, never from the
+; editor DLL export table - see design §9 / BUILD-F02 P1):
+;   python scripts/audit_dll_exports.py --dll minEngine/bin/libMaximumEditord.dll \
+;       --emit-whitelist minEngine/cmake/MaximumEditor_exports.def
+;   -> 1 entry (consumed union 1): MaximumEditor.exe 1 name, SampleEditor.exe 1 name
+; The single burned entry was: _ZN9minEngine17CreateApplicationEv
+;
+; Fallback to the S02 geometry (whitelist) is two steps, in this order:
+;   1. python scripts/audit_dll_exports.py --dll minEngine/bin/libMaximumEditord.dll \
+;          --emit-whitelist minEngine/cmake/MaximumEditor_exports.def
+;   2. pass -DMINENGINE_EDITOR_EXPORT_MODE=whitelist to cmake
+; Never regenerate from the DLL export table itself: that is how a contract becomes an ordinal bomb.
+EXPORTS

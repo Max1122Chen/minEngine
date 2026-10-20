@@ -76,5 +76,7 @@ minengine_add_editor_executable({{PROJECT_EDITOR_NAME}}
 minengine_add_package_game({{PROJECT_NAME}}
     STAGE_DIR "${CMAKE_SOURCE_DIR}/Staging/{{PROJECT_NAME}}"
     CONTENT_DIR "${CMAKE_SOURCE_DIR}/Assets"
-    RUNTIME_TARGETS ${GAME_MODULE_NAME} minEngine
+    # minengine_glfw = glfw3.dll, imported by both libminEngined.dll and libMaximumEditord.dll
+    # (BUILD-F04 S04). A staged project without it fails to start (0xC0000135).
+    RUNTIME_TARGETS ${GAME_MODULE_NAME} minEngine minengine_glfw
 )

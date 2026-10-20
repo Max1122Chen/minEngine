@@ -18,7 +18,9 @@ minengine_add_game_executable(SampleGame
 
 minengine_add_package_game(SampleGame
     STAGE_DIR "${CMAKE_SOURCE_DIR}/Staging/SampleGame"
-    RUNTIME_TARGETS GameModuleStub minEngine
+    # minengine_glfw = the prebuilt glfw3.dll both libminEngined.dll and libMaximumEditord.dll
+    # import (BUILD-F04 S04). Without it a staged build starts with 0xC0000135.
+    RUNTIME_TARGETS GameModuleStub minEngine minengine_glfw
 )
 
 if(TARGET MaximumEditorLib)

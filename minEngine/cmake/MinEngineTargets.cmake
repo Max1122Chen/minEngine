@@ -117,6 +117,14 @@ function(minengine_add_editor_executable TARGET_NAME)
         OUTPUT_NAME "${_out_name}"
     )
     target_link_libraries(${TARGET_NAME} PRIVATE MaximumEditorLib)
+    # BUILD-F04 S02/Q3: while the editor library is a DLL, the host's main.h declares the entry
+    # symbol as dllimport (EDITOR_API). Defining it here keeps every host main source unchanged,
+    # in-tree and in the external repos (design §9 hard acceptance item). Read from the target so
+    # the SHARED -> STATIC rollback needs no second edit.
+    get_target_property(_editor_lib_type MaximumEditorLib TYPE)
+    if(_editor_lib_type STREQUAL "SHARED_LIBRARY")
+        target_compile_definitions(${TARGET_NAME} PRIVATE MINENGINE_EDITOR_HOST_LINKS_EDITOR_DLL)
+    endif()
     if(ARG_GAME_MODULE)
         minengine_link_game_module(${TARGET_NAME} ${ARG_GAME_MODULE})
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

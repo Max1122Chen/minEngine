@@ -1,271 +1,41 @@
 ; minEngine export whitelist - GENERATED, do not hand-edit one line at a time.
 ; Source: PE import tables of the engine consumers, not the DLL export table.
-; Regenerate:
-;   python scripts/audit_dll_exports.py --emit-whitelist minEngine/cmake/minEngine_exports.def
+; Contract: libminengine - release libminEngine.dll and debug libminEngined.dll are ONE
+;   contract - external repos import the release name (BUILD-F03 P7 / Q8).
+; Regenerate from the in-repo hosts plus the LIVE external product bins (BUILD-F03 Q8):
+;   python scripts/audit_dll_exports.py --emit-whitelist minEngine/cmake/minEngine_exports.def \
+;       --consumer-dir "../minCraft*/bin"
+; The legacy block at the end of this file is preserved verbatim by that command.
 ; Consumers:
-;   MaximumEditor.exe              579 names
-;   SampleEditor.exe               579 names
-;   SampleGame.exe                   7 names
-;   libGameModuleStubd.dll          26 names
-;   libminCraftd.dll               153 names
-;   minEngineTests.exe             807 names
-; Entries: 1259 (consumed union 1259, DLL exports 1545; 124 marked DATA)
+;   ../minCraft-gameplay/bin/libminCraft.dll     160 names
+;   ../minCraft-ui/bin/MaximumEditor.exe         578 names
+;   ../minCraft-ui/bin/MinCraft.exe                7 names
+;   ../minCraft-ui/bin/MinCraftEditor.exe        578 names
+;   ../minCraft-ui/bin/VoxelWorldTests.exe        24 names
+;   ../minCraft-ui/bin/libminCraft.dll           144 names
+;   ../minCraft/bin/MinCraftEditor.exe           573 names
+;   ../minCraft/bin/VoxelWorldTests.exe           24 names
+;   ../minCraft/bin/libminCraft.dll              130 names
+;   minEngine/bin/MaximumEditor.exe              579 names
+;   minEngine/bin/SampleEditor.exe               579 names
+;   minEngine/bin/SampleGame.exe                   7 names
+;   minEngine/bin/libGameModuleStubd.dll          26 names
+;   minEngine/bin/libminCraftd.dll               153 names
+;   minEngine/bin/minEngineTests.exe             807 names
+; Entries: 1003 (998 contract entries + 5 legacy; DLL exports 1288 after BUILD-F04 S04; 124 DATA)
+; BUILD-F04 S04: the imgui bucket left this file together with the sources that defined it
+; (253 entries: 224 IMGUI_API + 20 IMGUI_IMPL_API + 9 ImGuizmo, GImGui included as DATA).
+; imgui is compiled by libMaximumEditord.dll now. This block keeps 998 entries, the legacy
+; block keeps 5. The engine src had 0 imgui calls, so no in-repo consumer loses a symbol: an
+; editor host rebuilt against this engine links imgui from the editor DLL.
+; BUILD-F04 S04 step 2: the glfw bucket (8 entries) left the contract because the engine no
+;   longer DEFINES glfw - it imports the prebuilt glfw3.dll (minengine_glfw), the same DLL the
+;   editor DLL imports, so the process has exactly one GLFW instance.
+; BUILD-F03 C1 target state for glfw is therefore reached early; glad is untouched (the tests
+;   still consume 5 glad names from the engine).
 EXPORTS
-GImGui DATA
 GLAD_GL_VERSION_4_6 DATA
 TAG_Channel_Default DATA
-_Z21ImGui_ImplVulkan_InitP25ImGui_ImplVulkan_InitInfo
-_Z22ImGui_ImplOpenGL3_InitPKc
-_Z23ImGui_ImplGlfw_NewFramev
-_Z23ImGui_ImplGlfw_Shutdownv
-_Z25ImGui_ImplVulkan_NewFramev
-_Z25ImGui_ImplVulkan_Shutdownv
-_Z26ImGui_ImplOpenGL3_NewFramev
-_Z26ImGui_ImplOpenGL3_Shutdownv
-_Z27ImGui_ImplVulkan_AddTextureP11VkSampler_TP13VkImageView_T13VkImageLayout
-_Z28ImGui_ImplGlfw_InitForOpenGLP10GLFWwindowb
-_Z28ImGui_ImplGlfw_InitForVulkanP10GLFWwindowb
-_Z30ImGui_ImplVulkan_RemoveTextureP17VkDescriptorSet_T
-_Z30ImGui_ImplVulkan_UpdateTextureP13ImTextureData
-_Z31ImGui_ImplOpenGL3_UpdateTextureP13ImTextureData
-_Z31ImGui_ImplVulkan_RenderDrawDataP10ImDrawDataP17VkCommandBuffer_TP12VkPipeline_T
-_Z32ImGui_ImplOpenGL3_RenderDrawDataP10ImDrawData
-_Z33ImGui_ImplVulkan_SetMinImageCountj
-_Z35ImGui_ImplVulkan_CreateMainPipelinePK29ImGui_ImplVulkan_PipelineInfo
-_Z37ImGui_ImplVulkan_DestroyDeviceObjectsv
-_Z38ImGui_ImplOpenGL3_DestroyDeviceObjectsv
-_ZN10ImDrawList11AddCallbackEPFvPKS_PK9ImDrawCmdEPvy
-_ZN10ImDrawList11AddPolylineEPK6ImVec2ijif
-_ZN10ImDrawList11PopClipRectEv
-_ZN10ImDrawList12PushClipRectERK6ImVec2S2_b
-_ZN10ImDrawList13AddRectFilledERK6ImVec2S2_jfi
-_ZN10ImDrawList14AddBezierCubicERK6ImVec2S2_S2_S2_jfi
-_ZN10ImDrawList15AddCircleFilledERK6ImVec2fji
-_ZN10ImDrawList17AddTriangleFilledERK6ImVec2S2_S2_j
-_ZN10ImDrawList19AddConvexPolyFilledEPK6ImVec2ij
-_ZN10ImDrawList7AddLineERK6ImVec2S2_jf
-_ZN10ImDrawList7AddRectERK6ImVec2S2_jfif
-_ZN10ImDrawList7AddTextERK6ImVec2jPKcS4_
-_ZN10ImDrawList8AddImageE12ImTextureRefRK6ImVec2S3_S3_S3_j
-_ZN10ImDrawList9AddCircleERK6ImVec2fjif
-_ZN11ImFontAtlas14AddFontDefaultEPK12ImFontConfig
-_ZN11ImFontAtlas18AddFontFromFileTTFEPKcfPK12ImFontConfigPKt
-_ZN11ImFontAtlas20AddFontFromMemoryTTFEPvifPK12ImFontConfigPKt
-_ZN11ImFontAtlas21GetGlyphRangesDefaultEv
-_ZN11ImFontAtlas25GetGlyphRangesChineseFullEv
-_ZN11ImFontAtlas5BuildEv
-_ZN11ImFontAtlas5ClearEv
-_ZN11ImGuiWindow5GetIDEPKcS1_
-_ZN12ImFontConfigC1Ev
-_ZN16ImGuiListClipper3EndEv
-_ZN16ImGuiListClipper4StepEv
-_ZN16ImGuiListClipper5BeginEif
-_ZN16ImGuiListClipperC1Ev
-_ZN16ImGuiListClipperD1Ev
-_ZN18ImDrawListSplitter15ClearFreeMemoryEv
-_ZN18ImDrawListSplitter17SetCurrentChannelEP10ImDrawListi
-_ZN18ImDrawListSplitter5MergeEP10ImDrawList
-_ZN18ImDrawListSplitter5SplitEP10ImDrawListi
-_ZN24ImFontGlyphRangesBuilder11BuildRangesEP8ImVectorItE
-_ZN24ImFontGlyphRangesBuilder9AddRangesEPKt
-_ZN26ImGuiInputTextCallbackData11DeleteCharsEii
-_ZN26ImGuiInputTextCallbackData11InsertCharsEiPKcS1_
-_ZN5ImGui10BeginChildEPKcRK6ImVec2ii
-_ZN5ImGui10BeginComboEPKcS1_i
-_ZN5ImGui10BeginGroupEv
-_ZN5ImGui10BeginPopupEPKci
-_ZN5ImGui10BeginTableEPKciiRK6ImVec2f
-_ZN5ImGui10BulletTextEPKcz
-_ZN5ImGui10DragFloat2EPKcPffffS1_i
-_ZN5ImGui10DragFloat3EPKcPffffS1_i
-_ZN5ImGui10DragFloat4EPKcPffffS1_i
-_ZN5ImGui10DragScalarEPKciPvfPKvS4_S1_i
-_ZN5ImGui10EndTabItemEv
-_ZN5ImGui10GetScrollYEv
-_ZN5ImGui10SelectableEPKcbiRK6ImVec2
-_ZN5ImGui10SetTooltipEPKcz
-_ZN5ImGui10TreeNodeExEPKci
-_ZN5ImGui10TreeNodeExEPKciS1_z
-_ZN5ImGui11BeginTabBarEPKci
-_ZN5ImGui11ColorButtonEPKcRK6ImVec4iRK6ImVec2
-_ZN5ImGui11EndDisabledEv
-_ZN5ImGui11GetColorU32Eif
-_ZN5ImGui11GetDrawDataEv
-_ZN5ImGui11GetFontSizeEv
-_ZN5ImGui11GetMousePosEv
-_ZN5ImGui11IsClippedExERK6ImRectj
-_ZN5ImGui11IsMouseDownEi
-_ZN5ImGui11IsPopupOpenEPKci
-_ZN5ImGui11PopClipRectEv
-_ZN5ImGui11PopStyleVarEi
-_ZN5ImGui11SmallButtonEPKc
-_ZN5ImGui11TextColoredERK6ImVec4PKcz
-_ZN5ImGui11TextWrappedEPKcz
-_ZN5ImGui12BeginTabItemEPKcPbi
-_ZN5ImGui12CalcItemSizeE6ImVec2ff
-_ZN5ImGui12CalcTextSizeEPKcS1_bf
-_ZN5ImGui12ColorPicker4EPKcPfiPKf
-_ZN5ImGui12GetCursorPosEv
-_ZN5ImGui12GetWindowPosEv
-_ZN5ImGui12IsItemActiveEv
-_ZN5ImGui12IsKeyPressedE8ImGuiKeyb
-_ZN5ImGui12PopItemWidthEv
-_ZN5ImGui12PushClipRectERK6ImVec2S2_b
-_ZN5ImGui12PushStyleVarEiRK6ImVec2
-_ZN5ImGui12PushStyleVarEif
-_ZN5ImGui12SetCursorPosERK6ImVec2
-_ZN5ImGui12TableNextRowEif
-_ZN5ImGui12TextDisabledEPKcz
-_ZN5ImGui13BeginDisabledEb
-_ZN5ImGui13ClearActiveIDEv
-_ZN5ImGui13CreateContextEP11ImFontAtlas
-_ZN5ImGui13GetCursorPosXEv
-_ZN5ImGui13GetCursorPosYEv
-_ZN5ImGui13GetFrameCountEv
-_ZN5ImGui13GetPlatformIOEv
-_ZN5ImGui13GetScrollMaxYEv
-_ZN5ImGui13IsItemClickedEi
-_ZN5ImGui13IsItemHoveredEi
-_ZN5ImGui13IsRectVisibleERK6ImVec2S2_
-_ZN5ImGui13PopStyleColorEi
-_ZN5ImGui13PushItemWidthEf
-_ZN5ImGui13SeparatorTextEPKc
-_ZN5ImGui13SetCursorPosXEf
-_ZN5ImGui14ButtonBehaviorERK6ImRectjPbS3_i
-_ZN5ImGui14DestroyContextEP12ImGuiContext
-_ZN5ImGui14EndMainMenuBarEv
-_ZN5ImGui14GetFrameHeightEv
-_ZN5ImGui14GetItemRectMaxEv
-_ZN5ImGui14GetItemRectMinEv
-_ZN5ImGui14IsMouseClickedEib
-_ZN5ImGui14PushStyleColorEiRK6ImVec4
-_ZN5ImGui14PushStyleColorEij
-_ZN5ImGui14SetItemTooltipEPKcz
-_ZN5ImGui14SetMouseCursorEi
-_ZN5ImGui14SetScrollHereYEf
-_ZN5ImGui15BeginPopupModalEPKcPbi
-_ZN5ImGui15GetItemRectSizeEv
-_ZN5ImGui15GetMainViewportEv
-_ZN5ImGui15InvisibleButtonEPKcRK6ImVec2i
-_ZN5ImGui15IsAnyItemActiveEv
-_ZN5ImGui15IsItemActivatedEv
-_ZN5ImGui15IsMouseDraggingEif
-_ZN5ImGui15IsMouseReleasedEi
-_ZN5ImGui15IsWindowFocusedEi
-_ZN5ImGui15IsWindowHoveredEi
-_ZN5ImGui15SetItemKeyOwnerE8ImGuiKey
-_ZN5ImGui15SetNextItemOpenEbi
-_ZN5ImGui15StyleColorsDarkEP10ImGuiStyle
-_ZN5ImGui15TableHeadersRowEv
-_ZN5ImGui15TextUnformattedEPKcS1_
-_ZN5ImGui16BeginMainMenuBarEv
-_ZN5ImGui16CollapsingHeaderEPKci
-_ZN5ImGui16SetClipboardTextEPKc
-_ZN5ImGui16SetNextItemWidthEf
-_ZN5ImGui16SetNextWindowPosERK6ImVec2iS2_
-_ZN5ImGui16StyleColorsLightEP10ImGuiStyle
-_ZN5ImGui16TableSetupColumnEPKcifj
-_ZN5ImGui17CloseCurrentPopupEv
-_ZN5ImGui17DockBuilderFinishEj
-_ZN5ImGui17EndDragDropSourceEv
-_ZN5ImGui17EndDragDropTargetEv
-_ZN5ImGui17GetCurrentContextEv
-_ZN5ImGui17GetCursorStartPosEv
-_ZN5ImGui17GetMouseDragDeltaEif
-_ZN5ImGui17GetTextLineHeightEv
-_ZN5ImGui17GetWindowDrawListEv
-_ZN5ImGui17GetWindowViewportEv
-_ZN5ImGui17InputTextWithHintEPKcS1_PcyiPFiP26ImGuiInputTextCallbackDataEPv
-_ZN5ImGui17IsItemDeactivatedEv
-_ZN5ImGui17IsItemToggledOpenEv
-_ZN5ImGui17IsKeyChordPressedEi
-_ZN5ImGui17IsWindowAppearingEv
-_ZN5ImGui17SetNextWindowSizeERK6ImVec2i
-_ZN5ImGui18DockBuilderAddNodeEji
-_ZN5ImGui18GetCursorScreenPosEv
-_ZN5ImGui18SetCursorScreenPosERK6ImVec2
-_ZN5ImGui18SetDragDropPayloadEPKcPKvyi
-_ZN5ImGui19BeginDragDropSourceEi
-_ZN5ImGui19BeginDragDropTargetEv
-_ZN5ImGui19GetContentRegionMaxEv
-_ZN5ImGui19IsMouseHoveringRectERK6ImVec2S2_b
-_ZN5ImGui19ResetMouseDragDeltaEi
-_ZN5ImGui19SetItemDefaultFocusEv
-_ZN5ImGui19TableSetColumnIndexEi
-_ZN5ImGui20DockBuilderSplitNodeEj8ImGuiDirfPjS1_
-_ZN5ImGui20IsMouseDoubleClickedEi
-_ZN5ImGui20SetKeyboardFocusHereEi
-_ZN5ImGui21AcceptDragDropPayloadEPKci
-_ZN5ImGui21BeginPopupContextItemEPKci
-_ZN5ImGui21DockBuilderDockWindowEPKcj
-_ZN5ImGui21DockBuilderRemoveNodeEj
-_ZN5ImGui21DockSpaceOverViewportEjPK13ImGuiViewportiPK16ImGuiWindowClass
-_ZN5ImGui21GetContentRegionAvailEv
-_ZN5ImGui21GetForegroundDrawListEP13ImGuiViewport
-_ZN5ImGui21SetNextWindowViewportEj
-_ZN5ImGui22DockBuilderSetNodeSizeEj6ImVec2
-_ZN5ImGui23AlignTextToFramePaddingEv
-_ZN5ImGui23BeginPopupContextWindowEPKci
-_ZN5ImGui23ColorConvertFloat4ToU32ERK6ImVec4
-_ZN5ImGui23SetNextItemAllowOverlapEv
-_ZN5ImGui25GetFrameHeightWithSpacingEv
-_ZN5ImGui25GetWindowContentRegionMaxEv
-_ZN5ImGui25GetWindowContentRegionMinEv
-_ZN5ImGui26IsItemDeactivatedAfterEditEv
-_ZN5ImGui28GetTextLineHeightWithSpacingEv
-_ZN5ImGui28SetNextWindowSizeConstraintsERK6ImVec2S2_PFvP21ImGuiSizeCallbackDataEPv
-_ZN5ImGui3EndEv
-_ZN5ImGui4TextEPKcz
-_ZN5ImGui5BeginEPKcPbi
-_ZN5ImGui5ComboEPKcPiPKS1_ii
-_ZN5ImGui5DummyERK6ImVec2
-_ZN5ImGui5GetIDEPKc
-_ZN5ImGui5GetIOEv
-_ZN5ImGui5ImageE12ImTextureRefRK6ImVec2S3_S3_
-_ZN5ImGui5PopIDEv
-_ZN5ImGui6ButtonEPKcRK6ImVec2
-_ZN5ImGui6PushIDEPKc
-_ZN5ImGui6PushIDEPKv
-_ZN5ImGui6PushIDEi
-_ZN5ImGui6RenderEv
-_ZN5ImGui7DragIntEPKcPifiiS1_i
-_ZN5ImGui7EndMenuEv
-_ZN5ImGui7ItemAddERK6ImRectjPS1_i
-_ZN5ImGui7MemFreeEPv
-_ZN5ImGui7PopFontEv
-_ZN5ImGui7SpacingEv
-_ZN5ImGui7TreePopEv
-_ZN5ImGui8CheckboxEPKcPb
-_ZN5ImGui8DragInt4EPKcPifiiS1_i
-_ZN5ImGui8EndChildEv
-_ZN5ImGui8EndComboEv
-_ZN5ImGui8EndGroupEv
-_ZN5ImGui8EndPopupEv
-_ZN5ImGui8EndTableEv
-_ZN5ImGui8GetStyleEv
-_ZN5ImGui8ItemSizeERK6ImVec2f
-_ZN5ImGui8MemAllocEy
-_ZN5ImGui8MenuItemEPKcS1_bb
-_ZN5ImGui8NewFrameEv
-_ZN5ImGui8PushFontEP6ImFontf
-_ZN5ImGui8SameLineEff
-_ZN5ImGui8ShortcutEii
-_ZN5ImGui9BeginMenuEPKcb
-_ZN5ImGui9DragFloatEPKcPffffS1_i
-_ZN5ImGui9EndTabBarEv
-_ZN5ImGui9GetItemIDEv
-_ZN5ImGui9InputTextEPKcPcyiPFiP26ImGuiInputTextCallbackDataEPv
-_ZN5ImGui9OpenPopupEPKci
-_ZN5ImGui9SeparatorEv
-_ZN8ImGuizmo10BeginFrameEv
-_ZN8ImGuizmo10ManipulateEPKfS1_NS_9OPERATIONENS_4MODEEPfS4_S1_S1_S1_
-_ZN8ImGuizmo11SetDrawlistEP10ImDrawList
-_ZN8ImGuizmo15SetOrthographicEb
-_ZN8ImGuizmo21SetGizmoSizeClipSpaceEf
-_ZN8ImGuizmo6EnableEb
-_ZN8ImGuizmo6IsOverEv
-_ZN8ImGuizmo7IsUsingEv
-_ZN8ImGuizmo7SetRectEffff
 _ZN9minEngine10AudioMixer11SetBusMutedENS_11EAudioBusIdEb
 _ZN9minEngine10FontLoader15CreateFromBytesESt6vectorIhSaIhEERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESB_
 _ZN9minEngine10GameObject11GetPositionEv
@@ -1262,11 +1032,35 @@ gladLoadGLLoader
 glad_glBindTexture DATA
 glad_glGetError DATA
 glad_glGetTexImage DATA
-glfwCreateWindow
-glfwDestroyWindow
-glfwGetCurrentContext
-glfwGetProcAddress
-glfwInit
-glfwMakeContextCurrent
-glfwTerminate
-glfwWindowHint
+; ==== BEGIN LEGACY-EXTERNAL-DEBT - preserved verbatim by --emit-whitelist ====
+; API debt, NOT a derived set. These 5 entries exist for exactly one reason: the LIVE external
+; product repos (minCraft / minCraft-ui / minCraft-gameplay) import them today, so removing them
+; from the contract breaks their next build. They are not a public API promise.
+; Removal condition: an external repo consumes the public replacement below and ships a rebuild,
+; after which "audit_dll_exports.py --verify-coverage --consumer-dir <live bin>" stays at 0
+; missing with the entry deleted.
+; Classification source: BUILD-F03 "consumer misuse list"
+; (docs/ai/Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md), entries M10,
+; the codegen ABI class D and M5. Keep this block ASCII-only: it is linker input.
+;
+; [M10 family] SubsystemCollectionBase::InitializeDependency(MEClass const*)
+;   Reflection/subsystem wiring of the SubsystemCollectionBase derivation face (M10): internal,
+;   reached only through generated subsystem code. Imported by all three product modules.
+;   Replacement: declare the codegen entry points MINENGINE_API once F03 slice 2 lands, instead
+;   of exporting the raw internal method.
+_ZN9minEngine23SubsystemCollectionBase20InitializeDependencyEPKNS_10Reflection7MEClassE
+; [codegen class D] T::StaticClass() for the UI/asset types the editor module owns
+;   Generated reflection codegen symbols never declared as API (F03 codegen symbols:
+;   StaticClass()/GetClassName<T>). Consumers should reach the MEClass through GetClass<T>()/
+;   reflection registration instead of naming the generated static directly. Imported by
+;   minCraft-ui only.
+_ZN9minEngine13TextComponent11StaticClassEv
+_ZN9minEngine15CanvasComponent11StaticClassEv
+_ZN9minEngine9Texture2D11StaticClassEv
+; [M5-type data debt] LogUI - the console singleton
+;   Already exported through MINENGINE_API (dllexport), so listing it here changes nothing at
+;   link time; it is listed so the contract states the truth instead of relying on the macro.
+;   DATA is mandatory: a .def data export without DATA emits a code thunk that collides with the
+;   COMDAT copy consumers emit themselves (S01 V4). Imported by minCraft-ui only.
+_ZN9minEngine5LogUIE DATA
+; ==== END LEGACY-EXTERNAL-DEBT ====

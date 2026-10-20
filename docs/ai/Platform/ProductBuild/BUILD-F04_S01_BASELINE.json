@@ -1,0 +1,60 @@
+{
+  "id": "BUILD-F04-S01",
+  "recorded_at": "2026-10-20T07:24:17Z",
+  "stage": "editor-dll",
+  "bin_dir": "minEngine/bin",
+  "engine": {
+    "dll": "libminEngined.dll",
+    "exports": 1549,
+    "max_named_ordinal": 1549,
+    "headroom": 63986,
+    "imgui_exports": 253
+  },
+  "editor_dll": {
+    "name": "libMaximumEditord.dll",
+    "present": true,
+    "bytes": 187973485,
+    "exports": 1,
+    "max_named_ordinal": 1,
+    "headroom": 65534,
+    "imgui_exports": 0,
+    "required": true,
+    "max_exports": 8,
+    "min_editor_dll_imports": 1,
+    "required_symbols": [
+      "CreateApplication"
+    ]
+  },
+  "editor_hosts": [
+    {
+      "name": "MaximumEditor.exe",
+      "bytes": 323536,
+      "engine_imports": 3,
+      "imgui_imports": 0,
+      "editor_dll_imports": 1,
+      "editor_dll_symbols": [
+        "_ZN9minEngine17CreateApplicationEv"
+      ],
+      "max_bytes": 16777216,
+      "max_engine_imports": 3,
+      "bytes_before": 188033796,
+      "engine_imports_before": 579,
+      "imgui_imports_before": 253
+    },
+    {
+      "name": "SampleEditor.exe",
+      "bytes": 323922,
+      "engine_imports": 3,
+      "imgui_imports": 0,
+      "editor_dll_imports": 1,
+      "editor_dll_symbols": [
+        "_ZN9minEngine17CreateApplicationEv"
+      ],
+      "max_bytes": 16777216,
+      "max_engine_imports": 3,
+      "bytes_before": 188034182,
+      "engine_imports_before": 579,
+      "imgui_imports_before": 253
+    }
+  ]
+}

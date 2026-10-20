@@ -21,24 +21,14 @@ set(REFLECTION_SCAN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(REFLECTION_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/Reflection)
 set(SCRIPT_BINDING_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/ScriptBinding)
 
-file(GLOB IMGUI ${THIRD_PARTY_PATH}/imgui/*.cpp
-                ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_glfw.cpp
-                ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_opengl3.cpp
-)
-# Demo is not part of the engine UI surface; drop it to keep PE export ordinals under 65535.
-list(FILTER IMGUI EXCLUDE REGEX ".*/imgui_demo\\.cpp$")
-set(IMGUI_UPSTREAM_DIR ${THIRD_PARTY_PATH}/imgui-upstream)
-set(IMGUI_FREETYPE_SRC ${IMGUI_UPSTREAM_DIR}/misc/freetype/imgui_freetype.cpp)
-
-file(GLOB IMGUIZMO ${THIRD_PARTY_PATH}/ImGuizmo/*.cpp)
-
+# BUILD-F04 S04: the imgui family (core, glfw/opengl3/vulkan backends, misc/freetype loader,
+# ImGuizmo) is compiled by the EDITOR DLL now - see Editor/CMakeLists.txt. The engine src never
+# called it (0 ImGui:: calls, 0 GImGui, 0 imgui_internal.h); the 253 exports existed only so the
+# editor hosts could reach imgui THROUGH the engine DLL (BUILD-F03 C2 forbids them here).
 add_library(${ENGINE_NAME} SHARED ${SRC}
                                   ${THIRD_PARTY_PATH}/glad/src/glad.c
                                   ${THIRD_PARTY_PATH}/stb_image/stb_image.cpp
                                   ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/miniaudio/miniaudio.c
-                                  ${IMGUI}
-                                  ${IMGUI_FREETYPE_SRC}
-                                  ${IMGUIZMO}
                                   )
 
 minengine_add_reflection_codegen(${ENGINE_NAME}
@@ -156,7 +146,10 @@ if(WIN32 AND EXISTS "${MINENGINE_AUDIT_SCRIPT}" AND Python3_EXECUTABLE)
         VERBATIM)
 endif()
 
-target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)
+# BUILD-F04 S04: IMGUI_ENABLE_FREETYPE moved to the editor target, where it is PUBLIC so that
+# imgui core, imgui_freetype.cpp and imgui-node-editor see one configuration (design 4.6 -
+# before this slice node-editor compiled without it, i.e. with IMGUI_ENABLE_STB_TRUETYPE).
+target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD)
 
 target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ./src/Runtime
@@ -170,10 +163,7 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/glad/include
                                           PUBLIC ${THIRD_PARTY_PATH}/stb_image
                                           PUBLIC ${THIRD_PARTY_PATH}/assimp/include
-                                          PUBLIC ${THIRD_PARTY_PATH}/imgui
-                                          PUBLIC ${IMGUI_UPSTREAM_DIR}/misc/freetype
                                           PUBLIC ${THIRD_PARTY_PATH}/json
-                                          PUBLIC ${THIRD_PARTY_PATH}/ImGuizmo
                                           PUBLIC ${THIRD_PARTY_PATH}/CLI11
                                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/miniaudio
                                           )
@@ -182,7 +172,18 @@ if(ASSIMP_LINK_TARGET STREQUAL "")
     message(FATAL_ERROR "Assimp library not found. Put libassimp-6.dll in ${EXECUTABLE_PATH} or provide Third-Party/assimp source.")
 endif()
 
-target_link_libraries(${ENGINE_NAME} PRIVATE glfw3 opengl32 ${ASSIMP_LINK_TARGET})
+# BUILD-F04 S04: glfw is a shared dependency now (minengine_glfw = prebuilt glfw3.dll), not the
+# static libglfw3.a that used to make the engine DLL glfw's only instance. The editor DLL imports
+# the same glfw3.dll, so there is exactly one GLFW state per process.
+target_link_libraries(${ENGINE_NAME} PRIVATE minengine_glfw opengl32 ${ASSIMP_LINK_TARGET})
+
+# Both libminEngined.dll and libMaximumEditord.dll import glfw3.dll, so it must be paired with
+# them at runtime. A missing copy is a loud loader failure (0xC0000135), never a silent fallback.
+add_custom_command(TARGET ${ENGINE_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MINENGINE_GLFW_DIR}/glfw3.dll" "${EXECUTABLE_PATH}/glfw3.dll"
+    COMMENT "pair glfw3.dll with the engine DLL"
+    VERBATIM)
 
 target_link_directories(${ENGINE_NAME} PUBLIC ${THIRD_PARTY_PATH}/glfw/lib-mingw-w64)
 
@@ -211,7 +212,24 @@ if(Vulkan_FOUND)
     target_include_directories(${ENGINE_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
     target_link_libraries(${ENGINE_NAME} PRIVATE Vulkan::Vulkan)
     target_compile_definitions(${ENGINE_NAME} PUBLIC MINENGINE_HAS_VULKAN=1)
-    target_sources(${ENGINE_NAME} PRIVATE ${THIRD_PARTY_PATH}/imgui/backends/imgui_impl_vulkan.cpp)
+    # BUILD-F04 S04: imgui_impl_vulkan.cpp moved to the editor DLL (design 4.7). Vulkan::Vulkan
+    # and the include dirs stay PUBLIC here so the editor inherits them.
 else()
     message(WARNING "RND-F05: find_package(Vulkan) failed. --rhi vulkan will not initialize.")
 endif()
+
+# BUILD-F04 S04 / invariant I-gimgui: GImGui is a plain global in imgui.cpp, so imgui's compiling
+# unit may exist in exactly ONE target. A second copy is a second ImGuiContext (IM_ASSERT hits, id
+# collisions, split font atlas) and - unlike an export - it does NOT show up in the export table,
+# which is why this asserts the source list instead of only the export bucket. Runs before the
+# link, so "imgui quietly back in the engine" is a configure error, not a runtime crash report.
+get_target_property(MINENGINE_ENGINE_SOURCES ${ENGINE_NAME} SOURCES)
+foreach(_engine_source IN LISTS MINENGINE_ENGINE_SOURCES)
+    if(_engine_source MATCHES "(^|/)(imgui|imgui-upstream|imgui-node-editor|ImGuizmo)(/|$)")
+        message(FATAL_ERROR
+            "I-gimgui violated (BUILD-F04 S04): the engine target compiles '${_engine_source}'. "
+            "The imgui family belongs to MaximumEditorLib (Editor/CMakeLists.txt); a second copy "
+            "in the engine DLL means two GImGui contexts in one process. See "
+            "docs/ai/Platform/ProductBuild/BUILD-F04_S04_IMGUI_RELOCATION_IMPLEMENTATION.md")
+    endif()
+endforeach()

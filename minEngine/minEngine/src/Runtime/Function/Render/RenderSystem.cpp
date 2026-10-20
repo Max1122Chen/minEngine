@@ -1,9 +1,5 @@
 #include "RenderSystem.h"
 
-#include "imgui.h"
-#include "imgui/backends/imgui_impl_glfw.h"
-#include "imgui/backends/imgui_impl_opengl3.h"
-
 #include "EngineShaderUtils.h"
 #include "OpenGL/OpenGLRHI.h"
 #include "ScreenUI/ScreenUIMaterialFactory.h"

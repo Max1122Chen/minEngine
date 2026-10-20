@@ -93,6 +93,16 @@ if(MINENGINE_ENABLE_EXTRA_TESTS)
 endif()
 
 target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE ${ENGINE_NAME})
+# BUILD-F04 S04: the tests compile a curated subset of Editor/src/** (DebugCommand, PropertyPath,
+# sprite authoring, automation pipe), and those headers include imgui.h. They used to inherit
+# the imgui include dirs from the engine target's PUBLIC list; imgui belongs to the editor DLL
+# now, so the header interface is linked explicitly. Header-only: the tests reference no imgui
+# symbol (0 imgui imports in the pre-S04 baseline and after).
+target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE minengine_imgui_headers)
+# BUILD-F04 S04: the engine no longer defines glfw symbols (glfw is a shared DLL now), and some
+# suites call glfwInit/glfwCreateWindow/glfwLoadGLLoader directly, so the tests link glfw3.dll
+# themselves - the same step BUILD-F03 slice 1 planned for them.
+target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE minengine_glfw)
 if(NOT "${MINENGINE_EXTRA_TEST_LINK_LIBRARIES}" STREQUAL "")
     target_link_libraries(${MINENGINE_TESTS_NAME} PRIVATE ${MINENGINE_EXTRA_TEST_LINK_LIBRARIES})
 endif()

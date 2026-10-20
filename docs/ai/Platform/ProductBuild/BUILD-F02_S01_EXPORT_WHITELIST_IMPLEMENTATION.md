@@ -333,7 +333,7 @@ PASS: NumberOfFunctions=1545 <= 3000, ordinal headroom=63990 >= 60000   -> exit 
 3. **未全面标注 182 个类型**（S04）：白名单 992 条 minEngine 符号仍靠 `.def` 导出，不是 `MINENGINE_API`。
 4. **未删 `--exclude-libs` / `--exclude-modules-for-implib`**（S06）：非 `auto` 模式下冗余但保留。
 5. **白名单是"消费者契约快照"**：新增公开 API 后如果消费者尚未使用，不会自动进白名单；消费者一旦使用，链接期立刻 loud 失败 → 按 `.def` 头部命令重新生成即可。这是 `whitelist` 过渡期的设计代价（设计 Failure Model F1/F8）。
-6. **外仓 minCraft 未重建**：只读扫描其 `libminCraftd.dll`（153 个 import，全部在白名单内）；如外仓以后用到新符号，按 F8 重新生成白名单。
+6. **外仓 minCraft 未重建**：只读扫描其 `libminCraftd.dll`（153 个 import，全部在白名单内）；如外仓以后用到新符号，按 F8 重新生成白名单。**（已由 §9 修正：这个假设正是 P0 缺陷的根因——外仓真正加载的是 release `libminEngine.dll`，其 130/144/160 个 import 与这份 debug 副本不同，白名单因此缺 5 条。）**
 7. `Maximum.exe`（陈旧 Playground）按设计 P3 排除在消费者之外（其 34 个 import 在当前 DLL 中已不存在）。
 
 ---
@@ -365,3 +365,92 @@ docs/ai/Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md  
 ```
 
 **未触碰**：`ScreenUICoords.*`、`SpriteQuadMesh.*`、`PointerConstraintState.*`、`GLFWWindowSystem.*`、`WindowSystem.h`、`PointerPolicyTest.*`、`Material.*`、`ShaderCompiler.*`、`SpriteMaterialFactory.*`、`ScreenUIMaterialFactory.*`、`EngineShaderUtils.*`、`RenderSystem.cpp`、`RHI/RHI.h`、`ScreenUIOrientationTest.*`、`MaterialCompileCacheTest.*`、`Editor/**`、`Examples/**`、`D:\Dev\GitRepo\minCraft*`、设计文档本身。
+
+---
+
+## 9 · 修复：外仓契约缺口（5 条）—— 白名单曾对 live 外仓失守
+
+> 本节记录 S01 落地后的一个 **P0 正确性缺陷**及其修复。结论先行：白名单当时并不覆盖外仓真实消费者，且**用于验收的 `--consumer-dir` 检查从落地起就是"空过"**（0 个消费者 → `missing = 0` → exit 0）。
+
+### 9.1 问题（实测）
+
+| 符号 | 外仓需要 | 修复前 `libminEngined.dll` 导出 | 修复前白名单 |
+|---|---|---|---|
+| `SubsystemCollectionBase::InitializeDependency(MEClass const*)` | minCraft / minCraft-ui / minCraft-gameplay | ❌ | ❌ |
+| `TextComponent::StaticClass()` | minCraft-ui | ❌ | ❌ |
+| `CanvasComponent::StaticClass()` | minCraft-ui | ❌ | ❌ |
+| `Texture2D::StaticClass()` | minCraft-ui | ❌ | ❌ |
+| `LogUI`（DATA） | minCraft-ui | ✅（靠 `MINENGINE_API` 兜住） | ❌ |
+
+逐仓缺口（修复前）：minCraft `libminCraft.dll` 130 import / **缺 1**，minCraft-ui 144 import / **缺 4**，minCraft-gameplay 160 import / **缺 1**；三仓模块并集 **177**，缺 **4** 个不同符号。
+
+### 9.2 根因（两层，第二层才是致命的）
+
+1. **变体不一致（表层）**：白名单是用 `minEngine/bin` 里的 `libminCraftd.dll`（debug 变体、陈旧副本，153 个 import）生成的，而外仓真正加载的是 release `libminEngine.dll`（各仓 bin 内 130/144/160 个 import）。两份 import 集合不同 ⇒ 5 条外仓独有符号从未进入契约。`7.3` 第 6 条"只读扫描其 `libminCraftd.dll`（全部在白名单内）"正是这个错误假设。
+2. **工具缺陷（深层）**：`audit_dll_exports.py` 把"目标 = `--dll` 的文件名"直接拿去查 import 表；debug 产物叫 `libminEngined.dll`，外仓 import 的是 `libminEngine.dll` ⇒ **一个消费者都匹配不到**，脚本对 0 个消费者报告"missing 0"并 exit 0。即 Q8 写下的验收命令（F03 `O2`）自始不具备发现能力——"绿"不等于"验过"：
+
+```text
+$ python scripts/audit_dll_exports.py --verify-coverage \
+    --consumer-dir D:/Dev/GitRepo/minCraft-ui/bin --consumer-dir D:/Dev/GitRepo/minCraft-gameplay/bin
+coverage (exported >= consumed):
+coverage total missing = 0
+$ echo $?
+0            # 实际扫到 0 个消费者
+```
+
+### 9.3 修复
+
+`scripts/audit_dll_exports.py`
+- **契约键 `contract_key()`**：`libminEngine.dll` 与 `libminEngined.dll` 归一到同一契约（照 F03 P7）。import 表按契约匹配，不再按文件名。
+- **`--consumer-dir` 递归扫描**：跳过 `.git/build/CMakeFiles/site/node_modules/Saved` 等噪声目录；值支持 glob（`--consumer-dir "../minCraft*/bin"`），因此"扫哪些 live bin"可以写进仓库而不写死绝对路径；`--no-recursive` 保留旧的单层行为。
+- **`--verify-coverage` 变成真门**：逐消费者 + 并集，任何缺失 `exit 1`；**扫到 0 个消费者也 `exit 1`**（空过不再能冒充通过）。
+- **`mmap` 读 PE**：引擎 DLL 与产品宿主是 100–800 MB，一次工作区扫描从分钟级降到秒级。
+- **路径按仓库根相对显示**：`../minCraft-ui/bin/libminCraft.dll` vs `minEngine/bin/libminCraftd.dll`——同名不同文件不再混淆（这正是本次缺陷的形态）。
+- **`.def` 保留 legacy 区块**：`--emit-whitelist` 对 `BEGIN/END LEGACY-EXTERNAL-DEBT` 之间的内容**逐字保留**（注释与 `DATA` 关键字都在），其条目仍参与"是否真的导出"的校验，且不会与排序区重复。
+
+`minEngine/cmake/minEngine_exports.def`：新增 legacy 区块（5 条，见 9.5），条目 1259 → 1264。
+
+`minEngine/cmake/MinEngineExports.cmake`：新增 `MINENGINE_CONSUMER_DIRS`（默认空，构建不依赖其它仓的产物）。非空时 link 后自动跑 `--verify-coverage --consumer-dir ...`，把外仓断链从"外仓升级时炸"提前到"本仓 link 时炸"（F03 失败模式 F6）。**同时修掉一个静默虚报**：原来的条目计数用 `file(STRINGS)` + 逐项匹配，而 `file(STRINGS)` 返回的是 CMake 列表——注释行里的 `;` 与非 ASCII 文本会被拆成额外片段并计入条目数（实测 1264 条被报成 1266）。改为按原文正则计数后，构建日志里的条目数与文件一致（`mode=whitelist, 1264 .def entries`）；legacy 区块因此约定为 **ASCII-only**（它是链接器输入）。
+
+`scripts/verify.ps1`：在 O1/O2 之后扫同级 `minCraft*/bin`，缺失即 `exit` 非零；找不到外仓时打印提示、不拦。
+
+### 9.4 实测数字（修复后）
+
+| 指标 | 修复前 | 修复后 |
+|---|---|---|
+| `.def` 条目 | 1259 | **1264**（+4 legacy 代码 + 1 legacy DATA；LogUI 此前靠 dllexport） |
+| `NumberOfFunctions` | 1545 | **1549**（+4） |
+| 序号余量 | 63990 | **63986**（预算 3000 / 余量下限 60000 不变） |
+| minCraft `libminCraft.dll`（130） | 缺 1 | **缺 0** |
+| minCraft-ui `libminCraft.dll`（144） | 缺 4 | **缺 0** |
+| minCraft-gameplay `libminCraft.dll`（160） | 缺 1 | **缺 0** |
+| 三仓模块并集（177） | 缺 4 | **缺 0（177/177 可解析）** |
+| 全部 live 消费者并集（1264） | 缺 6（去重 4） | **缺 0** |
+
+`--emit-whitelist` 现在是幂等的：用 `--consumer-dir "../minCraft*/bin"` 重生成，除头部注释外条目列表与修复后文件**逐字节一致**（legacy 区块保留 5 条）。
+
+### 9.5 legacy 区块：这 5 条是债，不是 API
+
+| 符号 | 消费方 | F03 误用类别 | 移除条件（替代方向） |
+|---|---|---|---|
+| `SubsystemCollectionBase::InitializeDependency(MEClass const*)` | 三个产品模块 | M10 家族（`SubsystemCollectionBase` 派生面），internal wiring | F03 刀2 把 codegen 入口正式标注 `MINENGINE_API`，外仓改走生成代码路径 |
+| `TextComponent::StaticClass()` / `CanvasComponent::StaticClass()` / `Texture2D::StaticClass()` | minCraft-ui | codegen 类 D（未申报的 `StaticClass()`/`GetClassName<T>` codegen ABI） | 外仓改用 `GetClass<T>()`/反射注册，不直接点生成静态 |
+| `LogUI`（**DATA**） | minCraft-ui | M5 同型（数据符号跨 DLL） | 控制台单例归编辑器模块所有后，条目随之消失 |
+
+`LogUI` 必须带 `DATA`（S01 V4）：数据导出若按代码导出处理，import lib 里会生成 `.text` thunk 与消费者自己的 COMDAT 副本冲突。
+
+### 9.6 规则（写死，避免复发）
+
+1. **契约基线只能来自 live 消费者产物**：生成/校验白名单一律 `--consumer-dir "../minCraft*/bin"`；本仓 `bin` 只作为 in-repo 宿主（编辑器/测试）的输入。
+2. **同名副本不是契约**：`minEngine/bin/libminCraftd.dll`、其它 engine worktree 的 `bin` 都是历史快照，扫进契约只会把过时符号续命、把真缺口盖住（实测扫整个 `D:/Dev/GitRepo` 会命中约 20 个旧 worktree，报出 83 条假缺口）。
+3. **缺口处理顺序**：先补 legacy 区块（判定 DATA、写 F03 类别与移除条件），再重建验证；不得通过删条目或改消费者"修好"。
+4. **加不进去就停**：某条 `.def` 条目若在 DLL 里根本没有定义（没编进该 TU），链接会失败——如实报告并定位 TU，不静默删行。
+5. **"0 缺失"必须能证明扫到了东西**：任何覆盖率结论都要能回答"扫了哪些文件、每个多少 import"，否则按未验证处理（本次缺陷的形态）。
+
+### 9.7 未做 / 偏差
+
+- **外仓未重建、未修改**（边界要求）：验证的是"外仓现有 PE 的 import 全部可解析到导出"，不是"外仓重新链接成功"；后者要等外仓自己升级。
+- **只做覆盖，不做"内部模式命中"申报**：F03 C8 的另一半 `--assert-external-imports-clean`（命中 `_Internal`/`s_`/`Detail::` 的导入需登记理由）仍未实现。
+- **无 C7 棘轮**：本次导出数 1545 → 1549 属**增加**（外债显性化）；棘轮（只减不增）仍属 F03 刀2/刀3。
+- **未动第三方桶**：imgui 253 / glfw 8 / glad 5 的迁移属 BUILD-F04 S04 与 F03 刀1。
+- `MINENGINE_CONSUMER_DIRS` 默认关闭（构建不跨仓依赖），本仓通过 `verify.ps1` 固定执行该门。

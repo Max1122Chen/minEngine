@@ -6,7 +6,12 @@ Three uses (see docs/ai/Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMP
   --report                         human/JSON report: export count, ordinal headroom, composition
   --max-exports N --fail           assertion for verify.ps1 / CI (exit 1 on violation)
   --emit-whitelist PATH            generate the .def whitelist from CONSUMER IMPORT TABLES
-  --verify-coverage                per-consumer "exported >= consumed" check (missing == 0)
+  --verify-coverage                per-consumer + union "exported >= consumed" check
+                                   (missing == 0). Pair it with --consumer-dir to audit LIVE
+                                   external consumers (BUILD-F03 Q8); it exits non-zero when
+                                   any consumer import is missing from the exports, and also
+                                   when the requested scan found no consumer at all - a
+                                   vacuous "0 missing" must never look like a pass.
 
 The whitelist is built from what consumers actually import, never from the DLL export
 table: dumping the current export table into a .def does not lower the entry count and
@@ -15,7 +20,9 @@ therefore does not remove the 65535-ordinal bomb.
 
 import argparse
 import collections
+import glob
 import json
+import mmap
 import os
 import re
 import struct
@@ -29,6 +36,40 @@ DEFAULT_MIN_HEADROOM = 60000
 # retired Playground build and imports symbols the engine no longer defines.
 DEFAULT_EXCLUDE_CONSUMERS = ("Maximum.exe", "libminEngine.dll", "libminEngined.dll")
 PE_SUFFIXES = (".exe", ".dll")
+# Directory names never worth descending into when --consumer-dir is scanned recursively
+# (build trees, VCS metadata, generated sites). Keeping the walk shallow keeps a scan of a
+# whole multi-repo workspace cheap enough to run in verify.ps1 and as a post-build assert.
+CONSUMER_SCAN_PRUNE = (".git", ".vs", ".idea", "build", "cmake-build-debug",
+                       "cmake-build-release", "CMakeFiles", "node_modules", "__pycache__",
+                       "site", "Saved")
+# The engine ships ONE export contract under two file names: release "libminEngine.dll" and
+# debug "libminEngined.dll". External repos import the release name while a local debug build
+# produces the debug name, so import tables must be matched on the contract, not the file
+# name - matching the file name made --consumer-dir silently find 0 consumers (BUILD-F03 P7/Q8).
+DLL_CONTRACT_ALIASES = {
+    "libminengine.dll": "libminengine",
+    "libminengined.dll": "libminengine",
+}
+# Hand-curated block inside the generated .def. --emit-whitelist preserves it verbatim and
+# still validates its entries, so external-debt symbols survive regeneration instead of
+# being hand-edited back line by line.
+LEGACY_BLOCK_BEGIN = "; ==== BEGIN LEGACY-EXTERNAL-DEBT"
+LEGACY_BLOCK_END = "; ==== END LEGACY-EXTERNAL-DEBT"
+
+
+def contract_key(module_name):
+    """Export contract a PE module name binds to (debug and release share one)."""
+    base = os.path.basename(module_name).lower()
+    return DLL_CONTRACT_ALIASES.get(base, base)
+
+
+def parse_def_entry(line):
+    """Export name on one .def line, or None for comments, blanks and the EXPORTS header."""
+    entry = line.strip()
+    if not entry or entry.startswith(";") or entry.upper() == "EXPORTS":
+        return None
+    return entry.split()[0]
+
 
 IMAGE_DIRECTORY_ENTRY_EXPORT = 0
 IMAGE_DIRECTORY_ENTRY_IMPORT = 1
@@ -43,8 +84,13 @@ class PEImage:
 
     def __init__(self, path):
         self.path = path
+        # The engine DLL and its product hosts are 100-800 MB; mapping them keeps a scan of a
+        # whole multi-repo workspace inside the seconds a verify gate can afford.
         with open(path, "rb") as handle:
-            self.data = handle.read()
+            try:
+                self.data = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
+            except (OSError, ValueError):
+                self.data = handle.read()
         data = self.data
         if len(data) < 0x40 or data[:2] != b"MZ":
             raise PEError("%s: not a PE image (no MZ header)" % path)
@@ -85,7 +131,9 @@ class PEImage:
 
     def read_c_string(self, rva):
         offset = self.rva_to_offset(rva)
-        end = self.data.index(b"\0", offset)
+        end = self.data.find(b"\0", offset)
+        if end < 0:
+            raise PEError("%s: unterminated string at RVA 0x%X" % (self.path, rva))
         return self.data[offset:end].decode("ascii", "replace")
 
     def is_executable_rva(self, rva):
@@ -161,6 +209,7 @@ class ImportTable:
         rva, _size = image.directory(IMAGE_DIRECTORY_ENTRY_IMPORT)
         self.present = rva != 0
         self.per_dll = collections.OrderedDict()
+        self.per_contract = collections.OrderedDict()
         self.ordinal_imports = collections.OrderedDict()
         if not self.present:
             return
@@ -189,12 +238,14 @@ class ImportTable:
                 walk += thunk_size
             if names:
                 self.per_dll.setdefault(dll_name, []).extend(names)
+                self.per_contract.setdefault(contract_key(dll_name), []).extend(names)
             if ordinals:
                 self.ordinal_imports.setdefault(dll_name, []).extend(ordinals)
             descriptor += 20
 
     def names_for(self, dll_name):
-        return self.per_dll.get(dll_name.lower(), [])
+        """Imported names for the contract this module name belongs to."""
+        return self.per_contract.get(contract_key(dll_name), [])
 
 
 # --- composition classification -----------------------------------------------------
@@ -257,8 +308,53 @@ def composition(names):
 
 
 # --- consumer discovery -------------------------------------------------------------
+def expand_consumer_dirs(patterns):
+    """Expand --consumer-dir values that contain glob magic (quote them in the shell).
+
+    A pattern such as ../minCraft*/bin keeps the contract description portable: the caller names
+    which live product bins are part of the contract without hard-coding one workspace layout.
+    """
+    dirs, unmatched = [], []
+    for pattern in patterns:
+        if glob.has_magic(pattern):
+            matched = sorted(glob.glob(pattern))
+            if not matched:
+                unmatched.append(pattern)
+            dirs.extend(matched)
+        else:
+            dirs.append(pattern)
+    return dirs, unmatched
+
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def display_path(path):
+    """Path relative to the repo root: two different files share the name libminCraft.dll, and
+    basename-only reporting is what let a stale copy stand in for the live consumer."""
+    try:
+        return os.path.relpath(os.path.abspath(path), REPO_ROOT).replace(os.sep, "/")
+    except ValueError:
+        return path
+
+
+def iter_pe_files(directory, recursive):
+    """PE files under one root. --consumer-dir may point at a whole multi-repo workspace."""
+    if not recursive:
+        for entry in sorted(os.listdir(directory)):
+            full = os.path.join(directory, entry)
+            if os.path.isfile(full) and entry.lower().endswith(PE_SUFFIXES):
+                yield os.path.abspath(full)
+        return
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = sorted(name for name in dirs if name not in CONSUMER_SCAN_PRUNE)
+        for entry in sorted(files):
+            if entry.lower().endswith(PE_SUFFIXES):
+                yield os.path.abspath(os.path.join(root, entry))
+
+
 def find_consumers(dll_path, consumer_dirs, explicit, exclude_names, include_names,
-                   export_names):
+                   export_names, recursive=True):
     """Return [(path, ImportTable)] for every PE that imports the target DLL."""
     target = os.path.basename(dll_path).lower()
     candidates = []
@@ -266,11 +362,9 @@ def find_consumers(dll_path, consumer_dirs, explicit, exclude_names, include_nam
         candidates.append(os.path.abspath(path))
     for directory in consumer_dirs:
         if not os.path.isdir(directory):
+            print("warning: consumer dir not found: %s" % directory, file=sys.stderr)
             continue
-        for entry in sorted(os.listdir(directory)):
-            full = os.path.join(directory, entry)
-            if os.path.isfile(full) and entry.lower().endswith(PE_SUFFIXES):
-                candidates.append(os.path.abspath(full))
+        candidates.extend(iter_pe_files(directory, recursive))
     seen = set()
     consumers = []
     for path in candidates:
@@ -356,7 +450,7 @@ def report(dll_path, exports, consumers, as_json):
     return payload
 
 
-def check_assertions(exports, budget, min_headroom):
+def check_assertions(exports, budget, min_headroom, forbidden_buckets=()):
     failures = []
     if not exports.present:
         failures.append("DLL has no PE export directory")
@@ -364,7 +458,139 @@ def check_assertions(exports, budget, min_headroom):
         failures.append("NumberOfFunctions %d > budget %d" % (exports.number_of_functions, budget))
     if exports.headroom < min_headroom:
         failures.append("ordinal headroom %d < required %d" % (exports.headroom, min_headroom))
+    if forbidden_buckets:
+        # BUILD-F03 C2 / BUILD-F04 S04: an empty or export-less DLL must not satisfy a
+        # "bucket X is absent" assertion by vacuity - that is the same false-green shape the
+        # coverage check refuses three functions below.
+        if not exports.present or exports.number_of_functions == 0:
+            failures.append("forbid-buckets %s: %s has %d export entries, so the assertion would "
+                            "pass vacuously" % (
+                                ",".join(sorted(forbidden_buckets)), "the DLL",
+                                exports.number_of_functions))
+        else:
+            names = exports.name_set()
+            for bucket in sorted(forbidden_buckets):
+                hits = sorted(name for name in names if classify(name) == bucket)
+                if hits:
+                    failures.append("forbidden bucket '%s': %d export(s), e.g. %s" % (
+                        bucket, len(hits), ", ".join(hits[:3])))
     return failures
+
+
+def read_legacy_block(path):
+    """(lines, names) of the preserved external-debt block in an existing .def file.
+
+    The block is curated by hand because its entries are API debt, not a derived set; it is
+    copied through regeneration verbatim (comments and DATA keywords included) and its names
+    are merged into the whitelist so they are validated like every other entry.
+    """
+    if not path or not os.path.isfile(path):
+        return [], []
+    lines, names, inside = [], [], False
+    with open(path, "r", encoding="utf-8") as handle:
+        for raw in handle:
+            line = raw.rstrip("\n")
+            if line.startswith(LEGACY_BLOCK_BEGIN):
+                inside = True
+            if not inside:
+                continue
+            lines.append(line)
+            name = parse_def_entry(line)
+            if name:
+                names.append(name)
+            if line.startswith(LEGACY_BLOCK_END):
+                inside = False
+    return lines, names
+
+
+def empty_scan_roots(consumers, scan_dirs):
+    """Requested scan roots that produced no consumer. A root that verifies nothing must be
+    reported as a failure, never as a quiet "0 missing" (the original F02 failure shape)."""
+    empty = []
+    for root in scan_dirs:
+        prefix = os.path.normcase(os.path.abspath(root)) + os.sep
+        if not any(os.path.normcase(os.path.abspath(path)).startswith(prefix)
+                   for path, _table in consumers):
+            empty.append(root)
+    return empty
+
+
+def check_coverage(dll_path, exports, consumers, scan_dirs, unmatched_patterns=None,
+                  transitional_buckets=()):
+    """Assert every consumer import resolves to an export. Returns the process exit code.
+
+    BUILD-F04 S04 transitional exception: --transitional-missing-bucket lets a named symbol BUCKET
+    be missing for consumers that live OUTSIDE this repository. It exists because deleting the
+    imgui bucket from the engine contract (BUILD-F03 C2) makes every pre-S04 external editor host
+    stale by definition - a missing imgui symbol cannot be a contract regression any more. The
+    exception is scoped by bucket, not by path, so it retires itself: once the external repos are
+    rebuilt against a post-S04 engine they import no imgui, and the tolerated count falls to zero
+    with no one having to remember to delete a flag. It never applies to in-repo artifacts, it
+    still fails on any other missing symbol, and it prints every tolerated name.
+    """
+    exported = exports.name_set()
+    target = os.path.basename(dll_path).lower()
+    repo_prefix = os.path.normcase(os.path.abspath(REPO_ROOT)) + os.sep
+    tolerated_buckets = set(transitional_buckets)
+    print("coverage (exported >= consumed), contract %s:" % contract_key(target))
+    total_missing = 0
+    in_repo_missing = 0
+    unexpected_missing = 0
+    tolerated_total = 0
+    tolerated_by_bucket = collections.Counter()
+    union = set()
+    for path, table in consumers:
+        imported = set(table.names_for(target))
+        union |= imported
+        missing = imported - exported
+        in_repo = os.path.normcase(os.path.abspath(path)).startswith(repo_prefix)
+        tolerated = set()
+        if tolerated_buckets and not in_repo:
+            tolerated = {name for name in missing if classify(name) in tolerated_buckets}
+        fatal = missing - tolerated
+        total_missing += len(missing)
+        if in_repo:
+            in_repo_missing += len(missing)
+        unexpected_missing += len(fatal)
+        tolerated_total += len(tolerated)
+        for name in tolerated:
+            tolerated_by_bucket[classify(name)] += 1
+        print("  %-52s imported %5d  missing %5d%s" % (
+            display_path(path), len(imported), len(missing),
+            "  (%d tolerated: %s)" % (len(tolerated), ",".join(sorted(tolerated_buckets)))
+            if tolerated else ""))
+        for name in sorted(tolerated):
+            print("      tolerated[%s]: %s" % (classify(name), name))
+        for name in sorted(fatal)[:20]:
+            print("      missing: %s" % name)
+        if len(fatal) > 20:
+            print("      ... %d more" % (len(fatal) - 20))
+    print("  %-52s imported %5d  missing %d" % ("UNION", len(union), len(union - exported)))
+    print("coverage total missing = %d" % total_missing)
+    print("coverage in-repo missing = %d (never tolerated)" % in_repo_missing)
+    print("coverage unexpected missing = %d (anything outside the tolerated bucket(s))" % (
+        unexpected_missing))
+    if tolerated_total:
+        print("WARN TRANSITIONAL EXCEPTION: %d missing symbols tolerated in bucket '%s' - external "
+              "editor hosts are pre-S04 artifacts and must be rebuilt against a post-S04 engine" % (
+                  tolerated_total, ",".join(sorted(tolerated_buckets))))
+        print("WARN the tolerated names are printed above, one per line; this exception retires "
+              "itself when the external hosts stop importing that bucket")
+    if unexpected_missing:
+        print("FAIL: %d consumer imports are not exported by %s (%d tolerated, %d in-repo)" % (
+            unexpected_missing, dll_path, tolerated_total, in_repo_missing), file=sys.stderr)
+        return 1
+    if not consumers and scan_dirs:
+        print("FAIL: no PE under %s imports the %s contract - nothing was verified" % (
+            ", ".join(scan_dirs), contract_key(target)), file=sys.stderr)
+        return 1
+    failed = empty_scan_roots(consumers, scan_dirs) + list(unmatched_patterns or [])
+    for root in failed:
+        print("FAIL: no consumer of the %s contract under %s - the requested scan verified "
+              "nothing" % (contract_key(target), root), file=sys.stderr)
+    if failed:
+        return 1
+    return 0
 
 
 def write_whitelist(path, dll_path, exports, consumers, extra_defs):
@@ -375,39 +601,57 @@ def write_whitelist(path, dll_path, exports, consumers, extra_defs):
     for extra_path in extra_defs:
         with open(extra_path, "r", encoding="utf-8") as handle:
             for line in handle:
-                line = line.strip()
-                if not line or line.startswith(";") or line.upper() == "EXPORTS":
-                    continue
-                extra.add(line.split()[0])
-    wanted = union | extra
-    keep = sorted(name for name in wanted if name in existing)
+                name = parse_def_entry(line)
+                if name:
+                    extra.add(name)
+    legacy_lines, legacy_list = read_legacy_block(path)
+    legacy = set(legacy_list)
+    wanted = union | extra | legacy
+    # Legacy entries are emitted inside their curated block with their authored DATA keywords;
+    # keeping them out of the sorted list avoids duplicate export names.
+    keep = sorted(name for name in wanted if name in existing and name not in legacy)
     # A .def data export becomes a code thunk ("T <name>" in .text) inside the generated
     # import library, which collides with the COMDAT copy of the same vtable/typeinfo that
     # consumers emit themselves ("multiple definition of 'vtable for ...'"). The DATA
     # keyword makes ld emit a plain import stub (__imp_/__nm_) instead.
     data_names = {name for name in keep if exports.kinds.get(name) == "data"}
-    dropped = sorted(name for name in wanted - existing if name not in extra)
+    dropped = sorted(name for name in wanted - existing if name not in extra and name not in legacy)
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+    # BUILD-F04 S02: this generator now serves two modules (engine + editor), so the header is
+    # derived from the module being generated instead of naming the engine unconditionally.
+    module = os.path.basename(dll_path)
     lines = [
-        "; minEngine export whitelist - GENERATED, do not hand-edit one line at a time.",
-        "; Source: PE import tables of the engine consumers, not the DLL export table.",
-        "; Regenerate:",
-        ";   python scripts/audit_dll_exports.py --emit-whitelist minEngine/cmake/minEngine_exports.def",
+        "; PE export whitelist for %s - GENERATED, do not hand-edit one line at a time." % module,
+        "; Source: PE import tables of the consumers of this DLL, not the DLL export table.",
+        "; Contract: %s - module names that normalise to this key are ONE contract, and a" % (
+            contract_key(module)),
+        ";   consumer may import either spelling (BUILD-F03 P7 / Q8).",
+        "; Regenerate from the consumer import tables:",
+        ";   python scripts/audit_dll_exports.py --dll <this DLL> --emit-whitelist <this file> \\",
+        ";       [--consumer-dir \"../minCraft*/bin\"]   # add live external bins when they consume it",
+        "; The legacy block at the end of this file is preserved verbatim by that command.",
         "; Consumers:",
     ]
     for consumer_path, table in consumers:
         count = len(set(table.names_for(target)))
-        lines.append(";   %-28s %5d names" % (os.path.basename(consumer_path), count))
+        lines.append(";   %-42s %5d names" % (display_path(consumer_path), count))
     lines.extend([
-        "; Entries: %d (consumed union %d, DLL exports %d; %d marked DATA)" % (
-            len(keep), len(union), len(existing), len(data_names)),
+        "; Entries: %d (consumed union %d, DLL exports %d; %d marked DATA; %d in legacy block)" % (
+            len(keep) + len(legacy), len(union), len(existing), len(data_names), len(legacy)),
         "EXPORTS",
     ])
     for name in keep:
         lines.append(name + " DATA" if name in data_names else name)
+    if legacy_lines:
+        lines.extend(legacy_lines)
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines) + "\n")
-    print("wrote %s: %d entries (consumed union %d)" % (path, len(keep), len(union)))
+    print("wrote %s: %d entries (consumed union %d, legacy block %d)" % (
+        path, len(keep) + len(legacy), len(union), len(legacy)))
+    for name in sorted(legacy - existing):
+        print("warning: legacy entry is not exported by the current DLL: %s" % name)
+        print("         (.def export of an undefined symbol fails the link; fix the TU rather "
+              "than deleting the entry silently)")
     if dropped:
         print("warning: %d imported names are not exported by %s (stale consumer):" % (
             len(dropped), dll_path))
@@ -439,15 +683,59 @@ def main(argv=None):
     parser.add_argument("--consumer", action="append", default=[],
                         help="extra consumer binary (repeatable)")
     parser.add_argument("--consumer-dir", action="append", default=[],
-                        help="extra directory scanned for consumer binaries (repeatable)")
+                        help="extra directory scanned recursively for consumer binaries "
+                             "(repeatable; point it at a whole multi-repo workspace root)")
+    parser.add_argument("--no-recursive", action="store_true",
+                        help="scan only the top level of each --consumer-dir")
     parser.add_argument("--include-consumer", action="append", default=[],
                         help="scan this consumer even if it is in the default exclusion list")
     parser.add_argument("--exclude-consumer", action="append", default=[],
                         help="skip this consumer file name (repeatable)")
     parser.add_argument("--extra-def", action="append", default=[],
                         help="merge hand-maintained export names from this .def (repeatable)")
+    parser.add_argument("--forbid-buckets", action="append", default=[], metavar="BUCKET[,BUCKET]",
+                        help="with --fail: assert the export table contains NO entry of these "
+                             "composition buckets (BUILD-F03 C1/C2, e.g. imgui). Repeatable, "
+                             "comma-separated allowed. An unknown bucket name is an error, and a "
+                             "DLL with no export table fails instead of passing vacuously.")
+    parser.add_argument("--transitional-missing-bucket", action="append", default=[],
+                        metavar="BUCKET",
+                        help="with --verify-coverage: tolerate missing symbols of this bucket for "
+                             "consumers OUTSIDE this repository only (never for in-repo artifacts), "
+                             "still failing on anything else. Prints every tolerated name. BUILD-F04 "
+                             "S04, see the check_coverage docstring.")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
+
+    # A bucket name is a key of the classifier, so validate it here: a typo must not silently
+    # assert nothing (the whole point of C1/C2 is that the assertion really runs).
+    forbidden_buckets = []
+    for value in args.forbid_buckets:
+        for bucket in value.split(","):
+            bucket = bucket.strip()
+            if not bucket:
+                continue
+            if bucket not in BUCKETS:
+                print("error: unknown bucket '%s' in --forbid-buckets (known: %s)" % (
+                    bucket, ", ".join(BUCKETS)), file=sys.stderr)
+                return 2
+            forbidden_buckets.append(bucket)
+    transitional_buckets = []
+    for bucket in args.transitional_missing_bucket:
+        bucket = bucket.strip()
+        if bucket not in BUCKETS:
+            print("error: unknown bucket '%s' in --transitional-missing-bucket (known: %s)" % (
+                bucket, ", ".join(BUCKETS)), file=sys.stderr)
+            return 2
+        transitional_buckets.append(bucket)
+    if forbidden_buckets and not args.fail:
+        print("error: --forbid-buckets requires --fail (otherwise it asserts nothing)",
+              file=sys.stderr)
+        return 2
+    if transitional_buckets and not args.verify_coverage:
+        print("error: --transitional-missing-bucket requires --verify-coverage (otherwise it "
+              "tolerates nothing)", file=sys.stderr)
+        return 2
 
     dll_path = args.dll
     if dll_path is None:
@@ -463,12 +751,20 @@ def main(argv=None):
     need_consumers = bool(args.report or args.json or args.emit_whitelist
                           or args.verify_coverage)
     consumers = []
+    consumer_dirs, unmatched_dirs = [], []
     if need_consumers:
-        consumer_dirs = args.consumer_dir or [os.path.dirname(os.path.abspath(dll_path))]
+        # The in-repo bin directory is always part of the contract; --consumer-dir adds the
+        # LIVE external consumers on top of it (BUILD-F03 Q8), never instead of it.
+        consumer_dirs, unmatched_dirs = expand_consumer_dirs(args.consumer_dir)
+        local_dir = os.path.dirname(os.path.abspath(dll_path))
+        if os.path.normcase(local_dir) not in {os.path.normcase(os.path.abspath(d))
+                                               for d in consumer_dirs}:
+            consumer_dirs.append(local_dir)
         exclude = set(DEFAULT_EXCLUDE_CONSUMERS) | set(args.exclude_consumer)
         consumers = find_consumers(
             dll_path, consumer_dirs, args.consumer, exclude,
-            set(args.include_consumer), exports.name_set())
+            set(args.include_consumer), exports.name_set(),
+            recursive=not args.no_recursive)
 
     if args.emit_export_dump:
         names = [name for _, name in exports.names]
@@ -494,22 +790,13 @@ def main(argv=None):
 
     exit_code = 0
     if args.verify_coverage:
-        bad = 0
-        target = os.path.basename(dll_path).lower()
-        exported = exports.name_set()
-        print("coverage (exported >= consumed):")
-        for path, table in consumers:
-            imported = set(table.names_for(target))
-            missing = imported - exported
-            bad += len(missing)
-            print("  %-26s imported %5d  missing %d" % (os.path.basename(path), len(imported), len(missing)))
-            for name in sorted(missing)[:20]:
-                print("      missing: %s" % name)
-        print("coverage total missing = %d" % bad)
-        if bad:
-            exit_code = 1
+        exit_code = check_coverage(dll_path, exports, consumers,
+                                   expand_consumer_dirs(args.consumer_dir)[0],
+                                   unmatched_dirs,
+                                   transitional_buckets)
     if args.fail:
-        failures = check_assertions(exports, args.max_exports, args.min_headroom)
+        failures = check_assertions(exports, args.max_exports, args.min_headroom,
+                                    forbidden_buckets)
         if failures:
             for failure in failures:
                 print("FAIL: %s" % failure, file=sys.stderr)
@@ -518,6 +805,9 @@ def main(argv=None):
             print("PASS: NumberOfFunctions=%d <= %d, ordinal headroom=%d >= %d" % (
                 exports.number_of_functions, args.max_exports,
                 exports.headroom, args.min_headroom))
+            if forbidden_buckets:
+                print("PASS: export table contains no entry of bucket(s) %s" % (
+                    ",".join(sorted(set(forbidden_buckets)))))
     return exit_code
 
 

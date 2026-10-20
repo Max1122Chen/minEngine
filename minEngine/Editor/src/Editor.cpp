@@ -1,5 +1,7 @@
 #include "Editor.h"
 
+#include "EditorAPI.h"
+
 #include "Platform/EditorCrashDiagnostics.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Material/MaterialEditorSession.h"
@@ -653,7 +655,8 @@ namespace minEngine
         }
     }
 
-    Application* CreateApplication()
+    // BUILD-F04 S02: the single editor DLL entry symbol (O6: editor export surface = 1).
+    EDITOR_API Application* CreateApplication()
     {
         return new Editor();
     }
