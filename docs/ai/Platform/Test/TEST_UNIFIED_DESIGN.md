@@ -135,7 +135,7 @@ CommandLineExitCode TestRunner::Run(const CommandLineResult& cli, int argc, char
 
 | CLI target | Suites run |
 |------------|------------|
-| `smoke` | All registered with `InSmoke == true` (fixed order, see §3.5) |
+| `smoke` | **`kSmokeOrder` 里的 id 且其 `InSmoke == true`（两个开关必须同时满足）**，数组是成员与顺序的唯一真源；只置 `InSmoke=true` 而不加进数组会被**静默跳过**（`TestSuiteRegistry.cpp` 的 `GetSmokeSuites` 先遍历数组再查 metadata） |
 | `full` | All with `InFull == true` |
 | `<suite-id>` | Single suite; unknown id → usage error |
 | `reflection-function` + `--suite=meta,invoke` | Single suite; `ReflectionSuiteFilter` passed in `TestContext` |
@@ -161,12 +161,17 @@ Stable IDs must match [CLI_UNIFIED_DESIGN](../CLI/CLI_UNIFIED_DESIGN.md) §3.2.
 | `object-manager` | yes | yes | no | `RunObjectManagerTests` |
 | `serialization-archive` | yes | yes | no | `RunSerializationArchiveTests` |
 | `asset-ref-type` | yes | yes | no | `RunAssetRefTypeTests` — 反序列化资产引用的类型校验（含派生类不误杀） |
+| `screen-ui-game-viewport` | yes | yes | no | `DoctestSuiteRunner::RunSuiteForContext("screen-ui-game-viewport", kind)` — 游戏面视口尺寸 / 参考像素映射 / 指针坐标（零新增导出） |
 | `scene-property-ref-type` | yes | yes | no | `RunScenePropertyRefTypeTests` — `set_property` 写入前校验，错误码 `InvalidPayload` |
 | `asset-manager` | yes | yes | no | `RunAssetManagerTests` |
 | `reflection-function` | yes (meta+invoke) | yes (meta, invoke, ref, types, static) | no | `RunReflection*PhaseTests` per doctest case |
 | `material-ir` | yes | yes | yes | `RunMaterialIRSmokeTests` |
 
-**Smoke run order (fixture B, TEST-F03-S00):** object-manager → serialization-archive → asset-ref-type → scene-property-ref-type → asset-manager → reflection-function → material-ir.
+**Smoke run order (fixture B, TEST-F03-S00):** object-manager → serialization-archive → asset-ref-type → scene-property-ref-type → asset-manager → reflection-function → material-ir → screen-ui-game-viewport.
+
+> **门禁章程（2026-10-20 定）**：任何新增能力或缺陷修复，若带了自动化用例，**该用例必须进这条 smoke 路径**，否则不算交付。smoke 的时间预算是策展依据、不是豁免理由 —— 用实测边际成本裁定（新增三套件实测：`asset-ref-type` 167 ms、`scene-property-ref-type` 172 ms、`screen-ui-game-viewport` 边际 ≈8 ms；参照 `asset-manager` 单跑 212 ms、`material-ir` 单跑 ≈22 s）。
+>
+> **本文档已知过时项（待专项整理，勿据此实施）**：① §3.5 表 `Entry` 列仍是 TEST-F03 之前的 legacy 适配器名，实际只有 `RunMaterialIRSmokeTests` 存在，其余套件统一经 `DoctestSuiteRunner::RunSuiteForContext("<id>", kind)`；② §3.8 的 verify sketch 严重低估真实门禁 —— 实际 `scripts/verify.ps1` 先构建 `minEngineTests` + `Editor` + `SampleEditor`，再跑导出预算 / `--forbid-buckets` / 删除守卫基线 / 消费者覆盖 / GL 装载守卫 / 编辑器模块边界 / module gate，最后才 `test smoke`；③ §8 的 Status note 仍写 `Planned`，实际 TEST-F01/F03 已 Done。
 
 **Reflection smoke vs full:** Adapter maps `TestContext`:
 
@@ -242,7 +247,7 @@ See [TEST_F02_LAYOUT_MIGRATION.md](./TEST_F02_LAYOUT_MIGRATION.md).
 
 ## 7) 验收标准 (TEST-F01)
 
-- [x] `Editor.exe test smoke` runs all InSmoke suites; exit 0 on clean tree from `minEngine/bin`.
+- [x] `test smoke` 跑 `kSmokeOrder` ∩ `InSmoke == true` 的 8 套件（`minEngineTests.exe`，不是 `Editor.exe`）；exit 0 on clean tree from `minEngine/bin`。
 - [x] `Editor.exe test full` runs all InFull suites; exit 0.
 - [x] Each suite ID works: `Editor.exe test material-ir`, etc.
 - [x] Legacy flags warn and pass/fail same as new commands; **no** `ShouldRun*` in `main.h`.

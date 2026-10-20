@@ -51,7 +51,7 @@ namespace minEngine
         }
 
         m_PointerState.Reset();
-        m_ViewportContext.Reset();
+        ResetPointerViewportContext();
         m_DragSession.Reset();
         m_bPointerRoutingEnabled = false;
         m_PIEScene = nullptr;
@@ -68,7 +68,7 @@ namespace minEngine
 
         ClearDragSession();
         m_PointerState.Reset();
-        m_ViewportContext.Reset();
+        ResetPointerViewportContext();
         m_bPointerRoutingEnabled = false;
         m_PIEScene = nullptr;
         FontGlyphAtlasCache::Get().Clear();
@@ -89,16 +89,54 @@ namespace minEngine
         m_PointerState.ClickButton = EUIPointerButton::None;
         m_PointerState.bButtonOnClickedThisFrame = false;
 
+        Scene* scene = ResolvePointerScene();
+        UpdateEngineDefaultViewportContext();
+
         if (!m_bPointerRoutingEnabled)
         {
+            // No event dispatch, but a standalone game host still needs the pointer coordinates.
+            UpdatePointerSample(scene);
             return;
         }
 
-        UpdatePointerFromInput(ResolvePointerScene());
+        UpdatePointerFromInput(scene);
     }
 
     void UISystem::SetPointerViewportContext(const ScreenUIPointerViewportContext& context)
     {
+        m_ViewportContext = context;
+        // A host that injects its own surface (editor Play viewport, custom render target) owns it:
+        // the engine default (whole window) must never overwrite it. ResetPointerViewportContext()
+        // hands ownership back.
+        m_bViewportContextFromEngine = false;
+    }
+
+    void UISystem::ResetPointerViewportContext()
+    {
+        m_ViewportContext.Reset();
+        m_PointerSample.Reset();
+        // Nobody injected a surface, so the engine feeds the game viewport again.
+        m_bViewportContextFromEngine = true;
+    }
+
+    void UISystem::UpdateEngineDefaultViewportContext()
+    {
+        if (!m_bViewportContextFromEngine)
+        {
+            return;
+        }
+
+        ScreenUIPointerViewportContext context;
+        if (WindowSystem::HasInstance())
+        {
+            const Vector2 windowSize(
+                static_cast<float>(WindowSystem::Get().GetWidth()),
+                static_cast<float>(WindowSystem::Get().GetHeight()));
+            context.ImageSize = windowSize;
+            context.bValid = windowSize.x > 0.0f && windowSize.y > 0.0f;
+        }
+
+        // ImageMin stays (0,0): a standalone/PIE game viewport starts at the window origin.
         m_ViewportContext = context;
     }
 
@@ -201,7 +239,7 @@ namespace minEngine
     {
         (void)pieScene;
         m_PIEScene = nullptr;
-        m_ViewportContext.Reset();
+        ResetPointerViewportContext();
         SetPointerRoutingEnabled(false);
     }
 
@@ -525,28 +563,75 @@ namespace minEngine
         ClearDragSession();
     }
 
-    void UISystem::UpdatePointerFromInput(Scene* scene)
+    bool UISystem::DerivePointerReferencePx(
+        Scene* scene,
+        ScreenUIHitResult& outHit,
+        Vector2& outReferencePx) const
     {
-        if (!InputSystem::HasInstance())
+        outHit = HitTestAtWindowMouse(scene);
+        outReferencePx = outHit.PointInReferenceSpace;
+
+        if (outHit.bHit)
         {
-            return;
+            return true;
         }
 
-        const ScreenUIHitResult hit = HitTestAtWindowMouse(scene);
-
-        Vector2 referencePx = hit.PointInReferenceSpace;
-        bool bHaveReferencePx = hit.bHit;
-        if (!bHaveReferencePx && m_DragSession.SourceCanvas != nullptr && m_ViewportContext.bValid)
+        if (m_DragSession.SourceCanvas != nullptr && m_ViewportContext.bValid)
         {
             const Vector2 windowMouse = InputSystem::GetMousePosition();
             const Vector2 viewportPoint = windowMouse - m_ViewportContext.ImageMin;
-            bHaveReferencePx = TryUnmapReferencePx(
+            return TryUnmapReferencePx(
                 *m_DragSession.SourceCanvas,
                 viewportPoint,
                 m_ViewportContext.ImageSize.x,
                 m_ViewportContext.ImageSize.y,
-                referencePx);
+                outReferencePx);
         }
+
+        return false;
+    }
+
+    void UISystem::RecordPointerSample(const Vector2& referencePx, bool bHaveReferencePx)
+    {
+        const bool bPreviousValid = m_PointerSample.bValid;
+        const Vector2 previousReferencePx = m_PointerSample.ReferencePx;
+
+        m_PointerSample.ReferencePx = bHaveReferencePx ? referencePx : Vector2(0.0f, 0.0f);
+        m_PointerSample.ReferenceDeltaPx =
+            (bHaveReferencePx && bPreviousValid) ? (referencePx - previousReferencePx) : Vector2(0.0f, 0.0f);
+        m_PointerSample.bValid = bHaveReferencePx;
+    }
+
+    void UISystem::UpdatePointerSample(Scene* scene)
+    {
+        // Without routing there is no event dispatch, but there is still a pointer sample - as long as
+        // the engine owns the viewport. A host-injected surface (editor viewport) polls itself, and
+        // must not pay for a second scene walk here.
+        if (!m_bViewportContextFromEngine || !m_ViewportContext.bValid || !InputSystem::HasInstance())
+        {
+            m_PointerSample.Reset();
+            return;
+        }
+
+        ScreenUIHitResult hit;
+        Vector2 referencePx(0.0f, 0.0f);
+        const bool bHaveReferencePx = DerivePointerReferencePx(scene, hit, referencePx);
+        RecordPointerSample(referencePx, bHaveReferencePx);
+    }
+
+    void UISystem::UpdatePointerFromInput(Scene* scene)
+    {
+        if (!InputSystem::HasInstance())
+        {
+            m_PointerSample.Reset();
+            return;
+        }
+
+        ScreenUIHitResult hit;
+        Vector2 referencePx(0.0f, 0.0f);
+        // One derivation feeds both the dispatched events and GetPointerPosition().
+        const bool bHaveReferencePx = DerivePointerReferencePx(scene, hit, referencePx);
+        RecordPointerSample(referencePx, bHaveReferencePx);
 
         SampleModifiers();
         UpdateHover(hit.bHit ? hit.Widget : nullptr, referencePx);
@@ -608,6 +693,9 @@ namespace minEngine
         bool buttonReleased)
     {
         (void)scene;
+        // Same referencePx that goes into every UIPointerEvent below, so GetPointerPosition() and
+        // UIPointerEvent::ReferencePx can never disagree.
+        RecordPointerSample(referencePx, bHaveReferencePx);
         SampleModifiers();
         UpdateHover(hit.bHit ? hit.Widget : nullptr, referencePx);
         ProcessButtonEdges(

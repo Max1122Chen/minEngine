@@ -115,6 +115,37 @@ namespace minEngine
     };
 
     /**
+     * Latest ScreenUI pointer sample, in Canvas reference pixels (the space ScreenUI widgets are
+     * laid out in: top-left origin, +Y down, no letterbox applied).
+     *
+     * ReferencePx is produced by the SAME derivation that fills UIPointerEvent::ReferencePx
+     * (hit-tester unmap, else the active drag canvas unmap) - there is no second conversion and
+     * no second pixel space.
+     */
+    struct ScreenUIPointerViewportSample
+    {
+        /** Pointer in Canvas reference pixels. Meaningless unless bValid. */
+        Vector2 ReferencePx{ 0.0f, 0.0f };
+
+        /** ReferencePx minus the previous valid ReferencePx (reference pixels, not viewport pixels). */
+        Vector2 ReferenceDeltaPx{ 0.0f, 0.0f };
+
+        /**
+         * False when nothing could be sampled: no viewport context, no platform window / pointer
+         * frame, or the pointer lies outside the letterboxed content rect (black bars).
+         * A false sample never carries a "made up" position - both vectors stay zero.
+         */
+        bool bValid = false;
+
+        void Reset()
+        {
+            ReferencePx = Vector2(0.0f, 0.0f);
+            ReferenceDeltaPx = Vector2(0.0f, 0.0f);
+            bValid = false;
+        }
+    };
+
+    /**
      * Viewport surface used when converting window mouse to image-local pixels.
      * Editor / Play inject this; HitTester itself only sees viewport-local points.
      */

@@ -30,6 +30,7 @@
 #include "Suites/ReflectionDisplayNamesTest.h"
 #include "Suites/SpriteTranslucencyTest.h"
 #include "Suites/ScreenUICoordsTest.h"
+#include "Suites/ScreenUIGameViewportTest.h"
 #include "Suites/ScreenUIOrientationTest.h"
 #include "Suites/FrustumTest.h"
 #include "Suites/NoiseTest.h"
@@ -467,6 +468,28 @@ namespace minEngine
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "screen-ui-coords",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScreenUIGameViewportTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "screen-ui-game-viewport",
+                    "Screen UI game-host viewport / pointer reads",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-game-viewport'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-game-viewport",
                     context.GetCommandLine().TestKind);
             }
         };
@@ -1225,6 +1248,7 @@ namespace minEngine
         using ReflectionDisplayNamesSuite = TypedTestSuite<ReflectionDisplayNamesTestSuiteTraits>;
         using SpriteTranslucencySuite = TypedTestSuite<SpriteTranslucencyTestSuiteTraits>;
         using ScreenUICoordsSuite = TypedTestSuite<ScreenUICoordsTestSuiteTraits>;
+        using ScreenUIGameViewportSuite = TypedTestSuite<ScreenUIGameViewportTestSuiteTraits>;
         using ScreenUIOrientationSuite = TypedTestSuite<ScreenUIOrientationTestSuiteTraits>;
         using FrustumSuite = TypedTestSuite<FrustumTestSuiteTraits>;
         using NoiseSuite = TypedTestSuite<NoiseTestSuiteTraits>;
@@ -1301,6 +1325,7 @@ namespace minEngine
             registry.Register(ReflectionDisplayNamesSuite::Get());
             registry.Register(SpriteTranslucencySuite::Get());
             registry.Register(ScreenUICoordsSuite::Get());
+            registry.Register(ScreenUIGameViewportSuite::Get());
             registry.Register(ScreenUIOrientationSuite::Get());
             registry.Register(FrustumSuite::Get());
             registry.Register(NoiseSuite::Get());

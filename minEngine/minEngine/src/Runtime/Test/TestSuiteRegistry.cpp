@@ -54,6 +54,7 @@ namespace minEngine
             "asset-manager",
             "reflection-function",
             "material-ir",
+            "screen-ui-game-viewport",
         };
 
         std::vector<ITestSuite*> ordered;

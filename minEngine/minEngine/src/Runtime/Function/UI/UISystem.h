@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Runtime/Function/Framework/Components/CanvasComponent.h"
+#include "Runtime/Function/Render/ScreenUI/ScreenUICoords.h"
+#include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/UI/ScreenUIDragTypes.h"
 #include "Runtime/Function/UI/ScreenUIHitTester.h"
 #include "Runtime/Function/UI/ScreenUIHitTypes.h"
@@ -34,6 +37,87 @@ namespace minEngine
 
         void SetPointerViewportContext(const ScreenUIPointerViewportContext& context);
         const ScreenUIPointerViewportContext& GetPointerViewportContext() const { return m_ViewportContext; }
+
+        /**
+         * ScreenUI viewport size in WINDOW pixels (WindowSystem::GetWidth()/GetHeight() space,
+         * top-left origin, +Y down) - the SAME space as the mouse position, ScreenUI hit tests and
+         * the letterbox math. It is NOT framebuffer pixels: on Windows with display scaling the GL
+         * framebuffer is larger than the window, and the engine has no framebuffer-size source.
+         *
+         * Precedence: the injected viewport context when valid (a host that renders ScreenUI into a
+         * sub-rect, e.g. an editor Play viewport), else the platform window, else (0,0).
+         */
+        Vector2 GetViewportSizeWindowPx() const
+        {
+            if (m_ViewportContext.bValid && m_ViewportContext.ImageSize.x > 0.0f
+                && m_ViewportContext.ImageSize.y > 0.0f)
+            {
+                return m_ViewportContext.ImageSize;
+            }
+
+            if (!WindowSystem::HasInstance())
+            {
+                return Vector2(0.0f, 0.0f);
+            }
+
+            return Vector2(
+                static_cast<float>(WindowSystem::Get().GetWidth()),
+                static_cast<float>(WindowSystem::Get().GetHeight()));
+        }
+
+        /**
+         * Letterbox mapping Canvas reference px -> viewport window px, built with
+         * ScreenUICoords::MakeLetterboxMapping (the one conversion ScreenUI already uses).
+         * Scale == 0 is the "no valid mapping" signal (null canvas, non-positive reference
+         * resolution or viewport) - it is never a sanitised 1:1 mapping.
+         */
+        ScreenUICoords::LetterboxMapping GetReferencePxMapping(const CanvasComponent* canvas) const
+        {
+            ScreenUICoords::LetterboxMapping mapping;
+            if (canvas == nullptr)
+            {
+                mapping.Scale = 0.0f;
+                return mapping;
+            }
+
+            const Vector2 reference = canvas->GetReferenceResolution();
+            const Vector2 viewport = GetViewportSizeWindowPx();
+            if (reference.x <= 0.0f || reference.y <= 0.0f || viewport.x <= 0.0f || viewport.y <= 0.0f)
+            {
+                mapping.Scale = 0.0f;
+                return mapping;
+            }
+
+            return ScreenUICoords::MakeLetterboxMapping(reference.x, reference.y, viewport.x, viewport.y);
+        }
+
+        /**
+         * Inverse of GetReferencePxMapping: viewport window px -> Canvas reference px.
+         * False when the mapping is invalid or the point falls in the letterbox bars
+         * (outReferencePx is left untouched, so no fake coordinate escapes).
+         */
+        bool TryUnmapViewportPointToReferencePx(
+            const CanvasComponent* canvas,
+            const Vector2& viewportPointWindowPx,
+            Vector2& outReferencePx) const
+        {
+            const ScreenUICoords::LetterboxMapping mapping = GetReferencePxMapping(canvas);
+            if (mapping.Scale <= 0.0f)
+            {
+                return false;
+            }
+
+            const Vector2 reference = canvas->GetReferenceResolution();
+            return mapping.TryUnmapPoint(viewportPointWindowPx, reference.x, reference.y, outReferencePx);
+        }
+
+        /**
+         * Latest pointer sample in Canvas reference px. Same source as UIPointerEvent::ReferencePx:
+         * both are filled from one derivation inside UISystem, so a host can read the pointer here
+         * and receive exactly the coordinates its UI event handlers see.
+         * bValid == false until the engine has a viewport context and a pointer frame.
+         */
+        const ScreenUIPointerViewportSample& GetPointerPosition() const { return m_PointerSample; }
 
         const ScreenUIPointerState& GetPointerState() const { return m_PointerState; }
         const ScreenUIDragSession& GetDragSession() const { return m_DragSession; }
@@ -74,6 +158,7 @@ namespace minEngine
         friend class ScreenUIButtonTestScope;
         friend class ScreenUIDragTestScope;
         friend class ScreenUIPointerTestScope;
+        friend class ScreenUIGameViewportTestScope;
 
         static void SetInstance(UISystem* instance);
 
@@ -127,6 +212,21 @@ namespace minEngine
             float viewportHeight,
             Vector2& outReferencePx) const;
 
+        /**
+         * The single reference-px derivation for both the dispatched pointer events and
+         * GetPointerPosition(): ScreenUI hit tester unmap, else the active drag canvas unmap.
+         */
+        bool DerivePointerReferencePx(
+            Scene* scene,
+            ScreenUIHitResult& outHit,
+            Vector2& outReferencePx) const;
+        void RecordPointerSample(const Vector2& referencePx, bool bHaveReferencePx);
+        /** Sample without dispatching events (no pointer routing, engine-owned viewport). */
+        void UpdatePointerSample(Scene* scene);
+        /** Engine feeds the game viewport (whole window) unless a host injected its own surface. */
+        void UpdateEngineDefaultViewportContext();
+        void ResetPointerViewportContext();
+
         DragSourceComponent* FindDragSource(WidgetComponent* widget) const;
         DropTargetComponent* FindDropTarget(WidgetComponent* widget) const;
 
@@ -153,5 +253,11 @@ namespace minEngine
         WidgetComponent* m_LastClickWidget = nullptr;
         EUIPointerButton m_LastClickButton = EUIPointerButton::None;
         std::chrono::steady_clock::time_point m_LastClickTime{};
+
+        // Appended (never inserted): keeps every pre-existing member offset stable for consumers
+        // that were compiled against the previous header.
+        ScreenUIPointerViewportSample m_PointerSample;
+        /** True while UISystem itself owns m_ViewportContext (engine default = whole window). */
+        bool m_bViewportContextFromEngine = true;
     };
 }
