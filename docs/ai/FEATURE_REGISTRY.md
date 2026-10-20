@@ -133,6 +133,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `MCP-F02` | Automation Protocol（JSON；query/edit/verify；细 op） | **Done**（契约层） | — | [Design](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_DESIGN.md) · [Impl](./Editor/MCP/MCP-F02_AUTOMATION_PROTOCOL_IMPLEMENTATION.md) · [`schemas/automation/v1/`](../../schemas/automation/v1/) |
 | `MCP-F03` | minEngine MCP Server（TS + 官方 SDK；粗 Tools；Spawn/Attach） | **Done** | — | [Design](./Editor/MCP/MCP-F03_MCP_SERVER_DESIGN.md) · [Impl](./Editor/MCP/MCP-F03_MCP_SERVER_IMPLEMENTATION.md) · [`minEngineMcpServer/`](../../minEngineMcpServer/) |
 | `MCP-F04` | Automation 扩域（kind `control`/`asset`；资产与类型查询原语） | **Done** | — | [Design](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_DESIGN.md) · [Impl](./Editor/MCP/MCP-F04_AUTOMATION_DOMAIN_EXPANSION_IMPLEMENTATION.md) |
+| `MCP-F05` | Prefab 作者化自动化 + `set_property` 对象引用（自动化可产出并配置资产化内容） | **In Progress**（实现已落地；Stage 回路稳定性待修） | — | [Design](./Editor/MCP/MCP-F05_PREFAB_AUTHORING_AND_PROPERTY_REFS_DESIGN.md) · [Impl](./Editor/MCP/MCP-F05_PREFAB_AUTHORING_AND_PROPERTY_REFS_IMPLEMENTATION.md) · 消费方 minCraft `GP-F02` |
 | `CLI-F02` | Automation 启动面（Spawn + Attach 共用 flags / ready） | **Done**（启动面） | — | [Design](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_DESIGN.md) · [Impl](./Platform/CLI/CLI-F02_AUTOMATION_LAUNCH_IMPLEMENTATION.md) |
 | `LAUN-F01` | Engine Launcher | **Done** | — | [Design](./Platform/Launcher/LAUN-F01_ENGINE_LAUNCHER_DESIGN.md) |
 | `AUD-F01` | Audio system | **Done** | — | [Design](./Platform/Audio/AUD-F01_AUDIO_SYSTEM_DESIGN.md) |

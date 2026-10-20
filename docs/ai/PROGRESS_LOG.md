@@ -1,3 +1,15 @@
+## 2026-10-19 — MCP-F05：Prefab 作者化自动化 + 属性引用解析
+
+- **Scope:** 新增 `prefab.create_from_game_object` / `open` / `save` / `close`；`scene.set_property` 支持 `$assetRef` / `$guid` / `$objectRef` 与 `properties[]` 批量；会话接线（Scene/Prefab → Stage 场景）
+- **Completed:**（见 [Impl](./Editor/MCP/MCP-F05_PREFAB_AUTHORING_AND_PROPERTY_REFS_IMPLEMENTATION.md)）
+  - create 不改场景；overwrite 保资产 GUID + 备份还原
+  - save 走 `SaveStage(key)` = `WriteStageTreeToPrefab` → `SavePrefabAsset` → `RestoreTemplateObjects`
+  - 属性引用：phase A 全解析才写；phase B 失败报 `PartialWrite` + `applied[]`
+  - 顺带修复 `TryRestoreBlob` 对指针类属性 undo/restore 丢引用
+- **Verification:** `scripts/verify.ps1` `VERIFY_EXIT=0`（13 suites）；`ui_prefab_smoke.ts` **55/55**（两次独立跑通）
+- **Known issue:** Stage save+close 循环偶发 AV → [BUG-EDITOR-007](./bugs/BUG-EDITOR-007.md)；主路径已用 `create_from_game_object` 规避
+- **Next:** 修 BUG-EDITOR-007（Runtime）；再把 smoke 接 CI；提交前无 WIP 混入
+
 ## 2026-10-19 — CORE-F41 Review：会话日志文件与读回已落地
 
 - **Scope:** 磁盘会话日志、项目指针、`editor.get_log`、Console Copy Visible / Copy Line / Ctrl+C / Show Log File
