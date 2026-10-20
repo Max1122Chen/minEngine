@@ -125,6 +125,16 @@ function(minengine_add_editor_executable TARGET_NAME)
     if(_editor_lib_type STREQUAL "SHARED_LIBRARY")
         target_compile_definitions(${TARGET_NAME} PRIVATE MINENGINE_EDITOR_HOST_LINKS_EDITOR_DLL)
     endif()
+    # BUILD-F04 S05: the compile-time game module identity of THIS editor host. The editor LIBRARY
+    # is one DLL shared by every host, so "which game module am I" is a property of the host and is
+    # compiled in here; main.h hands it to the library before CreateApplication(). The no-GAME_MODULE
+    # branch is the asset-only editor (MaximumEditor.exe) and reads as identity "(none)".
+    if(ARG_GAME_MODULE)
+        target_compile_definitions(${TARGET_NAME} PRIVATE
+            "MINENGINE_EDITOR_GAME_MODULE=\"${ARG_GAME_MODULE}\"")
+    else()
+        target_compile_definitions(${TARGET_NAME} PRIVATE MINENGINE_EDITOR_ASSET_ONLY=1)
+    endif()
     if(ARG_GAME_MODULE)
         minengine_link_game_module(${TARGET_NAME} ${ARG_GAME_MODULE})
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

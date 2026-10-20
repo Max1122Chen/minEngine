@@ -38,6 +38,16 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --dll (Join-Path $BinDir "libMaximumEditord.dll") --verify-coverage
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# BUILD-F04 S05: every editor host must carry its compile-time game module identity into the
+# shared editor DLL (minengine_add_editor_executable -> MINENGINE_EDITOR_GAME_MODULE /
+# MINENGINE_EDITOR_ASSET_ONLY -> main.h -> SetHostEditorGameModule). Asserted on the PE import
+# tables, so it needs no desktop: if the injection is dropped, the import disappears and this
+# fails here instead of at the first user who opens the wrong project with the wrong editor.
+# The behavioural half (the four-case gate matrix) launches the editor and is its own script:
+#   python scripts/smoke_editor_module_gate.py
+python (Join-Path $RepoRoot "scripts\smoke_editor_module_gate.py") --case identity
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 # BUILD-F03 C8/Q8: every engine import of the LIVE external product bins must be exported.
 # The sibling minCraft* bins are where that contract is observable; the in-repo copies are stale.
 $ExternalArgs = @(Get-ChildItem -Path (Join-Path (Split-Path -Parent $RepoRoot) "minCraft*") -Directory -ErrorAction SilentlyContinue |

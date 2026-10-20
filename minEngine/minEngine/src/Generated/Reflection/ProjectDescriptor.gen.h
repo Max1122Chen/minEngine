@@ -7,6 +7,7 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::ProjectDescriptor)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectDescriptor, ProjectName)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectDescriptor, ProjectId)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectDescriptor, ProjectRoot)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::ProjectDescriptor, RequiredGameModule)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::ProjectDescriptor, GReflectionClassRegister_ProjectDescriptor_a1b2211f)

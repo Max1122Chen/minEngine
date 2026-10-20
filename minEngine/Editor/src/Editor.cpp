@@ -1,6 +1,7 @@
 #include "Editor.h"
 
 #include "EditorAPI.h"
+#include "EditorHostGameModule.h"
 
 #include "Platform/EditorCrashDiagnostics.h"
 #include "SubEditor/Material/MaterialEditor.h"
@@ -232,6 +233,19 @@ namespace minEngine
         {
             ME_LOG(LogEditor, Info, result.Message);
 
+            // BUILD-F04 S05 / design Q4: the project may declare the C++ game module it is authored
+            // against. A host that cannot supply that module must stop here with a non-zero exit
+            // code - the failure being eliminated is the silent one, where the editor opens the
+            // project and the operator reads "my components are gone" instead of "wrong editor".
+            const ProjectDescriptor& descriptor = projectManager.GetCurrentProjectCtx().Descriptor;
+            const EditorModuleGateResult moduleGate =
+                CheckProjectModuleRequirement(descriptor.ProjectName, descriptor.RequiredGameModule);
+            if (!moduleGate.AllowProject)
+            {
+                m_ExitCode = moduleGate.ExitCode;
+                return false;
+            }
+
             ApplyCommandStackSettingsFromProject();
             ApplyAppearanceSettingsFromProject();
             ResetCommandStackForNewDocument();
@@ -388,6 +402,14 @@ namespace minEngine
 
         m_Engine = new Engine();
         m_Engine->Initialize(commandLine);
+
+        // BUILD-F04 S05: state the identity this process actually runs with, once, at startup.
+        // It is a property of the HOST executable (design section 12 Q1: MaximumEditor.exe is the
+        // asset-only editor), so it is never inferred from anything the project says.
+        ME_LOG(LogEditor, Info,
+            "Editor: host game module identity '{}' (compiled into this host by "
+            "minengine_add_editor_executable).",
+            std::string(GetHostEditorGameModule()));
 
         RenderSystem::Get().SetPresentPassEnabled(false);
         if (RHIBackendSelection::IsVulkan())

@@ -6,4 +6,5 @@ ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::ProjectDescriptor, GReflectionClassR
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, ProjectName, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, ProjectId, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
     ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, ProjectRoot, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::ProjectDescriptor, RequiredGameModule, static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::None), nullptr, nullptr, (minEngine::Reflection::PropertyMetadata{}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::ProjectDescriptor)

@@ -127,6 +127,10 @@ namespace minEngine
 
         void RequestExit() override;
         void ConfirmExit() override { m_ExitRequested = true; }
+        // BUILD-F04 S05: process exit code handed back to main() (Application::GetExitCode).
+        // A refused start (game module gate) must be visible to the shell and to CI, not only in
+        // the log; a normal editor exit keeps the default 0.
+        int GetExitCode() const override { return m_ExitCode; }
 
         bool& DockLayoutInitialized() override { return m_DockLayoutInitialized; }
         bool& RequestResetLayout() override { return m_RequestResetLayout; }
@@ -187,6 +191,7 @@ namespace minEngine
         std::vector<EditorSubModule*> m_SubModules;
         EditorSubModule* m_ActiveSubModule = nullptr;
         bool m_ExitRequested = false;
+        int m_ExitCode = 0;
         PlayInEditorSession m_PlayInEditorSession;
         Scene* m_InspectingScene = nullptr;
         float m_LastDeltaTime = 0.0f;
