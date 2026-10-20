@@ -162,6 +162,9 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI-F05` | ScreenUI Drag-Drop（session + Source/Target；Click 互斥） | **Done** | — | [Design](./Platform/UI/UI-F05_SCREENUI_DRAG_DROP_DESIGN.md) · `test screen-ui-drag` · minCraft `TD-015` |
 | `UI-F06` | ScreenUI Image Sprite / Raw source + UV | **Done** | — | [Design](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md) · `test screen-ui-image` |
 | `UI-F07` | ScreenUI Image FillAmount（进度条） | **Planned** | — | Design 未开；依赖 UI-F06；炉进度等 |
+| `CORE-F43` | GO/Component 的 active 与 visible 语义与级联（有效态 = 自身 && 祖先链 GO） | **Draft**（设计待主人审批） | — | [Design](./Platform/Core/CORE-F43_GO_COMPONENT_ACTIVITY_AND_VISIBILITY_DESIGN.md) |
+| `UI-F09` | UI 表达力整体规划（9-slice · FillAmount · 文字垂直对齐 · 及引擎常规 UI 能力） | **Planned** | — | 登记 [Backlog](./Platform/UI/UI-F09_UI_SPRITE_EXPRESSION_CAPABILITY_BACKLOG.md) · 待设计 + 主人审批 |
+| `SPR-F08` | Sprite 表达力整体规划（pivot · tiling · 排序/裁剪 · 及引擎常规 Sprite 能力） | **Planned** | — | 登记 [Backlog](./Platform/UI/UI-F09_UI_SPRITE_EXPRESSION_CAPABILITY_BACKLOG.md) · 待设计 + 主人审批 |
 | `UI-F08` | ScreenUI Widget 指针交互（多键+修饰键；Widget 统一事件；Button 糖；Drag 发起键） | **Review**（Must 已实现；待维护者验收） | — | [Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) · [Impl](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_IMPLEMENTATION.md) · `test screen-ui-pointer` / button / drag |
 | `PHYS-F01` | Jolt physics bootstrap | Done | — | [Design](./Physics/PHYS-F01_JOLT_INTEGRATION_DESIGN.md) |
 | `PHYS-F02` | Collision + query shapes | Done | — | [Design](./Physics/PHYS-F02_COLLISION_QUERY_SHAPES_DESIGN.md) |
@@ -215,10 +218,10 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |
-| `UI` | **F08** | F01–F04 Done；**F05/F06 Draft**；F07 Planned |
+| `UI` | **F10** | F01–F04 Done；**F05/F06 Draft**；F07 Planned；**F08 Review**；**F09 Planned（UI 表达力整体规划，待设计+审批）** |
 | `PHYS` | F05 | F04 Done；F03 Deferred |
 | `GP` | **F04** | F01–**F03 Done**（Tag ME_STRUCT + TagName） |
 | `MAT` | **F09** | **F01–F07 Done**；**F08** In Progress（编译缓存） |
-| `SPR` | **F08** | F01–**F07 Done** |
+| `SPR` | **F09** | F01–**F07 Done** |
 
 Update **Next Feature #** when you register a new row.
