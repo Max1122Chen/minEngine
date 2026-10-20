@@ -253,7 +253,7 @@ for each exported name N:
 | 编号 | 检查项 | 判定式 | 当前值 | 目标态 |
 |---|---|---|---|---|
 | **C0**（已有） | 预算与序号余量 | `NumberOfFunctions ≤ BUDGET` 且 `65535 − maxOrdinal ≥ 60000`（`--max-exports/--min-headroom --fail`） | 1545 / 63990 | 通过 |
-| **C1** | 第三方 C 符号不得出现在引擎导出表 | `exports ∩ bucket(glfw, glad, stb_image, jolt, fmt/spdlog, nlohmann)` = ∅（`--forbid-buckets`） | glfw 8 + glad 5 | 刀1 后恒 ∅ |
+| **C1** | 第三方 C 符号不得出现在引擎导出表 | `exports ∩ bucket(glfw, glad, stb_image, jolt, fmt/spdlog, nlohmann)` = ∅（`--forbid-buckets`） | glfw 8 + glad 5 → 刀1 后恒 ∅（实测 1283 = minEngine 1282 / other 1）。C1 现由两条共同守护：`--forbid-buckets` 防第三方混入，`--assert-no-removals-vs cmake/minEngine_export_baseline.json` 防契约符号静默消失 | 刀1 后恒 ∅ |
 | **C2** | **引擎导出中不得出现 imgui 桶符号**（原"imgui 面必须由宏注解覆盖 + `--require-annotated-bucket imgui`"已作废） | `exports ∩ bucket(imgui) = ∅`（`--forbid-buckets imgui`） | 253（BUILD-F04 S04 前基线） | F04 S04 落地后恒 ∅ |
 | **C3** | 分环报告与"第三方不得被产品侧消费" | 生成四环报告；断言 `imports(GAME) ∩ ring3 = ∅`（`--ring-report --assert-rings`） | ring3∩GAME = 0 | 恒真 |
 | **C4** | 测试脚手架不得进产品导出面 | `exports ∩ (Test* 前缀 ∪ 声明头 ∈ Runtime/Test/** ∪ SubsystemTestFixtures.h)` = ∅，例外须登记 `--allow`（`--assert-no-test-scaffolding`） | 38 条 | 0 条 |
@@ -349,7 +349,7 @@ for each exported name N:
 | # | 决策 | 选项 | 推荐 | 一行理由 | 什么会推翻它 |
 |---|---|---|---|---|---|
 | **Q1** | glfw 落地方案（刀1） | ①引擎与测试都改链 `glfw3.dll` ②静态两份 ③保留 8 条导出 | **①** | 单份动态库消灭"两份 glfw 全局态"（F5），且导出表直接 −8 | 若打包不允许新增 `glfw3.dll`（Staging 需 +1 行复制） |
-| **Q2** | glad 落地方案（刀1） | ①`glad.c` 编进 `minEngineTests` ②引擎暴露 `IsGL46()` 之类薄 API ③保留 5 条 | **①** | 7 个测试文件本就自行 `glfwInit+gladLoadGLLoader`，自持 glad 零新增语义 | 若存在依赖"引擎已加载的 GL 指针"的测试（实测 0 处） |
+| **Q2** | glad 落地方案（刀1） | ①`glad.c` 编进 `minEngineTests` ②引擎暴露 `IsGL46()` 之类薄 API ③保留 5 条 | **①** | 7 个测试文件本就自行 `glfwInit+gladLoadGLLoader`，自持 glad 零新增语义 | 若存在依赖"引擎已加载的 GL 指针"的测试（**该前提已被证伪 2026-10-20**：测试调用的 gladLoadGLLoader 正是引擎导出的那一份，因此一直在隐式初始化引擎的 glad 函数表；测试自持 glad 后引擎表全 NULL，material-ir 等直接 SEGFAULT exit 139。刀1 因此额外要求引擎自装载 GL 表：OpenGLFunctionTable.h + 30 处首行调用 + scripts/audit_opengl_load_guard.py 静态门禁。详见 BUILD-F03_KNIFE1_AND_REMOVAL_GUARD_IMPLEMENTATION.md §3） |
 | **Q3**（**已裁定**） | imgui 归属（原"契约机制"） | **已裁定：迁进编辑器 DLL**（原选项①"宏覆盖、不迁移"作废；②独立 imgui DLL、③引擎薄封装均不再讨论） | **迁进编辑器 DLL，由 BUILD-F04 S04 执行** | **裁决者：主人（project maintainer）· 日期：2026-10-20**；引擎不该替第三方发牌，且"留在引擎 DLL"与 BUILD-F04 S04 硬冲突 | 已裁定，不再重议 |
 | **Q4** | 46 条 `InputKeys` 数据符号 | ①改 `inline static const`（−46 导出） ②保留 | **①** | 常量表无身份需求，改后消除一整类"数据符号缺失 → 启动失败"（F2） | 若需要二进制级 Key 身份稳定（跨模块指针比较） |
 | **Q5** | inline 强制导出的治理 | ①显式清单 + C5 断言 ②逐案改 out-of-line ③不管 | **①**（②作为 M2/M5/M7 的定向改造并行） | 把"为什么必须导出"变成可审文件，成本最低且可度量 | 若 out-of-line 改造能在 1 周内清掉 30 条 → 直接②，清单只剩 0 |
