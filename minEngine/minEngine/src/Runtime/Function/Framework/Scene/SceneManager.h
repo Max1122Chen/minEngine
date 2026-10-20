@@ -78,6 +78,17 @@ namespace minEngine
         void SendAllEndOfFrameUpdates();
         /** Erase GameObjects marked by DestroyGameObject (after EOF). */
         void FlushDeferredStructuralEdits();
+
+        /**
+         * Hand a Scene over for destruction at a frame-safe point instead of releasing it now.
+         * Work already submitted this frame (scene draws, end-of-frame updates) may still
+         * reference the Scene, so the last strong reference parks here.
+         */
+        void RetireScene(std::shared_ptr<Scene> scene);
+
+        /** Destroy every retired Scene; call once the frame's submissions were consumed. */
+        void FlushRetiredScenes();
+
         bool IsInStructuralTraversal() const { return m_StructuralTraversalDepth > 0; }
 
         void ResolvePendingActivationsForScene(Scene* scene);
@@ -124,6 +135,7 @@ namespace minEngine
         int32_t m_StructuralTraversalDepth{ 0 };
 
         std::unordered_map<std::string, std::string> m_RegisteredScenes;
+        std::vector<std::shared_ptr<Scene>> m_RetiredScenes;
         SceneViewport* m_EditorSceneViewport = nullptr;
     };
 }

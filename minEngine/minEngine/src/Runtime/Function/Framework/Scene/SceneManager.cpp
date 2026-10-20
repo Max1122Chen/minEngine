@@ -37,6 +37,7 @@ namespace minEngine
 
     void SceneManager::Shutdown()
     {
+        FlushRetiredScenes();
         m_ComponentsThatNeedEndOfFrameUpdate.clear();
         m_PIEPlayActive = false;
         m_ActiveSceneOverride = nullptr;
@@ -631,6 +632,29 @@ namespace minEngine
         {
             flushScene(pieContext.Scene.get());
         }
+    }
+
+    void SceneManager::RetireScene(std::shared_ptr<Scene> scene)
+    {
+        if (!scene)
+        {
+            return;
+        }
+
+        m_RetiredScenes.push_back(std::move(scene));
+    }
+
+    void SceneManager::FlushRetiredScenes()
+    {
+        if (m_RetiredScenes.empty())
+        {
+            return;
+        }
+
+        // Swap first: a Scene destructor may retire another Scene, which waits for the next flush.
+        std::vector<std::shared_ptr<Scene>> retiredScenes;
+        retiredScenes.swap(m_RetiredScenes);
+        retiredScenes.clear();
     }
 
     void SceneManager::ResolvePendingActivationsForScene(Scene* scene)

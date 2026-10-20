@@ -157,7 +157,17 @@ namespace minEngine
     void PrefabStageController::DestroyStage(PrefabEditorStage& stage)
     {
         stage.EditCloneMap.Clear();
-        stage.StageScene.reset();
+
+        // The scene editing viewport submits its scene draw during the frame's UI phase, so a Scene
+        // released here would still be referenced by the queued draw. Hand the last reference to
+        // SceneManager, which destroys it after the renderer consumed this frame's submissions.
+        std::shared_ptr<Scene> stageScene = std::move(stage.StageScene);
+        if (stageScene && SceneManager::HasInstance())
+        {
+            SceneManager::Get().RetireScene(std::move(stageScene));
+        }
+        stageScene.reset();
+
         stage.Asset.reset();
         stage.CameraPose = {};
         stage.bHasTempStageLight = false;

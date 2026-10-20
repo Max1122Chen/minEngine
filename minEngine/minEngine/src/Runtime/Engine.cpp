@@ -197,6 +197,13 @@ namespace minEngine
     {
         (void)deltaTime;
         RendererTick(deltaTime);
+
+        // Retired scenes may have been referenced by draws submitted before retirement; the
+        // renderer consumed them just now, so this is the first safe point to destroy them.
+        if (m_SceneManager)
+        {
+            m_SceneManager->FlushRetiredScenes();
+        }
     }
 
     void Engine::TickOneFrame(float deltaTime)

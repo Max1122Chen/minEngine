@@ -8,6 +8,7 @@
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
+#include "Runtime/Function/Render/RenderScene.h"
 
 namespace minEngine
 {
@@ -369,6 +370,43 @@ namespace minEngine
         }
     }
 
+    bool RunRetiredSceneOutlivesFrameTest()
+    {
+        DeferredStructuralEditTestScope scope;
+
+        // A retired scene keeps no manager reference: the last strong reference lives in the caller,
+        // exactly like an editor Prefab Stage scene that the stage controller hands over.
+        std::shared_ptr<Scene> scene = NewObject<Scene>("dse-retire");
+        scene->EnsureRenderScene();
+        RenderScene* renderScene = scene->GetRenderScene();
+        if (renderScene == nullptr)
+        {
+            ME_LOG(LogTest, Error, "DeferredStructuralEdit: retired scene has no render scene.");
+            return false;
+        }
+
+        std::weak_ptr<Scene> retiredScene = scene;
+        SceneManager::Get().RetireScene(std::move(scene));
+        if (retiredScene.expired())
+        {
+            ME_LOG(LogTest, Error, "DeferredStructuralEdit: RetireScene destroyed the scene before the flush.");
+            return false;
+        }
+
+        // Stands in for a scene draw queued before retirement that reaches the renderer afterwards:
+        // the RenderScene must still be alive here.
+        renderScene->CollectOrphanedSceneProxies();
+
+        SceneManager::Get().FlushRetiredScenes();
+        if (!retiredScene.expired())
+        {
+            ME_LOG(LogTest, Error, "DeferredStructuralEdit: FlushRetiredScenes kept the retired scene alive.");
+            return false;
+        }
+
+        return true;
+    }
+
     bool RunDeferredStructuralEditTests()
     {
         return RunSpawnImmediateFindAndDeferTickTest()
@@ -388,4 +426,11 @@ TEST_CASE("deferred-structural-edit: spawn destroy eof [full]")
     minEngine::EngineReflectionFixture fixture;
     REQUIRE(fixture.IsReflectionReady());
     CHECK(minEngine::RunDeferredStructuralEditTests());
+}
+
+TEST_CASE("deferred-structural-edit: retired scene outlives the frame [smoke][full]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunRetiredSceneOutlivesFrameTest());
 }

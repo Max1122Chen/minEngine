@@ -30,6 +30,10 @@ const imageName = "UI_Smoke_Image";
 const stageChildName = "UI_Smoke_StageChild";
 const probeName = "UI_Smoke_RefProbe";
 const buttonName = "UI_Smoke_Button";
+const loopChildName = "UI_Smoke_LoopChild";
+
+/** save + close iterations in step [7b]; each one closes a Stage that still has a queued scene draw. */
+const stageLoopCycles = 6;
 
 const prefabDirectory = "Prefabs";
 const prefabName = "UI_PrefabSmoke";
@@ -457,6 +461,34 @@ async function main(): Promise<void> {
     check(stageNodes.length === 1, "Stage child persisted across save/reopen", stageNodes.length);
 
     await smoke.ok("prefab.close", "control", { prefabPath });
+
+    console.log("\n[7b] save + close loop");
+    // A closed Stage destroys its own Scene. Repeating the cycle proves the editor survives the
+    // frame that still has the retired Stage scene queued for rendering.
+    for (let cycle = 1; cycle <= stageLoopCycles; cycle += 1) {
+      const loopOpen = await smoke.ok("prefab.open", "control", { prefabPath });
+      const loopSessionId = String(loopOpen.sessionId ?? "");
+      const loopRootGuid = String(loopOpen.rootGuid ?? "");
+      check(loopRootGuid.length > 0, `loop ${cycle}: prefab.open returns the rootGuid`, loopOpen);
+
+      await smoke.ok(
+        "scene.create_game_object",
+        "edit",
+        { name: `${loopChildName}_${cycle}`, parentObjectId: loopRootGuid },
+        loopSessionId,
+      );
+      const loopSaved = await smoke.ok("prefab.save", "asset", { prefabPath });
+      check(loopSaved.saved === true, `loop ${cycle}: prefab.save reports saved`, loopSaved);
+      const loopClosed = await smoke.ok("prefab.close", "control", { prefabPath });
+      check(loopClosed.closed === true, `loop ${cycle}: prefab.close reports closed`, loopClosed);
+
+      const documentHierarchy = await smoke.ok("scene.get_hierarchy", "query", {}, sceneSessionId);
+      check(
+        Array.isArray(documentHierarchy.roots),
+        `loop ${cycle}: document scene still answers after close`,
+        documentHierarchy,
+      );
+    }
 
     console.log("\n[8] set_property reference failures");
     const probe = await smoke.ok("scene.create_game_object", "edit", { name: probeName }, sceneSessionId);
