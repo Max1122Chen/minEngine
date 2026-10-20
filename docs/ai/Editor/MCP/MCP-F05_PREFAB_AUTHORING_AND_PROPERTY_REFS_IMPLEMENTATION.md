@@ -17,8 +17,8 @@
 | S04 | `set_property` 对象引用（`$assetRef`/`$guid`/`$objectRef`；phase A 全解析才写） | Done |
 | S05 | `properties[]` 批量 + `PartialWrite` + `applied[]` | Done |
 | S06 | 会话接线（Scene/Prefab 会话 → Stage 场景） | Done |
-| S07 | smoke `ui_prefab_smoke.ts`（55 检查） | Done |
-| S08 | Stage save+close 循环稳定性 | **Blocked** → BUG-EDITOR-007 |
+| S07 | smoke `ui_prefab_smoke.ts`（79 检查，含 [7b] save+close 循环） | Done |
+| S08 | Stage save+close 循环稳定性 | Done（[BUG-EDITOR-007](../../bugs/BUG-EDITOR-007.md) 已修） |
 | S09 | Editor automation surface 单元测试 | Deferred（无测试目标） |
 
 ## 变更面
@@ -32,9 +32,16 @@
  M Editor/src/Services/Scene/ScenePropertyValueCodec.h
  M Editor/src/SubEditor/Prefab/PrefabStageController.cpp
  M Editor/src/SubEditor/Prefab/PrefabStageController.h
+ M minEngine/src/Runtime/Engine.cpp
+ M minEngine/src/Runtime/Function/Framework/Scene/SceneManager.cpp
+ M minEngine/src/Runtime/Function/Framework/Scene/SceneManager.h
+ M minEngine/Tests/Suites/DeferredStructuralEditTest.cpp
+ M minEngine/Tests/Suites/DeferredStructuralEditTest.h
 ?? minEngineMcpServer/scripts/ui_prefab_smoke.ts
 ```
-加上本 Feature 文档与 Registry/日志行。**零写入 `minEngine/src/Runtime/**`**。
+加上本 Feature 文档与 Registry/日志行。`minEngine/src/Runtime/**` 的改动只来自 S08 的
+[BUG-EDITOR-007](../../bugs/BUG-EDITOR-007.md) 场景退休修复（`SceneManager::RetireScene` /
+`FlushRetiredScenes`），不改 Prefab 写回语义。
 
 ## 验证记录
 
@@ -42,14 +49,16 @@
 |----|------|------|
 | 构建 | `cmake --build minEngine/build --target Editor --parallel` | exit 0，`[100%] Built target Editor` |
 | 全量验证 | `powershell -File scripts/verify.ps1` | `VERIFY_EXIT=0`，13 suites PASSED / 0 FAILED |
-| 端到端 smoke | `cd minEngineMcpServer && npx tsx scripts/ui_prefab_smoke.ts` | `55/55 checks passed`（两次独立跑通） |
+| 端到端 smoke | `cd minEngineMcpServer && npx tsx scripts/ui_prefab_smoke.ts` | `79/79 checks passed`（连续 20 次全绿，见 BUG-EDITOR-007） |
 
 ## 已知问题
 
-- Stage save+close 循环偶发 AV（约 1/3）→ [BUG-EDITOR-007](../../bugs/BUG-EDITOR-007.md)；已修一处悬垂 inspect 目标，残余嫌疑在 Runtime。主路径用 `create_from_game_object` 规避。
+- 无阻塞项。Stage save+close 循环的偶发 AV 已在 [BUG-EDITOR-007](../../bugs/BUG-EDITOR-007.md) 修复
+  （待绘制队列持有已销毁 Stage 场景裸指针 → 场景退休机制）。
+- smoke 已含固定 save+close 循环步骤 [7b]，可直接作为 CI 门禁。
 
 ## 下一步
 
-1. 修 BUG-EDITOR-007（Runtime 侧）后再把 smoke 接入 CI。
+1. 把 smoke 接入 CI（`79/79 checks passed` 已连续 20 次稳定）。
 2. 补 Editor automation surface 的单元测试目标（S09）。
 3. 嵌套 Prefab 引用重写（Deferred）。
