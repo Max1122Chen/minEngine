@@ -86,7 +86,8 @@ if(NOT "${MINENGINE_EXTRA_TEST_INCLUDE_DIRS}" STREQUAL "")
     target_include_directories(${MINENGINE_TESTS_NAME} PRIVATE ${MINENGINE_EXTRA_TEST_INCLUDE_DIRS})
 endif()
 
-target_compile_definitions(${MINENGINE_TESTS_NAME} PRIVATE MINENGINE_BUILD)
+# MINENGINE_BUILD must NOT be defined here: it selects __declspec(dllexport) and is only
+# valid on the target that produces the engine DLL (BUILD-F02 invariant I4).
 if(MINENGINE_ENABLE_EXTRA_TESTS)
     target_compile_definitions(${MINENGINE_TESTS_NAME} PRIVATE MINENGINE_ENABLE_EXTRA_TESTS=1)
 endif()

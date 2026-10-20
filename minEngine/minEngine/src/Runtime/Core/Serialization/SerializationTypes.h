@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineAPI.h"
 #include "EngineVersion.h"
 
 #include <cstdint>

@@ -69,6 +69,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F39` | 值类型 Codec 注册（特征分类 + 运行期表） | **Cancelled** | — | [Design](./Platform/Serialization/CORE-F39_VALUE_CODEC_REGISTRATION_DESIGN.md) · 根因改为句柄形状；由 [GP-F03](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) 承接 · ID 不回收 |
 | `CORE-F40` | Input Key Catalog（键盘/鼠侧键补全 · 合成修饰键 · canonical Gamepad） | **Done** | — | [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) · [Impl](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_IMPLEMENTATION.md) · `test input-key-catalog` · 软解锁 [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
 | `CORE-F41` | 会话日志文件 + Automation 读环 + Console 单条复制 | **Review** | — | [Design](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md) · L2 · `test logging-channels` · Console 手工待点验 |
+| `BUILD-F02` | 显式导出：`MINENGINE_API` 真正生效，移除 `--export-all-symbols`（PE 导出序号 65533/65535 已濒临上限） | **In Progress**（档1 S00+S01+S02 已落地：导出 65533→1545，余量 2→63990） | — | [Design](./Platform/ProductBuild/BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md) · [Impl S01](./Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md) |
 | `BUILD-F01` | 产品构建链 · Editor/Game 双目标 · 模板 · Stage（退役 ED-F20） | **Done** | — | [Design](./Platform/ProductBuild/BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md) · L3 · S01–S07（S07 GameModuleEntry 强制加载） |
 | `WF-F03` | Maximum 产品显示名与版本展示 | **Done** | — | [Design](./Platform/Docs/WF-F03_MAXIMUM_PRODUCT_BRANDING_DESIGN.md) · Phase F3 · 显示名 Maximum；版本数字 CORE-F18（现 0.0.9） |
 | `RND-F01` | RenderGraph（Manual 图；S0–S05 Done） | **Superseded** *(产品终态 → F07)* | — | [RND-F01_RENDER_GRAPH_DESIGN](./Render/RND-F01_RENDER_GRAPH_DESIGN.md) |
@@ -167,6 +168,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `GP-F01` | GameplayTag（Manager + Container；Engine 子系统；Native 宽） | **Done** | — | [Design](./Gameplay/GP-F01_GAMEPLAY_TAG_DESIGN.md) · [Impl](./Gameplay/GP-F01_GAMEPLAY_TAG_IMPLEMENTATION.md) · `test gameplay-tags` |
 | `GP-F02` | GameplayEventSystem（Scene 作用域 Component；无 Payload） | **Done** | — | [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) · [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) · 依赖 GP-F01 · `test gameplay-events` |
 | `GP-F03` | GameplayTag → ME_STRUCT + TagName（可序列化；对齐 UE） | **Done** | — | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · L2 · `test gameplay-tags` / `gameplay-events` · 不含 Container 序列化 / 拾取器 |
+| `MAT-F08` | UI/Sprite 材质编译缓存与 program/instance 共享（消除每 widget 一份材质实例的编译风暴） | **In Progress** | — | [Design](./Render/Material/MAT-F08_MATERIAL_COMPILE_CACHE_DESIGN.md) · [Impl](./Render/Material/MAT-F08_MATERIAL_COMPILE_CACHE_IMPLEMENTATION.md) · `test material-compile-cache` · 消费方反馈 `ENGINE_FEEDBACK_PROMPT_SPRITE_MATERIAL_COMPILE_CACHE.md` |
+| `CORE-F42` | 指针/光标策略服务（单一拥有者 + 优先级栈 + 引用计数请求 + 游戏面 API + PIE 生命周期） | **In Progress**（设计已批准；S01 focus 作用域已落地） | — | [Design](./Platform/Core/CORE-F42_POINTER_POLICY_DESIGN.md) · [S01 Impl](./Platform/Core/CORE-F42_S01_FOCUS_SCOPED_POINTER_IMPLEMENTATION.md) · `test pointer-policy` |
 
 ---
 
@@ -202,7 +205,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F40** | F27–F32/F34–**F36 Done**；**F33** In Progress；**F37** In Progress（战役收口）；**F38** Draft TaskSystem；**F39** Cancelled（值 Codec）；F29/F30；Prefab MVP **Done** |
+| `CORE` | **F43** | F27–F32/F34–**F36 Done**；**F33** In Progress；**F37** In Progress（战役收口）；**F38** Draft TaskSystem；**F39** Cancelled（值 Codec）；F29/F30；Prefab MVP **Done** |
 | `ASSET` | **F11** | F01–F03/F05–F08 Done；**F04** In Progress；**F09** Deferred（async DataAsset · 等 F38）；**F10** In Progress（多态）；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
@@ -213,7 +216,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI` | **F08** | F01–F04 Done；**F05/F06 Draft**；F07 Planned |
 | `PHYS` | F05 | F04 Done；F03 Deferred |
 | `GP` | **F04** | F01–**F03 Done**（Tag ME_STRUCT + TagName） |
-| `MAT` | **F07** | **F01–F06 Done** |
+| `MAT` | **F09** | **F01–F07 Done**；**F08** In Progress（编译缓存） |
 | `SPR` | **F08** | F01–**F07 Done** |
 
 Update **Next Feature #** when you register a new row.

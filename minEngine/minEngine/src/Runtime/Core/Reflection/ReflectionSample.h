@@ -1,4 +1,5 @@
 #pragma once
+#include "EngineAPI.h"
 #include "Core.h"
 #include "Math.h"
 #include "Runtime/Function/Framework/Components/Component.h"

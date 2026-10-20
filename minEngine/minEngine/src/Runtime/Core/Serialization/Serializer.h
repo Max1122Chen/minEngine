@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineAPI.h"
 #include "Core.h"
 #include "Archive.h"
 #include "Json.h"

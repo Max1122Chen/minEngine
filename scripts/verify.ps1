@@ -11,6 +11,10 @@ Write-Host "verify: cmake --build (minEngineTests) ..."
 cmake --build $BuildDir --target minEngineTests Editor
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# BUILD-F02 / O1+O2: the engine DLL must stay far away from the 65535 PE ordinal limit.
+python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --max-exports 3000 --fail
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Push-Location $BinDir
 try {
     Write-Host "verify: minEngineTests.exe test smoke ..."

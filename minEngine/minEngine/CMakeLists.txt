@@ -15,6 +15,7 @@ if(NOT DEFINED MINENGINE_HEADER_TOOL)
     set(MINENGINE_HEADER_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/minEngine_header_tool.py")
 endif()
 include("${MINENGINE_CMAKE_DIR}/MinEngineReflection.cmake")
+include("${MINENGINE_CMAKE_DIR}/MinEngineExports.cmake")
 
 set(REFLECTION_SCAN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(REFLECTION_GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Generated/Reflection)
@@ -140,20 +141,19 @@ set_target_properties(${ENGINE_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${EXECUTABLE_PATH} 
 )
 
-# MinGW + lld does not export undecorated symbols by default; GNU ld historically did.
-# Without this, Editor gets an almost-empty import lib (dll.a) and fails to link.
-# Exclude heavy static deps from auto-export (PE max 65535 ordinals). Use LINKER: so
-# commas/colons are not split by the driver the way -Wl,a,b,c is.
-# Do NOT use ALL: that also drops symbols from our objects.a.
-# exclude-modules-for-implib: keep internal C deps inside the DLL without consuming export
-# ordinals (clients use engine wrappers, not glad/miniaudio entry points).
-if(WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-    target_link_options(${ENGINE_NAME} PRIVATE
-        "LINKER:--export-all-symbols"
-        # Assimp/zlib when falling back to static subproject (no prebuilt DLL in bin/).
-        "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a:libassimp.a:libassimpd.a:libzlibstatic.a:libzlibstaticd.a"
-        # miniaudio only: excluding glad.c.obj duplicates GL loader into client .exe via implib and can crash.
-        "LINKER:--exclude-modules-for-implib=miniaudio.c.obj")
+# BUILD-F02 / S01: PE export contract. See cmake/MinEngineExports.cmake; the pre-S01
+# behaviour (--export-all-symbols, 65533 exports, 2 ordinals of headroom) is still
+# reachable with -DMINENGINE_EXPORT_MODE=auto.
+minengine_apply_export_mode(${ENGINE_NAME})
+
+# O1/O2/O3 on demand: report the export table, its composition and per-consumer coverage.
+if(WIN32 AND EXISTS "${MINENGINE_AUDIT_SCRIPT}" AND Python3_EXECUTABLE)
+    add_custom_target(export-audit
+        COMMAND ${Python3_EXECUTABLE} "${MINENGINE_AUDIT_SCRIPT}"
+                --dll "$<TARGET_FILE:${ENGINE_NAME}>" --report --verify-coverage
+        DEPENDS ${ENGINE_NAME}
+        COMMENT "minEngine export audit (report + consumer coverage)"
+        VERBATIM)
 endif()
 
 target_compile_definitions(${ENGINE_NAME} PRIVATE MINENGINE_BUILD IMGUI_ENABLE_FREETYPE)
