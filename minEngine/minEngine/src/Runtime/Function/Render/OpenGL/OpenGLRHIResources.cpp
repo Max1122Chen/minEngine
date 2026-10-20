@@ -1,5 +1,6 @@
 #include "OpenGLRHIResources.h"
 
+#include "OpenGLFunctionTable.h"
 #include "Log/LogSystem.h"
 #include "glad/glad.h"
 
@@ -124,6 +125,7 @@ namespace minEngine
 
         void Configure2DTextureSampling(GLenum target, TextureFormat format, TextureUsage usage, bool generateMipmaps)
         {
+            EnsureOpenGLFunctionTableLoaded();
             // author sampling lives on RHISampler (glBindSampler). Texture object
             // keeps only attachment-safe defaults; depth still needs NEAREST for FBO completeness.
             (void)generateMipmaps;
@@ -154,6 +156,7 @@ namespace minEngine
 
         GLuint UploadTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
         {
+            EnsureOpenGLFunctionTableLoaded();
             const TextureUsage usage = GetTextureUsage(desc);
             GLuint textureId = 0;
             glGenTextures(1, &textureId);
@@ -214,6 +217,7 @@ namespace minEngine
 
         GLuint UploadTextureCube(const RHITextureCreateDesc& desc, const void* initialData)
         {
+            EnsureOpenGLFunctionTableLoaded();
             if (desc.Width == 0 || desc.Height == 0)
             {
                 ME_LOG(LogRHI, Error, "OpenGLRHITexture cube: Width/Height must be > 0.");
@@ -344,6 +348,7 @@ namespace minEngine
 
         GLuint UploadTexture2DArray(const RHITextureCreateDesc& desc, const void* initialData)
         {
+            EnsureOpenGLFunctionTableLoaded();
             const uint32_t layerCount = (desc.DepthOrArrayLayers == 0) ? 1u : desc.DepthOrArrayLayers;
             const TextureUsage usage = GetTextureUsage(desc);
 
@@ -400,6 +405,7 @@ namespace minEngine
 
         std::string ReadShaderInfoLog(unsigned int shaderObject)
         {
+            EnsureOpenGLFunctionTableLoaded();
             int logLength = 0;
             glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &logLength);
             if (logLength <= 1)
@@ -414,6 +420,7 @@ namespace minEngine
 
         std::string ReadProgramInfoLog(unsigned int programObject)
         {
+            EnsureOpenGLFunctionTableLoaded();
             int logLength = 0;
             glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &logLength);
             if (logLength <= 1)
@@ -428,6 +435,7 @@ namespace minEngine
 
         bool CompileShaderStage(unsigned int shaderObject, GLenum stage, std::string_view source, std::string& outLog)
         {
+            EnsureOpenGLFunctionTableLoaded();
             const char* sourcePtr = source.data();
             const int sourceLength = static_cast<int>(source.size());
             glShaderSource(shaderObject, 1, &sourcePtr, &sourceLength);
@@ -454,6 +462,7 @@ namespace minEngine
             const std::vector<uint32_t>& spirvWords,
             std::string& outLog)
         {
+            EnsureOpenGLFunctionTableLoaded();
             if (glShaderBinary == nullptr || glSpecializeShader == nullptr)
             {
                 outLog = "OpenGL SPIR-V entry points unavailable (need GL 4.6 / ARB_gl_spirv).";
@@ -527,6 +536,7 @@ namespace minEngine
 
     OpenGLRHITexture::~OpenGLRHITexture()
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (m_OwnsGlTexture && m_TextureId != 0)
         {
             glDeleteTextures(1, &m_TextureId);
@@ -564,6 +574,7 @@ namespace minEngine
     OpenGLRHIBuffer::OpenGLRHIBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
         : m_Desc(desc)
     {
+        EnsureOpenGLFunctionTableLoaded();
         switch (desc.Usage)
         {
         case RHIBufferUsage::Vertex:
@@ -588,6 +599,7 @@ namespace minEngine
 
     void OpenGLRHIBuffer::UpdateSubresource(const void* data, uint32_t offset, uint32_t size)
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (!data || size == 0)
         {
             return;
@@ -599,6 +611,7 @@ namespace minEngine
 
     OpenGLRHIShader::~OpenGLRHIShader()
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (m_ProgramId != 0)
         {
             glDeleteProgram(m_ProgramId);
@@ -608,6 +621,10 @@ namespace minEngine
 
     OpenGLRHIShader::OpenGLRHIShader(std::string_view vertexSource, std::string_view fragmentSource)
     {
+        // BUILD-F03 knife 1: direct shader construction is the second structural GL entry. It is
+        // reached WITHOUT OpenGLRHI::Initialize() by EngineShaderUtils::TryCompileSourcesOnGpu
+        // (the material smoke path in minEngineTests), which constructs this class directly.
+        EnsureOpenGLFunctionTableLoaded();
         const unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
         const unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -643,6 +660,7 @@ namespace minEngine
 
     OpenGLRHIShader::OpenGLRHIShader(const RHIShaderCreateDesc& desc)
     {
+        EnsureOpenGLFunctionTableLoaded();
         const std::vector<uint32_t>* vertexSpirv = nullptr;
         const std::vector<uint32_t>* fragmentSpirv = nullptr;
         for (const RHIShaderStageBytecode& stage : desc.Stages)
@@ -704,6 +722,7 @@ namespace minEngine
 
     bool OpenGLRHIShader::LinkProgram(GLuint vertexShader, GLuint fragmentShader)
     {
+        EnsureOpenGLFunctionTableLoaded();
         m_ProgramId = glCreateProgram();
         glAttachShader(m_ProgramId, vertexShader);
         glAttachShader(m_ProgramId, fragmentShader);
@@ -726,6 +745,7 @@ namespace minEngine
 
     OpenGLRHIVertexInputLayout::OpenGLRHIVertexInputLayout(std::initializer_list<RHIVertexElement> elements)
     {
+        EnsureOpenGLFunctionTableLoaded();
         uint32_t offset = 0;
         uint32_t denseFallback = 0;
         for (const auto& element : elements)
@@ -747,6 +767,7 @@ namespace minEngine
 
     void OpenGLRHIVertexInputLayout::BindVertexBuffer(GLuint bufferId)
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (m_VAO == 0)
         {
             return;
@@ -837,6 +858,7 @@ namespace minEngine
     OpenGLRHISampler::OpenGLRHISampler(const RHISamplerDesc& desc)
         : m_Desc(desc)
     {
+        EnsureOpenGLFunctionTableLoaded();
         glGenSamplers(1, &m_SamplerId);
         const GLint mag = (desc.MagFilter == RHISamplerFilter::Nearest) ? GL_NEAREST : GL_LINEAR;
         // Mip mapping is selected at bind time via texture NumMips; sampler stores base Min.
@@ -859,6 +881,7 @@ namespace minEngine
 
     OpenGLRHISampler::~OpenGLRHISampler()
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (m_SamplerId != 0)
         {
             glDeleteSamplers(1, &m_SamplerId);

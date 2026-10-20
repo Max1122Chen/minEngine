@@ -21,20 +21,23 @@
 ;   minEngine/bin/SampleGame.exe                   7 names
 ;   minEngine/bin/libGameModuleStubd.dll          26 names
 ;   minEngine/bin/libminCraftd.dll               153 names
-;   minEngine/bin/minEngineTests.exe             807 names
-; Entries: 1003 (998 contract entries + 5 legacy; DLL exports 1288 after BUILD-F04 S04; 124 DATA)
+;   minEngine/bin/minEngineTests.exe             794 names
+; Entries: 998 (993 contract entries + 5 legacy; DLL exports 1283 after BUILD-F03 knife 1; 120 DATA)
 ; BUILD-F04 S04: the imgui bucket left this file together with the sources that defined it
 ; (253 entries: 224 IMGUI_API + 20 IMGUI_IMPL_API + 9 ImGuizmo, GImGui included as DATA).
-; imgui is compiled by libMaximumEditord.dll now. This block keeps 998 entries, the legacy
+; imgui is compiled by libMaximumEditord.dll now. This block keeps 993 entries, the legacy
 ; block keeps 5. The engine src had 0 imgui calls, so no in-repo consumer loses a symbol: an
 ; editor host rebuilt against this engine links imgui from the editor DLL.
 ; BUILD-F04 S04 step 2: the glfw bucket (8 entries) left the contract because the engine no
 ;   longer DEFINES glfw - it imports the prebuilt glfw3.dll (minengine_glfw), the same DLL the
 ;   editor DLL imports, so the process has exactly one GLFW instance.
-; BUILD-F03 C1 target state for glfw is therefore reached early; glad is untouched (the tests
-;   still consume 5 glad names from the engine).
+; BUILD-F03 C1 target state for glfw is therefore reached early.
+; BUILD-F03 knife 1: the glad bucket (5 entries: GLAD_GL_VERSION_4_6 DATA, gladLoadGLLoader,
+;   glad_glBindTexture/glad_glGetError/glad_glGetTexImage DATA) left the contract too. The engine
+;   still COMPILES glad.c (GLFWWindowSystem.cpp loads GL through it) but no longer EXPORTS it:
+;   the only consumer was minEngineTests, which now carries its own glad translation unit, and
+;   a second glad copy inside one process is the state glfw knife 1 removed for GLFW.
 EXPORTS
-GLAD_GL_VERSION_4_6 DATA
 TAG_Channel_Default DATA
 _ZN9minEngine10AudioMixer11SetBusMutedENS_11EAudioBusIdEb
 _ZN9minEngine10FontLoader15CreateFromBytesESt6vectorIhSaIhEERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEESB_
@@ -1028,10 +1031,6 @@ _ZTVN9minEngine6SpriteE DATA
 _ZTVN9minEngine8MEObjectE DATA
 _ZTVN9minEngine8MaterialE DATA
 _ZTVN9minEngine9OpenGLRHIE DATA
-gladLoadGLLoader
-glad_glBindTexture DATA
-glad_glGetError DATA
-glad_glGetTexImage DATA
 ; ==== BEGIN LEGACY-EXTERNAL-DEBT - preserved verbatim by --emit-whitelist ====
 ; API debt, NOT a derived set. These 5 entries exist for exactly one reason: the LIVE external
 ; product repos (minCraft / minCraft-ui / minCraft-gameplay) import them today, so removing them

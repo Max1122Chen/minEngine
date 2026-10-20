@@ -4,6 +4,14 @@ file(GLOB TEST_SUITE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Suites/*.cpp
 )
 
+# BUILD-F03 knife 1 (glad): the engine no longer exports the glad loader surface, so the tests
+# carry their own glad translation unit. Every suite that touches GL already calls
+# gladLoadGLLoader(glfwGetProcAddress) itself, i.e. it never relied on the engine's glad state;
+# the DLL keeps its own copy because GLFWWindowSystem.cpp loads GL through it.
+set(MINENGINE_TEST_GLAD_SOURCE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/Third-Party/glad/src/glad.c
+)
+
 # ED-F12: DebugCommand + PropertyPath live under Editor; tests compile them without the Editor exe.
 file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/DebugCommand/*.cpp
@@ -48,6 +56,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     TestSuiteRegistration.cpp
     EngineTestFixture.cpp
     DoctestSuiteRunner.cpp
+    ${MINENGINE_TEST_GLAD_SOURCE}
     ${TEST_SUITE_SOURCES}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
     ${SPRITE_AUTHORING_EDITOR_SOURCES}

@@ -2,6 +2,7 @@
 #include "Runtime/Function/Render/WindowSystem.h"
 
 #include "OpenGLRHIResources.h"
+#include "OpenGLFunctionTable.h"
 
 #include "Render/RHI/RHIShaderBinding.h"
 #include "Log/LogSystem.h"
@@ -65,6 +66,11 @@ namespace minEngine
 
     void OpenGLRHI::Initialize()
     {
+        // BUILD-F03 knife 1: the engine's glad table is initialized here for every path that
+        // drives rendering through the RHI. Before knife 1 that happened implicitly - the
+        // consumer linked the engine's exported gladLoadGLLoader, so its load call initialized
+        // THIS module's copy. See OpenGLFunctionTable.h for the contract.
+        EnsureOpenGLFunctionTableLoaded();
         m_WindowSystem = &WindowSystem::Get();
         m_DefaultLinearSampler = RHIGetOrCreateSampler(MakeLinearRepeatSamplerDesc());
         ME_LOG(LogRHI, Info, "OpenGLRHI Initialized");
@@ -120,6 +126,7 @@ namespace minEngine
 
     void OpenGLRHI::DestroyTransientFramebuffer()
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (m_OwnsTransientFramebuffer && m_TransientFramebuffer != 0)
         {
             glDeleteFramebuffers(1, &m_TransientFramebuffer);
@@ -215,6 +222,7 @@ namespace minEngine
 
     void OpenGLRHI::ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
     {
+        EnsureOpenGLFunctionTableLoaded();
         m_BoundPipeline = pipelineState;
         auto* fallback = static_cast<RHIGraphicsPSOStateFallback*>(pipelineState);
         if (!fallback)
@@ -316,6 +324,7 @@ namespace minEngine
 
     void OpenGLRHI::ApplyShaderBindingSetResources(RHIShaderBindingSet* bindingSet)
     {
+        EnsureOpenGLFunctionTableLoaded();
         auto* glSet = static_cast<OpenGLRHIShaderBindingSet*>(bindingSet);
         if (!glSet)
         {
@@ -415,6 +424,7 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdBeginRenderPass(const RHIRenderPassInfo& info)
     {
+        EnsureOpenGLFunctionTableLoaded();
         m_BoundShaderBindingSets = {};
         DestroyTransientFramebuffer();
 
@@ -554,6 +564,7 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdEndRenderPass()
     {
+        EnsureOpenGLFunctionTableLoaded();
         DestroyTransientFramebuffer();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDepthMask(GL_FALSE);
@@ -613,6 +624,7 @@ namespace minEngine
         uint32_t height,
         bool flipY)
     {
+        EnsureOpenGLFunctionTableLoaded();
         (void)flipY;
         glViewport(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height));
     }
@@ -625,6 +637,7 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t slot)
     {
+        EnsureOpenGLFunctionTableLoaded();
         (void)slot;
         m_BoundVertexBuffer = static_cast<OpenGLRHIBuffer*>(vertexBuffer);
         if (!m_BoundVertexBuffer)
@@ -643,6 +656,7 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdSetIndexBuffer(RHIBuffer* indexBuffer)
     {
+        EnsureOpenGLFunctionTableLoaded();
         m_BoundIndexBuffer = static_cast<OpenGLRHIBuffer*>(indexBuffer);
         if (!m_BoundIndexBuffer)
         {
@@ -659,6 +673,7 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
     {
+        EnsureOpenGLFunctionTableLoaded();
         const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
         const void* indices = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex * sizeof(uint32_t)));
         glDrawElements(primitiveType, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
@@ -667,12 +682,14 @@ namespace minEngine
 
     void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
     {
+        EnsureOpenGLFunctionTableLoaded();
         const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
         glDrawArrays(primitiveType, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
     }
 
     void OpenGLRHI::RHICmdGenerateMips(RHITexture* texture)
     {
+        EnsureOpenGLFunctionTableLoaded();
         if (texture == nullptr)
         {
             return;

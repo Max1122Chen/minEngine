@@ -20,13 +20,34 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 # BUILD-F03 C1 / BUILD-F04 S04: and NO glfw entry either. glfw is the shared glfw3.dll now, so an
 # engine-defined glfw symbol means the static libglfw3.a crept back in - the same shape that gives
 # the process two GLFW instances (the engine working on a copy the editor DLL never sees).
-python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --max-exports 3000 --fail --forbid-buckets imgui,glfw
+# BUILD-F03 knife 1: and NO glad entry either. The engine still compiles glad.c, but it must not
+# EXPORT it: minEngineTests carries its own glad translation unit now, and a second exported glad
+# copy is the same two-instances shape as glfw.
+python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --max-exports 3000 --fail --forbid-buckets imgui,glfw,glad
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# BUILD-F03 knife 1 removal guard: the assertions above bound what may APPEAR in the export table;
+# none of them notices a symbol DISAPPEARING, which is exactly what breaks an external product
+# repo on its next link. Every symbol in the frozen baseline must still be exported. Deleting one
+# on purpose means refreshing the baseline, so the removal appears in the commit diff
+# (scripts\audit_dll_exports.py --write-export-baseline ...) - there is no allow-removal flag.
+# A missing/empty baseline fails here; it never degrades to "nothing to compare".
+python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --dll (Join-Path $BinDir "libminEngined.dll") --assert-no-removals-vs (Join-Path $RepoRoot "minEngine\cmake\minEngine_export_baseline.json")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # BUILD-F04 S04 / O3 in-repo half: every in-repo consumer of the post-S04 engine contract must
 # still resolve. This one is never tolerated - it is the assertion that the 253 removed imgui
 # entries were not a symbol some in-repo artifact actually needs from the engine.
 python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --dll (Join-Path $BinDir "libminEngined.dll") --verify-coverage
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# BUILD-F03 knife 1: with glad out of the export table the engine initializes its OWN GL function
+# table (OpenGLFunctionTable.h), because glad's pointers are per module. That rule is mechanical
+# here: every gl*-calling function in the OpenGL backend must call
+# EnsureOpenGLFunctionTableLoaded() first, and no other engine source may call gl* at all.
+# Without this gate the rule would depend on the next author remembering it, and the failure mode
+# is a null function pointer reached only by some paths.
+python (Join-Path $RepoRoot "scripts\audit_opengl_load_guard.py")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # BUILD-F04 S01/S02/S03: editor/module boundary. Every assertion starts with "does the artifact

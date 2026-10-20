@@ -13,6 +13,12 @@ Three uses (see docs/ai/Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMP
                                    when the requested scan found no consumer at all - a
                                    vacuous "0 missing" must never look like a pass.
 
+  --write-export-baseline PATH     freeze the current export symbol set into JSON
+  --assert-no-removals-vs PATH     assert no symbol the baseline recorded has vanished
+                                   (BUILD-F03 knife 1 removal guard). The ONLY sanctioned way
+                                   to delete a symbol is to refresh the baseline, which then
+                                   shows up as a deletion in the commit diff.
+
 The whitelist is built from what consumers actually import, never from the DLL export
 table: dumping the current export table into a .def does not lower the entry count and
 therefore does not remove the 65535-ordinal bomb.
@@ -27,6 +33,7 @@ import os
 import re
 import struct
 import sys
+import time
 
 DEFAULT_DLL = os.path.join("minEngine", "bin", "libminEngined.dll")
 DEFAULT_CONSUMER_DIR = os.path.join("minEngine", "bin")
@@ -592,6 +599,115 @@ def check_coverage(dll_path, exports, consumers, scan_dirs, unmatched_patterns=N
         return 1
     return 0
 
+# --- export baseline: the "deleting a symbol is a failure" guard -----------------------
+# The budget and forbid-bucket assertions only bound what may APPEAR in the export table. None
+# of them notices a symbol DISAPPEARING, which is the failure mode that breaks an external
+# product repo: its next link fails on an import the engine quietly stopped exporting. The
+# baseline is the frozen symbol set; the only sanctioned way to remove an export is to refresh
+# the baseline, because that deletion is then visible in the commit diff. There is deliberately
+# no "--allow-removed" escape hatch: a bypass flag turns the guard into decoration.
+BASELINE_SCHEMA = 1
+ENGINE_VERSION_HEADER = os.path.join("minEngine", "minEngine", "src", "Runtime", "Core",
+                                     "EngineVersion.h")
+
+
+def read_engine_version():
+    """Engine version for baseline metadata, read from EngineVersion.h (informational only)."""
+    path = os.path.join(REPO_ROOT, ENGINE_VERSION_HEADER)
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            text = handle.read()
+    except OSError:
+        return "unknown"
+    match = re.search(r"kEngineVersion\s*\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)", text)
+    return ".".join(match.groups()) if match else "unknown"
+
+
+def write_export_baseline(path, dll_path, exports):
+    """Freeze the current export symbol set into a diff-readable JSON baseline."""
+    names = sorted(exports.name_set())
+    payload = {
+        "schema": BASELINE_SCHEMA,
+        "contract": contract_key(os.path.basename(dll_path)),
+        "engine_version": read_engine_version(),
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "export_count": len(names),
+        "data_count": sum(1 for name in names if exports.kinds.get(name) == "data"),
+        "symbols": names,
+    }
+    os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        json.dump(payload, handle, indent=2)
+        handle.write("\n")
+    print("wrote %s: %d export symbols (contract %s, engine %s)" % (
+        path, len(names), payload["contract"], payload["engine_version"]))
+    return payload
+
+
+def assert_no_removals_vs(baseline_path, dll_path, exports):
+    """Assert every symbol the baseline recorded is still exported. Returns the exit code.
+
+    Exit 1 means "a symbol was removed" (a contract regression or an unrefreshed baseline);
+    exit 2 means "the guard could not verify anything" - a missing/unreadable/empty baseline or
+    a baseline belonging to another module. Both are failures: a guard that skips itself when
+    its input is missing is the same false green --verify-coverage refuses for a 0-consumer scan.
+    """
+    if not os.path.isfile(baseline_path):
+        print("FAIL: export baseline not found: %s" % baseline_path, file=sys.stderr)
+        print("      nothing was compared; regenerate it with --write-export-baseline %s" % (
+            baseline_path), file=sys.stderr)
+        return 2
+    try:
+        with open(baseline_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError) as exc:
+        print("FAIL: export baseline is unreadable: %s (%s)" % (baseline_path, exc),
+              file=sys.stderr)
+        return 2
+    symbols = payload.get("symbols") if isinstance(payload, dict) else None
+    if not isinstance(symbols, list) or not all(isinstance(name, str) for name in symbols):
+        print("FAIL: export baseline %s has no string 'symbols' list (schema %s expected)" % (
+            baseline_path, BASELINE_SCHEMA), file=sys.stderr)
+        return 2
+    if not symbols:
+        print("FAIL: export baseline %s holds 0 symbols - an empty baseline passes every "
+              "removal check by vacuity" % baseline_path, file=sys.stderr)
+        return 2
+    target = contract_key(os.path.basename(dll_path))
+    baseline_contract = payload.get("contract")
+    if baseline_contract and baseline_contract != target:
+        print("FAIL: export baseline %s is for contract '%s', but the DLL belongs to '%s'" % (
+            baseline_path, baseline_contract, target), file=sys.stderr)
+        return 2
+    baseline = set(symbols)
+    current = exports.name_set()
+    removed = sorted(baseline - current)
+    added = sorted(current - baseline)
+    print("baseline ....... %s" % baseline_path)
+    print("  frozen ....... %d symbols (engine %s, written %s, schema %s)" % (
+        len(baseline), payload.get("engine_version", "unknown"),
+        payload.get("generated_at", "unknown"), payload.get("schema", "unknown")))
+    print("  current DLL .. %s (%d exports)" % (dll_path, len(current)))
+    if added:
+        print("  NOTE: %d export(s) are newer than the baseline; refresh it with "
+              "--write-export-baseline so the addition is recorded" % len(added))
+        for name in added[:10]:
+            print("      added: %s" % name)
+        if len(added) > 10:
+            print("      ... %d more" % (len(added) - 10))
+    if not removed:
+        print("PASS: all %d baseline symbols are still exported by %s" % (
+            len(baseline), os.path.basename(dll_path)))
+        return 0
+    print("FAIL: %d symbol(s) recorded in the baseline are no longer exported by %s:" % (
+        len(removed), dll_path), file=sys.stderr)
+    for name in removed:
+        print("  removed: %s" % name, file=sys.stderr)
+    print("      If the removal is intended, refresh the baseline with "
+          "--write-export-baseline %s: the deletion then appears in the commit diff, which is "
+          "the review step. There is no allow-removal flag." % baseline_path, file=sys.stderr)
+    return 1
+
 
 def write_whitelist(path, dll_path, exports, consumers, extra_defs):
     target = os.path.basename(dll_path).lower()
@@ -704,6 +820,14 @@ def main(argv=None):
                              "consumers OUTSIDE this repository only (never for in-repo artifacts), "
                              "still failing on anything else. Prints every tolerated name. BUILD-F04 "
                              "S04, see the check_coverage docstring.")
+    parser.add_argument("--write-export-baseline", default=None, metavar="PATH",
+                        help="freeze the current DLL export symbol set into a JSON baseline "
+                             "(BUILD-F03 knife 1 removal guard)")
+    parser.add_argument("--assert-no-removals-vs", default=None, metavar="PATH",
+                        help="assert no symbol recorded in this baseline has disappeared from the "
+                             "DLL; exits non-zero on any removal AND when the baseline is missing, "
+                             "unreadable, empty, or belongs to another contract (a guard that "
+                             "cannot verify must not pass)")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
 
@@ -777,6 +901,8 @@ def main(argv=None):
 
     if args.emit_whitelist:
         write_whitelist(args.emit_whitelist, dll_path, exports, consumers, args.extra_def)
+    if args.write_export_baseline:
+        write_export_baseline(args.write_export_baseline, dll_path, exports)
 
     payload = None
     if args.report or args.json:
@@ -789,18 +915,24 @@ def main(argv=None):
             print("wrote %s" % args.json)
 
     exit_code = 0
+    if args.assert_no_removals_vs:
+        # Runs before --fail: a removal is the more specific failure and must not be masked by
+        # a budget assertion that happens to pass on the smaller table.
+        exit_code = assert_no_removals_vs(args.assert_no_removals_vs, dll_path, exports)
     if args.verify_coverage:
-        exit_code = check_coverage(dll_path, exports, consumers,
+        # max(), not assignment: a removal failure (1) or an unverifiable guard (2) must never be
+        # overwritten by a later assertion that happens to pass in the same invocation.
+        exit_code = max(exit_code, check_coverage(dll_path, exports, consumers,
                                    expand_consumer_dirs(args.consumer_dir)[0],
                                    unmatched_dirs,
-                                   transitional_buckets)
+                                   transitional_buckets))
     if args.fail:
         failures = check_assertions(exports, args.max_exports, args.min_headroom,
                                     forbidden_buckets)
         if failures:
             for failure in failures:
                 print("FAIL: %s" % failure, file=sys.stderr)
-            exit_code = 1
+            exit_code = max(exit_code, 1)
         else:
             print("PASS: NumberOfFunctions=%d <= %d, ordinal headroom=%d >= %d" % (
                 exports.number_of_functions, args.max_exports,
