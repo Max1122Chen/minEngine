@@ -5,7 +5,9 @@
 #include "Services/Graph/GraphEditorResult.h"
 #include "Services/Scene/SceneEditorResult.h"
 #include "Services/Scene/SceneEditorServices.h"
+#include "Services/Scene/ScenePropertyValueCodec.h"
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -14,10 +16,17 @@
 
 namespace minEngine
 {
+    class AnimationGraph;
     class EditorDocumentSession;
     class GameObject;
     class Material;
-    class AnimationGraph;
+    class MEObject;
+    class SceneEditor;
+
+    namespace Reflection
+    {
+        class MEClass;
+    }
 
     class EditorAutomationSurface : public IEditorAutomationSurface
     {
@@ -95,6 +104,10 @@ namespace minEngine
         AutomationResponse HandleSpriteAtlasRebuild(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasSave(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasCreateFromSelection(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleCreatePrefabFromGameObject(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandlePrefabOpen(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandlePrefabSave(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandlePrefabClose(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleOpenAsset(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleActivateSession(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleRevealAsset(IEditorContext& context, const AutomationRequest& request);
@@ -139,6 +152,30 @@ namespace minEngine
             const AutomationRequest& request,
             std::string_view sessionTypeId,
             bool materialDomain);
+
+        struct PropertyWriteOutcome
+        {
+            bool Ok = false;
+            /** Set when the failure must be reported through FromEditorResult instead of MakeError. */
+            bool bSceneResult = false;
+            SceneEditorResult SceneResult;
+            std::string ErrorCode;
+            std::string ErrorMessage;
+            bool bUnchanged = false;
+        };
+
+        /** Single-property write pipeline shared by the single and batch set_property forms. */
+        PropertyWriteOutcome WritePropertyValue(
+            IEditorContext& context,
+            EditorDocumentSession& session,
+            SceneEditor& sceneEditor,
+            MEObject& owner,
+            const Reflection::MEClass& ownerClass,
+            const std::string& normalizedPath,
+            const Json& value,
+            const std::vector<uint8_t>& beforeBlob);
+
+        static const char* MapRefErrorCode(ScenePropertyValueCodec::RefError kind);
 
         static bool TryReadStringArray(
             const Json& payload,

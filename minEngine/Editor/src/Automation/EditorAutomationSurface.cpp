@@ -12,6 +12,8 @@
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Prefab/Prefab.h"
+#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Function/Framework/Prefab/PrefabUtility.h"
 #include "Runtime/Function/Framework/Project/ProjectManager.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Resource/AssetManager.h"
@@ -24,6 +26,9 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Services/AssetWorkflowModule.h"
+#include "SubEditor/Prefab/PrefabEditConstraints.h"
+#include "SubEditor/Prefab/PrefabStage.h"
+#include "SubEditor/Prefab/PrefabStageController.h"
 #include "Services/Sprite/SpriteEditorServices.h"
 #include "Services/Control/EditorControlServices.h"
 #include "Services/TypeQuery/TypeQueryServices.h"
@@ -33,18 +38,101 @@
 #include "SubEditor/Scene/SceneEditor.h"
 
 #include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <unordered_set>
 #include <vector>
 
 namespace minEngine
 {
     namespace
     {
+        constexpr const char* kPrefabAssetExtension = ".meprefab";
+
         SceneEditorResult MakeOk()
         {
             SceneEditorResult result;
             result.Ok = true;
             result.Code = SceneEditorError::None;
             return result;
+        }
+
+        bool TryReadWholeFile(const std::filesystem::path& path, std::vector<char>& outBytes)
+        {
+            std::ifstream stream(path, std::ios::binary);
+            if (!stream)
+            {
+                return false;
+            }
+
+            outBytes.assign(
+                std::istreambuf_iterator<char>(stream),
+                std::istreambuf_iterator<char>());
+            return true;
+        }
+
+        bool TryWriteWholeFile(const std::filesystem::path& path, const std::vector<char>& bytes)
+        {
+            std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+            if (!stream)
+            {
+                return false;
+            }
+
+            stream.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+            return stream.good();
+        }
+
+        /**
+         * Keeps the bytes an asset file had before a save, so a failed save leaves the previous
+         * content on disk instead of a truncated or half-written file.
+         */
+        struct AssetFileRollback
+        {
+            std::filesystem::path Path;
+            std::vector<char> PreviousBytes;
+            bool bHadFile = false;
+
+            void Capture(const std::filesystem::path& path)
+            {
+                Path = path;
+                bHadFile = TryReadWholeFile(path, PreviousBytes);
+            }
+
+            void Restore() const
+            {
+                if (Path.empty())
+                {
+                    return;
+                }
+
+                if (bHadFile)
+                {
+                    TryWriteWholeFile(Path, PreviousBytes);
+                    return;
+                }
+
+                std::error_code removeError;
+                std::filesystem::remove(Path, removeError);
+            }
+        };
+
+        /** First non-temporary top-level GameObject of a Prefab Stage scene. */
+        std::string FindStageRootGuid(const Scene& stageScene)
+        {
+            for (const std::shared_ptr<GameObject>& gameObject : stageScene.GetAllGameObjects())
+            {
+                if (gameObject == nullptr || gameObject->GetParent() != nullptr)
+                {
+                    continue;
+                }
+                if (PrefabUtility::IsEditorTempStageObject(*gameObject))
+                {
+                    continue;
+                }
+                return gameObject->GetGuid().ToString();
+            }
+            return std::string();
         }
     }
 
@@ -256,6 +344,26 @@ namespace minEngine
             "sprite_atlas.create_from_selection",
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleSpriteAtlasCreateFromSelection(context, request);
+            });
+        m_Handlers.emplace(
+            "prefab.create_from_game_object",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleCreatePrefabFromGameObject(context, request);
+            });
+        m_Handlers.emplace(
+            "prefab.open",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandlePrefabOpen(context, request);
+            });
+        m_Handlers.emplace(
+            "prefab.save",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandlePrefabSave(context, request);
+            });
+        m_Handlers.emplace(
+            "prefab.close",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandlePrefabClose(context, request);
             });
         m_Handlers.emplace(
             "asset.open",
@@ -479,9 +587,10 @@ namespace minEngine
             return nullptr;
         }
 
-        if (session->GetTypeId() != "Scene")
+        const std::string& sessionTypeId = session->GetTypeId();
+        if (sessionTypeId != "Scene" && sessionTypeId != "Prefab")
         {
-            outErrorResponse = MakeError(request, "SessionNotFound", "Session is not a Scene document.");
+            outErrorResponse = MakeError(request, "SessionNotFound", "Session is not a Scene or Prefab document.");
             return nullptr;
         }
 
@@ -1063,13 +1172,156 @@ namespace minEngine
             Json{{"componentObjectId", componentObjectId}});
     }
 
+    const char* EditorAutomationSurface::MapRefErrorCode(ScenePropertyValueCodec::RefError kind)
+    {
+        switch (kind)
+        {
+        case ScenePropertyValueCodec::RefError::Unsupported:
+            return "Unsupported";
+        case ScenePropertyValueCodec::RefError::Unresolved:
+            return "UnresolvedObjectRef";
+        case ScenePropertyValueCodec::RefError::Invalid:
+        case ScenePropertyValueCodec::RefError::None:
+        default:
+            return "InvalidPayload";
+        }
+    }
+
+    EditorAutomationSurface::PropertyWriteOutcome EditorAutomationSurface::WritePropertyValue(
+        IEditorContext& context,
+        EditorDocumentSession& session,
+        SceneEditor& sceneEditor,
+        MEObject& owner,
+        const Reflection::MEClass& ownerClass,
+        const std::string& normalizedPath,
+        const Json& value,
+        const std::vector<uint8_t>& beforeBlob)
+    {
+        PropertyWriteOutcome outcome;
+        const Serialization::SerializerOptions options = sceneEditor.GetPropertyCommandSerializerOptions();
+
+        std::string codecError;
+        ScenePropertyValueCodec::RefError refError = ScenePropertyValueCodec::RefError::None;
+        if (!ScenePropertyValueCodec::TryWriteJsonToLive(
+                owner, ownerClass, normalizedPath, value, codecError, options, &refError))
+        {
+            std::string restoreError;
+            ScenePropertyValueCodec::TryRestoreBlob(
+                owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
+            outcome.ErrorCode = MapRefErrorCode(refError);
+            outcome.ErrorMessage = codecError;
+            return outcome;
+        }
+
+        void* leafOwner = nullptr;
+        const Reflection::MEClass* leafOwnerClass = nullptr;
+        std::string leafPropertyName;
+        std::string walkError;
+        if (!ScenePropertyValueCodec::WalkToLeafOwner(
+                &owner,
+                &ownerClass,
+                normalizedPath,
+                leafOwner,
+                leafOwnerClass,
+                leafPropertyName,
+                walkError))
+        {
+            std::string restoreError;
+            ScenePropertyValueCodec::TryRestoreBlob(
+                owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
+            outcome.ErrorCode = "InvalidPropertyPath";
+            outcome.ErrorMessage = walkError;
+            return outcome;
+        }
+
+        const Reflection::MEProperty* property = nullptr;
+        Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
+            leafOwnerClass->GetName(),
+            [&](const Reflection::MEProperty& candidate) -> bool
+            {
+                if (candidate.GetName() == leafPropertyName)
+                {
+                    property = &candidate;
+                    return false;
+                }
+                return true;
+            });
+        if (property == nullptr)
+        {
+            std::string restoreError;
+            ScenePropertyValueCodec::TryRestoreBlob(
+                owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
+            outcome.ErrorCode = "InvalidPropertyPath";
+            outcome.ErrorMessage = "Leaf property not found.";
+            return outcome;
+        }
+
+        const size_t storageSize = property->GetStorageSize();
+        std::vector<uint8_t> afterBuffer(storageSize);
+        const SceneEditorResult afterGet = m_SceneServices.GetProperty(
+            owner, normalizedPath, afterBuffer.data(), afterBuffer.size());
+        if (!afterGet.Ok)
+        {
+            std::string restoreError;
+            ScenePropertyValueCodec::TryRestoreBlob(
+                owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
+            outcome.bSceneResult = true;
+            outcome.SceneResult = afterGet;
+            return outcome;
+        }
+
+        if (!ScenePropertyValueCodec::TryRestoreBlob(
+                owner, ownerClass, normalizedPath, beforeBlob, codecError, options))
+        {
+            outcome.ErrorCode = "InternalError";
+            outcome.ErrorMessage = "Failed to restore pre-edit value: " + codecError;
+            return outcome;
+        }
+
+        std::vector<uint8_t> beforeBuffer(storageSize);
+        const SceneEditorResult beforeGet = m_SceneServices.GetProperty(
+            owner, normalizedPath, beforeBuffer.data(), beforeBuffer.size());
+        if (!beforeGet.Ok)
+        {
+            outcome.bSceneResult = true;
+            outcome.SceneResult = beforeGet;
+            return outcome;
+        }
+
+        if (beforeBuffer == afterBuffer)
+        {
+            outcome.Ok = true;
+            outcome.bUnchanged = true;
+            return outcome;
+        }
+
+        const SceneEditorResult setResult = m_SceneServices.SetProperty(
+            context, session, owner, normalizedPath, afterBuffer.data(), afterBuffer.size());
+        if (!setResult.Ok)
+        {
+            outcome.bSceneResult = true;
+            outcome.SceneResult = setResult;
+            return outcome;
+        }
+
+        outcome.Ok = true;
+        return outcome;
+    }
+
     AutomationResponse EditorAutomationSurface::HandleSetProperty(
         IEditorContext& context,
         const AutomationRequest& request)
     {
         const std::string objectId = request.Payload.value("objectId", "");
-        const std::string propertyPath = request.Payload.value("propertyPath", "");
-        if (objectId.empty() || propertyPath.empty() || !request.Payload.contains("value"))
+        const bool batchForm = request.Payload.contains("properties");
+        if (objectId.empty())
+        {
+            return MakeError(request, "InvalidPayload", "objectId is required.");
+        }
+
+        if (!batchForm
+            && (request.Payload.value("propertyPath", "").empty()
+                || !request.Payload.contains("value")))
         {
             return MakeError(request, "InvalidPayload", "objectId, propertyPath, and value are required.");
         }
@@ -1105,119 +1357,196 @@ namespace minEngine
             return MakeError(request, "InternalError", "SceneEditor module is unavailable.");
         }
 
-        const std::string normalizedPath = ScenePropertyValueCodec::NormalizePropertyPath(propertyPath);
         const Serialization::SerializerOptions options = sceneEditor->GetPropertyCommandSerializerOptions();
-        const Json& value = request.Payload.at("value");
 
-        std::vector<uint8_t> beforeBlob;
-        std::string codecError;
-        if (!ScenePropertyValueCodec::TryCaptureBlob(
-                *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options))
+        if (!batchForm)
         {
-            return MakeError(request, "InvalidPropertyPath", codecError);
-        }
+            const std::string normalizedPath =
+                ScenePropertyValueCodec::NormalizePropertyPath(request.Payload.value("propertyPath", ""));
+            const Json& rawValue = request.Payload.at("value");
 
-        if (!ScenePropertyValueCodec::TryWriteJsonToLive(
-                *owner, *ownerClass, normalizedPath, value, codecError, options))
-        {
-            ScenePropertyValueCodec::TryRestoreBlob(
-                *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options);
-            return MakeError(
-                request,
-                "InvalidPayload",
-                codecError,
-                Json{{"objectId", objectId}, {"propertyPath", normalizedPath}});
-        }
-
-        void* leafOwner = nullptr;
-        const Reflection::MEClass* leafOwnerClass = nullptr;
-        std::string leafPropertyName;
-        std::string walkError;
-        if (!ScenePropertyValueCodec::WalkToLeafOwner(
-                owner.get(),
-                ownerClass,
-                normalizedPath,
-                leafOwner,
-                leafOwnerClass,
-                leafPropertyName,
-                walkError))
-        {
-            ScenePropertyValueCodec::TryRestoreBlob(
-                *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options);
-            return MakeError(request, "InvalidPropertyPath", walkError);
-        }
-
-        const Reflection::MEProperty* property = nullptr;
-        Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
-            leafOwnerClass->GetName(),
-            [&](const Reflection::MEProperty& candidate) -> bool
+            Json value;
+            ScenePropertyValueCodec::RefError refError = ScenePropertyValueCodec::RefError::None;
+            std::string refErrorMessage;
+            if (!ScenePropertyValueCodec::TryNormalizeValueReferences(
+                    rawValue, value, refError, refErrorMessage))
             {
-                if (candidate.GetName() == leafPropertyName)
+                return MakeError(
+                    request,
+                    MapRefErrorCode(refError),
+                    refErrorMessage,
+                    Json{{"objectId", objectId}, {"propertyPath", normalizedPath}});
+            }
+
+            std::vector<uint8_t> beforeBlob;
+            std::string codecError;
+            if (!ScenePropertyValueCodec::TryCaptureBlob(
+                    *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options))
+            {
+                return MakeError(request, "InvalidPropertyPath", codecError);
+            }
+
+            const PropertyWriteOutcome outcome = WritePropertyValue(
+                context,
+                *session,
+                *sceneEditor,
+                *owner,
+                *ownerClass,
+                normalizedPath,
+                value,
+                beforeBlob);
+            if (!outcome.Ok)
+            {
+                if (outcome.bSceneResult)
                 {
-                    property = &candidate;
-                    return false;
+                    return FromEditorResult(request, outcome.SceneResult);
                 }
-                return true;
-            });
-        if (property == nullptr)
-        {
-            ScenePropertyValueCodec::TryRestoreBlob(
-                *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options);
-            return MakeError(request, "InvalidPropertyPath", "Leaf property not found.");
+                return MakeError(
+                    request,
+                    outcome.ErrorCode,
+                    outcome.ErrorMessage,
+                    Json{{"objectId", objectId}, {"propertyPath", normalizedPath}});
+            }
+
+            Json result = Json{
+                {"objectId", objectId},
+                {"propertyPath", normalizedPath},
+                {"value", value}};
+            if (outcome.bUnchanged)
+            {
+                result["unchanged"] = true;
+            }
+            return FromEditorResult(request, MakeOk(), std::move(result));
         }
 
-        const size_t storageSize = property->GetStorageSize();
-        std::vector<uint8_t> afterBuffer(storageSize);
-        const SceneEditorResult afterGet = m_SceneServices.GetProperty(
-            *owner, normalizedPath, afterBuffer.data(), afterBuffer.size());
-        if (!afterGet.Ok)
+        // Batch form. Phase A resolves every reference before anything is written, so an
+        // unresolvable reference rejects the whole request with the live objects untouched.
+        const Json& items = request.Payload["properties"];
+        if (!items.is_array() || items.empty())
         {
-            ScenePropertyValueCodec::TryRestoreBlob(
-                *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options);
-            return FromEditorResult(request, afterGet);
+            return MakeError(request, "InvalidPayload", "properties must be a non-empty array.");
         }
 
-        if (!ScenePropertyValueCodec::TryRestoreBlob(
-                *owner, *ownerClass, normalizedPath, beforeBlob, codecError, options))
+        struct BatchEntry
         {
-            return MakeError(request, "InternalError", "Failed to restore pre-edit value: " + codecError);
+            std::string PropertyPath;
+            Json Value;
+            std::vector<uint8_t> BeforeBlob;
+        };
+
+        std::vector<BatchEntry> entries;
+        entries.reserve(items.size());
+        std::unordered_map<std::string, size_t> seenPaths;
+
+        for (size_t index = 0; index < items.size(); ++index)
+        {
+            const Json& item = items[index];
+            const Json location = Json{{"index", index}};
+            if (!item.is_object() || !item.contains("propertyPath") || !item["propertyPath"].is_string()
+                || !item.contains("value"))
+            {
+                Json extra = location;
+                extra["objectId"] = objectId;
+                return MakeError(request, "InvalidPayload", "Each properties[] item needs propertyPath and value.", extra);
+            }
+
+            BatchEntry entry;
+            entry.PropertyPath =
+                ScenePropertyValueCodec::NormalizePropertyPath(item["propertyPath"].get<std::string>());
+            if (entry.PropertyPath.empty())
+            {
+                Json extra = location;
+                extra["objectId"] = objectId;
+                return MakeError(request, "InvalidPayload", "properties[].propertyPath is empty.", extra);
+            }
+
+            if (!seenPaths.emplace(entry.PropertyPath, index).second)
+            {
+                Json extra = location;
+                extra["objectId"] = objectId;
+                extra["propertyPath"] = entry.PropertyPath;
+                return MakeError(
+                    request,
+                    "InvalidPayload",
+                    "Duplicate propertyPath in one request: " + entry.PropertyPath,
+                    extra);
+            }
+
+            ScenePropertyValueCodec::RefError refError = ScenePropertyValueCodec::RefError::None;
+            std::string refErrorMessage;
+            if (!ScenePropertyValueCodec::TryNormalizeValueReferences(
+                    item["value"], entry.Value, refError, refErrorMessage))
+            {
+                Json extra = location;
+                extra["objectId"] = objectId;
+                extra["propertyPath"] = entry.PropertyPath;
+                return MakeError(request, MapRefErrorCode(refError), refErrorMessage, extra);
+            }
+
+            std::string codecError;
+            if (!ScenePropertyValueCodec::TryCaptureBlob(
+                    *owner, *ownerClass, entry.PropertyPath, entry.BeforeBlob, codecError, options))
+            {
+                Json extra = location;
+                extra["objectId"] = objectId;
+                extra["propertyPath"] = entry.PropertyPath;
+                return MakeError(request, "InvalidPropertyPath", codecError, extra);
+            }
+
+            entries.push_back(std::move(entry));
         }
 
-        std::vector<uint8_t> beforeBuffer(storageSize);
-        const SceneEditorResult beforeGet = m_SceneServices.GetProperty(
-            *owner, normalizedPath, beforeBuffer.data(), beforeBuffer.size());
-        if (!beforeGet.Ok)
+        // Phase B writes in order. A failing write is reported as PartialWrite with the entries
+        // that already landed: the engine has no generic setter rollback, so no claim is made.
+        Json applied = Json::array();
+        for (size_t index = 0; index < entries.size(); ++index)
         {
-            return FromEditorResult(request, beforeGet);
-        }
+            const BatchEntry& entry = entries[index];
+            const PropertyWriteOutcome outcome = WritePropertyValue(
+                context,
+                *session,
+                *sceneEditor,
+                *owner,
+                *ownerClass,
+                entry.PropertyPath,
+                entry.Value,
+                entry.BeforeBlob);
+            if (!outcome.Ok)
+            {
+                Json failed = Json{{"index", index}, {"propertyPath", entry.PropertyPath}};
+                if (outcome.bSceneResult)
+                {
+                    failed["code"] = MapErrorCode(outcome.SceneResult.Code);
+                    failed["message"] = outcome.SceneResult.Message;
+                }
+                else
+                {
+                    failed["code"] = outcome.ErrorCode;
+                    failed["message"] = outcome.ErrorMessage;
+                }
 
-        if (beforeBuffer == afterBuffer)
-        {
-            return FromEditorResult(
-                request,
-                MakeOk(),
-                Json{
-                    {"objectId", objectId},
-                    {"propertyPath", normalizedPath},
-                    {"value", value},
-                    {"unchanged", true}});
-        }
+                return MakeError(
+                    request,
+                    "PartialWrite",
+                    "Property write failed after " + std::to_string(applied.size())
+                        + " applied propert(ies); earlier writes are not rolled back.",
+                    Json{{"objectId", objectId}, {"applied", applied}, {"failed", failed}});
+            }
 
-        const SceneEditorResult setResult = m_SceneServices.SetProperty(
-            context, *session, *owner, normalizedPath, afterBuffer.data(), afterBuffer.size());
-        if (!setResult.Ok)
-        {
-            return FromEditorResult(request, setResult);
+            Json appliedEntry = Json{{"propertyPath", entry.PropertyPath}, {"value", entry.Value}};
+            if (outcome.bUnchanged)
+            {
+                appliedEntry["unchanged"] = true;
+            }
+            applied.push_back(std::move(appliedEntry));
         }
 
         return FromEditorResult(
             request,
-            setResult,
-            Json{
-                {"objectId", objectId},
-                {"propertyPath", normalizedPath},
-                {"value", value}});
+            MakeOk(),
+            Json{{"objectId", objectId}, {"applied", applied}});
     }
+
 
     AutomationResponse EditorAutomationSurface::HandleReparent(
         IEditorContext& context,
@@ -2130,6 +2459,488 @@ namespace minEngine
             return MakeError(request, "InternalError", "Create atlas from selection failed.");
         }
         return FromEditorResult(request, MakeOk(), Json{{"created", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleCreatePrefabFromGameObject(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string objectId = request.Payload.value("objectId", "");
+        const std::string directory = request.Payload.value("directory", "");
+        const std::string name = request.Payload.value("name", "");
+        const bool overwrite = request.Payload.value("overwrite", false);
+        if (objectId.empty() || directory.empty() || name.empty())
+        {
+            return MakeError(request, "InvalidPayload", "objectId, directory, and name are required.");
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            return MakeError(request, "InternalError", "AssetManager is not available.");
+        }
+
+        AutomationResponse errorResponse;
+        EditorDocumentSession* session = ResolveSession(context, request, errorResponse);
+        if (session == nullptr)
+        {
+            return errorResponse;
+        }
+
+        SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(context.FindSubModule(SceneEditor::kModuleId));
+        if (sceneEditor == nullptr)
+        {
+            return MakeError(request, "InternalError", "SceneEditor module is unavailable.");
+        }
+
+        std::string constraintError;
+        if (!PrefabEditConstraints::AllowCreatePrefab(*sceneEditor, &constraintError))
+        {
+            return MakeError(request, "PrefabConstrained", constraintError);
+        }
+
+        if (context.IsPlaying())
+        {
+            return MakeError(request, "PlayMode", "Prefab authoring is unavailable during Play.");
+        }
+
+        Scene* scene = nullptr;
+        const SceneEditorResult sceneResult = m_SceneServices.GetScene(context, *session, &scene);
+        if (!sceneResult.Ok)
+        {
+            return FromEditorResult(request, sceneResult);
+        }
+
+        GUID guid;
+        if (!ScenePropertyValueCodec::TryParseGuid(objectId, guid))
+        {
+            return MakeError(request, "InvalidObjectId", "objectId is not a valid GUID.");
+        }
+
+        GameObject* gameObject = nullptr;
+        const SceneEditorResult findResult = m_SceneServices.FindGameObject(*scene, guid, &gameObject);
+        if (!findResult.Ok)
+        {
+            return FromEditorResult(request, findResult);
+        }
+
+        const std::filesystem::path contentRoot = PathRegistry::Get().GetProjectContentRoot();
+        if (contentRoot.empty())
+        {
+            return MakeError(request, "InternalError", "ProjectContentRoot is not set.");
+        }
+
+        const std::filesystem::path directoryAbsolute =
+            (contentRoot / std::filesystem::path(directory)).lexically_normal();
+        std::error_code directoryError;
+        if (!std::filesystem::is_directory(directoryAbsolute, directoryError))
+        {
+            return MakeError(
+                request,
+                "DirectoryNotFound",
+                "Directory does not exist: " + directory,
+                Json{{"directory", directory}});
+        }
+
+        const std::string prefabPath =
+            (std::filesystem::path(directory) / (name + kPrefabAssetExtension)).generic_string();
+        const AssetMeta* existingMeta = AssetManager::Get().FindAssetMetaByPath(prefabPath);
+        const std::filesystem::path prefabAbsolutePath =
+            AssetManager::Get().ResolveAssetAbsolutePath(prefabPath);
+        std::error_code fileError;
+        const bool assetFileExists = std::filesystem::is_regular_file(prefabAbsolutePath, fileError);
+        const bool targetExists = existingMeta != nullptr || assetFileExists;
+        if (targetExists && !overwrite)
+        {
+            return MakeError(
+                request,
+                "AssetExists",
+                "Asset already exists (pass overwrite=true to replace it): " + prefabPath,
+                Json{{"prefabPath", prefabPath}});
+        }
+
+        if (gameObject->GetRootComponent() == nullptr)
+        {
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "'" + gameObject->GetName() + "' needs a root SceneComponent before it can become a Prefab.",
+                Json{{"objectId", objectId}});
+        }
+
+        // The engine's create path registers the source object as a Prefab instance of the new
+        // asset. Automation must leave the scene untouched, so that record is dropped again.
+        std::vector<PrefabInstanceRecord>& instanceRecords = scene->GetPrefabInstancesMutable();
+        const size_t instanceRecordCountBefore = instanceRecords.size();
+
+        PrefabCreateReport report;
+        std::shared_ptr<Prefab> created = PrefabUtility::CreatePrefabFromGameObject(*gameObject, &report);
+        if (instanceRecords.size() > instanceRecordCountBefore
+            && instanceRecords.back().RootInstanceGuid == gameObject->GetGuid())
+        {
+            instanceRecords.pop_back();
+        }
+
+        if (!created)
+        {
+            return MakeError(request, "SaveFailed", "CreatePrefabFromGameObject failed.", Json{{"prefabPath", prefabPath}});
+        }
+
+        std::shared_ptr<Prefab> prefabToSave = created;
+        if (targetExists)
+        {
+            std::string loadError;
+            std::shared_ptr<Asset> existingAsset =
+                AssetManager::Get().LoadAssetByPath(prefabPath, loadError);
+            std::shared_ptr<Prefab> existingPrefab = Cast<Prefab>(existingAsset);
+            if (existingPrefab == nullptr)
+            {
+                std::string message = "Existing Prefab asset could not be loaded: " + prefabPath;
+                if (!loadError.empty())
+                {
+                    message += " (" + loadError + ")";
+                }
+                return MakeError(
+                    request,
+                    "SaveFailed",
+                    message,
+                    Json{{"prefabPath", prefabPath}});
+            }
+
+            // Reuse the existing asset object so its Guid (and every reference to it) survives
+            // the rebuild; only the template tree is replaced.
+            const std::vector<std::shared_ptr<GameObject>> newTemplates = created->GetTemplateObjects();
+            const GUID newRootGuid = created->GetRootGuid();
+            created->ClearTemplateObjects();
+            existingPrefab->ClearTemplateObjects();
+            for (const std::shared_ptr<GameObject>& templateObject : newTemplates)
+            {
+                if (templateObject == nullptr)
+                {
+                    continue;
+                }
+
+                templateObject->SetOuter(existingPrefab.get());
+                existingPrefab->AddTemplateObject(templateObject);
+            }
+            existingPrefab->SetRootGuid(newRootGuid);
+            prefabToSave = existingPrefab;
+        }
+
+        AssetFileRollback rollback;
+        rollback.Capture(prefabAbsolutePath);
+
+        std::string saveError;
+        if (!PrefabUtility::SavePrefabAsset(*prefabToSave, prefabPath, &saveError))
+        {
+            rollback.Restore();
+            return MakeError(
+                request,
+                "SaveFailed",
+                saveError.empty() ? "SavePrefabAsset failed." : saveError,
+                Json{{"prefabPath", prefabPath}});
+        }
+
+        GameObject* templateRoot = prefabToSave->GetRootGameObject();
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"prefabPath", prefabPath},
+                {"guid", prefabToSave->GetGuid().ToString()},
+                {"rootName", templateRoot != nullptr ? templateRoot->GetName() : name},
+                {"overwritten", targetExists}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandlePrefabOpen(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string prefabPath = request.Payload.value("prefabPath", "");
+        if (prefabPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "prefabPath is required.");
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            return MakeError(request, "InternalError", "AssetManager is not available.");
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(prefabPath);
+        if (meta == nullptr)
+        {
+            return MakeError(
+                request,
+                "AssetNotFound",
+                "No imported asset at '" + prefabPath + "'.",
+                Json{{"prefabPath", prefabPath}});
+        }
+        if (meta->AssetType != "Prefab")
+        {
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "'" + meta->AssetPath + "' is a " + meta->AssetType + " asset, not a Prefab.",
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(context.FindSubModule(SceneEditor::kModuleId));
+        if (sceneEditor == nullptr)
+        {
+            return MakeError(request, "InternalError", "SceneEditor module is unavailable.");
+        }
+
+        PrefabStageController& stages = sceneEditor->GetPrefabStages();
+        const std::string previousKey = stages.GetActiveAssetKey();
+        const bool alreadyOpen = stages.HasStage(meta->AssetPath);
+
+        // Only one Stage stays active. A clean previous Stage is closed; a dirty one is kept so
+        // unsaved edits are never discarded silently, and the response says so.
+        bool previousStageClosed = false;
+        bool previousStageDirty = false;
+        if (!previousKey.empty() && previousKey != meta->AssetPath)
+        {
+            previousStageDirty = stages.IsDirty(previousKey);
+            sceneEditor->ExitPrefabStage();
+            if (!previousStageDirty)
+            {
+                stages.Discard(previousKey);
+                previousStageClosed = true;
+            }
+        }
+
+        std::string openError;
+        if (!stages.OpenFromAsset(*meta, &openError))
+        {
+            return MakeError(
+                request,
+                "PrefabOpenFailed",
+                openError,
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        EditorDocumentHost& host = context.GetDocumentHost();
+        if (!host.OpenOrFocus(*meta))
+        {
+            return MakeError(
+                request,
+                "PrefabOpenFailed",
+                "Failed to open the Prefab document: " + meta->AssetPath,
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        EditorDocumentSession* session = host.FindSessionByAssetKey(meta->AssetPath);
+        if (session == nullptr)
+        {
+            return MakeError(
+                request,
+                "InternalError",
+                "Prefab document session is missing after open.",
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        PrefabEditorStage* stage = stages.FindStage(meta->AssetPath);
+        if (stage == nullptr || stage->StageScene == nullptr)
+        {
+            return MakeError(
+                request,
+                "PrefabOpenFailed",
+                "Prefab Stage was not created: " + meta->AssetPath,
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        const std::string rootGuid = FindStageRootGuid(*stage->StageScene);
+        if (rootGuid.empty())
+        {
+            return MakeError(
+                request,
+                "PrefabOpenFailed",
+                "Prefab Stage has no root GameObject: " + meta->AssetPath,
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"prefabPath", meta->AssetPath},
+                {"sessionId", AutomationProtocol::FormatSessionId(session->GetId().Value)},
+                {"rootGuid", rootGuid},
+                {"guid", meta->Guid.ToString()},
+                {"opened", true},
+                {"alreadyOpen", alreadyOpen},
+                {"previousStageClosed", previousStageClosed},
+                {"previousStageDirty", previousStageDirty}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandlePrefabSave(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string prefabPath = request.Payload.value("prefabPath", "");
+        if (prefabPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "prefabPath is required.");
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            return MakeError(request, "InternalError", "AssetManager is not available.");
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(prefabPath);
+        if (meta == nullptr)
+        {
+            return MakeError(
+                request,
+                "AssetNotFound",
+                "No imported asset at '" + prefabPath + "'.",
+                Json{{"prefabPath", prefabPath}});
+        }
+
+        SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(context.FindSubModule(SceneEditor::kModuleId));
+        if (sceneEditor == nullptr)
+        {
+            return MakeError(request, "InternalError", "SceneEditor module is unavailable.");
+        }
+
+        PrefabStageController& stages = sceneEditor->GetPrefabStages();
+        if (!stages.HasStage(meta->AssetPath))
+        {
+            return MakeError(
+                request,
+                "PrefabNotOpen",
+                "No Prefab Stage is open for '" + meta->AssetPath + "'; call prefab.open first.",
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        const std::filesystem::path prefabAbsolutePath =
+            AssetManager::Get().ResolveAssetAbsolutePath(meta->AssetPath);
+        AssetFileRollback rollback;
+        rollback.Capture(prefabAbsolutePath);
+
+        std::string saveError;
+        if (!stages.SaveStage(meta->AssetPath, context, &saveError))
+        {
+            rollback.Restore();
+            return MakeError(
+                request,
+                "SaveFailed",
+                saveError.empty() ? "Prefab Stage save failed." : saveError,
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"prefabPath", meta->AssetPath},
+                {"saved", true},
+                {"guid", meta->Guid.ToString()}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandlePrefabClose(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string prefabPath = request.Payload.value("prefabPath", "");
+        const bool bDiscard = request.Payload.value("discard", false);
+        if (prefabPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "prefabPath is required.");
+        }
+
+        if (!AssetManager::HasInstance())
+        {
+            return MakeError(request, "InternalError", "AssetManager is not available.");
+        }
+
+        const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(prefabPath);
+        if (meta == nullptr)
+        {
+            return MakeError(
+                request,
+                "AssetNotFound",
+                "No imported asset at '" + prefabPath + "'.",
+                Json{{"prefabPath", prefabPath}});
+        }
+        if (meta->AssetType != "Prefab")
+        {
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "'" + meta->AssetPath + "' is a " + meta->AssetType + " asset, not a Prefab.",
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        SceneEditor* sceneEditor = dynamic_cast<SceneEditor*>(context.FindSubModule(SceneEditor::kModuleId));
+        if (sceneEditor == nullptr)
+        {
+            return MakeError(request, "InternalError", "SceneEditor module is unavailable.");
+        }
+
+        PrefabStageController& stages = sceneEditor->GetPrefabStages();
+        if (!stages.HasStage(meta->AssetPath))
+        {
+            return MakeError(
+                request,
+                "PrefabNotOpen",
+                "No Prefab Stage is open for '" + meta->AssetPath + "'.",
+                Json{{"prefabPath", meta->AssetPath}});
+        }
+
+        const bool bDirty = stages.IsDirty(meta->AssetPath);
+        if (bDirty && !bDiscard)
+        {
+            return MakeError(
+                request,
+                "UnsavedChanges",
+                "Prefab Stage has unsaved changes; save it or pass discard=true.",
+                Json{{"prefabPath", meta->AssetPath}, {"dirty", true}});
+        }
+
+        // A discarded Stage must not look dirty, otherwise the document close path would raise a
+        // modal unsaved-changes dialog. Clean Stages close exactly like a human tab close.
+        if (bDiscard)
+        {
+            stages.ClearDirty(meta->AssetPath);
+        }
+
+        EditorDocumentHost& host = context.GetDocumentHost();
+        if (EditorDocumentSession* session = host.FindSessionByAssetKey(meta->AssetPath))
+        {
+            host.RequestClose(session->GetId());
+        }
+
+        // No document session (Stage opened outside a Prefab tab): tear the Stage down directly.
+        if (stages.HasStage(meta->AssetPath))
+        {
+            if (stages.GetActiveAssetKey() == meta->AssetPath)
+            {
+                sceneEditor->ExitPrefabStage();
+            }
+            stages.Discard(meta->AssetPath);
+        }
+
+        // A discarded Stage scene is destroyed: never leave the editor inspecting freed memory.
+        if (!stages.HasActiveStage())
+        {
+            Scene* documentScene = sceneEditor->GetDocumentScene();
+            Scene* inspectingScene = context.GetInspectingScene();
+            if (documentScene != nullptr && inspectingScene != nullptr && inspectingScene != documentScene)
+            {
+                context.SetInspectingScene(documentScene);
+                sceneEditor->SyncSelectionWithScene();
+            }
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"prefabPath", meta->AssetPath},
+                {"closed", true},
+                {"discarded", bDirty && bDiscard}});
     }
 
 }

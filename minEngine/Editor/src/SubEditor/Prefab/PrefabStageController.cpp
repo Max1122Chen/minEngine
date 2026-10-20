@@ -332,12 +332,29 @@ namespace minEngine
 
     bool PrefabStageController::SaveActive(IEditorContext& context, std::string* outError)
     {
-        PrefabEditorStage* stage = GetActiveStage();
-        if (stage == nullptr || !stage->Asset || !stage->StageScene)
+        if (!HasActiveStage())
         {
             if (outError)
             {
                 *outError = "No active Prefab Stage to save.";
+            }
+            return false;
+        }
+
+        return SaveStage(m_ActiveAssetKey, context, outError);
+    }
+
+    bool PrefabStageController::SaveStage(
+        const std::string& assetKey,
+        IEditorContext& context,
+        std::string* outError)
+    {
+        PrefabEditorStage* stage = FindStage(assetKey);
+        if (stage == nullptr || !stage->Asset || !stage->StageScene)
+        {
+            if (outError)
+            {
+                *outError = "Prefab Stage is not open: " + assetKey;
             }
             return false;
         }

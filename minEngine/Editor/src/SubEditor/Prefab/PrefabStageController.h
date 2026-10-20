@@ -35,8 +35,11 @@ namespace minEngine
         const std::string& GetActiveAssetKey() const { return m_ActiveAssetKey; }
         bool HasActiveStage() const { return !m_ActiveAssetKey.empty(); }
 
-        /** S03: write Stage tree back to Prefab asset (Guid-preserving). Stub until Save slice. */
+        /** Write the active Stage tree back to its Prefab asset (asset Guid preserved). */
         bool SaveActive(IEditorContext& context, std::string* outError = nullptr);
+
+        /** Same as SaveActive for a named Stage, so automation can save without stealing focus. */
+        bool SaveStage(const std::string& assetKey, IEditorContext& context, std::string* outError = nullptr);
 
         /** Drop all stage Scene strong refs (Editor shutdown before Engine). */
         void Shutdown();

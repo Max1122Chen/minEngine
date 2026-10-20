@@ -14,6 +14,8 @@
 #include "Shell/Document/EditorDocumentSession.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Prefab/PrefabEditConstraints.h"
+#include "SubEditor/Prefab/PrefabStage.h"
+#include "SubEditor/Prefab/PrefabStageController.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
 #include "Runtime/Core/Object/MEObject.h"
@@ -53,11 +55,13 @@ namespace minEngine
 
     SceneEditorResult SceneEditorServices::EnsureSceneSession(const EditorDocumentSession& session)
     {
-        if (session.GetTypeId() != "Scene")
+        const std::string& typeId = session.GetTypeId();
+        if (typeId == "Scene" || typeId == "Prefab")
         {
-            return Fail(SceneEditorError::InvalidArgument, "Session is not a Scene document.");
+            return OkResult();
         }
-        return OkResult();
+
+        return Fail(SceneEditorError::InvalidArgument, "Session is not a Scene or Prefab document.");
     }
 
     SceneEditor* SceneEditorServices::ResolveSceneEditor(IEditorContext& context, SceneEditorResult& outError)
@@ -172,8 +176,25 @@ namespace minEngine
             return error;
         }
 
-        // MVP binding: session selects command stack; Scene is the Level document scene.
-        Scene* scene = sceneEditor->GetDocumentScene();
+        // Session selects the command stack and the scene it edits. A Prefab session edits its
+        // Prefab Stage scene: the same scene the Prefab document binds while it is focused.
+        Scene* scene = nullptr;
+        if (session.GetTypeId() == "Prefab")
+        {
+            PrefabEditorStage* stage = sceneEditor->GetPrefabStages().FindStage(session.GetAssetKey());
+            if (stage == nullptr || stage->StageScene == nullptr)
+            {
+                return Fail(
+                    SceneEditorError::NotFound,
+                    "Prefab Stage is not open: " + session.GetAssetKey());
+            }
+            scene = stage->StageScene.get();
+        }
+        else
+        {
+            scene = sceneEditor->GetDocumentScene();
+        }
+
         if (scene == nullptr)
         {
             return Fail(SceneEditorError::NotFound, "No document Scene is open.");

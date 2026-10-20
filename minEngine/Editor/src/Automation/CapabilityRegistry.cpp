@@ -65,6 +65,25 @@ namespace minEngine
         Add({"asset", "delete_folder", "asset", "asset.delete_folder", false, false, "Delete empty folder"});
         Add({"asset", "batch_rename", "asset", "asset.batch_rename", false, false, "Batch rename Foo/Foo_1..."});
 
+        Add({
+            "prefab",
+            "create_from_game_object",
+            "asset",
+            "prefab.create_from_game_object",
+            true,
+            false,
+            "Serialize a scene GameObject subtree to a Prefab asset; scene stays untouched"});
+        Add({"prefab", "open", "control", "prefab.open", false, false, "Open a Prefab Stage session"});
+        Add({
+            "prefab",
+            "save",
+            "asset",
+            "prefab.save",
+            false,
+            false,
+            "Write the Prefab Stage tree back to its asset; asset Guid preserved"});
+        Add({"prefab", "close", "control", "prefab.close", false, false, "Close a Prefab Stage session"});
+
         Add({"sprite", "create_from_texture", "asset", "sprite.create_from_texture", false, false, "Create Sprite from Texture2D"});
         Add({"sprite", "save", "asset", "sprite.save", false, false, "Save Sprite asset"});
         Add({"sprite_atlas", "create", "asset", "sprite_atlas.create", false, false, "Create empty SpriteAtlas"});
