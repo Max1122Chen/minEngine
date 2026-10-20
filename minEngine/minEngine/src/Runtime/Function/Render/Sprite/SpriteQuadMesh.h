@@ -8,13 +8,27 @@ namespace minEngine
     class RHI;
 
     /**
-     * Process-wide unit quad for SpriteComponent (center origin, edge length 1, +Z normal).
+     * Process-wide unit quad shared by SpriteComponent (world) and ScreenUI widgets.
+     * Model space: center origin, edge length 1, +Z normal; the -Y edge carries uv v=0
+     * (texture bottom). A caller placing this quad in a Y-down space (ScreenUI pixels)
+     * owns that space conversion — see BUG-RENDER-015.
      * Vertex layout matches StaticMeshLoader (a_Position/a_TexCoord/a_Normal/a_Tangent).
      */
     class SpriteQuadMesh
     {
     public:
+        static constexpr uint32_t VertexCount = 4;
+        /** pos3 + uv2 + normal3 + tangent4. */
+        static constexpr uint32_t FloatsPerVertex = 12;
+        /** Float offset of a_TexCoord inside one interleaved vertex. */
+        static constexpr uint32_t TexCoordFloatOffset = 3;
+        static constexpr uint32_t IndexCount = 6;
+
         static SpriteQuadMesh& Get();
+
+        /** CPU-side quad definition consumed by EnsureInitialized; tests read it as the geometry source of truth. */
+        static const float* GetInterleavedVertexData();
+        static const uint32_t* GetIndexData();
 
         void EnsureInitialized(RHI& rhi);
         void Shutdown();

@@ -21,7 +21,11 @@ namespace minEngine
         const float height = sizePx.y;
         const Vector3 center(topLeftPx.x + width * 0.5f, topLeftPx.y + height * 0.5f, 0.0f);
         const Matrix4 translation = glm::translate(Matrix4(1.0f), center);
-        const Matrix4 scale = glm::scale(Matrix4(1.0f), Vector3(width, height, 1.0f));
+        // Shared SpriteQuadMesh is authored Y up: its -Y edge carries uv v=0 (texture bottom).
+        // Pixel space is Y down, so the quad's Y axis is mirrored here to keep texture bottom
+        // at the widget's bottom edge; without the mirror UI images render upside down
+        // (BUG-RENDER-015). ScreenUI draws with culling off, so the winding change is inert.
+        const Matrix4 scale = glm::scale(Matrix4(1.0f), Vector3(width, -height, 1.0f));
         return translation * scale;
     }
 

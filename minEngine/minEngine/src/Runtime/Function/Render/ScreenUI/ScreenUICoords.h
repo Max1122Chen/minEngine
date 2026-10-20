@@ -15,6 +15,8 @@ namespace minEngine
         /**
          * Model matrix for shared unit quad (center origin, edge length 1).
          * topLeftPx / sizePx are in viewport pixels (origin top-left).
+         * Widget-local +Y maps to screen +Y (down): the shared quad is Y up, so this
+         * matrix mirrors Y and keeps texture-bottom (uv v=0) on the widget's bottom edge.
          */
         static Matrix4 MakeWidgetModelMatrix(const Vector2& topLeftPx, const Vector2& sizePx);
 

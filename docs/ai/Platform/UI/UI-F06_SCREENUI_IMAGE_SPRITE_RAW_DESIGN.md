@@ -292,6 +292,26 @@ bool CanDraw() const;
 | S02 | 测试 + Editor 属性可见性说明 | **Done**（suite；Editor 说明见 Design） |
 | S03 |（可选）便利 `SetRawTexture` / `SetSpriteSource` | Deferred |
 
+## UV 契约澄清（BUG-RENDER-015 追加，2026-09-09）
+
+Constraints §"UV 空间必须与现有 Sprite/ScreenUI 着色约定一致"（本文件第 48 行）只规定了 **纹理侧** 约定
+（`u0,v0,u1,v1`；`v=0` 在纹理底，来自 `Sprite::GetUVRectNormalized()`），没有规定 **几何侧** 约定，于是留下一个缺口：
+
+- 共享 `SpriteQuadMesh` 的顶点是"模型 -Y 边携带 `uv.v=0`"（模型空间 Y 向上，world Sprite 依赖它）。
+- ScreenUI 的像素正交投影是 **Y 向下**（左上原点）。把上面这个 quad 用**正** Y 缩放放进该空间，会让 `v=0`（纹理底）
+  落到 widget 顶边 → 图像上下颠倒。
+
+**澄清后的契约（两条同时成立，缺一即翻）：**
+
+| 侧 | 约定 | 拥有者 |
+|----|------|--------|
+| 纹理 / UV rect | `v=0` = 纹理底；直接用 `GetUVRectNormalized()`，禁止第二套转换（本文件第 48 行不变） | `Sprite` / `SpriteQuadMesh` |
+| 几何 / 空间 | 谁把共享 quad 放进 Y 向下的空间，谁负责镜像 quad 的 Y 轴；ScreenUI 的镜像点在 `ScreenUICoords::MakeWidgetModelMatrix`（Y 缩放取负） | `ScreenUICoords` |
+
+因此 UI-F06 的 Image 绘制路径**不需要也不允许**额外 UV 翻转：Raw 与 Sprite 两种 SourceMode 共用同一 model 矩阵，
+朝向由几何侧统一保证。回归 oracle 见 `Tests/Suites/ScreenUIOrientationTest.cpp`（suite `screen-ui-orientation`）：
+同一纹理下 world `SpriteComponent` 与 UI `ImageComponent` 的屏幕朝向必须一致。缺陷详情：`docs/ai/bugs/BUG-RENDER-015.md`。
+
 ## UI-F07 占位说明
 
 **UI-F07 — ScreenUI Image FillAmount**（Planned）：0–1 填充进度（炉等）。建议 F06 Review+ 后再开 Design。本 Feature 不实现。
