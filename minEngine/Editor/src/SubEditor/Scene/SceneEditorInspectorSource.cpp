@@ -142,6 +142,8 @@ namespace minEngine
 
         ImGui::PopStyleVar();
 
+        DrawGameObjectStatusSwitches(*gameObject);
+
         ImGui::Text("Selected ID: %llu", static_cast<unsigned long long>(gameObject->GetID()));
 
         ImGui::Spacing();
@@ -320,9 +322,63 @@ namespace minEngine
                 openHeaderContextMenu = true;
             }
 
+            // Only components with a presence in the scene carry the presentation axis.
+            SceneComponent* sceneComponent =
+                component->IsA(SceneComponent::StaticClass()) ? static_cast<SceneComponent*>(component.get()) : nullptr;
+            if (sceneComponent != nullptr)
+            {
+                const std::string visibleCheckboxId =
+                    std::string("##component_visible_") + std::to_string(reinterpret_cast<uintptr_t>(component.get()));
+                const PropertyUndoCaptureContext visibleUndoContext =
+                    MakePropertyUndoCaptureContext(component.get(), classInfo, "m_bVisible");
+                std::vector<uint8_t> visibleBeforeBlob;
+                const bool capturedVisibleBefore = SerializePropertyUndoBlob(visibleUndoContext, visibleBeforeBlob);
+
+                // The box holds the AUTHORED flag so an ancestor that is off never rewrites the
+                // author's choice, and the row stays writable to preset a subtree before it opens.
+                bool componentVisible = sceneComponent->IsVisibleSelf();
+
+                ImGui::SameLine();
+                if (ImGui::Checkbox(visibleCheckboxId.c_str(), &componentVisible))
+                {
+                    sceneComponent->SetVisible(componentVisible);
+                    m_SceneEditor.MarkSceneDirty();
+
+                    std::vector<uint8_t> visibleAfterBlob;
+                    if (capturedVisibleBefore && SerializePropertyUndoBlob(visibleUndoContext, visibleAfterBlob))
+                    {
+                        TryPropertyUndoCommitImmediate(visibleUndoContext, visibleBeforeBlob, visibleAfterBlob);
+                    }
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("Visible");
+                }
+                if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+                {
+                    openHeaderContextMenu = true;
+                }
+            }
+
             ImGui::SameLine();
             DrawComponentHeaderRow(
                 *gameObject, *component, classInfo, appearance, componentOpen, openHeaderContextMenu);
+
+            // Read-only: an off ancestor makes the component behave as off while its own box keeps
+            // the author's value, so the reason is shown instead of silently clearing the switch.
+            // The test is on the owner, not on the effective state, so a row the author turned off
+            // *and* an ancestor turned off still reveals that something above is off too.
+            GameObject* componentOwner = component->GetOwner();
+            if (componentOwner != nullptr && !componentOwner->IsActive())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("Inactive in Hierarchy");
+            }
+            if (sceneComponent != nullptr && componentOwner != nullptr && !componentOwner->IsVisible())
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("Hidden in Hierarchy");
+            }
 
             if (openHeaderContextMenu)
             {
@@ -1308,6 +1364,64 @@ namespace minEngine
         std::memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
         std::strncpy(m_RenameBuffer, gameObject.GetName().c_str(), sizeof(m_RenameBuffer) - 1);
         m_RequestRenameFocus = true;
+    }
+
+    void SceneEditorInspectorSource::DrawGameObjectStatusSwitches(GameObject& gameObject)
+    {
+        const Reflection::MEClass* gameObjectClass = gameObject.GetClass();
+
+        // Both boxes write the AUTHORED flag, never the effective one: a node whose ancestor is
+        // off must still store what the author asked for, so switching it back on is one click.
+        auto drawAuthoredSwitch = [this, &gameObject, gameObjectClass](const char* label,
+                                                                     const char* propertyPath,
+                                                                     bool selfValue,
+                                                                     auto&& applyValue)
+        {
+            const PropertyUndoCaptureContext undoContext =
+                MakePropertyUndoCaptureContext(&gameObject, gameObjectClass, propertyPath);
+            std::vector<uint8_t> beforeBlob;
+            const bool capturedBefore = SerializePropertyUndoBlob(undoContext, beforeBlob);
+
+            bool checked = selfValue;
+            if (ImGui::Checkbox(label, &checked))
+            {
+                applyValue(checked);
+                m_SceneEditor.MarkSceneDirty();
+
+                std::vector<uint8_t> afterBlob;
+                if (capturedBefore && SerializePropertyUndoBlob(undoContext, afterBlob))
+                {
+                    TryPropertyUndoCommitImmediate(undoContext, beforeBlob, afterBlob);
+                }
+            }
+        };
+
+        auto drawHierarchyBadge = [](const char* text)
+        {
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", text);
+        };
+
+        ImGui::PushID("GameObjectStatusSwitches");
+        drawAuthoredSwitch("Active", "m_bActive", gameObject.IsActiveSelf(),
+                           [&gameObject](bool value) { gameObject.SetActive(value); });
+        ImGui::SameLine();
+        drawAuthoredSwitch("Visible", "m_bVisible", gameObject.IsVisibleSelf(),
+                           [&gameObject](bool value) { gameObject.SetVisible(value); });
+        ImGui::PopID();
+
+        // Read-only badges: they explain why the node or its subtree behaves as off while the
+        // switch above still shows the author's own value. Testing the parent rather than the
+        // effective state keeps the badge visible when the node itself is off as well.
+        const GameObject* parentGameObject = gameObject.GetParent();
+        if (parentGameObject != nullptr && !parentGameObject->IsActive())
+        {
+            drawHierarchyBadge("Inactive in Hierarchy");
+        }
+        if (parentGameObject != nullptr && !parentGameObject->IsVisible())
+        {
+            drawHierarchyBadge("Hidden in Hierarchy");
+        }
     }
 
     void SceneEditorInspectorSource::DrawGameObjectHeaderContextMenu(GameObject& gameObject)

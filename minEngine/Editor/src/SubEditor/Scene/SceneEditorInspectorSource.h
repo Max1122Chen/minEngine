@@ -102,6 +102,12 @@ namespace minEngine
 
         void DrawGameObjectHeaderContextMenu(GameObject& gameObject);
         void DrawComponentContextMenu(Component& component);
+        /**
+         * Authored active / visible switches plus read-only hierarchy badges for the inspected
+         * GameObject. Drawn beside the header rather than inside it: the header Selectable owns
+         * the double-click rename and the right-click menu, and nested widgets steal those clicks.
+         */
+        void DrawGameObjectStatusSwitches(GameObject& gameObject);
         bool DrawComponentHeaderRow(GameObject& gameObject,
                                     Component& component,
                                     const Reflection::MEClass* classInfo,
