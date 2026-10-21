@@ -2,7 +2,7 @@
 
 ## Meta
 - **ID:** BUG-CORE-007
-- **Status:** Open
+- **Status:** Fixed（2026-10-21，随 `UI-F10` S03 落地：`CanvasComponent` 重写 `OnActivate/OnDeactivate`，递归标脏 owner 子树内的 Widget 代理；只做失效，不写作者化字段。反向验证：清空传播后 `WidgetGraphicTest` 断言变红）
 - **Severity:** S2（用户可见：关掉 Canvas 后其下 UI 继续显示最后一帧，直到别的原因触发代理更新）
 - **Owner:** 待分配（UI 代理失效传播）
 - **Found:** 2026-10-21（渲染数据分域修复期间发现）

@@ -163,7 +163,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `UI-F06` | ScreenUI Image Sprite / Raw source + UV | **Done** | — | [Design](./Platform/UI/UI-F06_SCREENUI_IMAGE_SPRITE_RAW_DESIGN.md) · `test screen-ui-image` |
 | `UI-F07` | ScreenUI Image FillAmount（进度条） | **Planned** | — | Design 未开；依赖 UI-F06；炉进度等 |
 | `CORE-F43` | GO/Component 的 active 与 visible 语义与级联（有效态 = 自身 && 祖先链 GO） | **Draft**（设计待主人审批） | — | [Design](./Platform/Core/CORE-F43_GO_COMPONENT_ACTIVITY_AND_VISIBILITY_DESIGN.md) |
-| `UI-F10` | Widget 内容源接口化（去具体类型依赖：Widget 不再认识 Image/Text，改由内容源多态提供） | **Planned**（设计待开） | — | 待设计 · 由 `UI-F09` 前置 |
+| `UI-F10` | Widget 图形抽象（`WidgetGraphicComponent` 抽象基类；Widget 只认基类；多图形确定性裁决与告警；Canvas 失活失效） | **Implemented**（S01–S03 全部落地；`test widget-graphic`；吸收 `BUG-CORE-007`） | — | [Design](./Platform/UI/UI-F10_WIDGET_GRAPHIC_COMPONENT_DESIGN.md) · 吸收 `BUG-CORE-007` · `UI-F09` 前置 |
 | `UI-F09` | UI 表达力整体规划（9-slice · FillAmount · 文字垂直对齐 · 及引擎常规 UI 能力） | **Planned** | — | 登记 [Backlog](./Platform/UI/UI-F09_UI_SPRITE_EXPRESSION_CAPABILITY_BACKLOG.md) · 待设计 + 主人审批 |
 | `SPR-F08` | Sprite 表达力整体规划（pivot · tiling · 排序/裁剪 · 及引擎常规 Sprite 能力） | **Planned** | — | 登记 [Backlog](./Platform/UI/UI-F09_UI_SPRITE_EXPRESSION_CAPABILITY_BACKLOG.md) · 待设计 + 主人审批 |
 | `UI-F08` | ScreenUI Widget 指针交互（多键+修饰键；Widget 统一事件；Button 糖；Drag 发起键） | **Review**（Must 已实现；待维护者验收） | — | [Design](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) · [Impl](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_IMPLEMENTATION.md) · `test screen-ui-pointer` / button / drag |
