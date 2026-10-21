@@ -56,6 +56,7 @@ namespace minEngine
             "material-ir",
             "screen-ui-game-viewport",
             "hierarchy-activity",
+            "activity-consumers",
         };
 
         std::vector<ITestSuite*> ordered;

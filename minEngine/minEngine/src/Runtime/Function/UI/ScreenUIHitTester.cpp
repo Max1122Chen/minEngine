@@ -135,7 +135,8 @@ namespace minEngine
         WidgetComponent*& inOutBest,
         uint32_t& inOutBestOrder)
     {
-        if (gameObject == nullptr)
+        // An inactive node takes its whole subtree with it, so nothing below it can be hit.
+        if (gameObject == nullptr || !gameObject->IsActiveInHierarchy())
         {
             return;
         }
@@ -145,7 +146,10 @@ namespace minEngine
         if (!widgets.empty() && widgets[0])
         {
             WidgetComponent* widget = widgets[0].get();
-            if (widget->IsActive() && widget->IsHitTestVisible() &&
+            // A widget whose content sources all contribute nothing draws nothing, so it must not
+            // take the pointer either: an invisible plate would swallow every click below it.
+            if (widget->IsActiveAndVisible() && widget->IsHitTestVisible() &&
+                widget->HasContentContribution() &&
                 widget->GetComputedRect().Contains(refPoint))
             {
                 const uint32_t order = widget->GetStableOrder();

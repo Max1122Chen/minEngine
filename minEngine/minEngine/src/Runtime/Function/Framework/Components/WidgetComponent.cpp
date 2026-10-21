@@ -212,6 +212,18 @@ namespace minEngine
         }
     }
 
+    bool WidgetComponent::HasContentContribution() const
+    {
+        const TextComponent* text = FindSiblingText();
+        if (text != nullptr && text->CanAttemptDraw())
+        {
+            return true;
+        }
+
+        const ImageComponent* image = FindSiblingImage();
+        return image != nullptr && image->CanDraw();
+    }
+
     ImageComponent* WidgetComponent::FindSiblingImage() const
     {
         GameObject* owner = GetOwner();
@@ -331,8 +343,13 @@ namespace minEngine
         proxy.m_TopLeftPx = m_ComputedRect.TopLeft;
         proxy.m_SizePx = m_ComputedRect.Size;
 
+        // The presentation axis gates the draw bit: an inactive or hidden widget assembles an
+        // empty proxy. Its content sources decide the rest, and each of them gates on its own
+        // switch, so switching one off empties the picture rather than freezing the last one.
+        const bool bWidgetCanDraw = IsActiveAndVisible();
+
         TextComponent* text = FindSiblingText();
-        if (text != nullptr && text->CanAttemptDraw())
+        if (bWidgetCanDraw && text != nullptr && text->CanAttemptDraw())
         {
             text->RebuildMeshIfNeeded(m_ComputedRect.Size);
             if (text->HasDrawableMesh())
@@ -354,7 +371,7 @@ namespace minEngine
         }
 
         ImageComponent* image = FindSiblingImage();
-        const bool bImageDrawable = image != nullptr && image->CanDraw();
+        const bool bImageDrawable = bWidgetCanDraw && image != nullptr && image->CanDraw();
         if (bImageDrawable)
         {
             proxy.m_Color = image->GetColor().ToVector4();

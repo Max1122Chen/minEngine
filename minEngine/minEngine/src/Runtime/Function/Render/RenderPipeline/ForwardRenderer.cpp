@@ -10,6 +10,7 @@
 #include "Render/SceneProxies/WidgetSceneProxy.h"
 #include "Render/ScreenUI/ScreenUICoords.h"
 #include "Runtime/Function/Framework/Components/CanvasComponent.h"
+#include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Framework/Components/WidgetComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -63,6 +64,19 @@ namespace
 
 namespace minEngine
 {
+    namespace
+    {
+        /**
+         * A light contributes only while it is active and visible. A hidden light keeps its proxy
+         * and keeps ticking; it simply produces no illumination and no shadow.
+         */
+        bool ContributesLight(const LightSceneProxy* lightProxy)
+        {
+            return lightProxy != nullptr && lightProxy->m_LightComponent != nullptr &&
+                lightProxy->m_LightComponent->IsActiveAndVisible();
+        }
+    }
+
     ShadowGraphPermanentOutput ForwardRenderer::MakePermanentShadowOutput(size_t passIndex)
     {
         ShadowGraphPermanentOutput output{};
@@ -753,7 +767,7 @@ namespace minEngine
         DirectionalLightSceneProxy* firstValidDirectionalLight = nullptr;
         for (auto* dirLightProxy : renderScene->m_DirectionalLightSceneProxies)
         {
-            if (dirLightProxy && dirLightProxy->m_LightComponent)
+            if (ContributesLight(dirLightProxy))
             {
                 firstValidDirectionalLight = dirLightProxy;
                 break;
@@ -777,7 +791,7 @@ namespace minEngine
         for(size_t i = 0; i < renderScene->m_PointLightSceneProxies.size() && i < RenderSystem::MAX_POINT_LIGHTS; ++i)
         {
             PointLightSceneProxy* pointLightProxy = renderScene->m_PointLightSceneProxies[i];
-            if (!pointLightProxy || !pointLightProxy->m_LightComponent)
+            if (!ContributesLight(pointLightProxy))
             {
                 continue;
             }
@@ -813,7 +827,7 @@ namespace minEngine
         for(size_t i = 0; i < renderScene->m_SpotLightSceneProxies.size() && i < RenderSystem::MAX_SPOT_LIGHTS; ++i)
         {
             SpotLightSceneProxy* spotLightProxy = renderScene->m_SpotLightSceneProxies[i];
-            if (!spotLightProxy || !spotLightProxy->m_LightComponent)
+            if (!ContributesLight(spotLightProxy))
             {
                 continue;
             }
@@ -852,7 +866,7 @@ namespace minEngine
 
         for (auto* dirLightProxy : renderScene->m_DirectionalLightSceneProxies)
         {
-            if (!dirLightProxy || !dirLightProxy->m_LightComponent || !dirLightProxy->m_CastsShadow)
+            if (!ContributesLight(dirLightProxy) || !dirLightProxy->m_CastsShadow)
             {
                 continue;
             }
@@ -871,7 +885,7 @@ namespace minEngine
         uint32_t spotShadowCount = 0;
         for (auto* spotLightProxy : renderScene->m_SpotLightSceneProxies)
         {
-            if (!spotLightProxy || !spotLightProxy->m_LightComponent || !spotLightProxy->m_CastsShadow)
+            if (!ContributesLight(spotLightProxy) || !spotLightProxy->m_CastsShadow)
             {
                 continue;
             }
@@ -896,7 +910,7 @@ namespace minEngine
         uint32_t pointShadowCount = 0;
         for (auto* pointLightProxy : renderScene->m_PointLightSceneProxies)
         {
-            if (!pointLightProxy || !pointLightProxy->m_LightComponent || !pointLightProxy->m_CastsShadow)
+            if (!ContributesLight(pointLightProxy) || !pointLightProxy->m_CastsShadow)
             {
                 continue;
             }
@@ -1168,6 +1182,14 @@ namespace minEngine
                 continue;
             }
 
+            const PrimitiveComponent* sourceComponent = primitiveProxy->m_PrimitiveComponent;
+            // Hidden primitives stay registered and keep ticking; they only stop producing draw
+            // and shadow output. Both collectors are fed from this loop, so one guard covers both.
+            if (!sourceComponent->IsActiveAndVisible())
+            {
+                continue;
+            }
+
             const Math::Geometry::AABB worldBounds = primitiveProxy->ResolveWorldBounds();
 
             bool bMainViewVisible = true;
@@ -1240,6 +1262,13 @@ namespace minEngine
             }
 
             WidgetComponent* widget = widgetProxy->m_WidgetComponent;
+            // The proxy's draw bit already answers this; re-reading the live state keeps a proxy
+            // assembled before the widget or an ancestor was switched off from still drawing.
+            if (!widget->IsActiveAndVisible())
+            {
+                continue;
+            }
+
             CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(widget->GetOwner());
             if (canvas == nullptr || !canvas->IsActive())
             {

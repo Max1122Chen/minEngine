@@ -108,7 +108,8 @@ namespace minEngine
         const std::vector<GameObject*> participants = m_FixedTickGameObjects;
         for (GameObject* gameObject : participants)
         {
-            if (gameObject == nullptr || gameObject->IsPendingDestroy())
+            if (gameObject == nullptr || gameObject->IsPendingDestroy() ||
+                !gameObject->IsActiveInHierarchy())
             {
                 continue;
             }
@@ -282,7 +283,10 @@ namespace minEngine
         for (size_t i = 0; i < count; ++i)
         {
             GameObject* gameObject = m_GameObjects[i].get();
-            if (gameObject == nullptr || gameObject->IsPendingDestroy())
+            // An inactive node takes its whole subtree with it: every descendant is inactive too,
+            // so the flat walk can stop at the node itself.
+            if (gameObject == nullptr || gameObject->IsPendingDestroy() ||
+                !gameObject->IsActiveInHierarchy())
             {
                 continue;
             }

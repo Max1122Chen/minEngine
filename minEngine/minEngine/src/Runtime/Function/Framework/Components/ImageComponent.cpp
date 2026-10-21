@@ -106,6 +106,13 @@ namespace minEngine
 
     bool ImageComponent::CanDraw() const
     {
+        // A style source that is switched off contributes nothing, even with valid data: the
+        // widget beside it assembles the picture, so its own switch has to reach this gate.
+        if (!IsActive())
+        {
+            return false;
+        }
+
         const std::shared_ptr<Texture2D> texture = ResolveDrawTextureShared();
         if (texture == nullptr)
         {

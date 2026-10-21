@@ -22,7 +22,9 @@ namespace minEngine
 
     void UILayoutPass::LayoutGameObject(GameObject* gameObject, const UIRect& parentRect)
     {
-        if (gameObject == nullptr)
+        // An inactive node takes its whole subtree with it: nothing below it lays out either, so
+        // the children keep the rects they last had until the subtree is active again.
+        if (gameObject == nullptr || !gameObject->IsActiveInHierarchy())
         {
             return;
         }

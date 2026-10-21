@@ -1,5 +1,6 @@
 #include "Component.h"
 
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -8,6 +9,36 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        /**
+         * Dirty the scene proxies of the widgets on the source's GameObject.
+         * A UI content source never draws by itself: the widget beside it assembles the proxy from
+         * it, and that proxy only refills while it is dirty. Without this wake-up, switching a
+         * source off would leave the last assembled picture on screen until something unrelated
+         * happened to rebuild it.
+         */
+        void NotifyOwnerWidgetContentChanged(const Component& source)
+        {
+            GameObject* owner = source.GetOwner();
+            if (owner == nullptr)
+            {
+                return;
+            }
+
+            for (const std::shared_ptr<Component>& sibling : owner->GetAllComponents())
+            {
+                if (!sibling || sibling->GetClass() == nullptr ||
+                    !sibling->IsA(WidgetComponent::StaticClass()))
+                {
+                    continue;
+                }
+
+                static_cast<WidgetComponent*>(sibling.get())->MarkRenderStateDirty();
+            }
+        }
+    }
+
     Component::Component() = default;
 
     Component::~Component()
@@ -85,6 +116,7 @@ namespace minEngine
         m_bActive = active;
         m_EffectiveActiveCache = kEffectiveStateUnknown;
         SyncActivationWithActiveFlag();
+        NotifyOwnerWidgetContentChanged(*this);
     }
 
     void Component::SyncActivationWithActiveFlag()

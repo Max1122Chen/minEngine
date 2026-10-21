@@ -966,6 +966,23 @@ namespace minEngine
             }
         };
 
+        struct ActivityConsumersTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"activity-consumers", "GO Activity / Visibility Consumers", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'activity-consumers'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "activity-consumers",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1294,6 +1311,7 @@ namespace minEngine
         using ScreenUITextSuite = TypedTestSuite<ScreenUITextTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using HierarchyActivitySuite = TypedTestSuite<HierarchyActivityTestSuiteTraits>;
+        using ActivityConsumersSuite = TypedTestSuite<ActivityConsumersTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
@@ -1372,6 +1390,7 @@ namespace minEngine
             registry.Register(ScreenUITextSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(HierarchyActivitySuite::Get());
+            registry.Register(ActivityConsumersSuite::Get());
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
             registry.Register(AnimationClipSuite::Get());

@@ -75,6 +75,13 @@ namespace minEngine
 
     bool TextComponent::CanAttemptDraw() const
     {
+        // A style source that is switched off contributes nothing, even with valid data: the
+        // widget beside it assembles the picture, so its own switch has to reach this gate.
+        if (!IsActive())
+        {
+            return false;
+        }
+
         return m_Font && m_Font->IsValid() && m_FontSize > 0.0f;
     }
 

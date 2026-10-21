@@ -71,6 +71,13 @@ namespace minEngine
         void SetHitTestVisible(bool visible) { m_bHitTestVisible = visible; }
         bool IsHitTestVisible() const { return m_bHitTestVisible; }
 
+        /**
+         * True when a sibling image or text source currently contributes content.
+         * A widget whose sources all contribute nothing produces no picture, so it is neither
+         * drawn nor allowed to take a pointer.
+         */
+        bool HasContentContribution() const;
+
         const UIRect& GetComputedRect() const { return m_ComputedRect; }
         void SetComputedRect(const UIRect& rect);
 
@@ -90,6 +97,8 @@ namespace minEngine
         void RemoveActivationFromSystems() override;
 
     private:
+        friend class Testing::TestAccess<WidgetComponent>;
+
         void EnsureRuntimeMaterial();
         void SyncMaterialParameters(ImageComponent* image);
         void FillSceneProxy(WidgetSceneProxy& proxy);
