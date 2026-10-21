@@ -27,8 +27,8 @@
 
 namespace
 {
-    // BUG-EDITOR-008: the asset reference guard is only reached when the target is NOT a live
-    // registry object, because a live object is resolved by the (already guarded) object branch.
+    // The asset reference guard is only reached when the target is NOT a live registry object,
+    // because a live object is resolved by the (already guarded) object branch.
     class ScopedManagers
     {
     public:

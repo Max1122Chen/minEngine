@@ -61,7 +61,7 @@ namespace minEngine
 
             // This WndProc exists exactly while raw mouse capture is registered, i.e. while an OS-level
             // constraint is applied; a focus loss here must revoke it immediately instead of waiting for
-            // the GLFW event pump (CORE-F42 P7 / I6c). The regaining side is handled by the GLFW callback.
+            // the GLFW event pump. The regaining side is handled by the GLFW callback.
             if ((msg == WM_ACTIVATE || msg == WM_ACTIVATEAPP) && s_RawMouseOwner != nullptr)
             {
                 const bool bActivating = msg == WM_ACTIVATE ? (LOWORD(wParam) != WA_INACTIVE) : (wParam != 0);
@@ -209,7 +209,7 @@ namespace minEngine
             return;
         }
 
-        // Second line of defence (CORE-F42 I5): release the OS-level constraint unconditionally before the
+        // Second line of defence: release the OS-level constraint unconditionally before the
         // window goes away; never rely on the editor having cleared it first.
         m_PointerConstraint.ReleaseAllAndForgetRequests();
 
@@ -279,7 +279,7 @@ namespace minEngine
     {
         glfwPollEvents();
 
-        // Platform focus truth, sampled every frame: never ImGui's AppFocusLost (CORE-F42 requirement 3).
+        // Platform focus truth, sampled every frame: never ImGui's AppFocusLost.
         // A missed focus-lost event is caught here by the watchdog (requirement 6).
         const bool bPlatformActive = m_Window != nullptr && glfwGetWindowAttrib(m_Window, GLFW_FOCUSED) == GLFW_TRUE;
         m_PointerConstraint.SyncPlatformFocus(bPlatformActive);
@@ -288,7 +288,7 @@ namespace minEngine
     void GLFWWindowSystem::SetCursorVisible(bool visible)
     {
         // Recorded only: the constraint is applied while this window is active and replayed on focus gain
-        // (CORE-F42 S01). Callers keep their existing per-frame call pattern.
+        // Callers keep their existing per-frame call pattern.
         m_PointerConstraint.SetCursorVisibleRequest(visible);
     }
 
@@ -570,7 +570,7 @@ namespace minEngine
         s_PreviousWindowFocusCallback = glfwSetWindowFocusCallback(m_Window, WindowFocusCallback);
 
         // Record the focus truth at creation without applying a request: the window keeps the cursor mode
-        // Initialize() set, so create-time behaviour is unchanged by S01.
+        // Initialize() set, so create-time behaviour is unchanged by this recording.
         m_PointerConstraint.InitializeWindowActive(glfwGetWindowAttrib(m_Window, GLFW_FOCUSED) == GLFW_TRUE);
     }
 

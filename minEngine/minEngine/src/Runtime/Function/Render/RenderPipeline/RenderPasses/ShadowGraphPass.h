@@ -24,7 +24,7 @@ namespace minEngine
         bool IsSet = false;
     };
 
-    /** One graph pass instance for a single ShadowDrawCommand (S04/F07 stub). */
+    /** One graph pass instance for a single ShadowDrawCommand (stub). */
     class ShadowGraphPass : public IRenderPass
     {
     public:

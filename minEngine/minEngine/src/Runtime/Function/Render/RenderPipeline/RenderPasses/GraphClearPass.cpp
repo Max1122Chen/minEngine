@@ -26,7 +26,7 @@ namespace minEngine
             return false;
         }
 
-        // Distinctive slate-blue so Editor viewport proves S05 (not black / not Phase1 idle).
+        // Distinctive slate-blue so the editor viewport proves the pass ran (not black / not idle).
         outRGBA[0] = 0.20f;
         outRGBA[1] = 0.35f;
         outRGBA[2] = 0.55f;

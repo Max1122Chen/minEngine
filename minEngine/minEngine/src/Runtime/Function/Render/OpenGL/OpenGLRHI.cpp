@@ -66,8 +66,8 @@ namespace minEngine
 
     void OpenGLRHI::Initialize()
     {
-        // BUILD-F03 knife 1: the engine's glad table is initialized here for every path that
-        // drives rendering through the RHI. Before knife 1 that happened implicitly - the
+        // The engine's glad table is initialized here for every path that drives rendering
+        // through the RHI. Before glad left the export table that happened implicitly - the
         // consumer linked the engine's exported gladLoadGLLoader, so its load call initialized
         // THIS module's copy. See OpenGLFunctionTable.h for the contract.
         EnsureOpenGLFunctionTableLoaded();

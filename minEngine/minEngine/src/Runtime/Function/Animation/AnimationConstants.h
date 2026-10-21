@@ -12,7 +12,7 @@ namespace minEngine
         Skinned = 1,
     };
 
-    // Import/palette limits (Design §2.7.1).
+    // Import and palette limits.
     constexpr int32_t kMaxBoneInfluences = 4;
     constexpr int32_t kMaxBonesPerSkeleton = 256;
 }

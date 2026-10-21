@@ -621,7 +621,7 @@ namespace minEngine
 
     OpenGLRHIShader::OpenGLRHIShader(std::string_view vertexSource, std::string_view fragmentSource)
     {
-        // BUILD-F03 knife 1: direct shader construction is the second structural GL entry. It is
+        // Direct shader construction is the second structural GL entry. It is
         // reached WITHOUT OpenGLRHI::Initialize() by EngineShaderUtils::TryCompileSourcesOnGpu
         // (the material smoke path in minEngineTests), which constructs this class directly.
         EnsureOpenGLFunctionTableLoaded();

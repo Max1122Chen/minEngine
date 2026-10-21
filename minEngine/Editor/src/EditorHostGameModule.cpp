@@ -8,7 +8,7 @@ namespace minEngine
     {
         // A string LITERAL pointer, constant-initialized: no dynamic initialization order and no
         // namespace-scope object that could run before the reflection registry exists
-        // (BUILD-F04 F3). The host always passes a literal (see main.h), so the pointer stays valid
+        // The host always passes a literal (see main.h), so the pointer stays valid
         // for the process lifetime.
         const char* s_HostEditorGameModule = kEditorNoGameModule;
     }
@@ -85,7 +85,7 @@ namespace minEngine
             "MaximumEditor.exe is the asset-only editor and cannot load game C++ modules.",
             std::string(required));
         ME_LOG(LogEditor, Error,
-            "Editor: exiting with code {} (hard error, no silent downgrade - BUILD-F04 S05 / Q4).",
+            "Editor: exiting with code {} (hard error, no silent downgrade).",
             kEditorExitCodeModuleRequirementUnmet);
 
         EditorModuleGateResult result;

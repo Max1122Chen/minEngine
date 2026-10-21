@@ -7,7 +7,7 @@
 
 namespace minEngine
 {
-    // BUILD-F04 S05: identity of an editor host that links NO game C++ module.
+    // Identity of an editor host that links NO game C++ module.
     inline constexpr const char* kEditorNoGameModule = "(none)";
 
     // The game module this EDITOR HOST was compiled against. libMaximumEditord.dll is one library
@@ -17,7 +17,7 @@ namespace minEngine
     // by minengine_add_editor_executable). A host that never calls the setter reads as "(none)".
     //
     // Only the setter is exported: the library and the automation harness consume the getter, and
-    // the editor DLL's export surface is a contract (BUILD-F04 S03 / O6), not a dumping ground.
+    // the editor DLL's export surface is a contract, not a dumping ground.
     EDITOR_API void SetHostEditorGameModule(const char* moduleId);
     std::string_view GetHostEditorGameModule();
     bool HostEditorIsAssetOnly();
@@ -31,9 +31,9 @@ namespace minEngine
     };
 
     // Pure verdict - no logging, no state. It is separated from the reporting path so the whole
-    // behaviour matrix (BUILD-F04_S05_ASSET_ONLY_EDITOR_IMPLEMENTATION.md) is one readable function.
+    // behaviour matrix is one readable function.
     // "(none)" and whitespace-only declarations both mean "no requirement": a descriptor that omits
-    // the field deserializes to "" and must keep behaving exactly like a pre-S05 descriptor.
+    // the field deserializes to "" and must keep behaving exactly like a descriptor that omits it.
     inline std::string_view TrimEditorModuleId(std::string_view value)
     {
         const char* kWhitespace = " \t\r\n";
@@ -70,7 +70,7 @@ namespace minEngine
                                 : EditorModuleGateVerdict::FailMismatch;
     }
 
-    // Non-zero by construction (design section 12 Q4, option 1: hard error, no silent downgrade),
+    // Non-zero by construction, and a hard error rather than a silent downgrade,
     // and distinct from CommandLineExitCode's 1/2 so a caller can tell "wrong editor" from
     // "bad command line" without parsing logs.
     inline constexpr int kEditorExitCodeModuleRequirementUnmet = 3;

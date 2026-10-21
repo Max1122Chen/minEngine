@@ -659,7 +659,7 @@ namespace minEngine::Serialization
         }
         case MEPropertyCategory::MulticastDelegate:
         {
-            // Binding persistence deferred (§3.4.1). Direct calls succeed as no-op.
+            // Binding persistence is deferred: direct calls succeed as a no-op.
             (void)valuePtr;
             (void)ownerObjectPtr;
             (void)archive;

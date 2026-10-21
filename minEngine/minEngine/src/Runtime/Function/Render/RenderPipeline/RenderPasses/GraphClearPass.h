@@ -12,7 +12,7 @@ namespace minEngine
 
     /**
      * vertical slice: declare SceneColor and clear it.
-     * Replaced when scene passes reconnect (S07).
+     * Replaced once the scene passes reconnect.
      */
     class GraphClearPass : public IRenderPass
     {

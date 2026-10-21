@@ -6,7 +6,7 @@
 
 namespace minEngine
 {
-    /** Path A translucency predicate (Design §9.4). */
+    /** Path A translucency predicate. */
     bool ColorAlphaIsTranslucent(float alpha);
     bool TextureMayHaveAlpha(const Texture2D* texture);
 

@@ -56,7 +56,7 @@ namespace minEngine
     };
 
     /**
-     * Focus-scoped pointer constraint state (CORE-F42 S01).
+     * Focus-scoped pointer constraint state.
      *
      * Remembers the last requested constraint (clip rect + cursor visibility) and the platform focus truth,
      * and guarantees an OS-level constraint exists only while this window is active:

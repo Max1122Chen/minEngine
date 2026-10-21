@@ -116,7 +116,7 @@ namespace minEngine
 
     void RenderSystem::Shutdown()
     {
-        // MAT-F08: these caches are process-lifetime statics that hold GPU objects (RHIShader,
+        // These caches are process-lifetime statics that hold GPU objects (RHIShader,
         // Material, Texture2D). Their destructors call glDeleteProgram/glDeleteTextures, so they
         // must be released while the graphics context is still alive. This function runs before
         // WindowSystem::Shutdown() (the only context destroyer), and before m_RHI->Shutdown().

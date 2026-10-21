@@ -127,7 +127,7 @@ namespace minEngine
 
         void RequestExit() override;
         void ConfirmExit() override { m_ExitRequested = true; }
-        // BUILD-F04 S05: process exit code handed back to main() (Application::GetExitCode).
+        // Process exit code handed back to main() (Application::GetExitCode).
         // A refused start (game module gate) must be visible to the shell and to CI, not only in
         // the log; a normal editor exit keeps the default 0.
         int GetExitCode() const override { return m_ExitCode; }

@@ -523,7 +523,7 @@ namespace minEngine
             {
                 // Non-owning view of external swapchain/backbuffer when provided.
                 // Store as shared_ptr aliasing no-op deleter? Prefer keep separate path:
-                // For S04 tests we allocate all physical textures including backbuffer source.
+                // The tests allocate every physical texture, including the backbuffer source.
                 (void)swapchainOrNull;
             }
 

@@ -16,7 +16,7 @@ namespace minEngine::Reflection
 
     struct PropertyAssignOptions
     {
-        // Semantic PostEdit always applies to authoritative edits (Design §3.5).
+        // Semantic PostEdit always applies to authoritative edits.
         // Implementation: invoke MEObject::PostEditChangeProperty only when the property
         // has NO Setter — Setter itself carries change propagation.
         bool notifyPostEdit = false;

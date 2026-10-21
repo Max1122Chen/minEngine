@@ -36,10 +36,10 @@ namespace minEngine
         ME_PROPERTY()
         std::string ProjectRoot;    // Absolute path to the project root directory
 
-        // BUILD-F04 S05 (design section 12 Q4): the C++ game module this project is authored
+        // The C++ game module this project is authored
         // against, named exactly as the CMake GAME_MODULE target that a project editor links.
         // Empty - the default, and what a descriptor that never mentions the field deserializes
-        // to - means "no requirement", which keeps every pre-S05 descriptor compatible. A
+        // to - means "no requirement", which keeps older descriptors compatible. A
         // non-empty value that does not match the editor host's compiled-in identity is a HARD
         // STARTUP ERROR (non-zero exit code), never a silent downgrade to an asset-only view.
         ME_PROPERTY()

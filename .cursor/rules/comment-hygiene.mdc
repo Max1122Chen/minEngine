@@ -1,0 +1,44 @@
+---
+description: Source comment hygiene - no external document or ID references, safe bulk edits.
+alwaysApply: true
+---
+
+# Source comment hygiene
+
+Code must be readable by someone who does not have the design documents open.
+Comments that point at external artefacts therefore rot: documents get renumbered,
+feature and bug IDs get archived, commits scroll away. When the pointer rots the
+comment becomes noise, and the reader trusts it less than nothing.
+
+## Rule
+
+Source comments, log messages and test-case names must not reference:
+
+- document section numbers (`§3.4`, `design §2.7.1`, `H8`, `layer 2`)
+- design / feature / bug / slice IDs (`CORE-F43`, `BUILD-F02 S05`, `MAT-F08`,
+  `BUG-EDITOR-008`, `S03`, `D6`)
+- requirement or oracle labels (`I1`, `O1`, `O8`, `F11`, `Q3`)
+- commit hashes
+
+Instead, state the reason in place. Replace the pointer with the why:
+
+```cpp
+// Bad:  §H8 (ii): the checkbox binds the AUTHORED flag.
+// Good: The checkbox binds the authored flag, so turning an ancestor off never
+//       rewrites the author's choice.
+```
+
+Stable references are fine: in-repo file paths, type and function names,
+constants, and the public API of the surrounding code.
+
+Design, implementation and review documents are exempt - they legitimately
+cross-reference each other and are versioned together with the IDs they use.
+
+## When editing comments in bulk
+
+Do not read a whole file, transform the text in memory and write it back.
+An interrupted or mis-scoped transform truncates the file and the loss is silent
+because the remainder still parses. Use in-place line replacement (`sed`-style, or
+a patch applied to the exact line), then confirm the diff is a line-for-line
+replacement (`git diff --numstat` should show equal additions and deletions for
+comment-only edits).

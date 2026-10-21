@@ -1,6 +1,6 @@
 #pragma once
 
-// BUILD-F02: MINENGINE_API carries real __declspec(dllexport/dllimport) semantics on Windows.
+// MINENGINE_API carries real __declspec(dllexport/dllimport) semantics on Windows.
 // Invariant: MINENGINE_BUILD is defined ONLY on the target that produces the engine DLL
 // (minEngine/minEngine/CMakeLists.txt). A consumer that defines it compiles engine symbols
 // as dllexport instead of dllimport and fails at link time with "cannot export undefined symbol".

@@ -1,6 +1,6 @@
 #pragma once
 
-// BUILD-F04 S02: EDITOR_API carries real __declspec(dllexport/dllimport) semantics on Windows,
+// EDITOR_API carries real __declspec(dllexport/dllimport) semantics on Windows,
 // isomorphic to Runtime/Core/EngineAPI.h.
 //
 // Invariant I-buildexact: MINENGINE_EDITOR_BUILD is defined ONLY on the target that produces the

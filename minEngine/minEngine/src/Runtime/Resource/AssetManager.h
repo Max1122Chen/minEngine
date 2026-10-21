@@ -56,14 +56,15 @@ namespace minEngine
         const AssetMeta& meta,
         std::string& outErrorMessage);
 
-    // S03: untyped Save dispatch (Saver). No template specialization spine.
+    // Untyped Save dispatch: the Saver supplies the entry point, so there is no template
+    // specialization spine.
     using AssetSaveHandlerFn = bool (*)(
         const AssetManager& manager,
         const AssetMeta& meta,
         const Asset& asset,
         std::string& outError);
 
-    // S06: Create belongs to Saver (optional). Empty = cannot Create.
+    // Create belongs to Saver and is optional; an empty handler means the type cannot be created.
     using AssetCreateHandlerFn = std::shared_ptr<Asset> (*)(
         AssetManager& manager,
         const std::string& assetName,

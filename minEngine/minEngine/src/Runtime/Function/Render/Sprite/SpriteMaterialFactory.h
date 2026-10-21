@@ -14,7 +14,7 @@ namespace minEngine
     class RHI;
     class Texture2D;
 
-    /** Counters for the compiled-template cache (MAT-F08 measurable oracle). */
+    /** Counters for the compiled-template cache; the measurable oracle for it. */
     struct SpriteMaterialCacheStats
     {
         /** Full graph + shader compiles of a template Material (opaque/translucent). */

@@ -59,7 +59,7 @@ namespace minEngine
 
         /**
          * Creates a runtime sibling that reuses this material's compiled program, parameter layout,
-         * graph and GPU binding-set layout, WITHOUT recompiling (MAT-F08).
+         * graph and GPU binding-set layout, WITHOUT recompiling.
          *
          * Parameter tables are copied, so each sibling keeps its own tint/opacity/UV values — sharing
          * the program never shares state. Requires IsCompiledForDraw(); returns nullptr otherwise.

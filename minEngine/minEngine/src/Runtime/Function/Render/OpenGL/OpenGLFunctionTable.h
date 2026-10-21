@@ -2,7 +2,7 @@
 
 namespace minEngine
 {
-    // BUILD-F03 knife 1: glad left the engine export table, so the engine can no longer inherit a
+    // glad left the engine export table, so the engine can no longer inherit a
     // GL function table that a consumer loaded for it. glad's pointers are PER MODULE: the copy in
     // this DLL is initialized only by a gladLoadGLLoader call inside this DLL.
     //

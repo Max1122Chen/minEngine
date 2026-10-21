@@ -52,7 +52,7 @@ namespace minEngine
         /**
          * Platform-internal focus entry, forwarded from the GLFW focus callback and from WM_ACTIVATE.
          * Focus loss revokes every OS-level constraint immediately; focus gain replays the request in force.
-         * Not a game-facing API (CORE-F42 S01).
+         * Not a game-facing API.
          */
         void OnWindowFocusChanged(bool focused);
 

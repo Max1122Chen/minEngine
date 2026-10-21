@@ -40,7 +40,7 @@ namespace minEngine
         std::string Log;
     };
 
-    /** Compile-path counters; the measurable oracle for cache behaviour (MAT-F08). */
+    /** Compile-path counters; the measurable oracle for cache behaviour. */
     struct ShaderCompileStats
     {
         uint64_t CompileRequests = 0;

@@ -2,8 +2,10 @@
 .vscode/
 bin/
 bin-asan/
+bin-lane*/
 build/
 build-asan/
+build-lane*/
 Staging/
 
 # Local editor layout state

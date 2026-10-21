@@ -11,7 +11,7 @@ namespace minEngine
      * Process-wide unit quad shared by SpriteComponent (world) and ScreenUI widgets.
      * Model space: center origin, edge length 1, +Z normal; the -Y edge carries uv v=0
      * (texture bottom). A caller placing this quad in a Y-down space (ScreenUI pixels)
-     * owns that space conversion — see BUG-RENDER-015.
+     * owns that space conversion.
      * Vertex layout matches StaticMeshLoader (a_Position/a_TexCoord/a_Normal/a_Tangent).
      */
     class SpriteQuadMesh

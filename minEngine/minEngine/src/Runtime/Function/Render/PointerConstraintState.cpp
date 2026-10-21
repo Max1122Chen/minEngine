@@ -42,7 +42,7 @@ namespace minEngine
 #if defined(_WIN32)
             if (!rect.bEnabled)
             {
-                // Unconditional: a cached "already released" flag must never suppress the release (CORE-F42 P7).
+                // Unconditional: a cached "already released" flag must never suppress the release.
                 return ::ClipCursor(nullptr) != FALSE;
             }
 
@@ -161,7 +161,7 @@ namespace minEngine
         }
 
         m_bWindowActive = true;
-        // Replay the request in force right now; there is no history stack to rewind in S01.
+        // Replay the request in force right now; there is no history stack to rewind.
         ApplyCurrentRequest();
     }
 
@@ -180,7 +180,7 @@ namespace minEngine
         }
 
         // The focus-lost event never reached us. The platform says this window is inactive, so no
-        // constraint may survive (CORE-F42 requirement 6).
+        // constraint may survive.
         m_bWindowActive = false;
         RevokeAll();
         ++m_WatchdogRevokeCount;
@@ -226,7 +226,7 @@ namespace minEngine
             if (!IsValidRect(applied))
             {
                 // An empty intersection must not be applied, otherwise the cursor gets clamped to another
-                // monitor or outside the window (CORE-F42 I11).
+                // monitor or outside the window.
                 ++m_EmptyIntersectionCount;
                 ME_LOG(LogPlatform, Warn, "PointerConstraint: requested clip rect does not intersect the client area; not applying it.");
                 applied = WindowCursorClipRect{};
@@ -240,7 +240,7 @@ namespace minEngine
     void PointerConstraintState::RevokeAll()
     {
         WindowCursorClipRect released;
-        // Unconditional: the release must never be gated by any cached "we applied it" flag (CORE-F42 P7).
+        // Unconditional: the release must never be gated by any cached "we applied it" flag.
         m_Sink.ApplyOsClip(released);
         m_Sink.ApplyRelativeCapture(false);
         m_Sink.ApplyCursorMode(EWindowCursorMode::Normal);

@@ -36,8 +36,9 @@ namespace minEngine
     };
 
     /**
-     * UE-style single channel enum: Object usage (collider identity) and Trace usage (queries, S03)
-     * are two faces of the same type. GameChannel1–8 are reserved for project naming via registry.
+     * UE-style single channel enum: Object usage (collider identity) and Trace usage (line/sphere
+     * queries) are two faces of the same type. GameChannel1–8 are reserved for project naming via
+     * registry.
      */
     ME_ENUM()
     enum class ECollisionChannel : uint8_t
