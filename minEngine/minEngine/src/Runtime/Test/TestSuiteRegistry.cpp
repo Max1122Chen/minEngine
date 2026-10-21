@@ -57,6 +57,7 @@ namespace minEngine
             "screen-ui-game-viewport",
             "hierarchy-activity",
             "activity-consumers",
+            "widget-graphic",
         };
 
         std::vector<ITestSuite*> ordered;

@@ -146,10 +146,10 @@ namespace minEngine
         if (!widgets.empty() && widgets[0])
         {
             WidgetComponent* widget = widgets[0].get();
-            // A widget whose content sources all contribute nothing draws nothing, so it must not
-            // take the pointer either: an invisible plate would swallow every click below it.
+            // A widget whose graphics all contribute nothing draws nothing, so it must not take
+            // the pointer either: an invisible plate would swallow every click below it.
             if (widget->IsActiveAndVisible() && widget->IsHitTestVisible() &&
-                widget->HasContentContribution() &&
+                widget->HasGraphic() &&
                 widget->GetComputedRect().Contains(refPoint))
             {
                 const uint32_t order = widget->GetStableOrder();

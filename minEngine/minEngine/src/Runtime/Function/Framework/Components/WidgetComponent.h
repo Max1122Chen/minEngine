@@ -2,22 +2,24 @@
 
 #include "Core.h"
 #include "Runtime/Core/Delegates/DelegateMacros.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Framework/Components/WidgetGraphicComponent.h"
+#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/UI/ScreenUIPointerTypes.h"
 #include "Runtime/Function/UI/UITypes.h"
 
+#include <string>
+
 namespace minEngine
 {
-    class Material;
     class WidgetSceneProxy;
-    class ImageComponent;
-    class TextComponent;
 
     DECLARE_MULTICAST_DELEGATE_OneParam(DOnWidgetPointer, const UIPointerEvent&);
 
     /**
-     * ScreenUI layout node: Anchor/Margin/Size â†?ComputedRect (Canvas reference pixels).
-     * Visual style comes from a sibling ImageComponent.
+     * ScreenUI layout node: Anchor/Margin/Size -> ComputedRect (Canvas reference pixels).
+     * Visual style comes from a graphics component on the same GameObject.
      * Pointer events are dispatched by UISystem (hit surface).
      */
     ME_CLASS()
@@ -72,17 +74,39 @@ namespace minEngine
         bool IsHitTestVisible() const { return m_bHitTestVisible; }
 
         /**
-         * True when a sibling image or text source currently contributes content.
-         * A widget whose sources all contribute nothing produces no picture, so it is neither
+         * The graphic this widget paints from: the first one in component order that can
+         * contribute. The proxy assembly and the pointer gate both come through here, so a widget
+         * can never be drawn from one source and hit as another.
+         */
+        WidgetGraphicComponent* GetGraphic() const
+        {
+            GameObject* owner = GetOwner();
+            if (owner == nullptr)
+            {
+                return nullptr;
+            }
+
+            for (const std::shared_ptr<Component>& component : owner->GetAllComponents())
+            {
+                WidgetGraphicComponent* graphic = AsGraphic(component);
+                if (graphic != nullptr && graphic->CanContribute())
+                {
+                    return graphic;
+                }
+            }
+
+            return nullptr;
+        }
+
+        /**
+         * True when some graphic can contribute.
+         * A widget whose graphics all contribute nothing produces no picture, so it is neither
          * drawn nor allowed to take a pointer.
          */
-        bool HasContentContribution() const;
+        bool HasGraphic() const { return GetGraphic() != nullptr; }
 
         const UIRect& GetComputedRect() const { return m_ComputedRect; }
         void SetComputedRect(const UIRect& rect);
-
-        ImageComponent* FindSiblingImage() const;
-        TextComponent* FindSiblingText() const;
 
         virtual void DoEndOfFrameUpdate() override;
 
@@ -99,8 +123,87 @@ namespace minEngine
     private:
         friend class Testing::TestAccess<WidgetComponent>;
 
+        /** Cast to the graphic base without naming a concrete kind; null for any other component. */
+        static WidgetGraphicComponent* AsGraphic(const std::shared_ptr<Component>& component)
+        {
+            if (!component || component->GetClass() == nullptr ||
+                !component->GetClass()->IsA(WidgetGraphicComponent::LookupClass()))
+            {
+                return nullptr;
+            }
+
+            return static_cast<WidgetGraphicComponent*>(component.get());
+        }
+
         void EnsureRuntimeMaterial();
-        void SyncMaterialParameters(ImageComponent* image);
+
+        /**
+         * The graphic this frame paints from and the data it produced, or null when there is
+         * nothing to paint. A widget holding several graphics says which one it took and which ones
+         * it left out, so a contested widget never silently swaps its picture.
+         */
+        WidgetGraphicComponent* ResolveDrawSource(WidgetDrawData& outData)
+        {
+            outData = WidgetDrawData{};
+
+            GameObject* owner = GetOwner();
+            if (owner == nullptr)
+            {
+                return nullptr;
+            }
+
+            WidgetGraphicComponent* selected = nullptr;
+            size_t graphicCount = 0;
+            std::string selectedName;
+            std::string ignoredNames;
+
+            for (const std::shared_ptr<Component>& component : owner->GetAllComponents())
+            {
+                WidgetGraphicComponent* graphic = AsGraphic(component);
+                if (graphic == nullptr)
+                {
+                    continue;
+                }
+
+                ++graphicCount;
+                if (selected == nullptr && graphic->CanContribute())
+                {
+                    selected = graphic;
+                    selectedName = graphic->GetClass()->GetName();
+                    continue;
+                }
+
+                if (!ignoredNames.empty())
+                {
+                    ignoredNames += ", ";
+                }
+                ignoredNames += graphic->GetClass()->GetName();
+            }
+
+            if (graphicCount > 1)
+            {
+                ME_LOG(
+                    LogUI,
+                    Warn,
+                    "Widget '{}' on GameObject '{}' holds {} graphic components: drawing '{}', "
+                    "ignoring [{}]. The first contributing one in component order wins; reorder the "
+                    "components on the GameObject to choose a different one.",
+                    GetName(),
+                    owner->GetName(),
+                    graphicCount,
+                    selectedName.empty() ? std::string("none") : selectedName,
+                    ignoredNames);
+            }
+
+            if (selected == nullptr || !selected->BuildDrawData(m_ComputedRect.Size, outData))
+            {
+                outData = WidgetDrawData{};
+                return nullptr;
+            }
+
+            return selected;
+        }
+
         void FillSceneProxy(WidgetSceneProxy& proxy);
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetAnchorPreset", Getter = "GetAnchorPreset"))

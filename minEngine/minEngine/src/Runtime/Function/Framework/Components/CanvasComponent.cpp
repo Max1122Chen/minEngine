@@ -1,10 +1,42 @@
 #include "CanvasComponent.h"
 
+#include "Runtime/Function/Framework/Components/WidgetComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/UI/UILayoutPass.h"
 
 namespace minEngine
 {
+    namespace
+    {
+        /**
+         * Dirty the widgets on this node and every node below it.
+         * A widget's draw bit is decided when its proxy refills, and the canvas it belongs to is
+         * part of that decision; without this wake-up switching a canvas off leaves the last
+         * picture on screen until something unrelated happens to rebuild the proxies.
+         */
+        void MarkSubtreeWidgetsDirty(GameObject& node)
+        {
+            for (const std::shared_ptr<Component>& component : node.GetAllComponents())
+            {
+                if (!component || component->GetClass() == nullptr ||
+                    !component->IsA(WidgetComponent::StaticClass()))
+                {
+                    continue;
+                }
+
+                static_cast<WidgetComponent*>(component.get())->MarkRenderStateDirty();
+            }
+
+            for (GameObject* child : node.GetChildren())
+            {
+                if (child != nullptr)
+                {
+                    MarkSubtreeWidgetsDirty(*child);
+                }
+            }
+        }
+    }
+
     CanvasComponent::CanvasComponent()
     {
         m_bCanEverTick = true;
@@ -19,6 +51,22 @@ namespace minEngine
         }
 
         UILayoutPass::LayoutCanvas(*this);
+    }
+
+    void CanvasComponent::OnActivate()
+    {
+        if (GameObject* owner = GetOwner())
+        {
+            MarkSubtreeWidgetsDirty(*owner);
+        }
+    }
+
+    void CanvasComponent::OnDeactivate()
+    {
+        if (GameObject* owner = GetOwner())
+        {
+            MarkSubtreeWidgetsDirty(*owner);
+        }
     }
 
     void CanvasComponent::SetRenderMode(EUICanvasRenderMode mode)

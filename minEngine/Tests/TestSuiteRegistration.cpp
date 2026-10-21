@@ -51,6 +51,7 @@
 #include "Suites/ScreenUIDragTest.h"
 #include "Suites/ScreenUIImageTest.h"
 #include "Suites/ScreenUITextTest.h"
+#include "Suites/WidgetGraphicTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
 #include "Suites/HierarchyActivityTest.h"
 #include "Suites/CommandSystemTest.h"
@@ -983,6 +984,23 @@ namespace minEngine
             }
         };
 
+        struct WidgetGraphicTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"widget-graphic", "Widget Graphic Sources", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'widget-graphic'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "widget-graphic",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1312,6 +1330,7 @@ namespace minEngine
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
         using HierarchyActivitySuite = TypedTestSuite<HierarchyActivityTestSuiteTraits>;
         using ActivityConsumersSuite = TypedTestSuite<ActivityConsumersTestSuiteTraits>;
+        using WidgetGraphicSuite = TypedTestSuite<WidgetGraphicTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
@@ -1391,6 +1410,7 @@ namespace minEngine
             registry.Register(GameObjectHierarchySuite::Get());
             registry.Register(HierarchyActivitySuite::Get());
             registry.Register(ActivityConsumersSuite::Get());
+            registry.Register(WidgetGraphicSuite::Get());
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
             registry.Register(AnimationClipSuite::Get());

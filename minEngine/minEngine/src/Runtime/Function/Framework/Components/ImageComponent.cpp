@@ -2,6 +2,10 @@
 
 #include "Runtime/Function/Framework/Components/WidgetComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
+#include "Runtime/Function/Render/Material.h"
+#include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/ScreenUI/ScreenUIMaterialFactory.h"
 #include "Runtime/Function/Render/Sprite/Sprite.h"
 
 #include <cmath>
@@ -126,6 +130,52 @@ namespace minEngine
     {
         constexpr float kEps = 1.0e-6f;
         return std::fabs(uvRect.z - uvRect.x) < kEps || std::fabs(uvRect.w - uvRect.y) < kEps;
+    }
+
+    bool ImageComponent::CanContribute() const
+    {
+        return CanDraw();
+    }
+
+    bool ImageComponent::BuildDrawData(const Vector2& widgetSizePx, WidgetDrawData& outData)
+    {
+        // The image fills the widget rect with the shared quad, so the widget size is not needed.
+        (void)widgetSizePx;
+
+        if (!CanDraw())
+        {
+            return false;
+        }
+
+        outData.bLocalPixelMesh = false;
+        outData.VertexBuffer = nullptr;
+        outData.IndexBuffer = nullptr;
+        outData.VertexInputLayout = nullptr;
+        outData.Texture = ResolveDrawTexture();
+        outData.Color = m_Color.ToVector4();
+        outData.UVRect = ResolveDrawUVRect();
+        return true;
+    }
+
+    void ImageComponent::ApplyMaterialParameters(Material& material) const
+    {
+        if (!RenderSystem::HasInstance())
+        {
+            return;
+        }
+
+        RHI* rhi = RenderSystem::Get().GetRHI();
+        if (rhi == nullptr)
+        {
+            return;
+        }
+
+        ScreenUIMaterialFactory::ApplyColorTextureAndUVRect(
+            material,
+            m_Color,
+            ResolveDrawTextureShared(),
+            ResolveDrawUVRect(),
+            *rhi);
     }
 
     void ImageComponent::NotifySiblingWidgetDirty()

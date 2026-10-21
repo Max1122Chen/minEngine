@@ -122,29 +122,44 @@ namespace minEngine
         return m_Atlas && m_Atlas->IsValid();
     }
 
-    bool TextComponent::EnsureRuntimeMaterial()
+    bool TextComponent::CanContribute() const
+    {
+        return CanAttemptDraw();
+    }
+
+    bool TextComponent::BuildDrawData(const Vector2& widgetSizePx, WidgetDrawData& outData)
+    {
+        // The mesh is in widget-local pixels, so it has to be rebuilt for the size it is drawn at.
+        if (!RebuildMeshIfNeeded(widgetSizePx) || m_AtlasTexture == nullptr)
+        {
+            return false;
+        }
+
+        outData.bLocalPixelMesh = true;
+        outData.VertexBuffer = m_VertexBuffer.get();
+        outData.IndexBuffer = m_IndexBuffer.get();
+        outData.VertexInputLayout = m_VertexInputLayout;
+        outData.Texture = m_AtlasTexture.get();
+        outData.Color = m_Color.ToVector4();
+        // Glyph quads carry their own atlas coordinates, so the draw covers the whole texture.
+        outData.UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
+        return true;
+    }
+
+    void TextComponent::ApplyMaterialParameters(Material& material) const
     {
         if (!RenderSystem::HasInstance())
         {
-            return false;
+            return;
         }
+
         RHI* rhi = RenderSystem::Get().GetRHI();
-        if (rhi == nullptr)
+        if (rhi == nullptr || m_AtlasTexture == nullptr)
         {
-            return false;
+            return;
         }
 
-        if (!m_RuntimeMaterial)
-        {
-            m_RuntimeMaterial = ScreenUIMaterialFactory::CreateInstance(*rhi);
-        }
-        if (!m_RuntimeMaterial || !m_AtlasTexture)
-        {
-            return false;
-        }
-
-        ScreenUIMaterialFactory::ApplyColorAndTexture(*m_RuntimeMaterial, m_Color, m_AtlasTexture, *rhi);
-        return m_RuntimeMaterial->IsCompiledForDraw();
+        ScreenUIMaterialFactory::ApplyColorAndTexture(material, m_Color, m_AtlasTexture, *rhi);
     }
 
     bool TextComponent::RebuildMeshIfNeeded(const Vector2& widgetSize)
@@ -159,7 +174,6 @@ namespace minEngine
 
         if (!m_bMeshDirty && m_LastWidgetSize == widgetSize && HasDrawableMesh())
         {
-            EnsureRuntimeMaterial();
             return HasDrawableMesh();
         }
 
@@ -205,7 +219,6 @@ namespace minEngine
             m_IndexBuffer.reset();
             m_bMeshDirty = false;
             m_LastWidgetSize = widgetSize;
-            EnsureRuntimeMaterial();
             return false;
         }
 
@@ -225,8 +238,6 @@ namespace minEngine
         m_QuadCount = mesh.QuadCount;
         m_bMeshDirty = false;
         m_LastWidgetSize = widgetSize;
-
-        EnsureRuntimeMaterial();
         return HasDrawableMesh();
     }
 }

@@ -2,7 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Math/Color.h"
-#include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/WidgetGraphicComponent.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/UI/UITypes.h"
 #include "Runtime/Resource/Font.h"
@@ -13,7 +13,6 @@
 namespace minEngine
 {
     class FontGlyphAtlas;
-    class Material;
     class Texture2D;
     class WidgetComponent;
 
@@ -22,7 +21,7 @@ namespace minEngine
      * Geometry comes from Widget; without Widget this does not draw.
      */
     ME_CLASS()
-    class TextComponent : public Component
+    class TextComponent : public WidgetGraphicComponent
     {
         ME_GENERATED_BODY()
     public:
@@ -51,18 +50,20 @@ namespace minEngine
         bool RebuildMeshIfNeeded(const Vector2& widgetSize);
         Texture2D* GetAtlasTexture() const { return m_AtlasTexture.get(); }
         const std::shared_ptr<Texture2D>& GetAtlasTextureShared() const { return m_AtlasTexture; }
-        Material* GetRuntimeMaterial() const { return m_RuntimeMaterial.get(); }
         RHIBuffer* GetVertexBuffer() const { return m_VertexBuffer.get(); }
         RHIBuffer* GetIndexBuffer() const { return m_IndexBuffer.get(); }
         RHIVertexInputLayout* GetVertexInputLayout() const { return m_VertexInputLayout; }
         uint32_t GetQuadCount() const { return m_QuadCount; }
         bool HasDrawableMesh() const { return m_QuadCount > 0 && m_VertexBuffer && m_IndexBuffer; }
 
+        bool CanContribute() const override;
+        bool BuildDrawData(const Vector2& widgetSizePx, WidgetDrawData& outData) override;
+        void ApplyMaterialParameters(Material& material) const override;
+
     private:
         void NotifySiblingWidgetDirty();
         void MarkTextMeshDirty();
         bool EnsureAtlas();
-        bool EnsureRuntimeMaterial();
 
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetContent", Getter = "GetContent"))
         std::string m_Content{ "Hello" };
@@ -85,7 +86,6 @@ namespace minEngine
 
         std::shared_ptr<FontGlyphAtlas> m_Atlas;
         std::shared_ptr<Texture2D> m_AtlasTexture;
-        std::shared_ptr<Material> m_RuntimeMaterial;
         RHIBufferRef m_VertexBuffer;
         RHIBufferRef m_IndexBuffer;
         RHIVertexInputLayout* m_VertexInputLayout{ nullptr };

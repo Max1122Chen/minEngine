@@ -18,5 +18,14 @@ namespace minEngine::Testing
         {
             widget.m_bRenderStateDirty = false;
         }
+
+        /**
+         * The selection the scene proxy is assembled from, plus the data the selected graphic
+         * produced. A null return means this widget paints nothing this frame.
+         */
+        static WidgetGraphicComponent* ResolveDrawSource(WidgetComponent& widget, WidgetDrawData& outData)
+        {
+            return widget.ResolveDrawSource(outData);
+        }
     };
 }

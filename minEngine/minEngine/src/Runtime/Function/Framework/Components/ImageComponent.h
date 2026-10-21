@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Runtime/Core/Math/Color.h"
 #include "Runtime/Core/Math/Math.h"
-#include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Framework/Components/WidgetGraphicComponent.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Function/UI/UITypes.h"
 
@@ -19,7 +19,7 @@ namespace minEngine
      * Source: Raw Texture2D (full UV) or Sprite (runtime texture + UV rect).
      */
     ME_CLASS()
-    class ImageComponent : public Component
+    class ImageComponent : public WidgetGraphicComponent
     {
         ME_GENERATED_BODY()
     public:
@@ -56,6 +56,10 @@ namespace minEngine
         bool CanDraw() const;
 
         static bool IsUVRectDegenerate(const Vector4& uvRect);
+
+        bool CanContribute() const override;
+        bool BuildDrawData(const Vector2& widgetSizePx, WidgetDrawData& outData) override;
+        void ApplyMaterialParameters(Material& material) const override;
 
     private:
         void NotifySiblingWidgetDirty();

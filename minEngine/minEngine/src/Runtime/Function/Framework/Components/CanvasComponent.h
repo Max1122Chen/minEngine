@@ -38,6 +38,10 @@ namespace minEngine
         /** Walk GO parents to the nearest CanvasComponent, or null. */
         static CanvasComponent* FindOwningCanvas(GameObject* gameObject);
 
+    protected:
+        void OnActivate() override;
+        void OnDeactivate() override;
+
     private:
         ME_PROPERTY()
         EUICanvasRenderMode m_RenderMode{ EUICanvasRenderMode::ScreenSpace };

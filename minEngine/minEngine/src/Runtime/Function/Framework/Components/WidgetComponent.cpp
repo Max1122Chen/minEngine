@@ -1,7 +1,5 @@
 #include "WidgetComponent.h"
 
-#include "Runtime/Function/Framework/Components/ImageComponent.h"
-#include "Runtime/Function/Framework/Components/TextComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/RenderScene.h"
@@ -212,52 +210,6 @@ namespace minEngine
         }
     }
 
-    bool WidgetComponent::HasContentContribution() const
-    {
-        const TextComponent* text = FindSiblingText();
-        if (text != nullptr && text->CanAttemptDraw())
-        {
-            return true;
-        }
-
-        const ImageComponent* image = FindSiblingImage();
-        return image != nullptr && image->CanDraw();
-    }
-
-    ImageComponent* WidgetComponent::FindSiblingImage() const
-    {
-        GameObject* owner = GetOwner();
-        if (owner == nullptr)
-        {
-            return nullptr;
-        }
-
-        const std::vector<std::shared_ptr<ImageComponent>> images =
-            owner->GetComponentsOfType<ImageComponent>();
-        if (images.empty() || !images[0])
-        {
-            return nullptr;
-        }
-        return images[0].get();
-    }
-
-    TextComponent* WidgetComponent::FindSiblingText() const
-    {
-        GameObject* owner = GetOwner();
-        if (owner == nullptr)
-        {
-            return nullptr;
-        }
-
-        const std::vector<std::shared_ptr<TextComponent>> texts =
-            owner->GetComponentsOfType<TextComponent>();
-        if (texts.empty() || !texts[0])
-        {
-            return nullptr;
-        }
-        return texts[0].get();
-    }
-
     void WidgetComponent::DoEndOfFrameUpdate()
     {
         if (!m_bRenderStateDirty || !IsActive())
@@ -316,91 +268,70 @@ namespace minEngine
         m_RuntimeMaterial = ScreenUIMaterialFactory::CreateInstance(*rhi);
     }
 
-    void WidgetComponent::SyncMaterialParameters(ImageComponent* image)
-    {
-        RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
-        if (!m_RuntimeMaterial || rhi == nullptr || image == nullptr)
-        {
-            return;
-        }
-
-        ScreenUIMaterialFactory::ApplyColorTextureAndUVRect(
-            *m_RuntimeMaterial,
-            image->GetColor(),
-            image->ResolveDrawTextureShared(),
-            image->ResolveDrawUVRect(),
-            *rhi);
-    }
-
     void WidgetComponent::FillSceneProxy(WidgetSceneProxy& proxy)
     {
         proxy.m_WidgetComponent = this;
         proxy.m_StableOrder = m_StableOrder;
-        proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
-        proxy.m_bLocalPixelMesh = false;
 
         // Reference-space rect; Letterbox applied in BuildScreenUIQueue.
         proxy.m_TopLeftPx = m_ComputedRect.TopLeft;
         proxy.m_SizePx = m_ComputedRect.Size;
 
-        // The presentation axis gates the draw bit: an inactive or hidden widget assembles an
-        // empty proxy. Its content sources decide the rest, and each of them gates on its own
-        // switch, so switching one off empties the picture rather than freezing the last one.
-        const bool bWidgetCanDraw = IsActiveAndVisible();
+        proxy.m_Color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
+        proxy.m_Texture = nullptr;
+        proxy.m_MaterialProxy = nullptr;
+        proxy.m_VertexBuffer = nullptr;
+        proxy.m_IndexBuffer = nullptr;
+        proxy.m_VertexInputLayout = nullptr;
+        proxy.m_bLocalPixelMesh = false;
+        proxy.m_bVisible = false;
 
-        TextComponent* text = FindSiblingText();
-        if (bWidgetCanDraw && text != nullptr && text->CanAttemptDraw())
+        // The presentation axis gates the draw bit: an inactive or hidden widget assembles an
+        // empty proxy, and so does one whose graphic produces no data. Each graphic gates on its
+        // own switch inside the selection, so switching one off empties the picture rather than
+        // freezing the last one.
+        WidgetDrawData drawData;
+        WidgetGraphicComponent* graphic =
+            IsActiveAndVisible() ? ResolveDrawSource(drawData) : nullptr;
+        if (graphic == nullptr)
         {
-            text->RebuildMeshIfNeeded(m_ComputedRect.Size);
-            if (text->HasDrawableMesh())
-            {
-                proxy.m_Color = text->GetColor().ToVector4();
-                proxy.m_Texture = text->GetAtlasTexture();
-                proxy.m_MaterialProxy =
-                    text->GetRuntimeMaterial() ? text->GetRuntimeMaterial()->GetRenderProxy() : nullptr;
-                proxy.m_VertexBuffer = text->GetVertexBuffer();
-                proxy.m_IndexBuffer = text->GetIndexBuffer();
-                proxy.m_VertexInputLayout = text->GetVertexInputLayout();
-                proxy.m_bLocalPixelMesh = true;
-                proxy.m_bVisible = proxy.m_MaterialProxy != nullptr
-                    && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
-                    && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
-                    && proxy.m_SizePx.y > 0.0f;
-                return;
-            }
+            return;
         }
 
-        ImageComponent* image = FindSiblingImage();
-        const bool bImageDrawable = bWidgetCanDraw && image != nullptr && image->CanDraw();
-        if (bImageDrawable)
+        proxy.m_Color = drawData.Color;
+        proxy.m_UVRect = drawData.UVRect;
+        proxy.m_Texture = drawData.Texture;
+        proxy.m_bLocalPixelMesh = drawData.bLocalPixelMesh;
+
+        if (drawData.bLocalPixelMesh)
         {
-            proxy.m_Color = image->GetColor().ToVector4();
-            proxy.m_Texture = image->ResolveDrawTexture();
-            proxy.m_UVRect = image->ResolveDrawUVRect();
-            EnsureRuntimeMaterial();
-            SyncMaterialParameters(image);
-            proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
+            proxy.m_VertexBuffer = drawData.VertexBuffer;
+            proxy.m_IndexBuffer = drawData.IndexBuffer;
+            proxy.m_VertexInputLayout = drawData.VertexInputLayout;
         }
         else
         {
-            proxy.m_Color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-            proxy.m_Texture = nullptr;
-            proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
-            proxy.m_MaterialProxy = nullptr;
+            RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
+            if (rhi != nullptr)
+            {
+                SpriteQuadMesh::Get().EnsureInitialized(*rhi);
+            }
+
+            SpriteQuadMesh& quad = SpriteQuadMesh::Get();
+            proxy.m_VertexBuffer = quad.GetVertexBuffer();
+            proxy.m_IndexBuffer = quad.GetIndexBuffer();
+            proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
         }
 
-        RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
-        if (rhi != nullptr)
+        EnsureRuntimeMaterial();
+        if (m_RuntimeMaterial)
         {
-            SpriteQuadMesh::Get().EnsureInitialized(*rhi);
+            graphic->ApplyMaterialParameters(*m_RuntimeMaterial);
         }
+        proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
 
-        SpriteQuadMesh& quad = SpriteQuadMesh::Get();
-        proxy.m_VertexBuffer = quad.GetVertexBuffer();
-        proxy.m_IndexBuffer = quad.GetIndexBuffer();
-        proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
-
-        proxy.m_bVisible = bImageDrawable && proxy.m_MaterialProxy != nullptr
+        proxy.m_bVisible = proxy.m_MaterialProxy != nullptr
             && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
             && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
             && proxy.m_SizePx.y > 0.0f;
