@@ -52,6 +52,7 @@
 #include "Suites/ScreenUIImageTest.h"
 #include "Suites/ScreenUITextTest.h"
 #include "Suites/GameObjectHierarchyTest.h"
+#include "Suites/HierarchyActivityTest.h"
 #include "Suites/CommandSystemTest.h"
 #include "Suites/SkeletonPoseTest.h"
 #include "Suites/AnimationClipTest.h"
@@ -948,6 +949,23 @@ namespace minEngine
             }
         };
 
+        struct HierarchyActivityTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"hierarchy-activity", "GO Activity / Visibility Cascade", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'hierarchy-activity'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "hierarchy-activity",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct CommandSystemTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1275,6 +1293,7 @@ namespace minEngine
         using ScreenUIImageSuite = TypedTestSuite<ScreenUIImageTestSuiteTraits>;
         using ScreenUITextSuite = TypedTestSuite<ScreenUITextTestSuiteTraits>;
         using GameObjectHierarchySuite = TypedTestSuite<GameObjectHierarchyTestSuiteTraits>;
+        using HierarchyActivitySuite = TypedTestSuite<HierarchyActivityTestSuiteTraits>;
         using CommandSystemSuite = TypedTestSuite<CommandSystemTestSuiteTraits>;
         using SkeletonPoseSuite = TypedTestSuite<SkeletonPoseTestSuiteTraits>;
         using AnimationClipSuite = TypedTestSuite<AnimationClipTestSuiteTraits>;
@@ -1352,6 +1371,7 @@ namespace minEngine
             registry.Register(ScreenUIImageSuite::Get());
             registry.Register(ScreenUITextSuite::Get());
             registry.Register(GameObjectHierarchySuite::Get());
+            registry.Register(HierarchyActivitySuite::Get());
             registry.Register(CommandSystemSuite::Get());
             registry.Register(SkeletonPoseSuite::Get());
             registry.Register(AnimationClipSuite::Get());

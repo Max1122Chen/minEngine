@@ -7,6 +7,8 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::GameObject)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::GameObject, m_Parent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::GameObject, m_RootComponent)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::GameObject, m_Components)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::GameObject, m_bActive)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::GameObject, m_bVisible)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::GameObject, GReflectionClassRegister_GameObject_1d0a74f7)

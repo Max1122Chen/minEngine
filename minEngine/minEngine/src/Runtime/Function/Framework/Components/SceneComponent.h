@@ -34,6 +34,43 @@ namespace minEngine
         void ApplyEditorTransformEdit(ETeleportType teleport = ETeleportType::ResetPhysics);
         void PostEditChangeProperty(const Reflection::PropertyChangedEvent& event) override;
 
+        /** Writes the AUTHORED flag only; the effective state follows. */
+        void SetVisible(bool visible)
+        {
+            if (IsVisibleSelf() == visible)
+            {
+                return;
+            }
+
+            m_bVisible = visible;
+            m_EffectiveVisibleCache = kEffectiveStateUnknown;
+            MarkRenderStateDirty();
+        }
+
+        /**
+         * Effective visibility: self flag AND the owning GameObject chain.
+         * O(1): a cache read; the ancestor term is published by the owning GameObject.
+         */
+        bool IsVisible() const
+        {
+            if (m_EffectiveVisibleCache == kEffectiveStateUnknown)
+            {
+                m_EffectiveVisibleCache = (IsVisibleSelf() && m_bOwnerEffectiveVisible)
+                    ? kEffectiveStateTrue
+                    : kEffectiveStateFalse;
+            }
+            return m_EffectiveVisibleCache == kEffectiveStateTrue;
+        }
+
+        /** The author's own flag. */
+        bool IsVisibleSelf() const { return m_bVisible; }
+
+        /** Explicit alias of IsVisible(), for call sites that mean the hierarchy result. */
+        bool IsVisibleInHierarchy() const { return IsVisible(); }
+
+        /** Draw / hit-test gate: an inactive component can never be active-and-visible. */
+        bool IsActiveAndVisible() const { return IsActive() && IsVisible(); }
+
         bool IsTransformDirty() const { return m_bTransformDirty; }
         ETeleportType GetPendingTeleportType() const { return m_PendingTeleportType; }
         void ClearTransformDirty();
@@ -95,7 +132,11 @@ namespace minEngine
         void ClearAttachLinksWithoutNotify();
 
     protected:
-    
+
+        /** AUTHORED visibility flag. The only authoring point of the visibility axis. */
+        ME_PROPERTY(Invisible)
+        bool m_bVisible{ true };
+
         ME_PROPERTY(EditAnywhere)
         Transform m_Transform;
 
@@ -107,6 +148,20 @@ namespace minEngine
         bool m_bRenderStateDirty{ false };
         bool m_bTransformDirty{ false };
         ETeleportType m_PendingTeleportType{ ETeleportType::ResetPhysics };
+
+    private:
+        friend class GameObject;
+
+        /** Publishes the ancestor-chain contribution. Never writes an authored flag. */
+        void PublishOwnerEffectiveVisible(bool ownerVisible)
+        {
+            m_bOwnerEffectiveVisible = ownerVisible;
+            m_EffectiveVisibleCache = kEffectiveStateUnknown;
+        }
+
+        /** Ancestor-chain contribution, maintained by the owning GameObject. Not serialized. */
+        bool m_bOwnerEffectiveVisible{ true };
+        mutable uint8_t m_EffectiveVisibleCache{ kEffectiveStateUnknown };
     };
 }
 

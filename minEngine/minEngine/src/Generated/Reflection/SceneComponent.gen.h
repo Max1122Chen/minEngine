@@ -4,6 +4,7 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SceneComponent)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SceneComponent, m_bVisible)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SceneComponent, m_Transform)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SceneComponent, m_AttachParent)
 ME_REFLECTION_ACCESSOR_END()

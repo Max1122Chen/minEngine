@@ -76,18 +76,33 @@ namespace minEngine
 
     void Component::SetActive(bool active)
     {
-        if (m_bActive == active)
+        // Intent: the dedupe compares the author's flag, never the hierarchy result.
+        if (IsActiveSelf() == active)
         {
             return;
         }
 
         m_bActive = active;
+        m_EffectiveActiveCache = kEffectiveStateUnknown;
         SyncActivationWithActiveFlag();
     }
 
     void Component::SyncActivationWithActiveFlag()
     {
-        if (m_bActive)
+        // Permission to register follows the effective state; intent follows the authored flag.
+        const bool want = IsActive();
+        if (want == m_bAppliedEffective)
+        {
+            if (!want)
+            {
+                // Off means deliberately off, not "waiting for a Scene", so pending stays clear.
+                m_bPendingActivation = false;
+            }
+            return;
+        }
+
+        m_bAppliedEffective = want;
+        if (want)
         {
             TryActivate();
         }
@@ -99,7 +114,9 @@ namespace minEngine
 
     void Component::ResolvePendingActivation()
     {
-        if (!m_bActive || !m_bPendingActivation)
+        // Intent: "does the author still want it on". A parent that is off must not cancel the
+        // intent, otherwise re-enabling the parent loses the author's choice.
+        if (!IsActiveSelf() || !m_bPendingActivation)
         {
             return;
         }
@@ -109,7 +126,8 @@ namespace minEngine
 
     void Component::TryActivate()
     {
-        if (!m_bActive)
+        // Permission: an ancestor that is off must never reach ApplyActivationToSystems.
+        if (!IsActive())
         {
             return;
         }
@@ -117,6 +135,7 @@ namespace minEngine
         if (!CanApplyActivation())
         {
             m_bPendingActivation = true;
+            m_bAppliedEffective = false;
             return;
         }
 
@@ -127,8 +146,10 @@ namespace minEngine
         }
 
         ApplyActivationToSystems();
+        ++m_ActivationApplyCount;
         OnActivate();
         m_bActivationApplied = true;
+        m_bAppliedEffective = true;
         m_bPendingActivation = false;
         TryBeginPlayIfSimulating();
     }
@@ -139,10 +160,12 @@ namespace minEngine
         {
             OnDeactivate();
             RemoveActivationFromSystems();
+            ++m_ActivationRemoveCount;
             m_bActivationApplied = false;
         }
 
         m_bPendingActivation = false;
+        m_bAppliedEffective = false;
     }
 
     void Component::BeginPlay()
@@ -204,10 +227,10 @@ namespace minEngine
         Deactivate();
         m_Owner = inOwner;
 
-        if (m_bActive)
-        {
-            TryActivate();
-        }
+        // A new owner means a new ancestor chain, so republish it and reconcile.
+        m_bOwnerEffectiveActive = (inOwner != nullptr) ? inOwner->IsActive() : true;
+        m_EffectiveActiveCache = kEffectiveStateUnknown;
+        SyncActivationWithActiveFlag();
     }
 
     void Component::OnActivate()

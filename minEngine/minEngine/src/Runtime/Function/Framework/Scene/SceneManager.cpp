@@ -667,25 +667,28 @@ namespace minEngine
         StructuralTraversalScope scope(*this);
         const std::vector<std::shared_ptr<GameObject>>& gameObjects = scene->GetAllGameObjects();
         const size_t goCount = gameObjects.size();
+
+        // Phase 1: push every effective-state cache to Unknown WITHOUT evaluating, so phase 2 can
+        // never read an ancestor value computed from a half-resolved hierarchy (a component may be
+        // restored before the GameObjects around it). No authored flag is touched here.
         for (size_t goIndex = 0; goIndex < goCount; ++goIndex)
         {
             const std::shared_ptr<GameObject>& gameObject = gameObjects[goIndex];
-            if (!gameObject)
+            if (gameObject)
             {
-                continue;
+                gameObject->InvalidateEffectiveStateSubtree();
             }
+        }
 
-            std::vector<std::shared_ptr<Component>>& components = gameObject->GetAllComponents();
-            const size_t componentCount = components.size();
-            for (size_t componentIndex = 0; componentIndex < componentCount; ++componentIndex)
+        // Phase 2: publish the ancestor term to each component and reconcile the delta.
+        // Scene load assigns m_Owner via pending ref without SetOwner, so this is the only place
+        // where a deserialized component learns its owner chain.
+        for (size_t goIndex = 0; goIndex < goCount; ++goIndex)
+        {
+            const std::shared_ptr<GameObject>& gameObject = gameObjects[goIndex];
+            if (gameObject)
             {
-                const std::shared_ptr<Component>& component = components[componentIndex];
-                if (component)
-                {
-                    // Reconcile runtime activation with m_bActive after deserialize.
-                    // Scene load assigns m_Owner via pending ref without SetOwner.
-                    component->SyncActivationWithActiveFlag();
-                }
+                gameObject->ReconcileEffectiveState();
             }
         }
     }

@@ -270,7 +270,9 @@ namespace minEngine
                 componentEditorContext != nullptr ? &componentEditorContext->GetEditorAppearance() : nullptr;
 
             bool componentOpen = false;
-            bool componentActive = component->IsActive();
+            // The checkbox binds the AUTHORED flag, so an ancestor that is off never rewrites the
+            // author's choice when the box is clicked.
+            bool componentActive = component->IsActiveSelf();
             const bool inactiveStylePushed = !componentActive;
             const std::string activeCheckboxId =
                 std::string("##component_active_") + std::to_string(reinterpret_cast<uintptr_t>(component.get()));

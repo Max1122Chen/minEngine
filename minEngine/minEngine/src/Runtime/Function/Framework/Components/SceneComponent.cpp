@@ -301,6 +301,10 @@ namespace minEngine
     void SceneComponent::SetOwner(GameObject* inOwner)
     {
         Component::SetOwner(inOwner);
+
+        // Visibility axis: republish the ancestor term for the new owner chain.
+        m_bOwnerEffectiveVisible = (inOwner != nullptr) ? inOwner->IsVisible() : true;
+        m_EffectiveVisibleCache = kEffectiveStateUnknown;
     }
 
     bool SceneComponent::AttachToComponent(SceneComponent* inParent, AttachmentTransformRules attachRules)

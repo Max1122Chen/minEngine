@@ -1459,7 +1459,7 @@ namespace minEngine
 
         if (propertyPath == "m_bActive" && ownerObject->IsA(Component::StaticClass()))
         {
-            static_cast<Component*>(ownerObject.get())->SyncActivationWithActiveFlag();
+            static_cast<Component*>(ownerObject.get())->ReconcileEffectiveActivation();
         }
 
         {

@@ -37,6 +37,9 @@ namespace minEngine
         // Keep virtual PostEdit only for fields without Setter (e.g. m_bActive).
         if (event.propertyName == "m_bActive")
         {
+            // A reflection write bypassed SetActive, so reconcile the effective state here
+            // before the physics body is rebuilt from it.
+            ReconcileEffectiveActivation();
             RefreshOwningRigidBody();
         }
 

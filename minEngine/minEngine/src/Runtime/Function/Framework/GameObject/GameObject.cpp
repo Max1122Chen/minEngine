@@ -377,7 +377,7 @@ namespace minEngine
             newIndex = count - 1;
         }
 
-        // Keep Root pinned (Design §10.4): non-root may not land at/before Root.
+        // Keep Root pinned: a non-root component may not land at or before the Root.
         if (m_RootComponent != nullptr)
         {
             const size_t rootIndex = FindComponentIndex(*m_RootComponent);
@@ -523,14 +523,7 @@ namespace minEngine
 
     void GameObject::UnlinkFromCurrentParent()
     {
-        if (m_Parent == nullptr)
-        {
-            return;
-        }
-
-        auto& siblings = m_Parent->m_Children;
-        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
-        m_Parent = nullptr;
+        ClearGameObjectParentLink();
     }
 
     void GameObject::ClearChildrenLinks()
@@ -560,6 +553,7 @@ namespace minEngine
         }
 
         SceneComponent* oldRoot = m_RootComponent;
+        GameObject* const parentBeforeRebind = m_Parent;
 
         // Promoting an attach-child of the old Root: detach KeepWorld first.
         if (newRoot != nullptr && oldRoot != nullptr && newRoot->GetAttachParent() == oldRoot)
@@ -581,6 +575,15 @@ namespace minEngine
 
         RebindRootToGameObjectParent(AttachmentTransformRules::KeepWorldTransform);
         RebindChildGameObjectRoots(AttachmentTransformRules::KeepWorldTransform);
+
+        // A rebind may dissolve this GO's parent edge, i.e. change the chain. Only then is a
+        // re-evaluation needed - a plain Root swap keeps the chain intact, and
+        // reconciling components in the middle of RemoveComponent would re-register the very
+        // component that is about to be unowned.
+        if (m_Parent != parentBeforeRebind)
+        {
+            PropagateEffectiveStateChange();
+        }
     }
 
     void GameObject::RebindRootToGameObjectParent(AttachmentTransformRules rules)
@@ -680,12 +683,17 @@ namespace minEngine
         m_Parent = parent;
         parent->m_Children.push_back(this);
         childRoot->AttachToComponent(parentRoot, rules);
+
+        // New ancestor chain, so invalidate and reconcile this whole subtree.
+        PropagateEffectiveStateChange();
         return true;
     }
 
     void GameObject::DetachFromParent(AttachmentTransformRules rules)
     {
-        if (m_Parent != nullptr)
+        const bool hadParent = m_Parent != nullptr;
+
+        if (hadParent)
         {
             UnlinkFromCurrentParent();
         }
@@ -696,6 +704,12 @@ namespace minEngine
             {
                 childRoot->DetachFromParent(rules);
             }
+        }
+
+        if (hadParent)
+        {
+            // The ancestor term just became "no parent", so re-evaluate the subtree.
+            PropagateEffectiveStateChange();
         }
     }
 

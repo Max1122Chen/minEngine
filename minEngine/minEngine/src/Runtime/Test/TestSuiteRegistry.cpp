@@ -45,7 +45,7 @@ namespace minEngine
 
     std::vector<ITestSuite*> TestSuiteRegistry::GetSmokeSuites() const
     {
-        // Deterministic smoke order (TEST_UNIFIED_DESIGN §3.5).
+        // Deterministic smoke order: the suites below run in this fixed sequence.
         static constexpr std::string_view kSmokeOrder[] = {
             "object-manager",
             "serialization-archive",
@@ -55,6 +55,7 @@ namespace minEngine
             "reflection-function",
             "material-ir",
             "screen-ui-game-viewport",
+            "hierarchy-activity",
         };
 
         std::vector<ITestSuite*> ordered;

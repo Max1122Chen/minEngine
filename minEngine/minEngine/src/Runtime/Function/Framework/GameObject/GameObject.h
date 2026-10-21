@@ -7,6 +7,8 @@
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "TypeTraits.h"
 
+#include <algorithm>
+
 namespace minEngine
 {
     struct Transform;
@@ -126,6 +128,107 @@ namespace minEngine
         /** Clear m_Children only (keeps serialized m_Parent for Resolve). */
         void ClearChildrenLinks();
 
+        /**
+         * Drops this node's GameObject-parent link without notifying anything.
+         * Teardown paths only: no transform cascade, no render-dirty, no singleton access, so it
+         * stays usable while the object graph is being taken apart.
+         */
+        void ClearGameObjectParentLink()
+        {
+            if (m_Parent == nullptr)
+            {
+                return;
+            }
+
+            std::vector<GameObject*>& siblings = m_Parent->m_Children;
+            siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+            m_Parent = nullptr;
+        }
+
+        // ---- Authored activity / visibility axes and their effective state ----
+
+        /** Writes the AUTHORED flag of this node only; the subtree is invalidated and reconciled. */
+        void SetActive(bool active)
+        {
+            if (IsActiveSelf() == active)
+            {
+                return;
+            }
+
+            m_bActive = active;
+            PropagateEffectiveStateChange();
+        }
+
+        /** Writes the AUTHORED flag of this node only; the subtree is invalidated and reconciled. */
+        void SetVisible(bool visible)
+        {
+            if (IsVisibleSelf() == visible)
+            {
+                return;
+            }
+
+            m_bVisible = visible;
+            PropagateEffectiveStateChange();
+        }
+
+        /** Effective state: this node's flag AND the parent GameObject chain. Cached, O(1). */
+        bool IsActive() const
+        {
+            if (m_EffectiveActiveCache == kEffectiveStateUnknown)
+            {
+                const bool parentActive = (m_Parent != nullptr) ? m_Parent->IsActive() : true;
+                m_EffectiveActiveCache = (m_bActive && parentActive)
+                    ? kEffectiveStateTrue
+                    : kEffectiveStateFalse;
+            }
+            return m_EffectiveActiveCache == kEffectiveStateTrue;
+        }
+
+        /** Effective state on the presentation axis. Cached, O(1). */
+        bool IsVisible() const
+        {
+            if (m_EffectiveVisibleCache == kEffectiveStateUnknown)
+            {
+                const bool parentVisible = (m_Parent != nullptr) ? m_Parent->IsVisible() : true;
+                m_EffectiveVisibleCache = (m_bVisible && parentVisible)
+                    ? kEffectiveStateTrue
+                    : kEffectiveStateFalse;
+            }
+            return m_EffectiveVisibleCache == kEffectiveStateTrue;
+        }
+
+        /** The author's own flag. */
+        bool IsActiveSelf() const { return m_bActive; }
+        /** The author's own flag. */
+        bool IsVisibleSelf() const { return m_bVisible; }
+
+        /** Explicit alias of IsActive(), for call sites that mean the hierarchy result. */
+        bool IsActiveInHierarchy() const { return IsActive(); }
+        /** Explicit alias of IsVisible(), for call sites that mean the hierarchy result. */
+        bool IsVisibleInHierarchy() const { return IsVisible(); }
+
+        /**
+         * Push the caches of this subtree to Unknown without evaluating, so a later pass can
+         * never read an ancestor value computed from a half-resolved hierarchy. Touches no
+         * authored flag. Used by the two-phase reconcile after deserialization.
+         */
+        void InvalidateEffectiveStateSubtree()
+        {
+            m_EffectiveActiveCache = kEffectiveStateUnknown;
+            m_EffectiveVisibleCache = kEffectiveStateUnknown;
+
+            for (GameObject* child : m_Children)
+            {
+                if (child != nullptr)
+                {
+                    child->InvalidateEffectiveStateSubtree();
+                }
+            }
+        }
+
+        /** Publish this node's effective state to its own components and reconcile the delta. */
+        void ReconcileEffectiveState() { ApplyEffectiveStateToComponents(IsActive(), IsVisible()); }
+
     protected:
         virtual void OnBeginPlay() {}
         virtual void OnEndPlay(EEndPlayReason reason) { (void)reason; }
@@ -136,6 +239,58 @@ namespace minEngine
         void UnlinkFromCurrentParent();
         void RebindRootToGameObjectParent(AttachmentTransformRules rules);
         void RebindChildGameObjectRoots(AttachmentTransformRules rules);
+
+        /**
+         * Push-down + delta reconcile for this subtree.
+         * Recomputes this node from the (already valid) parent cache, publishes the result to the
+         * owned components, then recurses. Authored flags are never written; depth-first with no
+         * allocation, so a mid-walk reparent cannot invalidate the loop.
+         */
+        void PropagateEffectiveStateChange()
+        {
+            m_EffectiveActiveCache = kEffectiveStateUnknown;
+            m_EffectiveVisibleCache = kEffectiveStateUnknown;
+
+            ApplyEffectiveStateToComponents(IsActive(), IsVisible());
+
+            for (size_t index = 0; index < m_Children.size(); ++index)
+            {
+                GameObject* child = m_Children[index];
+                if (child != nullptr)
+                {
+                    child->PropagateEffectiveStateChange();
+                }
+            }
+        }
+
+        void ApplyEffectiveStateToComponents(bool ownActive, bool ownVisible)
+        {
+            // Snapshot each element: a reconcile may register/unregister with systems that remove
+            // or reorder components, and a range-for over m_Components would then dangle.
+            for (size_t index = 0; index < m_Components.size(); ++index)
+            {
+                const std::shared_ptr<Component> component = m_Components[index];
+                if (!component || component->GetClass() == nullptr)
+                {
+                    continue;
+                }
+
+                component->PublishOwnerEffectiveActive(ownActive);
+
+                if (component->IsA(SceneComponent::StaticClass()))
+                {
+                    SceneComponent* sceneComponent = static_cast<SceneComponent*>(component.get());
+                    const bool visibleBefore = sceneComponent->IsVisible();
+                    sceneComponent->PublishOwnerEffectiveVisible(ownVisible);
+                    if (sceneComponent->IsVisible() != visibleBefore)
+                    {
+                        sceneComponent->MarkRenderStateDirty();
+                    }
+                }
+
+                component->ReconcileEffectiveActivation();
+            }
+        }
 
     private:
         /** Runtime scene-local lookup id; not used for hierarchy serialization. */
@@ -152,6 +307,17 @@ namespace minEngine
 
         ME_PROPERTY(Instanced)
         std::vector<std::shared_ptr<Component>> m_Components;
+
+        /** AUTHORED active flag of this node; the ancestor term of the whole subtree. */
+        ME_PROPERTY(Invisible)
+        bool m_bActive{ true };
+
+        /** AUTHORED visibility flag of this node; the presentation ancestor term. */
+        ME_PROPERTY(Invisible)
+        bool m_bVisible{ true };
+
+        mutable uint8_t m_EffectiveActiveCache{ kEffectiveStateUnknown };
+        mutable uint8_t m_EffectiveVisibleCache{ kEffectiveStateUnknown };
 
         bool m_bHasBegunPlay{ false };
         bool m_bPendingDestroy{ false };
