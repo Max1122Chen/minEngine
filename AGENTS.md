@@ -68,7 +68,8 @@ default-applied or deferred, unless the user says `reconfigure workflow`.
 - Feature: `<DOMAIN>-F<nn>` · Slice: `<FeatureID>-S<nn>` · Bug: `BUG-<DOMAIN>-<nnn>`
 - Long docs: `docs/ai/<DOMAIN>/<FEATURE_ID>_<SLUG>_<DOC_TYPE>.md`
   where DOC_TYPE is `DESIGN` | `IMPLEMENTATION` | `ROADMAP` | `REFACTOR_PLAN` | `SURVEY`
-- Branches carry topics, not registry IDs: `feat/<topic>`, `fix/<topic>`.
+- Branches carry areas, not registry IDs and not individual work items: `feat/<area>`,
+  optionally `feat/<area>/<subtopic>` when one area has clearly separable work.
 
 ## Hard Constraints
 
@@ -93,6 +94,19 @@ Enforced in `.cursor/rules/hard-constraints.mdc`; summarised here.
 - Rule: `.cursor/rules/comment-hygiene.mdc`.
 - When editing comments in bulk, never read a whole file, transform and write it back; replace lines
   in place and confirm the diff is a line-for-line substitution.
+
+### Branch naming (coarse, long-lived)
+
+- Prefer a **broad area branch that outlives many work items**: `feat/core`, `feat/render`,
+  `feat/ui`, `feat/asset`. Nest only when one area genuinely splits: `feat/core/reflection`,
+  `feat/render/material`.
+- **Do not create one branch per work item.** A branch named after a single fix or feature leaves
+  a pile of one-shot leftovers, makes the merge state unreadable, and buries which branches are
+  actually live. Keep working in the area branch across items and merge it as a unit.
+- A new branch is justified when the work moves to a different area, or when a merge point is
+  needed to land an approved slice on `master` before continuing.
+- Registry IDs never appear in branch names (`feat/CORE-F43` is forbidden).
+- Authority: `.cursor/rules/hard-constraints.mdc`.
 
 ### Refactor discipline
 

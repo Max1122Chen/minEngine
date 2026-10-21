@@ -51,4 +51,10 @@ After recovery: do not repeat the full rule text to the user unless they ask; ju
 - Name the **area of change**, not a Feature/Slice row. Prefer an existing matching area branch over a new ID-tied branch.
 - **Forbidden:** branch names built around registry IDs (e.g. `feat/core-f01-xxx`, `feat/TMPL-F05`, `feat/core-f01-s01`).
 - Same ID ban applies to `fix/` / `refactor/` / `chore/` (and similar): topic words only.
+- **Granularity: one branch per work item is discouraged.** Prefer a broad area branch that carries
+  many Features/Slices over time (`feat/core`, `feat/render`, `feat/ui`, `feat/asset`), nested only
+  when an area genuinely splits (`feat/core/reflection`). A per-item branch named after one fix or
+  one feature leaves a trail of dead branches and makes it impossible to read which branches are
+  live. Open a new branch when the work changes area, or when an approved slice must land on
+  `master` before the next one starts.
 - Profile cannot disable §4 or §5.
