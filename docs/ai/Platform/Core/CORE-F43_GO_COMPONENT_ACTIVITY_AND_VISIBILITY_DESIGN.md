@@ -4,7 +4,7 @@
 - **ID:** `CORE-F43`
 - **Type:** Feature（域语义补齐 + 级联传播 + 编辑器表面）
 - **Complexity:** `L2`（跨 Framework 基类 / UI 布局 / UI 命中 / 渲染收集 / 物理 / 序列化 / Editor Inspector 七个消费面；含状态机、缓存失效不变量、调用点分类审计）
-- **Status:** `Draft v2` —— **设计待主人审批，未授权实现**（`FEATURE_REGISTRY.md:165` 已登记 Draft；本版已吸收主人 2026-02-14 的 4 条修订意见）
+- **Status:** `Implemented` —— S01–S07 全部落地（`FEATURE_REGISTRY.md:165` 仍登记为 Draft，需要单独一行改动；本 Feature 不改该文件）。实现记录：S01/S02 → `CORE-F43_S01_S02_IMPLEMENTATION.md`，S03–S05 → `CORE-F43_S03_S05_IMPLEMENTATION.md`，S06/S07 → `CORE-F43_S06_S07_IMPLEMENTATION.md`
 - **Owner:** project maintainer
 - **Last updated:** 2026-02-14 **v2**（修订：①Inspector 两轴做成 header 特殊开关 + `Invisible` specifier；②D2 裁定为祖先链项，active 与 visible 同理；③D5 改写成「查询 / 状态变化 / 稳态」三层；④**D6 反转**——`IsActive()` / `IsVisible()` 返回层级结果，自身 flag 另用 `IsActiveSelf()` / `IsVisibleSelf()`，并新增 §H8 调用点分类审计）
 - **Related:**
@@ -777,4 +777,5 @@ I1 是本设计唯一不可让渡的语义。只写在文档里，实现者随�
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v1 | 2026-02-14 | 首版 Design Spec（仅文档）。依据：Component 激活机制现状、GameObject 无字段现状、UI 布局 / 命中 / 渲染收集三处「只查自身却无条件递归」实证，以及主人五条约束（不写回、visible 落合适基类、GO visible 为便利 flag、允许直改旧字段、需审批后才实现）。 |
+| **v3** | 2026-02-15 | **状态由 `Draft v2` 更新为 `Implemented`**：S01–S07 全部落地（字段与有效态契约 / 缓存与传播 / 六处消费面 / Inspector 两轴契约 / 审计收口）。本行只记状态与实现记录索引，设计正文未改；实现侧与本文的差异逐条列在 `CORE-F43_S06_S07_IMPLEMENTATION.md` §5 与 `CORE-F43_S03_S05_IMPLEMENTATION.md` §7。 |
 | **v2** | 2026-02-14 | 吸收主人审阅的 4 条修订：**① Inspector 契约（新 §H9）**——两轴做成 GO header / Component header 特殊开关、字段本体用 `Invisible` 从通用列表移除（已核实语义与副作用）、禁用态与只读有效态显示矩阵、GO 侧需新增绘制函数；S06 扩写为编辑器契约片（S06a/b/c）。**② D2 裁定**：(a)，并明确 **active 与 visible 都**沿祖先链求与（§H3 公式与 D2 正文）。**③ D5 措辞加固**：拆成「查询 O(1) / 状态变化时才上溯下推 / 稳态 0 次」三层，§H4 与 D5 各写一遍，并明确禁止「每次查询向上查一轮」。**④ D6 反转**：`IsActive()` / `IsVisible()` 返回层级结果、自身 flag 改名为 `IsActiveSelf()` / `IsVisibleSelf()`（给理由），新增 **§H8 调用点分类审计**（58 处：域外 7 / 声明 6 / 生成代码 2 / 机制 9 / 行为门 32 / Editor 2；必须改 Self 5 处、含义变化 33 处、新增有效态输入 4 处），新增 **F11 自激 / 不收敛**、**F12 Invisible 副作用**、**I9 机制自洽不变量**、**O8 收敛 oracle**、**O9 Inspector 目视 oracle**、**D10 prefab override 传播**。其余 D1/D3/D4/D7/D8/D9 标注为**主人已批准**。 |
