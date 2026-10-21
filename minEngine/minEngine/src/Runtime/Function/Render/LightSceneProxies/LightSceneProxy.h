@@ -24,6 +24,13 @@ namespace minEngine
         float m_SpecularFactor;
         bool m_CastsShadow;
 
+        /**
+         * Whether this light contributes illumination and shadow, i.e. the component is active and
+         * visible. Written by the game thread when the proxy is created and synced; the render
+         * thread only reads it, so no pass has to dereference the component to learn the state.
+         */
+        bool m_Enabled = true;
+
         LightComponent* m_LightComponent;
     };
 }

@@ -26,6 +26,13 @@ namespace minEngine
         Transform m_Transform;
         bool m_CastShadow = true;
 
+        /**
+         * Whether this primitive produces draw and shadow output, i.e. the component is active and
+         * visible. Written by the game thread when the proxy is created and synced; the render
+         * thread only reads it, so no pass has to dereference the component to learn the state.
+         */
+        bool m_Enabled = true;
+
         /** Non-owning; GPU buffers are owned by the mesh/quad asset. */
         RHIBuffer* m_VertexBuffer = nullptr;
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;

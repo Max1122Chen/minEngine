@@ -68,12 +68,13 @@ namespace minEngine
     {
         /**
          * A light contributes only while it is active and visible. A hidden light keeps its proxy
-         * and keeps ticking; it simply produces no illumination and no shadow.
+         * and keeps ticking; it simply produces no illumination and no shadow. The answer travels
+         * on the proxy, which the game thread fills, so this side stays read-only.
          */
         bool ContributesLight(const LightSceneProxy* lightProxy)
         {
             return lightProxy != nullptr && lightProxy->m_LightComponent != nullptr &&
-                lightProxy->m_LightComponent->IsActiveAndVisible();
+                lightProxy->m_Enabled;
         }
     }
 
@@ -1182,10 +1183,10 @@ namespace minEngine
                 continue;
             }
 
-            const PrimitiveComponent* sourceComponent = primitiveProxy->m_PrimitiveComponent;
             // Hidden primitives stay registered and keep ticking; they only stop producing draw
-            // and shadow output. Both collectors are fed from this loop, so one guard covers both.
-            if (!sourceComponent->IsActiveAndVisible())
+            // and shadow output. The game thread already decided that and stored it on the proxy,
+            // and both collectors are fed from this loop, so one guard covers both.
+            if (!primitiveProxy->m_Enabled)
             {
                 continue;
             }
@@ -1262,15 +1263,11 @@ namespace minEngine
             }
 
             WidgetComponent* widget = widgetProxy->m_WidgetComponent;
-            // The proxy's draw bit already answers this; re-reading the live state keeps a proxy
-            // assembled before the widget or an ancestor was switched off from still drawing.
-            if (!widget->IsActiveAndVisible())
-            {
-                continue;
-            }
-
+            // The draw bit is the whole gate: the game thread ANDs the widget's own state and its
+            // owning canvas being active into it when the proxy is assembled, so this side never
+            // asks a component whether it may draw.
             CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(widget->GetOwner());
-            if (canvas == nullptr || !canvas->IsActive())
+            if (canvas == nullptr)
             {
                 continue;
             }

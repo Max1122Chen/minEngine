@@ -50,6 +50,13 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 python (Join-Path $RepoRoot "scripts\audit_opengl_load_guard.py")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# Render passes read scene proxies, never components: the game thread publishes active-and-visible
+# onto the proxy, and reading the component instead would let a pass observe state the game thread
+# is still writing. The audit fails on a match inside the pipeline, on a missing whitelist file and
+# on a scan that matched nothing at all, so a rename cannot make it pass by finding no code.
+python (Join-Path $RepoRoot "scripts\audit_render_thread_state.py")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 # BUILD-F04 S01/S02/S03: editor/module boundary. Every assertion starts with "does the artifact
 # exist", so a missing libMaximumEditord.dll / editor exe fails loudly instead of skipping checks.
 python (Join-Path $RepoRoot "scripts\audit_module_boundaries.py") --assert --fail

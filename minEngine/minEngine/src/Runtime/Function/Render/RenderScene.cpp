@@ -5,6 +5,7 @@
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/SkyBoxComponent.h"
 #include "Runtime/Function/Framework/Components/WidgetComponent.h"
+#include "Runtime/Function/Framework/Components/CanvasComponent.h"
 #include "Runtime/Function/Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Runtime/Function/Render/SceneProxies/WidgetSceneProxy.h"
 #include "Runtime/Core/Log/LogSystem.h"
@@ -43,6 +44,14 @@ namespace minEngine
             // Simply update the transform for now. TODO: update other data if needed // P.S. we should not get transform from owner GameObject here. This is just a temporary design.
             PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy();
             primitiveComponent->SyncSceneProxy(*proxy);
+        }
+
+        // Registration follows the component being active, so the proxy outlives a visibility
+        // change. The draw gate is published here instead: the game thread owns the live state,
+        // and the render thread must be able to read it without touching the component.
+        if (PrimitiveSceneProxy* proxy = primitiveComponent->GetSceneProxy())
+        {
+            proxy->m_Enabled = primitiveComponent->IsActiveAndVisible();
         }
     }
 
@@ -151,6 +160,13 @@ namespace minEngine
                 spotProxy->m_AttenuationRadius = spotComp->GetAttenuationRadius();
                 spotProxy->m_AttenuationFalloff = spotComp->GetAttenuationFalloff();
             }
+        }
+
+        // Same split as primitives: registration follows the component being active, while the
+        // contribution gate travels with the proxy so shadow and lighting passes stay read-only.
+        if (LightSceneProxy* sceneProxy = lightComponent->GetSceneProxy())
+        {
+            sceneProxy->m_Enabled = lightComponent->IsActiveAndVisible();
         }
     }
 
@@ -270,6 +286,15 @@ namespace minEngine
             {
                 widgetComponent->UpdateSceneProxy(*proxy);
             }
+        }
+
+        // The widget's draw bit is decided here, on the side that owns the live state: a widget
+        // only draws while its owning canvas participates, and the canvas switch is read at this
+        // point so the render thread does not have to re-ask the components.
+        if (WidgetSceneProxy* proxy = widgetComponent->GetSceneProxy())
+        {
+            CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(widgetComponent->GetOwner());
+            proxy->m_bVisible = proxy->m_bVisible && canvas != nullptr && canvas->IsActive();
         }
     }
 
