@@ -32,7 +32,7 @@ namespace minEngine
         };
     };
 
-    struct InputKeys
+    struct MINENGINE_API InputKeys
     {
         static const InputKey AnyKey;
 
