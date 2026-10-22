@@ -746,6 +746,22 @@ namespace minEngine
             }
         };
 
+        struct TextureSamplerTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"texture-sampler", "Texture2D Sampler Modes", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'texture-sampler'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "texture-sampler",
+                    context.GetCommandLine().TestKind);
+            }
+        };
 
         struct SpriteAtlasTestSuiteTraits
         {
@@ -1335,6 +1351,7 @@ namespace minEngine
         using AutomationPipeInterruptSuite = TypedTestSuite<AutomationPipeInterruptTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
         using Texture2DCookSuite = TypedTestSuite<Texture2DCookTestSuiteTraits>;
+        using TextureSamplerSuite = TypedTestSuite<TextureSamplerTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
         using SpriteRuntimeConsumeSuite = TypedTestSuite<SpriteRuntimeConsumeTestSuiteTraits>;
         using SpriteAuthoringSuite = TypedTestSuite<SpriteAuthoringTestSuiteTraits>;
@@ -1416,6 +1433,7 @@ namespace minEngine
             registry.Register(AutomationPipeInterruptSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
             registry.Register(Texture2DCookSuite::Get());
+            registry.Register(TextureSamplerSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());
             registry.Register(SpriteRuntimeConsumeSuite::Get());
             registry.Register(SpriteAuthoringSuite::Get());

@@ -110,6 +110,92 @@ namespace minEngine
             }
             return 3;
         }
+
+        // The legacy string keys stay in the header for readers that only know the old
+        // shape; they are derived from the sampler modes so the file carries one sampling
+        // state instead of two.
+        const char* SamplerFilterName(RHISamplerFilter filter)
+        {
+            return filter == RHISamplerFilter::Nearest ? "Nearest" : "Linear";
+        }
+
+        const char* SamplerAddressName(RHISamplerAddress address)
+        {
+            switch (address)
+            {
+            case RHISamplerAddress::MirroredRepeat:
+                return "MirroredRepeat";
+            case RHISamplerAddress::ClampToEdge:
+                return "ClampToEdge";
+            case RHISamplerAddress::ClampToBorder:
+                return "ClampToBorder";
+            case RHISamplerAddress::Repeat:
+            default:
+                return "Repeat";
+            }
+        }
+
+        RHISamplerFilter SamplerFilterFromHeader(int raw)
+        {
+            return raw == static_cast<int>(RHISamplerFilter::Nearest)
+                ? RHISamplerFilter::Nearest
+                : RHISamplerFilter::Linear;
+        }
+
+        RHISamplerAddress SamplerAddressFromHeader(int raw)
+        {
+            switch (raw)
+            {
+            case static_cast<int>(RHISamplerAddress::MirroredRepeat):
+                return RHISamplerAddress::MirroredRepeat;
+            case static_cast<int>(RHISamplerAddress::ClampToEdge):
+                return RHISamplerAddress::ClampToEdge;
+            case static_cast<int>(RHISamplerAddress::ClampToBorder):
+                return RHISamplerAddress::ClampToBorder;
+            case static_cast<int>(RHISamplerAddress::Repeat):
+            default:
+                return RHISamplerAddress::Repeat;
+            }
+        }
+
+        /** Shared by TryGetCookedPixels and LoadFromAssetMeta so a load reads the file once. */
+        bool LoadCookedPixels(
+            const AssetMeta& meta,
+            ImagePixels& outPixels,
+            Texture2DCookSettings* outSettings,
+            std::string* outError)
+        {
+            ImageLoader::Free(outPixels);
+            const std::string absolutePath =
+                AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
+
+            if (IsMetexPath(meta.AssetPath) || IsMetexPath(absolutePath))
+            {
+                Texture2DCookSettings settings;
+                const bool ok = Texture2DLoader::ReadCookedFile(absolutePath, settings, outPixels, outError);
+                if (ok && outSettings != nullptr)
+                {
+                    *outSettings = settings;
+                }
+                return ok;
+            }
+
+            if (IsLegacyImagePath(meta.AssetPath) || IsLegacyImagePath(absolutePath))
+            {
+                ME_LOG(
+                    LogAsset,
+                    Warn,
+                    "Texture2DLoader: loading legacy image asset '{}' (migrate to .metex).",
+                    meta.AssetPath);
+                return ImageLoader::Load(absolutePath, outPixels, true, outError);
+            }
+
+            if (outError)
+            {
+                *outError = "unsupported Texture2D asset path for cooked pixels: " + meta.AssetPath;
+            }
+            return false;
+        }
     }
 
     std::shared_ptr<Texture2D> Texture2DLoader::CreateFromPixels(
@@ -309,16 +395,19 @@ namespace minEngine
         written.CookedFormat = CookedFormatFromChannels(pixels.Channels);
 
         Json header = Json::object();
-        header["version"] = written.Version;
+        header["version"] = kMetexVersion;
         header["width"] = pixels.Width;
         header["height"] = pixels.Height;
         header["channels"] = pixels.Channels;
         header["cookedFormat"] = written.CookedFormat;
         header["channelSemantics"] = written.ChannelSemantics;
         header["sRGB"] = written.bSRGB;
-        header["wrapU"] = written.WrapU;
-        header["wrapV"] = written.WrapV;
-        header["filter"] = written.Filter;
+        header["wrapU"] = SamplerAddressName(written.SamplerAddress);
+        header["wrapV"] = SamplerAddressName(written.SamplerAddress);
+        header["filter"] = SamplerFilterName(written.SamplerFilter);
+        // Appended, never reordered: existing keys keep their position for older readers.
+        header["samplerFilter"] = static_cast<int>(written.SamplerFilter);
+        header["samplerAddress"] = static_cast<int>(written.SamplerAddress);
 
         const std::string headerText = header.dump();
         const size_t byteCount =
@@ -418,13 +507,18 @@ namespace minEngine
             return false;
         }
 
-        outSettings.Version = header.value("version", 1);
+        const int version = header.value("version", 1);
+        outSettings = Texture2DCookSettings{};
         outSettings.ChannelSemantics = header.value("channelSemantics", "Color");
         outSettings.CookedFormat = header.value("cookedFormat", "RGB8");
         outSettings.bSRGB = header.value("sRGB", true);
-        outSettings.WrapU = header.value("wrapU", "Repeat");
-        outSettings.WrapV = header.value("wrapV", "Repeat");
-        outSettings.Filter = header.value("filter", "Linear");
+        if (version >= kMetexVersion)
+        {
+            outSettings.SamplerFilter = SamplerFilterFromHeader(
+                header.value("samplerFilter", static_cast<int>(RHISamplerFilter::Linear)));
+            outSettings.SamplerAddress = SamplerAddressFromHeader(
+                header.value("samplerAddress", static_cast<int>(RHISamplerAddress::Repeat)));
+        }
 
         const int width = header.value("width", 0);
         const int height = header.value("height", 0);
@@ -488,38 +582,15 @@ namespace minEngine
         ImagePixels& outPixels,
         std::string* outError)
     {
-        ImageLoader::Free(outPixels);
-        const std::string absolutePath =
-            AssetManager::Get().ResolveAssetAbsolutePath(meta.AssetPath).string();
-
-        if (IsMetexPath(meta.AssetPath) || IsMetexPath(absolutePath))
-        {
-            Texture2DCookSettings settings;
-            return ReadCookedFile(absolutePath, settings, outPixels, outError);
-        }
-
-        if (IsLegacyImagePath(meta.AssetPath) || IsLegacyImagePath(absolutePath))
-        {
-            ME_LOG(
-                LogAsset,
-                Warn,
-                "Texture2DLoader: loading legacy image asset '{}' (migrate to .metex).",
-                meta.AssetPath);
-            return ImageLoader::Load(absolutePath, outPixels, true, outError);
-        }
-
-        if (outError)
-        {
-            *outError = "unsupported Texture2D asset path for cooked pixels: " + meta.AssetPath;
-        }
-        return false;
+        return LoadCookedPixels(meta, outPixels, nullptr, outError);
     }
 
     std::shared_ptr<Texture2D> Texture2DLoader::LoadFromAssetMeta(const AssetMeta& meta)
     {
         ImagePixels pixels;
+        Texture2DCookSettings settings;
         std::string error;
-        if (!TryGetCookedPixels(meta, pixels, &error))
+        if (!LoadCookedPixels(meta, pixels, &settings, &error))
         {
             ME_LOG(LogAsset, Error, "Texture2DLoader: failed to load '{}': {}", meta.AssetPath, error);
             return nullptr;
@@ -536,6 +607,11 @@ namespace minEngine
         std::shared_ptr<Texture2D> texture =
             CreateFromPixels(*rhi, pixels, meta.AssetName, meta.Guid);
         ImageLoader::Free(pixels);
+        if (texture != nullptr)
+        {
+            texture->SetSamplerFilter(settings.SamplerFilter);
+            texture->SetSamplerAddress(settings.SamplerAddress);
+        }
         return texture;
     }
 

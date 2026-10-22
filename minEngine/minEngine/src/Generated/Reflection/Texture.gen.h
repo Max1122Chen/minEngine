@@ -4,6 +4,12 @@
 #include "Runtime/Core/Reflection/ReflectionMacros.h"
 
 ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Texture2D)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Texture2D, m_SamplerFilter)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::Texture2D, m_SamplerFilter, GetSamplerFilter)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::Texture2D, m_SamplerFilter, SetSamplerFilter)
+    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Texture2D, m_SamplerAddress)
+    ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::Texture2D, m_SamplerAddress, GetSamplerAddress)
+    ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::Texture2D, m_SamplerAddress, SetSamplerAddress)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Texture2D, GReflectionClassRegister_Texture2D_4283386f)

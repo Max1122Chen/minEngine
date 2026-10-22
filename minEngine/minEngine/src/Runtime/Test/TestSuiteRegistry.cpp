@@ -59,6 +59,7 @@ namespace minEngine
             "activity-consumers",
             "widget-graphic",
             "input-trigger-lifecycle",
+            "texture-sampler",
         };
 
         std::vector<ITestSuite*> ordered;

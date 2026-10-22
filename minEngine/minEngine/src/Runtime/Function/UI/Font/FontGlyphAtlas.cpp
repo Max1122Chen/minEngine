@@ -314,13 +314,10 @@ namespace minEngine
             return nullptr;
         }
 
-        RHISamplerDesc sampler;
-        sampler.MinFilter = RHISamplerFilter::Linear;
-        sampler.MagFilter = RHISamplerFilter::Linear;
-        sampler.AddressU = RHISamplerAddress::ClampToEdge;
-        sampler.AddressV = RHISamplerAddress::ClampToEdge;
-        sampler.AddressW = RHISamplerAddress::ClampToEdge;
-        texture->SetPreferredSamplerDesc(sampler);
+        // Clamping keeps neighbouring glyphs out of an edge pixel; the filtering mode stays
+        // linear so scaled text keeps the look this engine already shipped.
+        texture->SetSamplerFilter(RHISamplerFilter::Linear);
+        texture->SetSamplerAddress(RHISamplerAddress::ClampToEdge);
 
         m_GpuTexture = texture;
         m_bAtlasGpuDirty = false;

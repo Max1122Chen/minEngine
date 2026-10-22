@@ -4,4 +4,6 @@
 ME_REFLECTION_CLASS_DEFINE_BEGIN(minEngine::Texture2D, GReflectionClassRegister_Texture2D_4283386f)
     ME_REFLECTION_CLASS_SET_ANNOTATIONS(static_cast<minEngine::Reflection::ClassSpecifierMask>(minEngine::Reflection::ClassSpecifier::None), (minEngine::Reflection::ClassMetadata{}))
     ME_REFLECTION_CLASS_SUPER(minEngine::Asset)
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Texture2D, m_SamplerFilter, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), &minEngine::Reflection::FieldAccessor<minEngine::Texture2D>::PropertyGet_m_SamplerFilter, &minEngine::Reflection::FieldAccessor<minEngine::Texture2D>::PropertySet_m_SamplerFilter, (minEngine::Reflection::PropertyMetadata{{"Getter", "GetSamplerFilter"}, {"Setter", "SetSamplerFilter"}}))
+    ME_REFLECTION_CLASS_ADD_FIELD_ACCESSORS(minEngine::Texture2D, m_SamplerAddress, (static_cast<minEngine::Reflection::PropertySpecifierMask>(minEngine::Reflection::PropertySpecifier::EditAnywhere)), &minEngine::Reflection::FieldAccessor<minEngine::Texture2D>::PropertyGet_m_SamplerAddress, &minEngine::Reflection::FieldAccessor<minEngine::Texture2D>::PropertySet_m_SamplerAddress, (minEngine::Reflection::PropertyMetadata{{"Getter", "GetSamplerAddress"}, {"Setter", "SetSamplerAddress"}}))
 ME_REFLECTION_CLASS_DEFINE_END(minEngine::Texture2D)

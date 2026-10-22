@@ -80,6 +80,10 @@ namespace minEngine
         int AnimationIndex = 0;
         // Texture2D Product: Color (default) | SingleChannel | Mask. Empty => Color.
         std::string ChannelSemantics;
+        // Texture2D Product sampler modes. Empty => Linear / Repeat, so an import that
+        // names neither keeps the historical result.
+        std::string SamplerFilter;
+        std::string SamplerAddress;
         // When true, overwrite an existing cooked product and keep its meta Guid.
         bool bOverwriteExisting = false;
     };

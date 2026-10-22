@@ -36,6 +36,47 @@ namespace minEngine
             return {};
         }
 
+        /** Names come from the import options; unknown values must not silently fall back. */
+        bool ParseSamplerFilter(std::string_view value, RHISamplerFilter& outFilter)
+        {
+            if (value == "Linear")
+            {
+                outFilter = RHISamplerFilter::Linear;
+                return true;
+            }
+            if (value == "Nearest")
+            {
+                outFilter = RHISamplerFilter::Nearest;
+                return true;
+            }
+            return false;
+        }
+
+        bool ParseSamplerAddress(std::string_view value, RHISamplerAddress& outAddress)
+        {
+            if (value == "Repeat")
+            {
+                outAddress = RHISamplerAddress::Repeat;
+                return true;
+            }
+            if (value == "MirroredRepeat")
+            {
+                outAddress = RHISamplerAddress::MirroredRepeat;
+                return true;
+            }
+            if (value == "ClampToEdge")
+            {
+                outAddress = RHISamplerAddress::ClampToEdge;
+                return true;
+            }
+            if (value == "ClampToBorder")
+            {
+                outAddress = RHISamplerAddress::ClampToBorder;
+                return true;
+            }
+            return false;
+        }
+
         bool PathContainsSourcesSegment(const std::filesystem::path& absolutePath)
         {
             for (const std::filesystem::path& part : absolutePath)
@@ -198,6 +239,23 @@ namespace minEngine
         {
             settings.ChannelSemantics = "Color";
             settings.bSRGB = true;
+        }
+
+        if (!request.SamplerFilter.empty()
+            && !ParseSamplerFilter(request.SamplerFilter, settings.SamplerFilter))
+        {
+            legacy.ErrorMessage =
+                "unknown filter '" + request.SamplerFilter
+                + "' (expected Linear or Nearest)";
+            return AssetImportHelpers::MakeResultFromLegacy(legacy);
+        }
+        if (!request.SamplerAddress.empty()
+            && !ParseSamplerAddress(request.SamplerAddress, settings.SamplerAddress))
+        {
+            legacy.ErrorMessage =
+                "unknown address '" + request.SamplerAddress
+                + "' (expected Repeat, MirroredRepeat, ClampToEdge, or ClampToBorder)";
+            return AssetImportHelpers::MakeResultFromLegacy(legacy);
         }
 
         ImagePixels pixels;

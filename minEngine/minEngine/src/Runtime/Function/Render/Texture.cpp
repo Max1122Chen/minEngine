@@ -5,35 +5,34 @@
 
 namespace minEngine
 {
-    namespace
+    void Texture2D::SetSamplerFilter(RHISamplerFilter filter)
     {
-        TextureFiltering ToTextureFiltering(RHISamplerFilter filter)
-        {
-            return filter == RHISamplerFilter::Nearest ? TextureFiltering::Nearest : TextureFiltering::Linear;
-        }
+        m_SamplerFilter = filter;
+        RebuildPreferredSamplerDesc();
+    }
 
-        TextureWrapping ToTextureWrapping(RHISamplerAddress address)
-        {
-            switch (address)
-            {
-            case RHISamplerAddress::MirroredRepeat:
-                return TextureWrapping::MirroredRepeat;
-            case RHISamplerAddress::ClampToEdge:
-                return TextureWrapping::ClampToEdge;
-            case RHISamplerAddress::ClampToBorder:
-                return TextureWrapping::ClampToBorder;
-            case RHISamplerAddress::Repeat:
-            default:
-                return TextureWrapping::Repeat;
-            }
-        }
+    void Texture2D::SetSamplerAddress(RHISamplerAddress address)
+    {
+        m_SamplerAddress = address;
+        RebuildPreferredSamplerDesc();
+    }
+
+    void Texture2D::RebuildPreferredSamplerDesc()
+    {
+        RHISamplerDesc desc;
+        desc.MinFilter = m_SamplerFilter;
+        desc.MagFilter = m_SamplerFilter;
+        desc.AddressU = m_SamplerAddress;
+        desc.AddressV = m_SamplerAddress;
+        desc.AddressW = m_SamplerAddress;
+        SetPreferredSamplerDesc(desc);
     }
 
     void Texture2D::SetPreferredSamplerDesc(const RHISamplerDesc& desc)
     {
         m_PreferredSamplerDesc = desc;
-        m_Filtering = ToTextureFiltering(desc.MagFilter);
-        m_Wrapping = ToTextureWrapping(desc.AddressU);
+        m_SamplerFilter = desc.MagFilter;
+        m_SamplerAddress = desc.AddressU;
     }
 
     std::shared_ptr<Texture2D> Texture2D::CreateSolidRGBA(RHI& rhi, uint8_t r, uint8_t g, uint8_t b, uint8_t a)

@@ -536,6 +536,18 @@ namespace minEngine
                 request.ChannelSemantics = semanticsIt->second;
             }
 
+            const auto filterIt = spec.Options.find("filter");
+            if (filterIt != spec.Options.end() && !filterIt->second.empty())
+            {
+                request.SamplerFilter = filterIt->second;
+            }
+
+            const auto addressIt = spec.Options.find("address");
+            if (addressIt != spec.Options.end() && !addressIt->second.empty())
+            {
+                request.SamplerAddress = addressIt->second;
+            }
+
             const ImportResult importResult = AssetManager::Get().Import(request);
             if (!importResult.bSuccess)
             {
