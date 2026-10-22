@@ -1200,6 +1200,9 @@ namespace minEngine
         PropertyWriteOutcome outcome;
         const Serialization::SerializerOptions options = sceneEditor.GetPropertyCommandSerializerOptions();
 
+        // Same pipeline as Material/AnimGraph set_property: JSON → live → capture after blob →
+        // restore before → commit blobs. Do not snapshot std::string (or other non-trivial
+        // properties) through raw GetProperty into an unconstructed byte buffer.
         std::string codecError;
         ScenePropertyValueCodec::RefError refError = ScenePropertyValueCodec::RefError::None;
         if (!ScenePropertyValueCodec::TryWriteJsonToLive(
@@ -1213,60 +1216,15 @@ namespace minEngine
             return outcome;
         }
 
-        void* leafOwner = nullptr;
-        const Reflection::MEClass* leafOwnerClass = nullptr;
-        std::string leafPropertyName;
-        std::string walkError;
-        if (!ScenePropertyValueCodec::WalkToLeafOwner(
-                &owner,
-                &ownerClass,
-                normalizedPath,
-                leafOwner,
-                leafOwnerClass,
-                leafPropertyName,
-                walkError))
+        std::vector<uint8_t> afterBlob;
+        if (!ScenePropertyValueCodec::TryCaptureBlob(
+                owner, ownerClass, normalizedPath, afterBlob, codecError, options))
         {
             std::string restoreError;
             ScenePropertyValueCodec::TryRestoreBlob(
                 owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
-            outcome.ErrorCode = "InvalidPropertyPath";
-            outcome.ErrorMessage = walkError;
-            return outcome;
-        }
-
-        const Reflection::MEProperty* property = nullptr;
-        Reflection::ReflectionSystem::Get().ForEachPropertyInHierarchy(
-            leafOwnerClass->GetName(),
-            [&](const Reflection::MEProperty& candidate) -> bool
-            {
-                if (candidate.GetName() == leafPropertyName)
-                {
-                    property = &candidate;
-                    return false;
-                }
-                return true;
-            });
-        if (property == nullptr)
-        {
-            std::string restoreError;
-            ScenePropertyValueCodec::TryRestoreBlob(
-                owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
-            outcome.ErrorCode = "InvalidPropertyPath";
-            outcome.ErrorMessage = "Leaf property not found.";
-            return outcome;
-        }
-
-        const size_t storageSize = property->GetStorageSize();
-        std::vector<uint8_t> afterBuffer(storageSize);
-        const SceneEditorResult afterGet = m_SceneServices.GetProperty(
-            owner, normalizedPath, afterBuffer.data(), afterBuffer.size());
-        if (!afterGet.Ok)
-        {
-            std::string restoreError;
-            ScenePropertyValueCodec::TryRestoreBlob(
-                owner, ownerClass, normalizedPath, beforeBlob, restoreError, options);
-            outcome.bSceneResult = true;
-            outcome.SceneResult = afterGet;
+            outcome.ErrorCode = "InternalError";
+            outcome.ErrorMessage = codecError;
             return outcome;
         }
 
@@ -1278,29 +1236,26 @@ namespace minEngine
             return outcome;
         }
 
-        std::vector<uint8_t> beforeBuffer(storageSize);
-        const SceneEditorResult beforeGet = m_SceneServices.GetProperty(
-            owner, normalizedPath, beforeBuffer.data(), beforeBuffer.size());
-        if (!beforeGet.Ok)
-        {
-            outcome.bSceneResult = true;
-            outcome.SceneResult = beforeGet;
-            return outcome;
-        }
-
-        if (beforeBuffer == afterBuffer)
+        if (beforeBlob == afterBlob)
         {
             outcome.Ok = true;
             outcome.bUnchanged = true;
             return outcome;
         }
 
-        const SceneEditorResult setResult = m_SceneServices.SetProperty(
-            context, session, owner, normalizedPath, afterBuffer.data(), afterBuffer.size());
-        if (!setResult.Ok)
+        const SceneEditorResult commitResult = m_SceneServices.CommitObjectPropertyBlobs(
+            context,
+            session,
+            owner.GetGuid(),
+            ownerClass.GetName(),
+            normalizedPath,
+            beforeBlob,
+            std::move(afterBlob),
+            true);
+        if (!commitResult.Ok)
         {
             outcome.bSceneResult = true;
-            outcome.SceneResult = setResult;
+            outcome.SceneResult = commitResult;
             return outcome;
         }
 

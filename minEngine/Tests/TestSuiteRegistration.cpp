@@ -14,6 +14,7 @@
 #include "Suites/DataAssetTest.h"
 #include "Suites/AssetRefTypeTest.h"
 #include "Suites/ScenePropertyRefTypeTest.h"
+#include "Suites/ScenePropertyStringTest.h"
 #include "Suites/ReflectionFunctionTest.h"
 #include "Suites/MaterialIRTest.h"
 #include "Suites/LuaScriptMvpTest.h"
@@ -175,6 +176,21 @@ namespace minEngine
                 ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-property-ref-type'.");
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext("scene-property-ref-type", context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct ScenePropertyStringTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"scene-property-string", "Scene Property String", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-property-string'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("scene-property-string", context.GetCommandLine().TestKind);
             }
         };
 
@@ -1317,6 +1333,7 @@ namespace minEngine
         using DataAssetSuite = TypedTestSuite<DataAssetTestSuiteTraits>;
         using AssetRefTypeSuite = TypedTestSuite<AssetRefTypeTestSuiteTraits>;
         using ScenePropertyRefTypeSuite = TypedTestSuite<ScenePropertyRefTypeTestSuiteTraits>;
+        using ScenePropertyStringSuite = TypedTestSuite<ScenePropertyStringTestSuiteTraits>;
         using ReflectionFunctionSuite = TypedTestSuite<ReflectionFunctionTestSuiteTraits>;
         using MaterialIRSuite = TypedTestSuite<MaterialIRTestSuiteTraits>;
         using RenderGraphSuite = TypedTestSuite<RenderGraphTestSuiteTraits>;
@@ -1399,6 +1416,7 @@ namespace minEngine
             registry.Register(DataAssetSuite::Get());
             registry.Register(AssetRefTypeSuite::Get());
             registry.Register(ScenePropertyRefTypeSuite::Get());
+            registry.Register(ScenePropertyStringSuite::Get());
             registry.Register(ReflectionFunctionSuite::Get());
             registry.Register(MaterialIRSuite::Get());
             registry.Register(RenderGraphSuite::Get());

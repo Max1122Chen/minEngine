@@ -51,6 +51,7 @@ namespace minEngine
             "serialization-archive",
             "asset-ref-type",
             "scene-property-ref-type",
+            "scene-property-string",
             "asset-manager",
             "reflection-function",
             "material-ir",

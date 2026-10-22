@@ -1,3 +1,10 @@
+## 2026-10-22 — BUG-EDITOR-009：scene.set_property 空串 string 崩溃
+
+- **Scope:** `WritePropertyValue` 去掉对未构造 raw buffer 的 `GetProperty`/`SetProperty`；对齐 Graph 域 blob + `CommitObjectPropertyBlobs`；新增 suite `scene-property-string`（smoke）
+- **Completed:** 修复；[BUG-EDITOR-009](./bugs/BUG-EDITOR-009.md) → Fixed；smoke 序加入 `scene-property-string`
+- **Verification:** `minEngine/bin/minEngineTests.exe test scene-property-string` — 3 passed / 36 assert
+- **Next:** 主人验收后提交；可选 MCP 手验 `m_Name` ← `""`
+
 ## 2026-10-22 — BUILD-F03 刀2 终：默认 `explicit` + 清冗余 linker 旗标
 
 - **Scope:** `MinEngineExports.cmake` 默认 `MINENGINE_EXPORT_MODE=explicit`；whitelist/explicit 路径只留 `--exclude-all-symbols`（`--exclude-libs` / `--exclude-modules-for-implib` 仅 `auto`）

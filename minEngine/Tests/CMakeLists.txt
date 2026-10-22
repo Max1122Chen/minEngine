@@ -33,8 +33,8 @@ set(AUTOMATION_PIPE_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Automation/AutomationPipeServer.cpp
 )
 
-# BUG-EDITOR-008: the scene property write codec that scene.set_property drives (Editor source
-# linked into tests, same shape as the automation pipe above).
+# BUG-EDITOR-008 / BUG-EDITOR-009: the scene property write codec that scene.set_property drives
+# (Editor source linked into tests, same shape as the automation pipe above).
 set(SCENE_PROPERTY_CODEC_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Scene/ScenePropertyValueCodec.cpp
 )
