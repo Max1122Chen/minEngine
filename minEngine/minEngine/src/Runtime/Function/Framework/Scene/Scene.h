@@ -19,7 +19,7 @@ namespace minEngine
     class GameplayEventSystemComponent;
 
     ME_CLASS()
-    class Scene : public Asset
+    class MINENGINE_API Scene : public Asset
     {  
         ME_GENERATED_BODY()
     public:

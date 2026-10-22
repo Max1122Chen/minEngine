@@ -14,7 +14,7 @@ namespace minEngine
      * Owns GameInstanceSubsystem collection.
      */
     ME_CLASS()
-    class GameInstance : public MEObject
+    class MINENGINE_API GameInstance : public MEObject
     {
         ME_GENERATED_BODY()
 

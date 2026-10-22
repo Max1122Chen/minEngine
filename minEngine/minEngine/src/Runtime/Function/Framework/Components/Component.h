@@ -28,7 +28,7 @@ namespace minEngine
      * Base class for all components that can be attached to GameObjects.
      */
     ME_CLASS(ScriptType, Abstract)
-    class Component : public MEObject
+    class MINENGINE_API Component : public MEObject
     {
         ME_GENERATED_BODY()
     public:

@@ -42,6 +42,11 @@ namespace minEngine
         return *s_Instance;
     }
 
+    bool Engine::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     void Engine::BeginEngineProfileStartup()
     {
         Profile::Initialize();

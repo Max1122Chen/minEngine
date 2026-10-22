@@ -13,7 +13,7 @@ namespace minEngine
 
     /// Hierarchical tag handle. Identity is TagName; Manager index is an optional bind cache.
     ME_STRUCT()
-    class GameplayTag
+    class MINENGINE_API GameplayTag
     {
         ME_GENERATED_BODY()
 

@@ -10,7 +10,7 @@ namespace minEngine
 {
     class GameplayTagManager;
 
-    class GameplayTagContainer
+    class MINENGINE_API GameplayTagContainer
     {
     public:
         explicit GameplayTagContainer(GameplayTagManager& manager);

@@ -9,7 +9,7 @@ namespace minEngine
     class Scene;
     struct SceneCloneContext;
 
-    class SceneDuplicator
+    class MINENGINE_API SceneDuplicator
     {
     public:
         static std::shared_ptr<Scene> DuplicateForPIE(const Scene& editorScene, SceneCloneContext& inOutContext);

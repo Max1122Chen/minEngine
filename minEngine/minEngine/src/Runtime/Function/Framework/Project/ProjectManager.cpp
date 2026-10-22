@@ -24,6 +24,11 @@ namespace minEngine
         return *s_Instance;
     }
 
+    bool ProjectManager::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     void ProjectManager::Initialize()
     {
     }

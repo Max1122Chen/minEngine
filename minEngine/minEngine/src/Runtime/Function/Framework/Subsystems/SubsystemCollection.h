@@ -17,7 +17,7 @@ namespace minEngine
      * Owns subsystem instances for one Outer (Engine / GameInstance / Scene).
      * Discovery: Reflection GetDerivedClasses(Base), skip Abstract, ShouldCreateSubsystem.
      */
-    class SubsystemCollectionBase
+    class MINENGINE_API SubsystemCollectionBase
     {
     public:
         SubsystemCollectionBase() = default;

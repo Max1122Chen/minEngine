@@ -51,14 +51,14 @@ namespace minEngine
         }
     };
 
-    class ProjectManager
+    class MINENGINE_API ProjectManager
     {
     public:
         ProjectManager() = default;
         ~ProjectManager() = default;
 
         static ProjectManager& Get();
-        static bool HasInstance() { return s_Instance != nullptr; }
+        static bool HasInstance();
 
         void Initialize();
         void Shutdown();

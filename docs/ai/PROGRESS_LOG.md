@@ -1,3 +1,10 @@
+## 2026-10-22 — BUILD-F03 刀2 批4：Object / Scene / Components / GameplayTag / Engine
+
+- **Scope:** 类级 `MINENGINE_API`：`MEObject`/`ObjectManager`/`ObjectCloneContext`/`GameObject`/`Component`/`SceneComponent`/`PrimitiveComponent`/`Scene`/`SceneManager`/`SceneDuplicator`/`GameInstance`/`Subsystem*`/`SubsystemCollectionBase`/`GameplayTag*`/`NativeGameplayTag*`/`Engine`/`ProjectManager`；`Engine`/`ProjectManager::HasInstance` 改 `.cpp`（避免消费者 import `s_Instance`）；按 Itanium 归属类烧 `.def` −156 → **498**
+- **Verification:** 四类 target 绿；`--verify-coverage` missing=0；budget/forbid-buckets PASS；`bin` 下 `smoke` / `game-module-stub` / `gameplay-tags` / `object-manager` 全绿
+- **Next:** 主人验收 → 批5 Render/Resource/UI/Audio/Physics/Prefab/Animation
+- **Note（顺手排查，未修）：** DataAsset 加载后 meta/medata Guid 不对称 — 规范身份在 `.meta`（`ApplyMetaIdentity`）；`m_Guid` 仍写入 `.medata`（Invisible≠Transient）；`RegisterAsset` 零 Guid/碰撞只改 `.meta`；加载+Save 会把 medata 改写成 meta 侧 Guid
+
 ## 2026-10-22 — BUILD-F03 刀2 批3：Reflection codegen MODULE_API + 烧 `.def`
 
 - **Scope:** `ME_REFLECTION_MODULE_API`（默认 `MINENGINE_API`）；`MinEngineReflection.cmake` 增加 `MODULE_API`；`GameModuleStub` 用 `GAMEMODULESTUB_API`；宏/`StaticClass`/`GetClassName` 跟随归属模块；从 `.def` 烧掉 Reflection 命名空间与 `*::StaticClass` 行（约 −127 → **654**）；签名里仅提及 `MEClass` 的行（如 `GetSubsystem`/`PostEditChangeProperty`）误删后已补回

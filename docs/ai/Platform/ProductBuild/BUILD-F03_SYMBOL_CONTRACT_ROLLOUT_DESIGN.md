@@ -4,9 +4,9 @@
 - **ID:** `BUILD-F03`
 - **Type:** Refactor（ABI 契约 / 构建边界）+ 设计盘点
 - **Complexity:** `L2`（三刀切片，可分轮实施）
-- **Status:** `In Progress` · **v3**（刀2 已批准；批 0–3 Done，批 4+ 待做）
+- **Status:** `In Progress` · **v3**（刀2 已批准；批 0–4 Done，批 5+ 待做）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-22`（批3 落地）
+- **Last updated:** `2026-10-22`（批4 落地）
 - **Design input:** [BUILD-F02](BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md)（三段式状态机，S00–S02 已落地）、[BUILD-F02-S01](BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md)、[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)
 - **Blocks / 边界:** [BUILD-F04](./BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md)（编辑器模块边界）—— imgui 由 F04 S04 迁出；本文不展开 F04 方案。
 - **本文性质:** 设计 + 进度快照。v1/v2 数字多为迁移前实测；**v3「现状」以 2026-10-22 代码/PE 为准**。刀2 **批准前不改**大批头文件 / `.def` / codegen。
@@ -21,7 +21,7 @@
 
 ## TL;DR
 
-> **进度（2026-10-22）：** 刀1（glfw/glad 出表 + 删除守卫）**已落地**；刀3 / BUILD-F04（Editor DLL、imgui 迁出、asset-only 等）**大部落地**。引擎默认仍是 `whitelist`；刀2 批0–3 Done，`.def` **654** 行；DLL 导出约 **1660**（第三方桶 = 0；类级宏抬升属预期）。**剩余：刀2 批4–5 + 烧光 `.def` → `explicit`。**
+> **进度（2026-10-22）：** 刀1（glfw/glad 出表 + 删除守卫）**已落地**；刀3 / BUILD-F04（Editor DLL、imgui 迁出、asset-only 等）**大部落地**。引擎默认仍是 `whitelist`；刀2 批0–4 Done，`.def` **498** 行；DLL 导出约 **1869**（第三方桶 = 0；类级宏抬升属预期）。**剩余：刀2 批5 + 烧光 `.def` → `explicit`。**
 >
 > **刀2 怎么理解（人话）：** 导出只认标注；定义只活在一个 DLL 里。普通类型 → 要不要给外部用 → 标宏；反射生成 → 跟归属模块注入 API；单例/常量表 → `.cpp` 一份定义 + 宏（勿 `inline` 复制）。先标后删 `.def` 行，删光再切模式。门禁/棘轮是护栏，不是这件工作的本质。
 >
@@ -83,8 +83,8 @@
 | 1 | Log / CLI / Path / Serialization | **Done**（2026-10-22）：补 `PathRegistry`/`ApplicationCommandLine`；`.def` −98 |
 | 2 | Math / Input（含 `s_Instance` out-of-line） | **Done**（2026-10-22）：`InputSystem`/`InputTrigger*`/`Quaternion`/`Color`/`LinearColor`/`AABB`/`Frustum`/`PointerConstraint*`；`HasInstance()` 改 `.cpp`；`.def` −118（约 781 余） |
 | 3 | Reflection + **codegen MODULE_API** | **Done**（2026-10-22）：`ME_REFLECTION_MODULE_API` + CMake `MODULE_API`；`GameModuleStub`→`GAMEMODULESTUB_API`；烧 Reflection/`StaticClass`/汇点 off `.def`；误滤签名提及已补回；`.def` −127 → **654** |
-| 4 | Object / Scene / Components / GameplayTag* | **Next**；附录 C-A 大头 |
-| 5 | Render / Resource / UI / Audio / Physics / Prefab / Animation | 附录 C-A/B |
+| 4 | Object / Scene / Components / GameplayTag* | **Done**（2026-10-22）：`MEObject`/`ObjectManager`/`GameObject`/`Component*`/`Scene*`/`GameInstance`/`Subsystem*`/`GameplayTag*`/`Engine`/`ProjectManager`；`Engine`/`ProjectManager::HasInstance` 出线；`.def` −156 → **498** |
+| 5 | Render / Resource / UI / Audio / Physics / Prefab / Animation | **Next**；附录 C-A/B |
 | 终 | `.def` 空 → `explicit` → 清冗余 linker 旗标（F02 S05/S06） | |
 
 测试夹具（附录 C-C）：本波允许先标以烧 `.def`；迁出产品 DLL 不挡终态。

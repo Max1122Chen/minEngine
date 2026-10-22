@@ -12,7 +12,7 @@ namespace minEngine
     class Component;
     class PrimitiveComponent;
 
-    class SceneManager
+    class MINENGINE_API SceneManager
     {
     public:
         SceneManager() = default;

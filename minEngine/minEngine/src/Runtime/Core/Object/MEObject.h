@@ -30,7 +30,7 @@ namespace minEngine
 {
     
     ME_CLASS()
-    class MEObject
+    class MINENGINE_API MEObject
     {
         ME_GENERATED_BODY()
         // Friend declaration for engine core classes 

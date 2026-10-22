@@ -14,7 +14,7 @@ namespace minEngine
      * Discovered via reflection; instances owned by SubsystemCollection.
      */
     ME_CLASS(Abstract)
-    class Subsystem : public MEObject
+    class MINENGINE_API Subsystem : public MEObject
     {
         ME_GENERATED_BODY()
 
@@ -40,19 +40,19 @@ namespace minEngine
     };
 
     ME_CLASS(Abstract)
-    class EngineSubsystem : public Subsystem
+    class MINENGINE_API EngineSubsystem : public Subsystem
     {
         ME_GENERATED_BODY()
     };
 
     ME_CLASS(Abstract)
-    class GameInstanceSubsystem : public Subsystem
+    class MINENGINE_API GameInstanceSubsystem : public Subsystem
     {
         ME_GENERATED_BODY()
     };
 
     ME_CLASS(Abstract)
-    class WorldSubsystem : public Subsystem
+    class MINENGINE_API WorldSubsystem : public Subsystem
     {
         ME_GENERATED_BODY()
 
@@ -78,7 +78,7 @@ namespace minEngine
     };
 
     ME_CLASS(Abstract)
-    class TickableGameInstanceSubsystem : public GameInstanceSubsystem
+    class MINENGINE_API TickableGameInstanceSubsystem : public GameInstanceSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -94,7 +94,7 @@ namespace minEngine
     };
 
     ME_CLASS(Abstract)
-    class TickableWorldSubsystem : public WorldSubsystem
+    class MINENGINE_API TickableWorldSubsystem : public WorldSubsystem
     {
         ME_GENERATED_BODY()
 

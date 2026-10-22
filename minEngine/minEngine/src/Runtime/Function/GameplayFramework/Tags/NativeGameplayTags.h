@@ -9,7 +9,7 @@
 namespace minEngine
 {
     /// Collects tag names registered via ME_DEFINE_GAMEPLAY_TAG* before Manager init.
-    class NativeGameplayTagRegistrar
+    class MINENGINE_API NativeGameplayTagRegistrar
     {
     public:
         explicit NativeGameplayTagRegistrar(const char* tagName);
@@ -22,7 +22,7 @@ namespace minEngine
     };
 
     /// Lazy handle that resolves against GameplayTagManager after Initialize.
-    class NativeGameplayTag
+    class MINENGINE_API NativeGameplayTag
     {
     public:
         explicit NativeGameplayTag(const char* tagName);

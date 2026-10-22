@@ -16,7 +16,7 @@ namespace minEngine
     using ObjectGarbageRootSourceId = void*;
 
     /** Process-level object registry (not owned by Engine). Aligns with LogSystem lifetime. */
-    class ObjectManager
+    class MINENGINE_API ObjectManager
     {
     public:
         ObjectManager() = default;

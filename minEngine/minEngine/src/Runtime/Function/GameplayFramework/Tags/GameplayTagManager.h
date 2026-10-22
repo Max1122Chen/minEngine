@@ -9,7 +9,7 @@
 
 namespace minEngine
 {
-    class GameplayTagManager
+    class MINENGINE_API GameplayTagManager
     {
     public:
         GameplayTagManager() = default;

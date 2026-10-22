@@ -11,7 +11,7 @@ namespace minEngine
     class MEObject;
 
     /** Source→clone Guid map used by Prefab Instantiate and PIE Scene duplication. */
-    struct ObjectCloneContext
+    struct MINENGINE_API ObjectCloneContext
     {
         std::unordered_map<GUID, GUID, GUID::Hash> SourceToClonedGuid;
         std::unordered_map<GUID, std::shared_ptr<MEObject>, GUID::Hash> ClonedBySourceGuid;

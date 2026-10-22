@@ -17,7 +17,7 @@ namespace minEngine
     class SceneComponent;
 
     ME_CLASS(ScriptType)
-    class GameObject : public MEObject
+    class MINENGINE_API GameObject : public MEObject
     {
         ME_GENERATED_BODY()
     public:

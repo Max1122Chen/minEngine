@@ -36,7 +36,7 @@ namespace minEngine
     class GameplayFixedTickClock;
 
     ME_CLASS()
-    class Engine : public MEObject
+    class MINENGINE_API Engine : public MEObject
     {
         ME_GENERATED_BODY()
 
@@ -55,7 +55,7 @@ namespace minEngine
         void Run();
 
         static Engine& Get();
-        static bool HasInstance() { return s_Instance != nullptr; }
+        static bool HasInstance();
 
         void TickOneFrame(float deltaTime);
         void PollEvents();
