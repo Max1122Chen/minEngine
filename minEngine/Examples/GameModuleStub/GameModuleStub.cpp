@@ -3,19 +3,12 @@
 
 #include "Runtime/Core/Module/MinEngineGameModuleEntry.h"
 
+#include "GameModuleStubAPI.h"
 #include "SampleTableDataAsset.h"
 #include "StubGameInstance.h"
 #include "StubGameInstanceSubsystem.h"
 #include "StubGamePrimitiveComponent.h"
 #include "StubTickableWorldSubsystem.h"
-
-#if defined(_WIN32) && defined(GAMEMODULESTUB_BUILD)
-#    define GAMEMODULESTUB_API __declspec(dllexport)
-#elif defined(_WIN32)
-#    define GAMEMODULESTUB_API __declspec(dllimport)
-#else
-#    define GAMEMODULESTUB_API __attribute__((visibility("default")))
-#endif
 
 MINENGINE_IMPLEMENT_GAME_MODULE_ENTRY(GAMEMODULESTUB_API)
 

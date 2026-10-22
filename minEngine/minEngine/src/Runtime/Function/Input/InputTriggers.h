@@ -35,7 +35,7 @@ namespace minEngine
      * @brief 
      * Owned by InputAction or InputActionInstance.  Defines when an InputAction should be triggered based on the modified input value.
      */
-    class InputTrigger
+    class MINENGINE_API InputTrigger
     {
     public:
         InputTrigger() = default;
@@ -70,27 +70,27 @@ namespace minEngine
     };
 
     // Simple trigger that fires while the input is down (actuated). Down = Pressed or held.
-    class InputTriggerDown : public InputTrigger
+    class MINENGINE_API InputTriggerDown : public InputTrigger
     {
     public:
         virtual InputTriggerState UpdateTriggerState(const InputActionValue& modifiedValue, float deltaTime) override;
     };
 
     // Simple trigger that fires when the input is first pressed (actuated).
-    class InputTriggerPressed : public InputTrigger
+    class MINENGINE_API InputTriggerPressed : public InputTrigger
     {
     public:
         virtual InputTriggerState UpdateTriggerState(const InputActionValue& modifiedValue, float deltaTime) override;
     };
 
     // Simple trigger that fires when the input is released (de-actuated).
-    class InputTriggerReleased : public InputTrigger
+    class MINENGINE_API InputTriggerReleased : public InputTrigger
     {
     public:
         virtual InputTriggerState UpdateTriggerState(const InputActionValue& modifiedValue, float deltaTime) override;
     };
 
-    class InputTriggerChordAction : public InputTrigger
+    class MINENGINE_API InputTriggerChordAction : public InputTrigger
     {
     public:
         InputAction* ChordAction = nullptr;

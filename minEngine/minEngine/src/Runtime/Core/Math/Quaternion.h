@@ -9,7 +9,7 @@
 namespace minEngine
 {
     ME_STRUCT()
-    struct Quaternion
+    struct MINENGINE_API Quaternion
     {
         ME_GENERATED_BODY()
 

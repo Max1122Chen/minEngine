@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EngineAPI.h"
 #include "Math/Geometry/AABB.h"
 #include "Math/Math.h"
 
@@ -32,7 +33,7 @@ namespace minEngine::Math::Geometry
      * View frustum as six planes in the same space as the source view-projection
      * (typically world). Independent of RenderCamera / Proxy types.
      */
-    class Frustum
+    class MINENGINE_API Frustum
     {
     public:
         Frustum() = default;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameModuleStubAPI.h"
 #include "Runtime/Resource/DataAsset.h"
 
 #include <string>

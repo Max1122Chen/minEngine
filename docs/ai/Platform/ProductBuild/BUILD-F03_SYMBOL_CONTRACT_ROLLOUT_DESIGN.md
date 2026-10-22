@@ -4,31 +4,90 @@
 - **ID:** `BUILD-F03`
 - **Type:** Refactor（ABI 契约 / 构建边界）+ 设计盘点
 - **Complexity:** `L2`（三刀切片，可分轮实施）
-- **Status:** `Design — 待主人审批` · **v2**（2026-10-20 按 imgui 裁决修订，见「变更记录」）
+- **Status:** `In Progress` · **v3**（刀2 已批准；批 0–3 Done，批 4+ 待做）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-20`
-- **Design input:** [BUILD-F02](BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md)（三段式状态机，已批准）、[BUILD-F02-S01](BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md)（`whitelist` 已落地）、[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)
-- **Blocks / 边界:** [BUILD-F04](./BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md)（编辑器模块边界）—— **imgui 家族的归属由 BUILD-F04 负责（S04 执行迁移）；本文不提供 imgui 的落地方案，两个 Feature 的边界不再重叠**。本文对刀3 只给接口说明与一条约束，不展开。
-- **本文性质:** **只写设计，不改任何 `.h/.cpp/CMakeLists`**；全部数字为本轮只读实测（命令见附录 A）
+- **Last updated:** `2026-10-22`（批3 落地）
+- **Design input:** [BUILD-F02](BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md)（三段式状态机，S00–S02 已落地）、[BUILD-F02-S01](BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md)、[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)
+- **Blocks / 边界:** [BUILD-F04](./BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md)（编辑器模块边界）—— imgui 由 F04 S04 迁出；本文不展开 F04 方案。
+- **本文性质:** 设计 + 进度快照。v1/v2 数字多为迁移前实测；**v3「现状」以 2026-10-22 代码/PE 为准**。刀2 **批准前不改**大批头文件 / `.def` / codegen。
 
 ## 变更记录
 
 | 版本 | 日期 | 变更 | 原因 |
 |---|---|---|---|
 | v1 | 2026-10-20 | 初版：四刀（刀1 glfw+glad 移出 / 刀2 imgui 契约化 / 刀3 引擎面标注 / 刀4 编辑器边界） | — |
-| **v2** | **2026-10-20** | **①原刀2（给 imgui 补导出宏、留在引擎 DLL）整刀删除；②重编号：原刀3 → 刀2、原刀4 → 刀3；③环3 计数改为"本仓白名单层面 = glfw 8 + glad 5 = **13**"，imgui 253 改为"随 BUILD-F04 S04 整体移出引擎导出表"，总导出预测 1545 → **约 1292**（叠加刀1 的 −13 ⇒ **1279**）；④判定准则 C2 由 `--require-annotated-bucket imgui` 改写为 `--forbid-buckets imgui`；⑤预算棘轮重算（1700→1650→1450→1400→1350）；⑥失效模式 F4 改为"imgui 只在编辑器 DLL 编译一次"；⑦决策 Q3 标注**已裁定**（迁进编辑器 DLL / 裁决者：主人 / 2026-10-20）；⑧纠正「刀3 接口说明」里"引擎 DLL 必须保住 imgui 253"的自相矛盾；⑨TL;DR、P3 宏覆盖表、附录 A ⑤ 的 imgui 宏覆盖证据降级为"迁移核对基线"** | **与 BUILD-F04 S04 硬冲突 + 主人 2026-10-20 架构裁决**：imgui 不留在引擎 DLL，迁进编辑器 DLL（F04 S04 执行）；通用编辑器 `MaximumEditor.exe` 重新定位为"资产-only 项目编辑器"、缺匹配游戏模块时硬报错（F04 S05 执行）；BUILD-F04 的 S01–S06 已一次性批准 |
+| v2 | 2026-10-20 | 原刀2（imgui 留引擎）作废；重编号；imgui→F04；C2/棘轮等 | 主人裁决 + F04 边界 |
+| **v3** | **2026-10-22** | **①进度：刀1 + F04 大部落地，剩余主线 = 刀2 烧 `.def`→`explicit`；②刀2 心智模型简化（见下节）；③Q4 InputKeys 改裁定为「类级 `MINENGINE_API` 导出常量表」（已落地，不再推 `inline static`）；④标注范围清单（附录 C）供审批；⑤实施时顺带清死 include / 按调用面收紧，不另开 Feature** | 主人确认范围 OK；会话评审：干净终态 = 只靠 `*_API`，静态身份跨 DLL 单份 |
 
 ## TL;DR
 
-> 当前 `libminEngined.dll` 导出 **1545** 条，其中**只有 1260 条被任何消费者 import**，285 条零消费；被消费的 1260 条按"值得暴露给谁"分成四环：**引擎运行时 API 186 / in-repo 工具专用 778 / 第三方 266 / 内部实现泄漏 315**。三刀的顺序 = **先砍掉"第三方只在测试里用"的 glfw+glad 13 条（刀1）→ 把 994 条引擎符号逐批标注、把 `.def` 烧到 0、切 `explicit`（刀2）→ 编辑器自己的边界（含 imgui 家族整体迁出引擎 DLL）交给 BUILD-F04（刀3）**。刀1 约 0.5 人日，刀2 12–18 人日分 6 批，每批结束时构建都绿、都能单片回退。
+> **进度（2026-10-22）：** 刀1（glfw/glad 出表 + 删除守卫）**已落地**；刀3 / BUILD-F04（Editor DLL、imgui 迁出、asset-only 等）**大部落地**。引擎默认仍是 `whitelist`；刀2 批0–3 Done，`.def` **654** 行；DLL 导出约 **1660**（第三方桶 = 0；类级宏抬升属预期）。**剩余：刀2 批4–5 + 烧光 `.def` → `explicit`。**
 >
-> **imgui 归属（v2 裁决）：** imgui 家族**不再属于引擎契约**，其归属由 [BUILD-F04](./BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md) 的 **S04** 负责（整体迁进编辑器 DLL）。因此**本仓库白名单层面的环3 = glfw 8 + glad 5 = 13**（不是 266）；imgui 253 条随 F04 S04 移出引擎导出表，总导出预测 **1545 → 约 1292**（叠加刀1 的 −13 后为 **1279**）。原刀2（给 imgui 补导出宏、留在引擎 DLL）**已作废**。
+> **刀2 怎么理解（人话）：** 导出只认标注；定义只活在一个 DLL 里。普通类型 → 要不要给外部用 → 标宏；反射生成 → 跟归属模块注入 API；单例/常量表 → `.cpp` 一份定义 + 宏（勿 `inline` 复制）。先标后删 `.def` 行，删光再切模式。门禁/棘轮是护栏，不是这件工作的本质。
+>
+> **审批点：** 附录 C 标注范围；Q4（InputKeys 已按导出方案落地）；刀2 批序与 codegen `MODULE_API`。批准前不大批改头文件。
 
-**本轮最重要的三个发现（都不是"看着办"，都有 file:line 或 PE 证据）：**
+<details>
+<summary>v2 TL;DR 原文（迁移前数字，折叠）</summary>
 
-1. **"内部符号"里最危险的一类不是被直接调用的，而是被 inline 函数强制引入的**：`InputSystem::s_Instance`（`Runtime/Function/Input/InputSystem.h:128`，被同文件 `:39` 的 inline `HasInstance()` 引用）因此进了**编辑器 + 外仓游戏模块**的导入表——这解释了 30 条"内部命名但被消费"的符号中的绝大多数。
-2. **imgui 的 253 条不是"引擎契约"，而是"搬家对象"**：`imgui.h:87-92` 与 `ImGuizmo.h:110-124` 的宏单点覆盖形成无缺口覆盖——实测 253 = 224（直接注解）+ 20（`IMGUI_IMPL_API` 转手）+ 9（ImGuizmo）**无遗漏**。这条证据在 v2 里的用途已经反转：它证明的是"**整族迁出时不会漏掉任何一条**"，而不是"补宏就能把它们留成引擎契约"。**裁决（2026-10-20）：imgui 迁进编辑器 DLL，由 BUILD-F04 S04 执行；引擎导出中不得再出现 imgui 桶（C2 已改写为 `--forbid-buckets imgui`）。原刀2 已作废。**
-3. **产品二进制里带着一整套测试脚手架**：`Runtime/Test/`（10 个文件，含 `TestRunner` / `TestSuiteRegistry`）编进引擎 DLL，`main.h:38` 的 `--mode=test` 分支让**每一个用 main.h 的宿主**（`SampleGame.exe`、外仓 `MinCraft.exe`/`libminCraft.dll`）都必须 import `ForwardToMinEngineTestsExecutable`；另有 38 条 `Test*` 类型符号（`SubsystemTestFixtures.h:59`）也在导出表里。
+当前（v2 写作时）导出 1545；四环分类；刀序 = 刀1 → 刀2 标注烧 `.def` → 刀3/F04。imgui 不属引擎契约。
+
+</details>
+
+**仍成立的三条技术事实（实施时别忘）：**
+
+1. **inline 摸私有静态会强制导出 DATA**（如 `InputSystem::HasInstance()` → `s_Instance`）——跨 DLL 还可能读到错副本；刀2 遇到就改 out-of-line 或明确导出单份。
+2. **imgui / glfw / glad 已不在引擎导出表**（F04 S04 + 刀1）；C1/C2 `--forbid-buckets` 已接 `verify.ps1`。
+3. **测试脚手架仍在产品 DLL**（`Test*` / `ForwardToMinEngineTestsExecutable`）——刀2 为烧 `.def` 可先标上；迁出属 Deferred（Q6/Q9），不挡 `explicit`。
+
+---
+
+## 刀2 · 干净终态（v3 简化叙事 · 待审批）
+
+### 目标
+
+| 要什么 | 不要什么 |
+|--------|----------|
+| 导出唯一真源 = `MINENGINE_API` / 模块 `*_API` | 长期靠 `.def` 白名单顶契约 |
+| 单例、键常量表、反射注册表：**每个进程一份定义** | 头文件 `inline static` 在每个 DLL 各造一份 |
+| `.def` 行数 → **0**，再切 `MINENGINE_EXPORT_MODE=explicit` | 半标注却先删 `.def`（会链接红） |
+
+### 工作实质（两块 + 一类例外）
+
+1. **普通类型（机械）**  
+   附录 C 里「要暴露」的类型：头文件 `class/struct MINENGINE_API …`（或点级标 out-of-line 函数）。默认整类标；特别胖、STL 很重的类可改点级以免导出胀太多（F02 F6）。  
+   **实施时可顺带：** 按真实调用面收紧、删死 `#include`——不另开 Feature，记在该批 Progress。
+
+2. **反射生成（唯一非机械块）**  
+   codegen 注入 `ME_REFLECTION_MODULE_API`（默认 `MINENGINE_API`）：`StaticClass` / `GetClassName` 跟随类型归属模块；`RegisterClass_Internal` 等汇点必须导出；`GReflectionClassRegister_*` **永不导出**。
+
+3. **身份型静态（例外，规则固定）**  
+   定义放 `.cpp`（编进引擎或所属模块）+ 声明带 API 宏。  
+   **InputKeys（Q4 已裁定）：** `struct MINENGINE_API InputKeys` + `.cpp` 里 `static const` 定义（已落地）。**不要**改成 `inline static const`（`InputKey` 含 `std::string`，会每模块一份，指针/身份比较不稳）。
+
+### 操作循环（每批）
+
+```text
+标宏（声明 = 定义同宏）→ 确认消费者仍能链 → 从 .def 删对应行 → 下一类
+全部删光 → 独立目录 -DMINENGINE_EXPORT_MODE=explicit 验证 → 改默认
+```
+
+`.def` 与 `dllexport` **并存取并集**（F02 已证）：所以「先标后删」中间态始终可绿。  
+**不要**在燃烧中途整表 `--emit-whitelist`（会把已删行补回来）。零消费符号若故意丢掉，再刷 `export_baseline`（删除须进 diff）。
+
+### 批序（可调；批准后按调用面微调）
+
+| 批 | 内容 | 备注 |
+|----|------|------|
+| 0 | InputKeys | **Done**（导出方案，非 inline 瘦身） |
+| 1 | Log / CLI / Path / Serialization | **Done**（2026-10-22）：补 `PathRegistry`/`ApplicationCommandLine`；`.def` −98 |
+| 2 | Math / Input（含 `s_Instance` out-of-line） | **Done**（2026-10-22）：`InputSystem`/`InputTrigger*`/`Quaternion`/`Color`/`LinearColor`/`AABB`/`Frustum`/`PointerConstraint*`；`HasInstance()` 改 `.cpp`；`.def` −118（约 781 余） |
+| 3 | Reflection + **codegen MODULE_API** | **Done**（2026-10-22）：`ME_REFLECTION_MODULE_API` + CMake `MODULE_API`；`GameModuleStub`→`GAMEMODULESTUB_API`；烧 Reflection/`StaticClass`/汇点 off `.def`；误滤签名提及已补回；`.def` −127 → **654** |
+| 4 | Object / Scene / Components / GameplayTag* | **Next**；附录 C-A 大头 |
+| 5 | Render / Resource / UI / Audio / Physics / Prefab / Animation | 附录 C-A/B |
+| 终 | `.def` 空 → `explicit` → 清冗余 linker 旗标（F02 S05/S06） | |
+
+测试夹具（附录 C-C）：本波允许先标以烧 `.def`；迁出产品 DLL 不挡终态。
 
 ## Problem
 
@@ -219,7 +278,7 @@ for each exported name N:
 | M11 | `TestWorldSubsystem::*`（15 个 `s_*` + vtable）、`TestEngineSubsystem*`、`TestGameInstanceSubsystem::*` 等 | `Subsystems/SubsystemTestFixtures.h:59` | 仅 `minEngineTests.exe` | 测试夹具编进**产品 DLL**；38 条 `Test*` 导出全在其中 | 夹具移进 `minEngine/Tests/`（或 `MINENGINE_BUILD_TEST_FIXTURES` 开关），产品 DLL 不再含 `Test*` 符号 |
 | M12 | `PrimitiveComponent::SyncSceneProxy/DoEndOfFrameUpdate/ApplyActivationToSystems`、`Component::OnActivate/OnDeactivate`、`SceneViewport::GetBufferSize` | `Components`/`Render` | `libGameModuleStubd.dll`、外仓 | 派生 `PrimitiveComponent`/`Component` 的连带（ctor/dtor/vtable + 保护虚函数），属于"继承面"而非"调用面" | 与 M10 同处理：明确"可派生类型清单"，其余内部方法不导出 |
 
-**统计：12 类 / 涉及约 60 条导出符号。** 按处置分三类：**该删/该关（M1、M11 各 1 组 + 46 条 `InputKeys` 数据瘦身）**、**该改造成 out-of-line 消除（M2、M5、M7）**、**该正式申报为契约（M3、M8、M9、M10、M12）**。
+**统计：12 类 / 涉及约 60 条导出符号。** 按处置分三类：**该删/该关（M1、M11）**、**该改造成 out-of-line 消除（M2、M5、M7）**、**该正式申报为契约（M3、M8、M9、M10、M12）**。~~原「InputKeys 改 inline 瘦身」已作废（v3 Q4）~~——常量表保留导出。
 
 外仓用量（只读结论，作为"我们该提供什么"的输入）：外仓 180 条引擎导入中，**140 条在其源码里能找到同名标识符**（直接调用/派生），**40 条找不到**（forced：inline 强制 / vtable / codegen / `main.h` 传导）。那 40 条正是"我们改了就会打断外仓"的高危集合。
 
@@ -231,9 +290,9 @@ for each exported name N:
 
 | 刀 | 做什么 | 结束时构建为何仍绿（论证） | 验收 oracle（可自动断言） | 回退方式 | 档位 |
 |---|---|---|---|---|---|
-| **刀1 · glfw+glad 移出导出表（−13）** | ① 引擎与 `minEngineTests` 都改链 `libglfw3dll.a`（`Third-Party/glfw/lib-mingw-w64/` 已同时有 `glfw3.dll` 与 `libglfw3dll.a`）；② `glad.c` 编进 `minEngineTests`（`Tests/CMakeLists.txt` +1 源文件）；③ `--emit-whitelist` 重生成 ⇒ `.def` −13 行 | 符号提供方从"引擎导出表"换成"glfw3.dll 导入库 / 测试自身 TU"，两者都是**链接期可证**的等价替代；测试本就自己 `glfwInit+gladLoadGLLoader`（7/7 实测），**不依赖引擎的 glad 状态**；且 8+5 条全部只被测试 import，编辑器/游戏侧零依赖（P3） | ① `--forbid-buckets glfw,glad`（C1）：导出集合 ∩ {glfw,glad} = ∅；② `--verify-coverage`：6 个消费者 missing = 0；③ `minEngineTests.exe test smoke` 退出码 0；④ 导出数 = 1532 | 还原 `Tests/CMakeLists.txt` 1 行 + 引擎 CMake 1 行 + 重生成 `.def`（3 文件，独立于刀2/刀3） | A |
-| **刀2（原刀3）· 引擎公开面标注 + 删 `.def` → `explicit`** | 分 6 批：批0 数据瘦身（`InputKeys` 46 条 `static const` → `inline static const`，−46 数据导出）→ 批1 Log/CLI/Path → 批2 Math/Input → 批3 Reflection + codegen A/B/D → 批4 Object/Scene/Components → 批5 Render/Resource/UI/Audio/Physics/Serialization；每批把对应 `.def` 行删掉；全烧完后切 `MINENGINE_EXPORT_MODE=explicit` | 每批处于"注解 ∪ 白名单"并存态：**删行前注解已存在**，导出集合不变 ⇒ 绿；漏标注只会在**消费者链接期** loud 失败；最后一刀切 `explicit` 时白名单已空 ⇒ 导出集合等价（F02 S05 论证） | ① C6：被消费引擎符号中"声明头缺 `MINENGINE_API`"计数逐批单调降，终态 = 0；② C5：inline 强制导出的符号全部登记在清单里（无未登记项）；③ 每批：4 类 target 链接成功 + `--verify-coverage` 0 缺 + C7 棘轮满足；④ 终态：`MINENGINE_EXPORT_MODE=explicit` 下导出数 ≤ 1400 且缺失 0 | 单批 revert（头文件 + `.def` 行）；终态一行 `-DMINENGINE_EXPORT_MODE=whitelist` | C（12–18d） |
-| **刀3（原刀4）· 编辑器模块边界（不在本文展开）** | 见"刀3 的接口说明"，方案与排期在 **BUILD-F04** | 边界文件（`MaximumEditorLib` STATIC → 编辑器 DLL）不改引擎导出面；引擎侧只减不增 | 交给 BUILD-F04；本文只声明一条约束：**刀3 不得增加引擎导出条目**（C7 棘轮保证），**且引擎导出中不得出现 imgui 桶**（C2） | — | — |
+| **刀1 · glfw+glad 移出导出表** | （设计原文略） | — | C1 等 | — | A · **Done**（含引擎自装载 GL 表；见 [Impl](BUILD-F03_KNIFE1_AND_REMOVAL_GUARD_IMPLEMENTATION.md)） |
+| **刀2（原刀3）· 标注 + 烧 `.def` → `explicit`** | 见上文「刀2 · 干净终态」：批 0 InputKeys **Done（导出）**；批 1–5 机械标宏 + 批 3 codegen `MODULE_API`；顺带清死 include；`.def`→0 后切 `explicit`。**范围清单 = 附录 C（待主人确认）** | 注解 ∪ `.def` 并存；先标后删 | 每批：四类 target 链接 + `--verify-coverage`；终态 `explicit` 且 `.def` 不用 | 单批 revert；总闸改回 `whitelist` | C · **待审批后开工** |
+| **刀3（原刀4）· 编辑器模块边界** | 见 BUILD-F04 | — | C2 imgui∅ | — | — · **大部 Done**（S01–S05）；余量不挡刀2 |
 
 ### 刀3（原刀4）的接口说明（只给事实与约束，方案在 BUILD-F04）
 
@@ -290,11 +349,11 @@ for each exported name N:
 | 现状（`whitelist`+S02） | **1545** | **1700** | 1545 × 1.10 = 1699.5 → 1700 |
 | 刀1 后 | **1532** | **1650** | 1532 × 1.077；C1 上线后 glad/glfw 无法回归，余量可收窄 |
 | **imgui 迁出后**（BUILD-F04 S04，−253） | **≈1279** | **1450** | 1545 − 13 − 253 = 1279；1279 × 1.10 = 1406.9 → 1450。**原"刀2 之后数量不变"一档已作废**（imgui 不再是引擎契约，条数直接 −253）；F04 S04 单独口径（未含刀1）为 1292 |
-| 刀2 批0（`InputKeys` 46 数据瘦身） | 1233 | **1400** | 1279 − 46 = 1233；1233 × 1.10 = 1356.3 → 1400（< 上一档 1450，棘轮咬合） |
-| 刀2 批1–批5 | 缓降 | 每批 = 上批实测 × 1.10 向上取整到 50，且 < 上批预算 | 棘轮逐批咬合；单批下降幅度由该批标注面决定 |
-| 刀2 终态（`explicit`） | **≈1220** | **1350** | 994 契约符号 × 1.23（S02 实测类级标注膨胀率 286/1259 = **22.7%**）→ 1222；1220 × 1.10 = 1342 → **1350**，同时满足"`explicit` 终态 ≤ 1400"的目标上限 |
+| ~~刀2 批0 InputKeys inline 瘦身 −46~~ | — | — | **v3 作废**（Q4 改导出；批0 不降条数） |
+| 刀2 批1–批5 | 缓降或微增 | 每批按实测调；类级标注可能短时抬升 | 以「能绿 + `.def` 行↓」为主；棘轮勿误伤正当公开 API |
+| 刀2 终态（`explicit`） | **≈1200–1400** | **≤1400 量级** | 类级标注约 +23% vtable/typeinfo（S02 实测）；以切 `explicit` 后实测为准重标定 |
 
-**为什么终态不是 1000 而是 1350（上限 1400）：** 类级 `MINENGINE_API` 会连带导出 vtable/typeinfo（S01 V3 实测 GCC 不导出 inline 成员，但导出 vtable/typeinfo），S02 单次实测就 +286 条（+22.7%）。按 994 × 1.23 ≈ 1222（imgui 迁出后的终态实测预测 ≈1220），预算取"实测 × 1.10 向上取整"= **1350**，仍远低于 65535。
+**v3 注：** 预算棘轮仍有用，但**不是刀2 开工前提**；主人选择先把契约标干净。终态数字以烧完 `.def` 后一次 `--report` 重算。
 
 ## Failure Model
 
@@ -337,12 +396,13 @@ for each exported name N:
 
 ## Deferred
 
-1. 把 `minEngineTests` 从"链接 DLL 的 510 条内部契约"改成"静态链接引擎内部"（P2 的根因；属测试架构，另立 Feature）。
-2. `InputKeys` 等 46 条数据符号改 `inline static const` 的**语义**评估（`std::string` 成员带来的每模块副本），本文只列为刀2-批0 的候选。
-3. 编辑器 DLL 化、每项目编辑器 exe 的符号契约、以及 **imgui 家族搬迁（BUILD-F04 S04）**——本文不再覆盖。
-4. 非 Windows 可见性（`-fvisibility=hidden`）—— F02 已 Deferred；注意 `EngineAPI.h` 的 GCC 分支目前是装饰性的（未开 hidden 时 `visibility("default")` 无约束力）。
-5. 稳定 ABI / 版本化导出名 / `find_package` / install export set（F02 Deferred 4）。
-6. `Maximum.exe`（陈旧 Playground）与外仓旧产物处置。
+1. 把 `minEngineTests` 从"链接 DLL 的 510 条内部契约"改成"静态链接引擎内部"（P2；另立 Feature）。刀2 **不**为此阻塞。
+2. ~~InputKeys → inline static~~ — **Cancelled（v3 Q4）**；保留导出。
+3. BUILD-F04 余量（若有）——不挡刀2。
+4. 非 Windows `-fvisibility=hidden`（F02 Deferred）。
+5. 稳定 ABI / `find_package` / install export set。
+6. `Maximum.exe` 陈旧产物；外仓旧 imgui import 过渡例外自退役。
+7. 注解覆盖率 / inline-forced 清单等机械门禁增强——有则更好；**不作为刀2 开工前提**（主人选择先把契约标干净）。
 
 ## 待主人审批的决策清单
 
@@ -351,7 +411,7 @@ for each exported name N:
 | **Q1** | glfw 落地方案（刀1） | ①引擎与测试都改链 `glfw3.dll` ②静态两份 ③保留 8 条导出 | **①** | 单份动态库消灭"两份 glfw 全局态"（F5），且导出表直接 −8 | 若打包不允许新增 `glfw3.dll`（Staging 需 +1 行复制） |
 | **Q2** | glad 落地方案（刀1） | ①`glad.c` 编进 `minEngineTests` ②引擎暴露 `IsGL46()` 之类薄 API ③保留 5 条 | **①** | 7 个测试文件本就自行 `glfwInit+gladLoadGLLoader`，自持 glad 零新增语义 | 若存在依赖"引擎已加载的 GL 指针"的测试（**该前提已被证伪 2026-10-20**：测试调用的 gladLoadGLLoader 正是引擎导出的那一份，因此一直在隐式初始化引擎的 glad 函数表；测试自持 glad 后引擎表全 NULL，material-ir 等直接 SEGFAULT exit 139。刀1 因此额外要求引擎自装载 GL 表：OpenGLFunctionTable.h + 30 处首行调用 + scripts/audit_opengl_load_guard.py 静态门禁。详见 BUILD-F03_KNIFE1_AND_REMOVAL_GUARD_IMPLEMENTATION.md §3） |
 | **Q3**（**已裁定**） | imgui 归属（原"契约机制"） | **已裁定：迁进编辑器 DLL**（原选项①"宏覆盖、不迁移"作废；②独立 imgui DLL、③引擎薄封装均不再讨论） | **迁进编辑器 DLL，由 BUILD-F04 S04 执行** | **裁决者：主人（project maintainer）· 日期：2026-10-20**；引擎不该替第三方发牌，且"留在引擎 DLL"与 BUILD-F04 S04 硬冲突 | 已裁定，不再重议 |
-| **Q4** | 46 条 `InputKeys` 数据符号 | ①改 `inline static const`（−46 导出） ②保留 | **①** | 常量表无身份需求，改后消除一整类"数据符号缺失 → 启动失败"（F2） | 若需要二进制级 Key 身份稳定（跨模块指针比较） |
+| **Q4**（**已裁定 · v3**） | `InputKeys` 常量表 | ①`inline static const`（−导出） ②类级 `MINENGINE_API` + `.cpp` 定义（跨 DLL 单份） | **②** | Key 身份要跨模块稳定；`InputKey` 含 `std::string`，inline 会每模块一份 | **裁决：主人认可导出方案 · 2026-10-22 已落地**（`InputKeys.h` + `audit_input_key_exports.py`）；①作废 |
 | **Q5** | inline 强制导出的治理 | ①显式清单 + C5 断言 ②逐案改 out-of-line ③不管 | **①**（②作为 M2/M5/M7 的定向改造并行） | 把"为什么必须导出"变成可审文件，成本最低且可度量 | 若 out-of-line 改造能在 1 周内清掉 30 条 → 直接②，清单只剩 0 |
 | **Q6** | 测试脚手架去留 | ①移出产品（`Runtime/Test` + `SubsystemTestFixtures`） ②保留 | **①** | 38 条 `Test*` + 一个测试运行器不该出现在产品 DLL；且 M1 的转发函数随之消失 | 若产品确实需要内建 `--mode=test`（当前 `main.h:29-38` 支持）→ 保留但改编译期开关 |
 | **Q7** | 预算棘轮序列 | ①1700→1650→**1450**→1400→逐批降→**1350**（终态 ≤1400） ②一步到 1400 ③保持 3000 | **①** | 每刀都咬合一次，越界在"下一刀开工前"就暴露，而不是等终态；imgui 迁出后台阶由 5 档变 6 档（原"刀2 数量不变"那档删除） | 若 `explicit` 实测 > 1400（膨胀超预期）→ Q7 重议一次 |
@@ -390,11 +450,60 @@ for each exported name N:
    grep -rn 'glfw' minEngine/Editor/src       → 2（均为 include，无函数调用）
 ```
 
-## 附录 B · 本文的测量瑕疵与未完成项（诚实登记）
+## 附录 B · 测量瑕疵与未完成项（诚实登记）
 
-1. **声明头解析覆盖率不是 100%**：按"头文件名 == 类型名"规则解析到 132 个引擎头；剩余 230 条被消费符号需补两条规则（vtable/typeinfo → 类型的声明头；去掉返回类型后再解析名称）。这不影响四环计数（环由消费者决定），但影响刀2 的"逐头文件燃烧清单"精度。
-2. **`.def` 的 124 条 DATA 与本文的"数据符号 164"是不同口径**：前者只含被消费且被写进白名单的数据符号，后者是当前 DLL 导出表的全部数据符号（含 `MINENGINE_API` 带出的）。
-3. **外仓源码标识符匹配是启发式**：180 条外仓导入中 140 条能在其 `Source/src/Generated` 文本里找到同名标识符，40 条找不到 ⇒ 判定为"forced（inline/vtable/codegen/main.h 传导）"。文本匹配会漏掉宏/模板间接引用，故该数字是下界（错判方向：可能把 forced 判多）。
-4. **未跑构建、未跑 `verify.ps1`**（按任务约束）。因此三刀的"结束仍绿"是**论证**而非实测；刀1/刀2 的实测门槛留给实施者按 O1–O5 验收。
-5. **`MINENGINE_API` 95 处 / 33 文件**为本轮实测（F02 记 94/33，差 1 处应为 S02 后的增量），未逐文件核对增量来源。
-6. **v2 的计数是算术推导，不是重新实测**：环3 = 13 与总导出 **1292 / 1279** 分别来自 "1545 − 253" 与 "1532 − 253"；1292 这个基准取自 BUILD-F04 S04 的实测口径。F04 S04 落地后必须用 `--ring-report` 复核一次。
+1. 声明头按「文件名 == 类型名」解析不完整——实施时以调用关系 / `.def` 行为准，附录 C 可增删。
+2. v1/v2 四环数字是迁移前快照；**v3 现状以 2026-10-22 `audit_dll_exports.py --report` 为准**（约 1400 导出、第三方桶 0、`.def` ~997）。
+3. 外仓「源码命中 vs forced import」仍是启发式。
+4. 刀1「结束仍绿」已实测；刀2 的「结束仍绿」仍是论证，批准后按批验证。
+
+## 附录 C · 刀2 标注范围清单（2026-10-22 · 待主人审批）
+
+来源：当前 `minEngine_exports.def` 消费面归类。主人已口头确认「范围没什么问题」；实施时再按调用关系微调，并可清死 include。
+
+### C-A · 建议公开（游戏模块 / 外仓 / 编辑器都会碰到）
+
+- 框架：`Engine` · `GameObject` · `Component` · `SceneComponent` · `PrimitiveComponent` · `MEObject` · `ObjectManager` · `ObjectCloneContext` · `Scene` · `SceneManager` · `SceneDuplicator` · `GameInstance` · `SubsystemCollectionBase` · `WorldSubsystem` · `ProjectManager` · `PathRegistry` · `ApplicationCommandLine`
+- 组件：Camera / Light* / StaticMesh / SkeletalMesh / Sprite / Movement / Input / Lua / Audio* / Widget·Image·Text·Button·Canvas·Drag* / Collider*·RigidBody / `GameplayEventSystemComponent`
+- Tag：`GameplayTag` · `GameplayTagContainer` · `GameplayTagManager` · `NativeGameplayTag`
+- 资源：`AssetManager` · `AssetTypeRegistry` · `DataAsset` · `AudioClip` · `Texture2D`（及确需外露的 loader/importer）
+- Prefab：`Prefab` · `PrefabUtility` · `PrefabOverrideUtility` · `PrefabPropertyPath`
+- 输入：`InputSystem` · `InputTrigger*`（`InputKeys` **已标**）
+- 系统：`WindowSystem` · `ParameterStore`/`Schema`/`Layout` · `AudioSystem` · `AudioMixer` · `PhysicsSystem` · `PhysicsWorld` · `CollisionChannelRegistry` · `RenderSystem`
+- 材质/网格扩展面：`Material` · `MaterialInstance` · `MaterialInstanceDynamic` · `MaterialInterface` · `StaticMesh` · `Sprite`/`SpriteAtlas` · `MeshBatchCollector` · `PrimitiveSceneProxy` · `RHIBackendSelection` · `RHIClipSpace`
+- 动画：`AnimationClip` · `AnimationGraph`/`Instance` · `AnimationPlayer` · `Skeleton` · `Pose`
+- 数学：`Quaternion` · `Color`/`LinearColor`（若跨 DLL 传值需要）
+- 反射运行时：`ReflectionSystem` + 属性/函数类型（多数已有宏）+ **codegen A/B/D**
+
+### C-B · 工具 / 编辑器契约（可标；不冒充玩法 API）
+
+- `MaterialEdGraph*` · `MaterialGraphNodeDef*` · `MaterialCompiler` · `ShaderCompiler`
+- `SpriteAtlasPacker` · `FontGlyphAtlas` · `TextMeshBuilder` · `FileDialogService`
+- `EditorFilesystemMutationPass` · `UISystem` · `UILayoutPass` · `ScreenUI*` · `SceneViewport`
+- `OpenGLRHI` / `VulkanRHI` / `RenderGraph` / `RenderPass`（测试与编辑器重）
+
+### C-C · 测试脚手架（先标以烧 `.def`，或本波末再处理）
+
+- `Test*` fixtures · `TestRunner` · `ForwardToMinEngineTestsExecutable` —— 迁出产品 DLL = Deferred
+
+### C-D · 已有类级/点级宏（燃烧时主要删 `.def`）
+
+- Log / 部分 Serialization / 部分 Reflection / `InputKeys` / `LuaScriptSystem` / `LuaBindProbe` 等（以头文件为准）
+
+---
+
+## 待主人审批（刀2 开工闸）
+
+请确认或改正下列项；**全部 OK 前不大批改头文件 / `.def` / codegen**：
+
+| # | 项 | 设计默认 |
+|---|-----|----------|
+| 1 | 附录 **C-A** 整类/点级标 `MINENGINE_API` | 接受；实施按调用面可微调 |
+| 2 | 附录 **C-B** 工具面一并标（烧 `.def`） | 接受；不冒充玩法教程 API |
+| 3 | 附录 **C-C** 测试夹具本波先标 | 接受；迁出 Deferred |
+| 4 | **Q4** InputKeys 保持导出（已落地） | 接受；禁止改回 inline |
+| 5 | 批 3 做反射 **codegen `MODULE_API`**，再切 `explicit` | 必须 |
+| 6 | 实施顺带清死 include / 按调用收紧 | 允许，记 Progress |
+| 7 | 不升 Primary；与 ASSET-F10 并行、批前可停 | 是 |
+
+**批准口令示例：** 「F03 刀2 按 v3 批」或逐条改正上表。

@@ -47,4 +47,5 @@ minengine_add_reflection_codegen(GameModuleStub
     MANIFEST "${GAMEMODULESTUB_GENERATED_DIR}/manifest.json"
     CODEGEN_TARGET_NAME GameModuleStub_reflection_codegen
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    MODULE_API GAMEMODULESTUB_API
 )

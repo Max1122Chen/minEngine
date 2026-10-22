@@ -1,11 +1,12 @@
 #pragma once
+#include "EngineAPI.h"
 #include "Math/Math.h"
 
 namespace minEngine::Math::Geometry
 {
     struct Ray;
 
-    struct AABB
+    struct MINENGINE_API AABB
     {
         Vector3 Min = Vector3(std::numeric_limits<float>::max());
         Vector3 Max = Vector3(std::numeric_limits<float>::min());
@@ -83,5 +84,5 @@ namespace minEngine::Math::Geometry
         }
     };
 
-    AABB Transform(const AABB& aabb, const Matrix4& transformMat);
+    MINENGINE_API AABB Transform(const AABB& aabb, const Matrix4& transformMat);
 }

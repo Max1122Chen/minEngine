@@ -7,6 +7,10 @@
 #include "Reflection.h"
 #include "ReflectionUtils.h"
 
+#ifndef ME_REFLECTION_MODULE_API
+#    define ME_REFLECTION_MODULE_API MINENGINE_API
+#endif
+
 #ifdef GetClassName
 #undef GetClassName
 #endif
@@ -58,13 +62,13 @@ namespace minEngine::Reflection \
 namespace minEngine::Reflection \
 { \
     template<> \
-    std::string GetClassName<TYPE>(); \
+    ME_REFLECTION_MODULE_API std::string GetClassName<TYPE>(); \
     extern const bool REGISTER_SYMBOL; \
 }
 
 #define ME_REFLECTION_CLASS_DEFINE_BEGIN(TYPE, REGISTER_SYMBOL) \
 template<> \
-std::string minEngine::Reflection::GetClassName<TYPE>() \
+ME_REFLECTION_MODULE_API std::string minEngine::Reflection::GetClassName<TYPE>() \
 { \
     return #TYPE; \
 } \
@@ -135,7 +139,7 @@ const bool minEngine::Reflection::REGISTER_SYMBOL = []() \
 #define ME_REFLECTION_CLASS_DEFINE_END(TYPE) \
     return meSystem.RegisterClass<TYPE>(meClass); \
 }(); \
-const minEngine::Reflection::MEClass* TYPE::StaticClass() \
+ME_REFLECTION_MODULE_API const minEngine::Reflection::MEClass* TYPE::StaticClass() \
 { \
     static const minEngine::Reflection::MEClass* cachedClass = nullptr; \
     if (cachedClass == nullptr) \
@@ -150,13 +154,13 @@ const minEngine::Reflection::MEClass* TYPE::StaticClass() \
 namespace minEngine::Reflection \
 { \
     template<> \
-    std::string GetEnumName<ENUM_TYPE>(); \
+    ME_REFLECTION_MODULE_API std::string GetEnumName<ENUM_TYPE>(); \
     extern const bool REGISTER_SYMBOL; \
 }
 
 #define ME_REFLECTION_ENUM_DEFINE_BEGIN(ENUM_TYPE, REGISTER_SYMBOL) \
 template<> \
-std::string minEngine::Reflection::GetEnumName<ENUM_TYPE>() \
+ME_REFLECTION_MODULE_API std::string minEngine::Reflection::GetEnumName<ENUM_TYPE>() \
 { \
     return #ENUM_TYPE; \
 } \

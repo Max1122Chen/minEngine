@@ -1,3 +1,36 @@
+## 2026-10-22 — BUILD-F03 刀2 批3：Reflection codegen MODULE_API + 烧 `.def`
+
+- **Scope:** `ME_REFLECTION_MODULE_API`（默认 `MINENGINE_API`）；`MinEngineReflection.cmake` 增加 `MODULE_API`；`GameModuleStub` 用 `GAMEMODULESTUB_API`；宏/`StaticClass`/`GetClassName` 跟随归属模块；从 `.def` 烧掉 Reflection 命名空间与 `*::StaticClass` 行（约 −127 → **654**）；签名里仅提及 `MEClass` 的行（如 `GetSubsystem`/`PostEditChangeProperty`）误删后已补回
+- **Verification:** `minEngineTests`/`Editor`/`SampleEditor`/`GameModuleStub` 绿；`--verify-coverage` missing=0；budget/forbid-buckets PASS；`bin` 下 `smoke` / `game-module-stub` / `reflection-function` / `reflection-display-names` 全绿
+- **Next:** 主人验收 → 批4 Object / Scene / Components / GameplayTag*
+
+## 2026-10-22 — BUILD-F03 刀2 批2：Math / Input + HasInstance out-of-line
+
+- **Scope:** 标 `InputSystem` / `InputTrigger*` / `Quaternion` / `Color` / `LinearColor` / Geometry `AABB`·`Frustum` / `PointerConstraintState`·Os；`InputSystem::HasInstance()` 改 `.cpp`（避免消费者 import `s_Instance`）；`.def` −118（约 781 余；组件 SetColor 等含 LinearColor 签名的行留给批4/5）
+- **Verification:** 构建绿；`--verify-coverage` missing=0；baseline 删除守卫 PASS；`input-key-catalog` / `input-trigger-down` / `bin` 下 `smoke` 全绿
+- **Next:** 主人验收 → 批3 Reflection + codegen `MODULE_API`
+
+## 2026-10-22 — BUILD-F03 刀2 批1：Log / CLI / Path / Serialization 离 `.def`
+
+- **Scope:** 补齐 `PathRegistry`、`ApplicationCommandLine` 类级 `MINENGINE_API`；Log/Serialization 本已有宏，从 `.def` 烧掉对应约 98 行（余 899；`TAG_Channel_Default` 留批4）
+- **Completed:** 头文件 2 处；`.def` 燃烧；Design 批表 / Registry / ACTIVE_WORK → 刀2 In Progress
+- **Verification:**
+  - `cmake --build … minEngineTests Editor SampleEditor` 绿
+  - `--verify-coverage` missing=0；删除守卫 baseline 1282 全在（类级宏额外导出 PathRegistry/`s_Instance` 等，属预期膨胀）
+  - `minEngine/bin` 下 `test smoke` 全绿；`logging-channels` / `serialization-archive` PASSED
+- **Note:** 从 repo 根跑 smoke 时 `material-ir` 会因 EngineConfig cwd 失败——与本批无关；验收以 `bin` 为 cwd
+- **Next:** 主人验收本批 → 批2 Math/Input（含 inline→`s_Instance`）
+
+## 2026-10-22 — BUILD-F03 v3：刀2 设计收束（待审批）
+
+- **Scope:** 文档 only — 对齐「烧光 `.def`、只靠 `*_API`、静态身份跨 DLL 单份」；不改头文件 / codegen
+- **Completed:**
+  - F03 Meta → **Review** v3：刀1/F04 进度；刀2 简化叙事；Q4 InputKeys → 导出方案（① inline 作废）；附录 C；批序；「待主人审批」闸；实施可顺带清死 include
+  - F02：进度表 + TL;DR/Q 表与落地对齐；剩余指向 F03 刀2
+  - FEATURE_REGISTRY / ACTIVE_WORK 挂刀2 Review（批前不大批改头）
+- **Verification:** docs only
+- **Next:** 主人批 F03「待主人审批」表后再开工；Primary 仍为 ASSET-F10
+
 ## 2026-10-22 — GP-F03 修订：GameplayTag 名身份（对齐 UE）
 
 - **Scope:** `operator==` / hash / `<` 按 `TagName`；从 `GameplayTag` 移除 `m_Manager*`；`m_Index` 仅 Bind 缓存；`Matches` 经 `GameplayTagManager::Get()`

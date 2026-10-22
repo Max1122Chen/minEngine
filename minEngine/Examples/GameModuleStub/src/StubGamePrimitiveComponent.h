@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameModuleStubAPI.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 

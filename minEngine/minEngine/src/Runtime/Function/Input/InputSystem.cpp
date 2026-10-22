@@ -27,6 +27,11 @@ namespace minEngine
         s_Instance = instance;
     }
 
+    bool InputSystem::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     InputSystem& InputSystem::Get()
     {
         ME_ASSERT(s_Instance != nullptr, "InputSystem is not initialized");

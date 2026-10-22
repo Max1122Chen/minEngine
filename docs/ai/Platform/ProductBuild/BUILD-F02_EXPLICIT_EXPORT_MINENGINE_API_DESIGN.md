@@ -4,22 +4,39 @@
 - **ID:** `BUILD-F02`
 - **Type:** Refactor（构建 / ABI 契约）
 - **Complexity:** `L2`（切片化后可分轮实施）
-- **Status:** `Design — 待主人审批`
+- **Status:** `In Progress` — **档 1（S00–S02）Done**；剩余烧 `.def`→`explicit` 由 [BUILD-F03 刀2](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) 承接（**Review · 待主人审批后开工**）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-18`（首版设计；全部数字为本轮实测，见 Problem 与附录 A）
+- **Last updated:** `2026-10-22`（进度注记；问题数字仍为 2026-10-18 首测，见 Problem）
 - **Related:**
-  - 前序构建图设计：[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)（本 Feature 收掉其中「引擎侧 CMake 边界」的遗留项）
-  - 模块链接契约：[ED-F21](../../Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)、[ED-F20](../../Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md)
+  - 前序：[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)
+  - 续作 / 刀2：[BUILD-F03](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · 编辑器边界 [BUILD-F04](BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md)
+  - 模块链接：[ED-F21](../../Editor/ED-F21_GAME_MODULE_LINK_ENGINE_CONTRACT_DESIGN.md)、[ED-F20](../../Editor/ED-F20_OPTIONAL_GAME_MODULE_LINK_DESIGN.md)
   - 反射 codegen：[CORE-F27](../Core/CORE-F27_EXTERNAL_COMPONENT_ATTACH_DESIGN.md)
-  - UE 对照：`ENGINE_API` / `<MODULE>_API` + `Definitions.<Platform>.h`；UE 从不"自动导出全部符号"
+  - UE：`ENGINE_API` / `<MODULE>_API`；从不自动导出全部符号
 - **Depends on:** 无硬依赖
-- **Blocks:** 导出表只剩 2 个序号余量（见 P1）；未来拆多 DLL；任何稳定 ABI 承诺
+- **Blocks（历史）：** P1 序号炸弹 — **S01 已解除**；后续阻塞项见 F03 刀2
+
+## 进度（2026-10-22）
+
+| 片 | 状态 | 说明 |
+|----|------|------|
+| S00 审计脚本 | **Done** | `scripts/audit_dll_exports.py` |
+| S01 whitelist 默认 | **Done** | `.def` 由消费者 import 生成；余量从 2 拉到六万级 |
+| S02 宏转正 | **Done** | `MINENGINE_API` = dllexport/dllimport；测试不再误定义 `MINENGINE_BUILD` |
+| S03 第三方 | **Superseded** | glfw/glad → F03 刀1；imgui → F04 S04（均已落地） |
+| S04 分批标注 | **→ F03 刀2** | 待审批；见 F03 附录 C |
+| S05 切 `explicit` | **→ F03 刀2 终** | `.def` 烧光后 |
+| S06 收尾 | **Pending** | 随 S05 |
+
+**回退注意：** `auto` 在 S02 后余量可到 0，**不可**当长期退路；排障用 `whitelist`。
 
 ## TL;DR
 
-**一句话结论：** 走**显式 `MINENGINE_API`（`__declspec(dllexport)`）+ 三段式状态机 `auto → whitelist(.def) → explicit`**；**S01 只做一件事——把 `.def` 白名单从"5 个消费者的 PE import 表"生成（实测 in-repo 1216 个名字、含外仓 minCraft 共 1250 个），而不是从 DLL 导出表 dump（65533 个）**，一步把导出条目从 65533 压到 ~1250，**序号炸弹当场解除**，并且可以一行回退。此后每个切片把白名单中的一批名字换成头文件上的 `MINENGINE_API` 标注、并从 `.def` 删掉这些行；`.def` 的行数就是燃烧指标；行数归零后切到 `--exclude-all-symbols` 的 fail-closed 终态。
+**一句话结论：** 走**显式 `MINENGINE_API`（`__declspec(dllexport)`）+ 三段式状态机 `auto → whitelist(.def) → explicit`**；**S01 只做一件事——把 `.def` 白名单从"消费者的 PE import 表"生成，而不是从 DLL dump**，一步解除序号炸弹。此后把白名单名字换成头文件标注并删 `.def` 行；行数归零后切 `explicit`（`--exclude-all-symbols`，只认标注）。
 
-**必须先纠正一个前提：** 「先用当前 DLL 导出一份基线 `.def` 就能立即去掉序号炸弹」**不成立**。炸弹的本质是*导出条目数*（PE 序号是 16 位，上限 65535），一份 65533 行的 `.def` 与 `--export-all-symbols` 导出的条目数相同，余量仍是 2。只有真正降低条目数才算解除——这也决定了 S01 的 `.def` 必须由消费者契约（1216–1250）生成，而不是 DLL dump（65533）。
+**档 1（S00–S02）已落地。** 剩余「标干净 + 丢掉 `.def`」的操作说明、范围清单与审批点见 **[BUILD-F03 v3 · 刀2](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md)**（本文保留状态机 / Failure / 反射规则原文）。
+
+**必须先纠正一个前提（仍成立）：** 「先 dump 全表 `.def` 就能解炸弹」**不成立**——必须用消费者契约降条目数。
 
 ## Problem
 
@@ -337,12 +354,12 @@ minEngine/CMakeLists.txt（追加）
 |---|---|---|---|---|---|
 | **Q1** | 总体路线 | ①A 显式宏 + `.def` 过渡 ②B 长期 `.def` ③D 全静态化 | **①A** | 只有 A 让导出面与"公开契约"同源，且 S01 就先解炸弹 | 若决定引擎与 Editor 合并为单一 exe 交付（则 D 更省事） |
 | **Q2** | S01 是否立刻切默认 `whitelist` | ①是（默认 whitelist）②否（先并行验证、默认仍 auto） | **①是** | 余量只剩 2，任何一次正常开发都可能再次删产物；`.def` 由消费者 import 表构造，等价性可证 | 若外仓 `minCraft` 等产品无法同期用新 import lib 重建（用 O3 脚本 1 小时可核对） |
-| **Q3** | imgui 导出策略 | ①`IMGUI_API` dllexport/dllimport（imgui 留在 DLL 内）②imgui 独立 STATIC 库 ③引擎封装 imgui 边界 | **①** | imgui 核心已单份编在 DLL 内（Editor 只编 node-editor），改 `IMGUI_API` 不动架构，导出 2205 → ~250 | 若希望 Editor 能自由改 imgui 内部实现（则②，但要自己扛 `GImGui` 双实例风险） |
-| **Q4** | glfw 策略 | ①静态进引擎 + 微型 `.def`/宏导出 ~13 名 ②改用 `glfw3.dll`（`libglfw3dll.a`，仓库已带） | **②** | 消除"引擎与 Editor 各持一份 glfw 全局状态"的隐患，导出面也不再含 glfw | 若打包不想多带一个 `glfw3.dll`（Staging 需加 1 行） |
-| **Q5** | 反射 codegen 导出机制 | ①类级 `MINENGINE_API` + codegen 注入 `ME_REFLECTION_MODULE_API` ②只点级标 A/B 类符号的 out-of-line 定义 ③为反射符号单独生成 `.def` | **①** | 与"标注跟随归属模块"一致，引擎/Editor/Game 模块三条路径同一规则；改动限定 2 个文件 | 若类级标注导致导出膨胀不可控（F6 实测反弹）→ 退② |
-| **Q6** | 导出预算阈值 | ①3000 ②2000 ③1500 | **①3000** | 终态预计 ~1000–1500，3000 留一倍余量、仍远低于 65535；阈值的作用是"早失败"不是"卡死" | 若终态实测稳定在 1000 以下 → 收紧到 2000 |
-| **Q7** | 外仓消费者纳入契约的方式 | ①以 in-repo 5 个消费者为基线，外仓升级时用脚本报缺 ②业务侧同步重建外仓后才切默认 | **①** | 缺口是 loud 链接错误而非运行期事故；`libminCraftd.dll` 的 153 个 import 已实测有 34 个在 in-repo 并集之外，即外仓确有其独有需求 | 若外仓存在 in-repo 未覆盖的符号（O3 脚本一次性核对） |
-| **Q8** | 做到哪一档 | ①档 1（去炸弹）②档 2 ③档 3 全量 | **①档 1 立即开工，档 3 立项分轮** | 档 1 用 1–1.5 人日消除定时炸弹；后续档位可独立排期、随时停 | 若希望一次把 `--export-all-symbols` 彻底退役（则按档 3 排 12–18 人日） |
+| **Q3** | imgui 导出策略 | （原推荐留引擎 + `IMGUI_API`） | **已作废** → 迁进编辑器 DLL（[BUILD-F03](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) Q3 / [BUILD-F04](BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md) S04，2026-10-20） | — | — |
+| **Q4** | glfw 策略 | ①静态 + 微型 `.def` ②`glfw3.dll` | **② 已落地**（F03 刀1 / F04） | 单份动态库 | — |
+| **Q5** | 反射 codegen 导出机制 | ① `ME_REFLECTION_MODULE_API` ②点级 ③单独 `.def` | **①（刀2 批3 仍待做）** | 标注跟随归属模块 | 膨胀不可控 → 退② |
+| **Q6** | 导出预算阈值 | ①3000 … | **①**（verify 现用 3000） | 早失败 | 终态稳定后可收紧 |
+| **Q7** | 外仓契约 | ① live `--consumer-dir` ②等重建 | **① 已接 verify** | 外仓常 import `libminEngine.dll` | — |
+| **Q8** | 做到哪一档 | ①档1 ②档2 ③档3 | **档1 Done；档3 = F03 刀2（待批）** | 去炸弹已完成 | — |
 
 ## 附录 A · 可复现测量命令
 

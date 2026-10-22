@@ -1,8 +1,8 @@
 {
-  "generated_count": 2,
+  "generated_count": 0,
   "removed_count": 0,
-  "scanned_files": 5,
-  "parsed_files": 1,
+  "scanned_files": 6,
+  "parsed_files": 6,
   "sources": [
     "SampleTableDataAsset.h",
     "StubGameInstance.h",

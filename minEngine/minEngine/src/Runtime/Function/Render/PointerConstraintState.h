@@ -35,15 +35,15 @@ namespace minEngine
     namespace PointerConstraintOs
     {
         /** bEnabled == true -> ::ClipCursor(rect); bEnabled == false -> ::ClipCursor(nullptr), always. */
-        bool ApplyOsClipRect(const WindowCursorClipRect& rect);
-        bool ReadOsClipRect(WindowCursorClipRect& outRect);
+        MINENGINE_API bool ApplyOsClipRect(const WindowCursorClipRect& rect);
+        MINENGINE_API bool ReadOsClipRect(WindowCursorClipRect& outRect);
         /** Whole virtual desktop in screen pixels; the reference rect for "no clip". */
-        WindowCursorClipRect GetDesktopScreenRect();
+        MINENGINE_API WindowCursorClipRect GetDesktopScreenRect();
         /**
          * Applied clip truth: bOutActive is true when the OS clip is narrower than the desktop, i.e. a real
          * constraint is applied. Returns false when the platform cannot report it (bOutActive then means nothing).
          */
-        bool ReadAppliedClipState(bool& bOutActive, WindowCursorClipRect& outRect);
+        MINENGINE_API bool ReadAppliedClipState(bool& bOutActive, WindowCursorClipRect& outRect);
     }
 
     /** Diagnostic counters of the focus-scoped state (each one is also the "warn" counterpart of a rule). */
@@ -68,7 +68,7 @@ namespace minEngine
      * This class is also the single narrow test seam: tests drive OnWindowFocusChanged / SyncPlatformFocus
      * directly, while the real GLFW callback forwards into the very same entry points.
      */
-    class PointerConstraintState
+    class MINENGINE_API PointerConstraintState
     {
     public:
         explicit PointerConstraintState(ICursorConstraintSink& sink);

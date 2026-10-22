@@ -1,10 +1,18 @@
 {
   "tool_cache_version": 17,
   "files": {
+    "GameModuleStubAPI.h": {
+      "mtime_ns": 1792660228609736200,
+      "size": 549,
+      "file_hash": "e23956923258d090fca995567737076d11270dd5f7708c234365c2bbee130296",
+      "has_markers": false,
+      "class_keys": [],
+      "enum_keys": []
+    },
     "SampleTableDataAsset.h": {
-      "mtime_ns": 1792202768493168000,
-      "size": 1074,
-      "file_hash": "98732b7a97b7118e4d1b4f218ac19f6596972ca10ad2a4538f84d5c7732ace77",
+      "mtime_ns": 1792660228593774200,
+      "size": 1106,
+      "file_hash": "ef9302c4274f633052ab13e9041b56c5b251e1e1ca1e9a4809c7af19fb08eeb1",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::SampleTableDataAsset",
@@ -13,9 +21,9 @@
       "enum_keys": []
     },
     "StubGameInstance.h": {
-      "mtime_ns": 1792056975127293400,
-      "size": 636,
-      "file_hash": "0c087957618cbde983212a77d70cd43de612351ff358fa9a81b61d5552be1df5",
+      "mtime_ns": 1792660228594773500,
+      "size": 667,
+      "file_hash": "4ade462193d8ff928586b52f56703f773b15b61d3fb5d6f00801cdd2d5dba1d5",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::StubGameInstance"
@@ -23,9 +31,9 @@
       "enum_keys": []
     },
     "StubGameInstanceSubsystem.h": {
-      "mtime_ns": 1791971013743633800,
-      "size": 671,
-      "file_hash": "6b8fa721580f113d25ca0ef873d6eab8b51db036d9801762259e1120cf22f636",
+      "mtime_ns": 1792660228616372800,
+      "size": 703,
+      "file_hash": "260225d8055721baaff8acd38daf8bf906001cc2c93cd8e83b6d386b8c376495",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::StubGameInstanceSubsystem"
@@ -33,9 +41,9 @@
       "enum_keys": []
     },
     "StubGamePrimitiveComponent.h": {
-      "mtime_ns": 1791971013744832200,
-      "size": 1145,
-      "file_hash": "c468d71c68773678e3e5384694a1bc7a34a82bd05ab544d3a880035cd9c971af",
+      "mtime_ns": 1792660228613345800,
+      "size": 1177,
+      "file_hash": "59e23cae2bc2b5833df45421e7a2ed372482d72cb99d0952e09a29e80e5c4e66",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::StubGamePrimitiveComponent"
@@ -43,9 +51,9 @@
       "enum_keys": []
     },
     "StubTickableWorldSubsystem.h": {
-      "mtime_ns": 1791971013770235800,
-      "size": 665,
-      "file_hash": "399d152e3ad937b982c30eb0919dcadfb9588086f5b2c43c4fc2da04d4be2e50",
+      "mtime_ns": 1792660228586253900,
+      "size": 697,
+      "file_hash": "fe74e0fd1db6ed5a34f0d4c053d69dbee01a7c0e6487fc9c1754bacc5c5bd594",
       "has_markers": true,
       "class_keys": [
         "GameModuleStub::StubTickableWorldSubsystem"
@@ -57,7 +65,7 @@
     "GameModuleStub::SampleTableDataAsset": {
       "namespace": "GameModuleStub",
       "class_name": "SampleTableDataAsset",
-      "decl_pos": 477,
+      "decl_pos": 508,
       "class_hash": "5171f1dde3089815c6bd0b6afad39842b2a3d52cfcb025b3aa078338564262f8",
       "specifiers": [],
       "metadata": {},
@@ -89,7 +97,7 @@
     "GameModuleStub::SampleTableRow": {
       "namespace": "GameModuleStub",
       "class_name": "SampleTableRow",
-      "decl_pos": 139,
+      "decl_pos": 170,
       "class_hash": "e978294de6ed56dacdcbc16c9b53c18183abf32d98fdd0e677024e9b329fac2d",
       "specifiers": [],
       "metadata": {},
@@ -120,7 +128,7 @@
     "GameModuleStub::StubGameInstance": {
       "namespace": "GameModuleStub",
       "class_name": "StubGameInstance",
-      "decl_pos": 304,
+      "decl_pos": 335,
       "class_hash": "e8406e43cd2a4f5b79193fb658992e5f3b9210ac95d8c261f4345f345d9c6211",
       "specifiers": [],
       "metadata": {},
@@ -140,7 +148,7 @@
     "GameModuleStub::StubGameInstanceSubsystem": {
       "namespace": "GameModuleStub",
       "class_name": "StubGameInstanceSubsystem",
-      "decl_pos": 285,
+      "decl_pos": 316,
       "class_hash": "b89559dc0039d2510e384ea095d3c23d35e951ad25c182d777a00f89ef7a72ae",
       "specifiers": [],
       "metadata": {},
@@ -160,7 +168,7 @@
     "GameModuleStub::StubGamePrimitiveComponent": {
       "namespace": "GameModuleStub",
       "class_name": "StubGamePrimitiveComponent",
-      "decl_pos": 408,
+      "decl_pos": 439,
       "class_hash": "791481753c211cc92e42c2c2623b596ac41cf11d18ef7052b804be9efd801c1e",
       "specifiers": [],
       "metadata": {},
@@ -180,7 +188,7 @@
     "GameModuleStub::StubTickableWorldSubsystem": {
       "namespace": "GameModuleStub",
       "class_name": "StubTickableWorldSubsystem",
-      "decl_pos": 271,
+      "decl_pos": 302,
       "class_hash": "b39d9113a8dadf0c20ee85a7bc8d2b3f8501fabe4bf3070196ef23d99f61e632",
       "specifiers": [],
       "metadata": {},

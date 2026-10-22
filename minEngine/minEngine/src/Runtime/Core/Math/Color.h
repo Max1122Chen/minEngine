@@ -13,7 +13,7 @@ namespace minEngine
      * All persisted editor appearance colors use this type.
      */
     ME_STRUCT()
-    struct LinearColor
+    struct MINENGINE_API LinearColor
     {
         ME_GENERATED_BODY()
 
@@ -52,7 +52,7 @@ namespace minEngine
      * sRGB 8-bit color (display / compact exchange). Not the primary storage type for themes.
      */
     ME_STRUCT()
-    struct Color
+    struct MINENGINE_API Color
     {
         ME_GENERATED_BODY()
 

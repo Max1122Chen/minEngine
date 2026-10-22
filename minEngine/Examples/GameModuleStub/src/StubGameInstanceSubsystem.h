@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameModuleStubAPI.h"
 #include "Runtime/Function/Framework/Subsystems/Subsystem.h"
 
 namespace GameModuleStub

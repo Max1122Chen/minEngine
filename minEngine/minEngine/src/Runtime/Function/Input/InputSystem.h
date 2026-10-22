@@ -26,7 +26,7 @@ namespace minEngine
      * - Input Mapping Context ( IMC ). With InputKeyActionMapping.
      * - Input Actions ( IA ). With InputTrigger and InputModifier.
      */
-    class InputSystem       
+    class MINENGINE_API InputSystem
     {
     // TODO: To support multiple players later, we may need to have PlayerInputSystem or LocalInputSystem
     public:
@@ -36,7 +36,8 @@ namespace minEngine
         void Initialize();
         void Shutdown();
 
-        static bool HasInstance() { return s_Instance != nullptr; }
+        /** Out-of-line so consumers do not import the private s_Instance data symbol. */
+        static bool HasInstance();
         static InputSystem& Get();
 
         void Tick(float deltaTime);

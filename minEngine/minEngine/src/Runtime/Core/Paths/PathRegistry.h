@@ -12,7 +12,7 @@ namespace minEngine
     struct EngineConfig;
 
     /** Resolved engine/project paths (M0). Single source of truth after bootstrap. */
-    class PathRegistry
+    class MINENGINE_API PathRegistry
     {
     public:
         static PathRegistry& Get();

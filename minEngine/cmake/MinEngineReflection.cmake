@@ -11,6 +11,8 @@
 #     [WORKING_DIRECTORY <path>]
 #     [SCRIPT_BINDING_OUT_DIR <path>]
 #     [SCRIPT_BINDING_MANIFEST <path>]
+#     [MODULE_API <macro>]              # optional: defines ME_REFLECTION_MODULE_API=<macro>
+#                                       # for this target (default: MINENGINE_API via headers)
 #     [EXCLUDE_REGEX <regex> ...]
 #     [ADD_GENERATED_SOURCES]           # ON by default; set OFF if caller already GLOBs gen.cpp
 #   )
@@ -26,6 +28,7 @@ function(minengine_add_reflection_codegen TARGET_NAME)
         SCRIPT_BINDING_OUT_DIR
         SCRIPT_BINDING_MANIFEST
         GENERATOR_SCRIPT
+        MODULE_API
     )
     set(multiValueArgs EXCLUDE_REGEX)
     cmake_parse_arguments(MERC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -102,6 +105,12 @@ function(minengine_add_reflection_codegen TARGET_NAME)
 
     add_custom_target(${MERC_CODEGEN_TARGET_NAME} DEPENDS ${_merc_outputs})
     add_dependencies(${TARGET_NAME} ${MERC_CODEGEN_TARGET_NAME})
+
+    if(NOT "${MERC_MODULE_API}" STREQUAL "")
+        # Ownership of StaticClass / GetClassName follows the module that owns the .gen.cpp.
+        target_compile_definitions(${TARGET_NAME} PRIVATE
+            "ME_REFLECTION_MODULE_API=${MERC_MODULE_API}")
+    endif()
 
     target_include_directories(${TARGET_NAME} PUBLIC "${MERC_OUT_DIR}")
     if(NOT "${MERC_SCRIPT_BINDING_OUT_DIR}" STREQUAL "")
