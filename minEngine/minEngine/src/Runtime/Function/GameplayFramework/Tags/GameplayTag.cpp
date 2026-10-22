@@ -6,17 +6,15 @@
 
 namespace minEngine
 {
-    GameplayTag::GameplayTag(const GameplayTagManager* manager, uint32_t index, std::string tagName)
+    GameplayTag::GameplayTag(uint32_t index, std::string tagName)
         : TagName(std::move(tagName))
         , m_Index(index)
-        , m_Manager(manager)
     {
     }
 
     void GameplayTag::ClearRuntimeBinding()
     {
         m_Index = UINT32_MAX;
-        m_Manager = nullptr;
     }
 
     bool GameplayTag::TryBindToManager()
@@ -44,7 +42,12 @@ namespace minEngine
 
     bool GameplayTag::IsValid() const
     {
-        return m_Manager != nullptr && m_Manager->IsValidTag(*this);
+        if (!GameplayTagManager::HasInstance())
+        {
+            return false;
+        }
+
+        return GameplayTagManager::Get().IsValidTag(*this);
     }
 
     bool GameplayTag::Matches(const GameplayTag& query) const
@@ -54,7 +57,7 @@ namespace minEngine
             return false;
         }
 
-        if (m_Index == query.m_Index && m_Manager == query.m_Manager)
+        if (m_Index == query.m_Index)
         {
             return true;
         }
@@ -64,7 +67,7 @@ namespace minEngine
 
     bool GameplayTag::IsChildOf(const GameplayTag& ancestor) const
     {
-        if (!IsValid() || !ancestor.IsValid() || m_Manager != ancestor.m_Manager)
+        if (!IsValid() || !ancestor.IsValid())
         {
             return false;
         }
@@ -74,28 +77,18 @@ namespace minEngine
             return false;
         }
 
-        GameplayTag current = m_Manager->GetParent(*this);
+        GameplayTagManager& manager = GameplayTagManager::Get();
+        GameplayTag current = manager.GetParent(*this);
         while (current.IsValid())
         {
             if (current.m_Index == ancestor.m_Index)
             {
                 return true;
             }
-            current = m_Manager->GetParent(current);
+            current = manager.GetParent(current);
         }
 
         return false;
     }
 
-    bool GameplayTag::operator==(const GameplayTag& other) const
-    {
-        const bool selfValid = IsValid();
-        const bool otherValid = other.IsValid();
-        if (selfValid && otherValid)
-        {
-            return m_Manager == other.m_Manager && m_Index == other.m_Index;
-        }
-
-        return !selfValid && !otherValid && TagName.empty() && other.TagName.empty();
-    }
 }

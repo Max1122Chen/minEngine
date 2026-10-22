@@ -1,3 +1,13 @@
+## 2026-10-22 — GP-F03 修订：GameplayTag 名身份（对齐 UE）
+
+- **Scope:** `operator==` / hash / `<` 按 `TagName`；从 `GameplayTag` 移除 `m_Manager*`；`m_Index` 仅 Bind 缓存；`Matches` 经 `GameplayTagManager::Get()`
+- **Completed:**
+  - 未 Bind 同名可作 `unordered_map` / `map` 键；`IsValid`/`Matches` 仍要求已注册
+  - 导出表去掉 out-of-line `operator==`（改为头文件内联）；baseline 同步收缩
+  - Design / Registry / ACTIVE_WORK → Done
+- **Verification:** `minEngineTests.exe test gameplay-tags`（3 passed / 48 assert）；`test gameplay-events`（2 passed / 18 assert）
+- **Next:** 提交本切片（勿混入 Input/Texture WIP）；minCraft 可直接用 Tag 作 map 键
+
 ## 2026-10-19 — MCP-F05：Prefab 作者化自动化 + 属性引用解析
 
 - **Scope:** 新增 `prefab.create_from_game_object` / `open` / `save` / `close`；`scene.set_property` 支持 `$assetRef` / `$guid` / `$objectRef` 与 `properties[]` 批量；会话接线（Scene/Prefab → Stage 场景）

@@ -102,7 +102,6 @@ namespace minEngine
         }
 
         tag.m_Index = it->second;
-        tag.m_Manager = this;
         return true;
     }
 
@@ -124,7 +123,7 @@ namespace minEngine
 
     bool GameplayTagManager::IsValidTag(const GameplayTag& tag) const
     {
-        if (!m_Initialized || tag.m_Manager != this)
+        if (!m_Initialized || tag.TagName.empty())
         {
             return false;
         }
@@ -134,12 +133,13 @@ namespace minEngine
             return false;
         }
 
-        if (m_TagsByIndex[tag.m_Index].m_Index != tag.m_Index)
+        if (m_Nodes[tag.m_Index].Name != tag.TagName)
         {
             return false;
         }
 
-        return m_Nodes[tag.m_Index].Name == tag.TagName;
+        const auto it = m_IndexByName.find(tag.TagName);
+        return it != m_IndexByName.end() && it->second == tag.m_Index;
     }
 
     const std::string& GameplayTagManager::GetTagName(const GameplayTag& tag) const
@@ -173,7 +173,7 @@ namespace minEngine
             node.Name = sortedNames[index];
             m_IndexByName.emplace(node.Name, index);
             m_Nodes.push_back(std::move(node));
-            m_TagsByIndex.push_back(GameplayTag(this, index, sortedNames[index]));
+            m_TagsByIndex.push_back(GameplayTag(index, sortedNames[index]));
         }
 
         for (uint32_t index = 0; index < m_Nodes.size(); ++index)

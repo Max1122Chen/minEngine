@@ -12,6 +12,9 @@
 
 #include "doctest.h"
 
+#include <map>
+#include <unordered_map>
+
 namespace
 {
     ME_DEFINE_GAMEPLAY_TAG_STATIC(TAG_Test_Status_Debuff_Vulnerable, "Status.Debuff.Vulnerable");
@@ -59,8 +62,40 @@ TEST_CASE("gameplay-tags: native macros and hierarchy matching [full]")
 
     CHECK_FALSE(manager.TryResolve("Does.Not.Exist").IsValid());
 
+    CHECK(vulnerable == manager.Resolve("Status.Debuff.Vulnerable"));
+    const bool orderedByName = (vulnerable < heavy) != (heavy < vulnerable);
+    CHECK(orderedByName);
+    CHECK_FALSE(vulnerable < vulnerable);
+
     manager.Shutdown();
     GameplayTagManager::SetInstance(nullptr);
+}
+
+TEST_CASE("gameplay-tags: name identity works unbound and as map keys [full]")
+{
+    using namespace minEngine;
+
+    GameplayTag left;
+    GameplayTag right;
+    left.SetTagName("Authoring.Unregistered.Tag");
+    right.SetTagName("Authoring.Unregistered.Tag");
+    CHECK_FALSE(left.IsValid());
+    CHECK_FALSE(right.IsValid());
+    CHECK(left == right);
+    CHECK_FALSE(left.Matches(right));
+
+    std::unordered_map<GameplayTag, int> byHash;
+    byHash[left] = 7;
+    CHECK(byHash[right] == 7);
+
+    std::map<GameplayTag, int> byOrder;
+    byOrder[left] = 3;
+    CHECK(byOrder[right] == 3);
+
+    GameplayTag emptyA;
+    GameplayTag emptyB;
+    CHECK(emptyA == emptyB);
+    CHECK_FALSE(emptyA == left);
 }
 
 TEST_CASE("gameplay-tags: json roundtrip binds by SetTagName [full]")

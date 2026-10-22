@@ -1104,7 +1104,6 @@
     "_ZNK9minEngine11AudioSystem19GetActiveVoiceCountEv",
     "_ZNK9minEngine11GameplayTag7IsValidEv",
     "_ZNK9minEngine11GameplayTag7MatchesERKS0_",
-    "_ZNK9minEngine11GameplayTageqERKS0_",
     "_ZNK9minEngine11InputSystem22IsGameplayInputEnabledEv",
     "_ZNK9minEngine11LinearColor7ToColorEv",
     "_ZNK9minEngine11LinearColoreqERKS0_",

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-19（CORE-F41 Review）
+Last updated: 2026-10-22（GP-F03 修订 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -17,7 +17,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|-----|------|--------|--------|
 | 0 | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
 | 1 | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
-| — | GP-F03 | GameplayTag → ME_STRUCT + TagName | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
+| — | GP-F03 | GameplayTag 名身份修订（去 Tag 上 Manager* + hash） | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
 | — | CORE-F39 | 值类型 Codec 注册 | **Cancelled** | 由 GP-F03 取代；勿开工 |
 | — | ASSET-F09 | 异步 DataAsset | **Deferred** | 等 F38 站稳后另开 Design |
 | — | CORE-F33 | Spawn 即时入世 · Destroy 延迟 · EOF swap | **In Progress**（S01+S02 landed） | [Design](./Platform/Core/CORE-F33_DEFERRED_STRUCTURAL_EDIT_DESIGN.md) |

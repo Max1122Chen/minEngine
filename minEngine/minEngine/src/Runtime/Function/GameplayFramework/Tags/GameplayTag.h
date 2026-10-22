@@ -4,13 +4,14 @@
 #include "Core/Reflection/ReflectionAnnotations.h"
 
 #include <cstdint>
+#include <functional>
 #include <string>
 
 namespace minEngine
 {
     class GameplayTagManager;
 
-    /// Hierarchical tag handle. Disk identity is TagName; runtime compare uses Manager index after bind.
+    /// Hierarchical tag handle. Identity is TagName; Manager index is an optional bind cache.
     ME_STRUCT()
     class GameplayTag
     {
@@ -26,8 +27,9 @@ namespace minEngine
         bool Matches(const GameplayTag& query) const;
         bool IsChildOf(const GameplayTag& ancestor) const;
 
-        bool operator==(const GameplayTag& other) const;
+        bool operator==(const GameplayTag& other) const { return TagName == other.TagName; }
         bool operator!=(const GameplayTag& other) const { return !(*this == other); }
+        bool operator<(const GameplayTag& other) const { return TagName < other.TagName; }
 
         /// Reflection / serialization only. Gameplay code should use Manager::Resolve.
         void SetTagName(std::string name);
@@ -35,7 +37,7 @@ namespace minEngine
     private:
         friend class GameplayTagManager;
 
-        GameplayTag(const GameplayTagManager* manager, uint32_t index, std::string tagName);
+        GameplayTag(uint32_t index, std::string tagName);
 
         void ClearRuntimeBinding();
         bool TryBindToManager();
@@ -44,7 +46,18 @@ namespace minEngine
         std::string TagName;
 
         uint32_t m_Index = UINT32_MAX;
-        const GameplayTagManager* m_Manager = nullptr;
+    };
+}
+
+namespace std
+{
+    template <>
+    struct hash<minEngine::GameplayTag>
+    {
+        size_t operator()(const minEngine::GameplayTag& tag) const noexcept
+        {
+            return hash<string>()(tag.GetName());
+        }
     };
 }
 

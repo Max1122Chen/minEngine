@@ -28,7 +28,7 @@ namespace minEngine
         GameplayTag Resolve(const std::string& name) const;
         GameplayTag TryResolve(const std::string& name) const;
 
-        /// Map TagName onto this manager's vocabulary index. Used by GameplayTag::SetTagName.
+        /// Map TagName onto this manager's vocabulary index cache. Used by GameplayTag::SetTagName.
         bool BindTag(GameplayTag& tag) const;
 
         GameplayTag GetParent(const GameplayTag& tag) const;
