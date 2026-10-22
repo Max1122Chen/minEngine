@@ -1,3 +1,9 @@
+## 2026-10-22 — BUILD-F03 刀2 终：默认 `explicit` + 清冗余 linker 旗标
+
+- **Scope:** `MinEngineExports.cmake` 默认 `MINENGINE_EXPORT_MODE=explicit`；whitelist/explicit 路径只留 `--exclude-all-symbols`（`--exclude-libs` / `--exclude-modules-for-implib` 仅 `auto`）
+- **Verification:** configure 显示 `mode=explicit`；四类 target 绿；`--verify-coverage` missing=0；budget≤3000 / forbid-buckets PASS；`bin` 下 `smoke` / `game-module-stub` 全绿
+- **Next:** 刀2 主链收口；外仓 live coverage 可选再跑；Primary 回 ASSET-F10
+
 ## 2026-10-22 — BUILD-F03 刀2 批5：Render/Resource/UI/Audio/Physics/Prefab/Animation · `.def`→0
 
 - **Scope:** 附录 C-A/B/C 类级/点级 `MINENGINE_API`（Asset*/Material*/Sprite*/Physics*/Prefab*/Animation*/UI*/RHI*/Test* 等）；缺 `EngineAPI.h` 的头补 include；`WindowSystem::HasInstance` 出线；`NativeGameplayTag` 全局 `ME_DECLARE` 带导出；嵌套 `ScreenUICoords::LetterboxMapping` / `AssetManager::AssetRegistryBroadcastBatchScope` 补标；`.def` 烧光 → **0**（LEGACY 仅注释）

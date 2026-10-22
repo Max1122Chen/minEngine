@@ -4,7 +4,7 @@
 - **ID:** `BUILD-F02`
 - **Type:** Refactor（构建 / ABI 契约）
 - **Complexity:** `L2`（切片化后可分轮实施）
-- **Status:** `In Progress` — **档 1（S00–S02）Done**；剩余烧 `.def`→`explicit` 由 [BUILD-F03 刀2](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) 承接（**Review · 待主人审批后开工**）
+- **Status:** `Done` — **档 1（S00–S02）+ S05/S06** 由 [BUILD-F03 刀2](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) 落地（默认 `explicit`）
 - **Owner:** project maintainer
 - **Last updated:** `2026-10-22`（进度注记；问题数字仍为 2026-10-18 首测，见 Problem）
 - **Related:**
@@ -24,9 +24,9 @@
 | S01 whitelist 默认 | **Done** | `.def` 由消费者 import 生成；余量从 2 拉到六万级 |
 | S02 宏转正 | **Done** | `MINENGINE_API` = dllexport/dllimport；测试不再误定义 `MINENGINE_BUILD` |
 | S03 第三方 | **Superseded** | glfw/glad → F03 刀1；imgui → F04 S04（均已落地） |
-| S04 分批标注 | **→ F03 刀2** | 待审批；见 F03 附录 C |
-| S05 切 `explicit` | **→ F03 刀2 终** | `.def` 烧光后 |
-| S06 收尾 | **Pending** | 随 S05 |
+| S04 分批标注 | **Done**（经 F03 刀2 批0–5） | 见 F03 附录 C |
+| S05 切 `explicit` | **Done**（2026-10-22） | 默认 `MINENGINE_EXPORT_MODE=explicit` |
+| S06 收尾 | **Done**（2026-10-22） | whitelist/explicit 仅 `--exclude-all-symbols`；`--exclude-libs` / `--exclude-modules-for-implib` 只留在 `auto` |
 
 **回退注意：** `auto` 在 S02 后余量可到 0，**不可**当长期退路；排障用 `whitelist`。
 
@@ -34,7 +34,7 @@
 
 **一句话结论：** 走**显式 `MINENGINE_API`（`__declspec(dllexport)`）+ 三段式状态机 `auto → whitelist(.def) → explicit`**；**S01 只做一件事——把 `.def` 白名单从"消费者的 PE import 表"生成，而不是从 DLL dump**，一步解除序号炸弹。此后把白名单名字换成头文件标注并删 `.def` 行；行数归零后切 `explicit`（`--exclude-all-symbols`，只认标注）。
 
-**档 1（S00–S02）已落地。** 剩余「标干净 + 丢掉 `.def`」的操作说明、范围清单与审批点见 **[BUILD-F03 v3 · 刀2](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md)**（本文保留状态机 / Failure / 反射规则原文）。
+**终态已落地（2026-10-22）：** S00–S02 + S04–S06；默认 `explicit`。刀2 范围与批序见 **[BUILD-F03](BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md)**（本文保留状态机 / Failure / 反射规则原文）。
 
 **必须先纠正一个前提（仍成立）：** 「先 dump 全表 `.def` 就能解炸弹」**不成立**——必须用消费者契约降条目数。
 

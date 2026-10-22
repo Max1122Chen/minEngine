@@ -6,15 +6,15 @@
 #              The .def is GENERATED from the consumers' PE import tables; it is a
 #              contract, not a dump of the current export table.
 #   explicit   --exclude-all-symbols only; MINENGINE_API (__declspec(dllexport)) is the
-#              single source of truth. Final state, not enabled by this slice.
+#              single source of truth. Default after knife-2 batch 5 emptied the .def.
 #
-# Rollback is one configure line:  -DMINENGINE_EXPORT_MODE=auto
+# Rollback is one configure line:  -DMINENGINE_EXPORT_MODE=whitelist  (or auto)
 #
 # Invariant: MINENGINE_BUILD must only be defined on the target that produces the engine
 # DLL. Defining it on a consumer makes that consumer compile engine symbols as
 # dllexport instead of dllimport.
 
-set(MINENGINE_EXPORT_MODE "whitelist" CACHE STRING
+set(MINENGINE_EXPORT_MODE "explicit" CACHE STRING
     "minEngine PE export mode: auto | whitelist | explicit")
 set_property(CACHE MINENGINE_EXPORT_MODE PROPERTY STRINGS auto whitelist explicit)
 
@@ -111,9 +111,8 @@ function(minengine_apply_export_mode target)
             "${_label} export mode '${_mode}' is invalid; use auto|whitelist|explicit")
     endif()
 
-    # Kept verbatim from the pre-BUILD-F02 link line so that auto mode is byte-identical.
-    # In whitelist/explicit mode they are redundant (nothing is auto-exported) but harmless.
     # Assimp/zlib entries cover the static-subproject fallback (no prebuilt DLL in bin/).
+    # Only needed in auto mode; whitelist/explicit already fail-closed via --exclude-all-symbols.
     set(_exclude_libs "LINKER:--exclude-libs=libJolt.a:libJoltd.a:libfreetype.a:libfreetyped.a:libminengine_lua.a:libminengine_luad.a:libnfd.a:libnfdd.a:libassimp.a:libassimpd.a:libzlibstatic.a:libzlibstaticd.a")
     set(_exclude_implib "LINKER:--exclude-modules-for-implib=miniaudio.c.obj")
 
@@ -128,9 +127,7 @@ function(minengine_apply_export_mode target)
 
     # fail-closed: without it ld falls back to auto-exporting every symbol (experiment V0).
     target_link_options(${target} PRIVATE
-        "LINKER:--exclude-all-symbols"
-        "${_exclude_libs}"
-        "${_exclude_implib}")
+        "LINKER:--exclude-all-symbols")
 
     if(_mode STREQUAL "whitelist")
         if(NOT EXISTS "${_def}")

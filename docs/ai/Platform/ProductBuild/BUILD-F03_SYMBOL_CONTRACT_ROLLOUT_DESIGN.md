@@ -4,10 +4,10 @@
 - **ID:** `BUILD-F03`
 - **Type:** Refactor（ABI 契约 / 构建边界）+ 设计盘点
 - **Complexity:** `L2`（三刀切片，可分轮实施）
-- **Status:** `In Progress` · **v3**（刀2 已批准；批 0–5 Done；待切 `explicit`）
+- **Status:** `Done` · **v3**（刀1 + 刀2 批0–5 + 默认 `explicit` + F02 S06；刀3 → F04）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-22`（批5 落地 · `.def` 空）
-- **Design input:** [BUILD-F02](BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md)（三段式状态机，S00–S02 已落地）、[BUILD-F02-S01](BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md)、[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)
+- **Last updated:** `2026-10-22`（默认 `MINENGINE_EXPORT_MODE=explicit`）
+- **Design input:** [BUILD-F02](BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md)（三段式状态机，S00–S06 Done）、[BUILD-F02-S01](BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md)、[BUILD-F01](BUILD-F01_PRODUCT_BUILD_AND_PROJECT_TEMPLATE_DESIGN.md)
 - **Blocks / 边界:** [BUILD-F04](./BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md)（编辑器模块边界）—— imgui 由 F04 S04 迁出；本文不展开 F04 方案。
 - **本文性质:** 设计 + 进度快照。v1/v2 数字多为迁移前实测；**v3「现状」以 2026-10-22 代码/PE 为准**。刀2 **批准前不改**大批头文件 / `.def` / codegen。
 
@@ -18,10 +18,11 @@
 | v1 | 2026-10-20 | 初版：四刀（刀1 glfw+glad 移出 / 刀2 imgui 契约化 / 刀3 引擎面标注 / 刀4 编辑器边界） | — |
 | v2 | 2026-10-20 | 原刀2（imgui 留引擎）作废；重编号；imgui→F04；C2/棘轮等 | 主人裁决 + F04 边界 |
 | **v3** | **2026-10-22** | **①进度：刀1 + F04 大部落地，剩余主线 = 刀2 烧 `.def`→`explicit`；②刀2 心智模型简化（见下节）；③Q4 InputKeys 改裁定为「类级 `MINENGINE_API` 导出常量表」（已落地，不再推 `inline static`）；④标注范围清单（附录 C）供审批；⑤实施时顺带清死 include / 按调用面收紧，不另开 Feature** | 主人确认范围 OK；会话评审：干净终态 = 只靠 `*_API`，静态身份跨 DLL 单份 |
+| v3.1 | 2026-10-22 | 刀2 终：批0–5 + `.def` 空 + 默认 `explicit` + S06 清冗余 linker 旗标；Feature Status → Done | 实测绿；回退闸改为 `whitelist` |
 
 ## TL;DR
 
-> **进度（2026-10-22）：** 刀1（glfw/glad 出表 + 删除守卫）**已落地**；刀3 / BUILD-F04（Editor DLL、imgui 迁出、asset-only 等）**大部落地**。引擎默认仍是 `whitelist`；刀2 批0–5 Done，`.def` **0** 行（仅留 LEGACY 注释块）；DLL 导出约 **2720**（第三方桶 = 0；类级宏抬升属预期）。**剩余：切 `explicit` + 清冗余 linker 旗标。**
+> **进度（2026-10-22）：** 刀1 Done；刀3/F04 大部 Done；刀2 批0–5 Done（`.def` **0**）+ 默认 **`explicit`**；冗余 `--exclude-libs` 仅留在 `auto`。DLL 导出约 **2720**（第三方桶 = 0）。`.def` 文件可作历史/LEGACY 注释保留，链接不再消费。
 >
 > **刀2 怎么理解（人话）：** 导出只认标注；定义只活在一个 DLL 里。普通类型 → 要不要给外部用 → 标宏；反射生成 → 跟归属模块注入 API；单例/常量表 → `.cpp` 一份定义 + 宏（勿 `inline` 复制）。先标后删 `.def` 行，删光再切模式。门禁/棘轮是护栏，不是这件工作的本质。
 >
@@ -85,7 +86,7 @@
 | 3 | Reflection + **codegen MODULE_API** | **Done**（2026-10-22）：`ME_REFLECTION_MODULE_API` + CMake `MODULE_API`；`GameModuleStub`→`GAMEMODULESTUB_API`；烧 Reflection/`StaticClass`/汇点 off `.def`；误滤签名提及已补回；`.def` −127 → **654** |
 | 4 | Object / Scene / Components / GameplayTag* | **Done**（2026-10-22）：`MEObject`/`ObjectManager`/`GameObject`/`Component*`/`Scene*`/`GameInstance`/`Subsystem*`/`GameplayTag*`/`Engine`/`ProjectManager`；`Engine`/`ProjectManager::HasInstance` 出线；`.def` −156 → **498** |
 | 5 | Render / Resource / UI / Audio / Physics / Prefab / Animation | **Done**（2026-10-22）：附录 C-A/B/C 大部标宏；`WindowSystem::HasInstance` 出线；嵌套类型 `LetterboxMapping`/`AssetRegistryBroadcastBatchScope` 补标；`.def` → **0** |
-| 终 | `.def` 空 → `explicit` → 清冗余 linker 旗标（F02 S05/S06） | **Next** |
+| 终 | `.def` 空 → `explicit` → 清冗余 linker 旗标（F02 S05/S06） | **Done**（2026-10-22）：默认 `explicit`；`--exclude-libs`/`--exclude-modules-for-implib` 仅 `auto` 保留 |
 
 测试夹具（附录 C-C）：本波允许先标以烧 `.def`；迁出产品 DLL 不挡终态。
 
