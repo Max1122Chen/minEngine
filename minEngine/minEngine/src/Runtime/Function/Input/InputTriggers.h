@@ -44,11 +44,18 @@ namespace minEngine
         float m_ActuationThreshold = 0.5f;
 
         InputTriggerState m_TriggerState = InputTriggerState::None;
-        InputTriggerState m_LastState = InputTriggerState::None;
         InputActionValue lastValue;
 
         // Return Explicit as default
         virtual InputTriggerType GetTriggerType() const { return InputTriggerType::Explicit; }
+
+        // Action this trigger depends on, or nullptr when it depends on nothing. The input system
+        // uses it to evaluate dependencies before their consumers, so a chord reads this frame.
+        virtual InputAction* GetChordAction() const { return nullptr; }
+
+        // The input system pushes the dependency's state in before evaluating the trigger, so a
+        // trigger never reaches back into the input system for it.
+        virtual void SetChordDependencyState(InputTriggerState state) { (void)state; }
 
         virtual InputTriggerState UpdateTriggerState(const InputActionValue& modifiedValue, float deltaTime) = 0;
         bool IsActuated(const InputActionValue& modifiedValue) { return modifiedValue.GetMagnitudeSq() > m_ActuationThreshold * m_ActuationThreshold; }
@@ -89,7 +96,24 @@ namespace minEngine
         InputAction* ChordAction = nullptr;
 
         virtual InputTriggerType GetTriggerType() const override { return InputTriggerType::Implicit; }
+        virtual InputAction* GetChordAction() const override { return ChordAction; }
 
-        virtual InputTriggerState UpdateTriggerState(const InputActionValue& modifiedValue, float deltaTime) override;
+        virtual void SetChordDependencyState(InputTriggerState state) override
+        {
+            ChordDependencyState = state;
+        }
+
+        virtual InputTriggerState UpdateTriggerState(const InputActionValue& modifiedValue, float deltaTime) override
+        {
+            (void)modifiedValue;
+            (void)deltaTime;
+
+            // The dependency is evaluated before its consumers, so this is the state the chord
+            // action reached this frame; an inactive chord action reports None and blocks.
+            return ChordAction != nullptr ? ChordDependencyState : InputTriggerState::None;
+        }
+
+    private:
+        InputTriggerState ChordDependencyState = InputTriggerState::None;
     };
 }

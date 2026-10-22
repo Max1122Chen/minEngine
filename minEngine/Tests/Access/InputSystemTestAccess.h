@@ -58,5 +58,16 @@ namespace minEngine::Testing
             InputActionInstance* instance = input.FindInputActionInstance(action);
             return instance != nullptr ? instance->LastState : InputTriggerState::None;
         }
+
+        static InputActionValue GetActionValue(InputSystem& input, InputAction* action)
+        {
+            InputActionInstance* instance = input.FindInputActionInstance(action);
+            return instance != nullptr ? instance->Value : InputActionValue{};
+        }
+
+        static bool HasChordCycleError(InputSystem& input)
+        {
+            return input.HasChordCycleError();
+        }
     };
 }

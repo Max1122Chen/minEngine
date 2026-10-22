@@ -58,6 +58,7 @@ namespace minEngine
             "hierarchy-activity",
             "activity-consumers",
             "widget-graphic",
+            "input-trigger-lifecycle",
         };
 
         std::vector<ITestSuite*> ordered;

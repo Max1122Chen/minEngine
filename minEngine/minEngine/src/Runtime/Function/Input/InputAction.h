@@ -71,6 +71,10 @@ namespace minEngine
         }
         InputTriggerState GetState() const;
         InputTriggerState EvaluateTriggerState(const std::vector<std::shared_ptr<InputTrigger>>& triggers, const InputActionValue& modifiedValue, float deltaTime);
+
+        // True when a blocking trigger rejected this frame; the caller must not soften that
+        // rejection back into an active state.
+        bool IsBlocked() const { return bBlocking; }
     
         bool operator>=(const InputTriggerStateTracker& rhs) const { return GetState() >= rhs.GetState(); }
         bool operator<(const InputTriggerStateTracker& rhs) const { return GetState() < rhs.GetState(); }

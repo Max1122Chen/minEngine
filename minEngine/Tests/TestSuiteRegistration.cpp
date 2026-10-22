@@ -39,6 +39,7 @@
 #include "Suites/DeferredStructuralEditTest.h"
 #include "Suites/GameplayInputGateTest.h"
 #include "Suites/InputTriggerDownTest.h"
+#include "Suites/InputTriggerLifecycleTest.h"
 #include "Suites/InputKeyCatalogTest.h"
 #include "Suites/PlayMainCameraTest.h"
 #include "Suites/AutomationPipeInterruptTest.h"
@@ -642,6 +643,23 @@ namespace minEngine
             }
         };
 
+        struct InputTriggerLifecycleTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"input-trigger-lifecycle", "Input Trigger Lifecycle", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'input-trigger-lifecycle'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "input-trigger-lifecycle",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct InputKeyCatalogTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -727,6 +745,7 @@ namespace minEngine
                     context.GetCommandLine().TestKind);
             }
         };
+
 
         struct SpriteAtlasTestSuiteTraits
         {
@@ -1310,6 +1329,7 @@ namespace minEngine
         using DeferredStructuralEditSuite = TypedTestSuite<DeferredStructuralEditTestSuiteTraits>;
         using GameplayInputGateSuite = TypedTestSuite<GameplayInputGateTestSuiteTraits>;
         using InputTriggerDownSuite = TypedTestSuite<InputTriggerDownTestSuiteTraits>;
+        using InputTriggerLifecycleSuite = TypedTestSuite<InputTriggerLifecycleTestSuiteTraits>;
         using InputKeyCatalogSuite = TypedTestSuite<InputKeyCatalogTestSuiteTraits>;
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
         using AutomationPipeInterruptSuite = TypedTestSuite<AutomationPipeInterruptTestSuiteTraits>;
@@ -1390,6 +1410,7 @@ namespace minEngine
             registry.Register(DeferredStructuralEditSuite::Get());
             registry.Register(GameplayInputGateSuite::Get());
             registry.Register(InputTriggerDownSuite::Get());
+            registry.Register(InputTriggerLifecycleSuite::Get());
             registry.Register(InputKeyCatalogSuite::Get());
             registry.Register(PlayMainCameraSuite::Get());
             registry.Register(AutomationPipeInterruptSuite::Get());

@@ -68,16 +68,17 @@ namespace minEngine
         m_bEditorGameplayCaptureActive = active;
     }
 
-    void InputSystem::ClearGameplayActionEvents()
+    void InputSystem::StartFrame()
     {
-        m_ActionsWithEventThisTick.clear();
+        // Every action instance is rebuilt from this frame's mappings, so a value never survives
+        // a frame in which no mapping is active. LastState is deliberately kept: it is the only
+        // previous-state source the event derivation has.
+        m_bChordCycleDetected = false;
         for (auto& [action, instance] : m_ActionInstances)
         {
             (void)action;
             instance.Value.Reset();
             instance.TriggerEvent = InputTriggerEvent::None;
-            instance.LastState = InputTriggerState::None;
-            instance.TriggerStateTracker = InputTriggerStateTracker{};
         }
     }
 
@@ -176,7 +177,7 @@ namespace minEngine
         m_InputComponents.clear();
         m_ActiveContexts.clear();
         m_ActionInstances.clear();
-        m_ActionsWithEventThisTick.clear();
+        m_bChordCycleDetected = false;
         m_KeyStateMap.clear();
 
         m_DefaultContext.reset();
@@ -186,15 +187,7 @@ namespace minEngine
 
     void InputSystem::Tick(float deltaTime)
     {
-        // Clear actions with events last frame
-        m_ActionsWithEventThisTick.clear();
-
-        for (auto& [action, instance] : m_ActionInstances)
-        {
-            (void)action;
-            instance.TriggerStateTracker.Reset();
-            instance.TriggerEvent = InputTriggerEvent::None;
-        }
+        StartFrame();
 
         // Apply Raw Input deltas before IMC so look-at-edge still advances Mouse2D while clipped.
         ApplyRelativeMouseIntentFromWindow();
@@ -202,32 +195,36 @@ namespace minEngine
         // Device state (gamepad) stays fresh even when gameplay IMC is gated off.
         PollGamepadDevices();
 
-        if (!IsGameplayInputEnabled())
+        // A gated frame is simply a frame in which no mapping contributes: the triggers still run,
+        // so an action that was held across the gate releases on the first frame it is allowed to.
+        if (IsGameplayInputEnabled())
         {
-            ClearGameplayActionEvents();
-            EndFrameDeviceEdgeCleanup();
-            return;
+            EvaluateMappingContributions(deltaTime);
         }
 
-        // bool bConsumed = false; TODO: maybe we will need it later
+        const std::vector<InputAction*> evaluationOrder = BuildActionEvaluationOrder();
+        EvaluateActionInstances(evaluationOrder, deltaTime);
+        NotifyInputComponents(evaluationOrder);
 
-        for(auto& activeContext : m_ActiveContexts)
+        EndFrameDeviceEdgeCleanup();
+    }
+
+    void InputSystem::EvaluateMappingContributions(float deltaTime)
+    {
+        for (auto& activeContext : m_ActiveContexts)
         {
             if (!activeContext.Context)
             {
                 continue;
             }
 
-            for(const auto& mapping : activeContext.Context->GetMappings())
+            for (const auto& mapping : activeContext.Context->GetMappings())
             {
                 InputAction* action = mapping.Action;
-
-                if(!action)
+                if (!action)
                 {
                     continue;
                 }
-
-                InputTriggerStateTracker triggerStateTracker;
 
                 InputActionInstance* instance = FindInputActionInstance(action);
                 if (!instance)
@@ -235,102 +232,207 @@ namespace minEngine
                     continue;
                 }
 
-                // Reset if we cannot find the action instance, which means its value is not updated this frame
-                bool bShouldResetAction = !(m_ActionsWithEventThisTick.end() != 
-                    std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action));
+                const InputKeyState* keyState = GetKeyState(mapping.Key);
+                const bool bMappingActive =
+                    (keyState->action & (InputKeyAction::Press | InputKeyAction::Down)) != 0;
 
-                const InputKey& key = mapping.Key;
-                if(GetKeyState(key)->action & (InputKeyAction::Press | InputKeyAction::Down))
+                const InputActionValue rawValue =
+                    bMappingActive ? InputActionValue(keyState->RawValue) : InputActionValue{};
+                const InputActionValue modifiedValue =
+                    ApplyModifiers(mapping.GetModifiers(), rawValue, deltaTime);
+
+                // Mapping triggers advance on every frame, active or not, because each trigger keeps
+                // its own activation memory: a Pressed trigger that is only fed while its key is down
+                // never observes the release that would re-arm it. Their state is not folded into the
+                // action below - a mapping without triggers reports the level state, and merging that
+                // into an edge-triggered action would re-fire the action on every held frame.
+                PushChordDependencyState(mapping.GetTriggers());
+                InputTriggerStateTracker mappingTriggerState;
+                mappingTriggerState.EvaluateTriggerState(mapping.GetTriggers(), modifiedValue, deltaTime);
+
+                if (bMappingActive)
                 {
-                    if(bShouldResetAction)
-                    {
-                        instance->Value.Reset();
-                        m_ActionsWithEventThisTick.push_back(action);
-                    }
-
-                    InputActionValue rawValue = GetKeyState(key)->RawValue;
-                    InputActionValue modifiedValue = ApplyModifiers(mapping.GetModifiers(), rawValue, deltaTime);
-                    instance->Value += modifiedValue;   // we directly accumulate values from multiple mappings. TODO: maybe distinguish different behaviors of accumulation later
-                
-                    // Evaluate mapping-level triggers (if any).
-                    InputTriggerState newState = triggerStateTracker.EvaluateTriggerState(mapping.GetTriggers(), modifiedValue, deltaTime);
-                    (void)newState;
-
-                    // No mapping triggers: Boolean held → Triggered (Jump-style). Not the same as InputTriggerDown (Ongoing).
-                    triggerStateTracker.SetNoTriggerState(modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
-
-                    instance->TriggerStateTracker = std::max(instance->TriggerStateTracker, triggerStateTracker);
+                    // A mapping that is not active contributes zero, not the key's last value.
+                    instance->Value += modifiedValue;
                 }
-                
             }
         }
+    }
 
-        // release/idle frames must still finalize actions that were Ongoing/Triggered
-        // so Ongoing→None (Canceled) and Triggered→None (Completed) can fire.
+    std::vector<InputAction*> InputSystem::BuildActionEvaluationOrder()
+    {
+        std::vector<InputAction*> evaluationOrder;
+        evaluationOrder.reserve(m_ActionInstances.size());
+
+        // 0 = not visited, 1 = on the current dependency chain, 2 = already ordered.
+        std::unordered_map<InputAction*, int> visitState;
         for (auto& [action, instance] : m_ActionInstances)
         {
-            if (!action)
+            (void)instance;
+            VisitActionDependencies(action, visitState, evaluationOrder);
+        }
+        return evaluationOrder;
+    }
+
+    void InputSystem::VisitActionDependencies(
+        InputAction* action,
+        std::unordered_map<InputAction*, int>& visitState,
+        std::vector<InputAction*>& evaluationOrder)
+    {
+        int& state = visitState[action];
+        if (state == 2)
+        {
+            return;
+        }
+
+        if (state == 1)
+        {
+            // A chord chain that leads back into an action still on the chain has no evaluation
+            // order. Report it and drop this dependency instead of guessing or truncating silently.
+            ReportChordCycle(action);
+            return;
+        }
+
+        state = 1;
+        std::vector<InputAction*> dependencies;
+        CollectChordDependencies(action, dependencies);
+        for (InputAction* dependency : dependencies)
+        {
+            if (dependency != nullptr && FindInputActionInstance(dependency) != nullptr)
+            {
+                VisitActionDependencies(dependency, visitState, evaluationOrder);
+            }
+        }
+        state = 2;
+        evaluationOrder.push_back(action);
+    }
+
+    void InputSystem::CollectChordDependencies(InputAction* action, std::vector<InputAction*>& outDependencies)
+    {
+        for (const auto& trigger : action->GetTriggers())
+        {
+            if (trigger && trigger->GetChordAction() != nullptr)
+            {
+                outDependencies.push_back(trigger->GetChordAction());
+            }
+        }
+
+        for (const auto& activeContext : m_ActiveContexts)
+        {
+            if (!activeContext.Context)
             {
                 continue;
             }
 
-            const bool bUpdatedThisFrame =
-                std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action)
-                != m_ActionsWithEventThisTick.end();
-            if (bUpdatedThisFrame)
+            for (const auto& mapping : activeContext.Context->GetMappings())
             {
-                continue;
-            }
-
-            if (instance.LastState == InputTriggerState::Ongoing
-                || instance.LastState == InputTriggerState::Triggered)
-            {
-                instance.Value.Reset();
-                m_ActionsWithEventThisTick.push_back(action);
-            }
-        }
-
-        // Apply action modifiers and evaluate triggers. Then finalize action instances
-        for(auto& [action, instance] : m_ActionInstances)
-        {
-            bool bActionUpdatedThisFrame = !(m_ActionsWithEventThisTick.end() == 
-                    std::find(m_ActionsWithEventThisTick.begin(), m_ActionsWithEventThisTick.end(), action));
-
-            if(bActionUpdatedThisFrame)
-            {
-                InputActionValue modifiedValue = ApplyModifiers(action->GetModifiers(), instance.Value, deltaTime);
-                instance.Value = modifiedValue;
-
-                // Stable previous frame state — do not use the mapping-polluted tracker.
-                const InputTriggerState prevState = instance.LastState;
-
-                instance.TriggerStateTracker.Reset();
-                // No action triggers: held Boolean → Triggered (Jump). InputTriggerDown → Ongoing via Evaluate.
-                instance.TriggerStateTracker.SetNoTriggerState(
-                    modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
-                const InputTriggerState newState =
-                    instance.TriggerStateTracker.EvaluateTriggerState(action->GetTriggers(), modifiedValue, deltaTime);
-                
-                instance.TriggerEvent = GetTriggerStateChangeEvent(prevState, newState);
-                instance.LastState = newState;
-            }
-        }
-
-        // Notify Input Components
-        for(auto* inputComponent : m_InputComponents)
-        {
-            for(auto* action : m_ActionsWithEventThisTick)
-            {
-                InputActionInstance* instance = FindInputActionInstance(action);
-                if(instance)
+                if (mapping.Action != action)
                 {
-                    inputComponent->ProcessInputAction(action, instance->TriggerEvent, instance->Value);
+                    continue;
+                }
+
+                for (const auto& trigger : mapping.GetTriggers())
+                {
+                    if (trigger && trigger->GetChordAction() != nullptr)
+                    {
+                        outDependencies.push_back(trigger->GetChordAction());
+                    }
                 }
             }
         }
-
-        EndFrameDeviceEdgeCleanup();
     }
+
+    void InputSystem::PushChordDependencyState(const std::vector<std::shared_ptr<InputTrigger>>& triggers)
+    {
+        for (const auto& trigger : triggers)
+        {
+            if (!trigger)
+            {
+                continue;
+            }
+
+            InputAction* dependency = trigger->GetChordAction();
+            if (dependency == nullptr)
+            {
+                continue;
+            }
+
+            const InputActionInstance* dependencyInstance = FindInputActionInstance(dependency);
+            trigger->SetChordDependencyState(
+                dependencyInstance != nullptr ? dependencyInstance->LastState : InputTriggerState::None);
+        }
+    }
+
+    void InputSystem::ReportChordCycle(const InputAction* action)
+    {
+        if (m_bChordCycleDetected)
+        {
+            return;
+        }
+
+        m_bChordCycleDetected = true;
+        ME_LOG(LogCore, Error,
+            "Input chord cycle at action '{0}': chord dependencies must form an acyclic graph. "
+            "The closing dependency is skipped so this frame still evaluates.",
+            action != nullptr ? action->GetName() : std::string("<null>"));
+    }
+
+    void InputSystem::EvaluateActionInstances(const std::vector<InputAction*>& evaluationOrder, float deltaTime)
+    {
+        for (InputAction* action : evaluationOrder)
+        {
+            InputActionInstance* instance = FindInputActionInstance(action);
+            if (!instance)
+            {
+                continue;
+            }
+
+            // Action modifiers see the summed mapping value; the trigger and the consumer see the
+            // same modified value, so both agree on which frame the input crossed its threshold.
+            InputActionValue modifiedValue = ApplyModifiers(action->GetModifiers(), instance->Value, deltaTime);
+            instance->Value = modifiedValue;
+
+            const InputTriggerState prevState = instance->LastState;
+
+            PushChordDependencyState(action->GetTriggers());
+            instance->TriggerStateTracker.Reset();
+            instance->TriggerStateTracker.SetNoTriggerState(
+                modifiedValue.IsNonZero() ? InputTriggerState::Triggered : InputTriggerState::None);
+            InputTriggerState newState =
+                instance->TriggerStateTracker.EvaluateTriggerState(action->GetTriggers(), modifiedValue, deltaTime);
+
+            if (newState == InputTriggerState::None && !instance->TriggerStateTracker.IsBlocked()
+                && modifiedValue.IsNonZero())
+            {
+                // An edge trigger reports None as soon as its edge is behind it, even while the input
+                // is still held. Reporting None here would end the press mid-hold and turn the next
+                // release into a completion of nothing; Ongoing keeps the press open. A blocker still
+                // wins, and a trigger that holds its own state (Down, Released) is untouched.
+                newState = InputTriggerState::Ongoing;
+            }
+
+            instance->TriggerEvent = GetTriggerStateChangeEvent(prevState, newState);
+            instance->LastState = newState;
+        }
+    }
+
+    void InputSystem::NotifyInputComponents(const std::vector<InputAction*>& evaluationOrder)
+    {
+        for (InputAction* action : evaluationOrder)
+        {
+            InputActionInstance* instance = FindInputActionInstance(action);
+            if (!instance || instance->TriggerEvent == InputTriggerEvent::None)
+            {
+                continue;
+            }
+
+            for (auto* inputComponent : m_InputComponents)
+            {
+                inputComponent->ProcessInputAction(action, instance->TriggerEvent, instance->Value);
+            }
+        }
+    }
+
 
     void InputSystem::AddInputComponent(InputComponent *component)
     {

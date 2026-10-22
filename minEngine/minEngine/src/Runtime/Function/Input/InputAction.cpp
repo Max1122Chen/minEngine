@@ -31,7 +31,6 @@ namespace minEngine
             InputTriggerState currentState = trigger->UpdateTriggerState(modifiedValue, deltaTime);
 
             trigger->lastValue = modifiedValue;
-            trigger->m_LastState = currentState;
 
             switch(trigger->GetTriggerType())
             {

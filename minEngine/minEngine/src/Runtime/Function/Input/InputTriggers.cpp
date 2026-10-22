@@ -1,5 +1,4 @@
 #include "InputTriggers.h"
-#include "InputSystem.h"
 
 namespace minEngine
 {
@@ -26,17 +25,5 @@ namespace minEngine
         }
 
         return InputTriggerState::None;
-    }
-
-    InputTriggerState InputTriggerChordAction::UpdateTriggerState(const InputActionValue &modifiedValue, float deltaTime)
-    {
-        if (!ChordAction)
-        {
-            return InputTriggerState::None;
-        }
-        InputSystem& inputSystem = InputSystem::Get();
-        InputActionInstance* instance = inputSystem.FindInputActionInstance(ChordAction);
-        
-        return instance ? instance->TriggerStateTracker.GetState() : InputTriggerState::None;
     }
 }
