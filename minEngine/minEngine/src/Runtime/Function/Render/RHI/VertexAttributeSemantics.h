@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include <cstdint>
 #include <string>
 
@@ -119,9 +121,9 @@ namespace minEngine
             return Location(semantic);
         }
 
-        VertexElementType DefaultType(Semantic semantic);
+        MINENGINE_API VertexElementType DefaultType(Semantic semantic);
 
-        RHIVertexElement Make(
+        MINENGINE_API RHIVertexElement Make(
             Semantic semantic,
             VertexElementType type = static_cast<VertexElementType>(0),
             bool normalized = false);

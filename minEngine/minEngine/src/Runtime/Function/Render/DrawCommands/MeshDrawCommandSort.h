@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
 
 #include <vector>
@@ -11,15 +13,15 @@ namespace minEngine
 
     void FillOpaqueSortKeys(std::vector<MeshDrawCommand>& commands);
 
-    void SortOpaqueMeshDraws(std::vector<MeshDrawCommand>& commands);
+    MINENGINE_API void SortOpaqueMeshDraws(std::vector<MeshDrawCommand>& commands);
 
     /**
      * Far-to-near by world Bounds center distance to camera.
      * Invalid bounds fall back to LocalToWorld translation.
      */
-    void SortTranslucentMeshDraws(
+    MINENGINE_API void SortTranslucentMeshDraws(
         std::vector<MeshDrawCommand>& commands,
         const Vector3& cameraPosition);
 
-    float GetMeshDrawViewDistanceSq(const MeshDrawCommand& command, const Vector3& cameraPosition);
+    MINENGINE_API float GetMeshDrawViewDistanceSq(const MeshDrawCommand& command, const Vector3& cameraPosition);
 }

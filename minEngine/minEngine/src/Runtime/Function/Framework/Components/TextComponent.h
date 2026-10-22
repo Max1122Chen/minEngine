@@ -21,7 +21,7 @@ namespace minEngine
      * Geometry comes from Widget; without Widget this does not draw.
      */
     ME_CLASS()
-    class TextComponent : public WidgetGraphicComponent
+    class MINENGINE_API TextComponent : public WidgetGraphicComponent
     {
         ME_GENERATED_BODY()
     public:

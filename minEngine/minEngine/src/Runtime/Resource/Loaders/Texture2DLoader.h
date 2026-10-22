@@ -16,7 +16,7 @@ namespace minEngine
     class Asset;
     struct AssetMeta;
 
-    class Texture2DLoader
+    class MINENGINE_API Texture2DLoader
     {
     public:
         static std::shared_ptr<Texture2D> LoadFromAssetMeta(const AssetMeta& meta);

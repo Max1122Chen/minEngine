@@ -19,7 +19,7 @@ namespace minEngine
      * Source: Raw Texture2D (full UV) or Sprite (runtime texture + UV rect).
      */
     ME_CLASS()
-    class ImageComponent : public WidgetGraphicComponent
+    class MINENGINE_API ImageComponent : public WidgetGraphicComponent
     {
         ME_GENERATED_BODY()
     public:

@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Audio/AudioTypes.h"
 
 namespace minEngine
 {
-    class AudioMixer
+    class MINENGINE_API AudioMixer
     {
     public:
         AudioMixer();

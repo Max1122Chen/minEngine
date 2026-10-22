@@ -9,7 +9,7 @@
 
 namespace minEngine
 {
-    struct Pose
+    struct MINENGINE_API Pose
     {
         std::vector<Transform> LocalTransforms;
 

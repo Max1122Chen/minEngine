@@ -37,7 +37,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class SpriteAtlas : public Asset
+    class MINENGINE_API SpriteAtlas : public Asset
     {
         ME_GENERATED_BODY()
     public:

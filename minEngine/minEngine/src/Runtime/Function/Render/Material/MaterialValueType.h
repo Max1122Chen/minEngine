@@ -13,7 +13,7 @@ namespace minEngine
 
     using MaterialValueType = const MIRValueType*;
 
-    class MaterialValueTypeUtil
+    class MINENGINE_API MaterialValueTypeUtil
     {
     public:
         static bool AreCompatible(MaterialValueType from, MaterialValueType to);

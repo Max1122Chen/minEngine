@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "MaterialCompiler/MaterialCompileTypes.h"
 #include "MaterialTypes.h"
 
@@ -17,7 +19,7 @@ namespace minEngine
     class Material;
     class MaterialEdGraph;
 
-    class MaterialCapabilityUtil
+    class MINENGINE_API MaterialCapabilityUtil
     {
     public:
         static MaterialPropertyPinVisibility GetPropertyPinVisibility(

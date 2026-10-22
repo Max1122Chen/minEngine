@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Math/Math.h"
 #include "RHIClipSpaceCapabilities.h"
 
 namespace minEngine
 {
-    class RHIClipSpace
+    class MINENGINE_API RHIClipSpace
     {
     public:
         static Matrix4 MakePerspective(float fovYRadians, float aspect, float zNear, float zFar);

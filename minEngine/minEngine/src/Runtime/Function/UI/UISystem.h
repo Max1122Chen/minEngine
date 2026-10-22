@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Framework/Components/CanvasComponent.h"
 #include "Runtime/Function/Render/ScreenUI/ScreenUICoords.h"
 #include "Runtime/Function/Render/WindowSystem.h"
@@ -18,7 +20,7 @@ namespace minEngine
     class CanvasComponent;
     class WidgetComponent;
 
-    class UISystem
+    class MINENGINE_API UISystem
     {
     public:
         UISystem();

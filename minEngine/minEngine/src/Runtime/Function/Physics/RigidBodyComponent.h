@@ -11,7 +11,7 @@ namespace minEngine
     class SceneComponent;
 
     ME_CLASS()
-    class RigidBodyComponent : public Component
+    class MINENGINE_API RigidBodyComponent : public Component
     {
         ME_GENERATED_BODY()
 

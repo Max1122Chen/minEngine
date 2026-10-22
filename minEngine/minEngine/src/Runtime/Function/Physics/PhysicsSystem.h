@@ -10,7 +10,7 @@ namespace minEngine
 {
     class Scene;
 
-    class PhysicsSystem
+    class MINENGINE_API PhysicsSystem
     {
     public:
         PhysicsSystem() = default;

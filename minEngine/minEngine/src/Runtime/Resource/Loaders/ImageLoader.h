@@ -13,7 +13,7 @@ namespace minEngine
         Float32,
     };
 
-    struct ImagePixels
+    struct MINENGINE_API ImagePixels
     {
         ImageStorage Storage = ImageStorage::UInt8;
         unsigned char* U8 = nullptr;
@@ -32,7 +32,7 @@ namespace minEngine
         void Reset();
     };
 
-    class ImageLoader
+    class MINENGINE_API ImageLoader
     {
     public:
         static bool LoadLdr(

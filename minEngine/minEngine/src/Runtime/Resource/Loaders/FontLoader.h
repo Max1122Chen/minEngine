@@ -13,7 +13,7 @@ namespace minEngine
 {
     class Font;
 
-    class FontLoader
+    class MINENGINE_API FontLoader
     {
     public:
         static std::shared_ptr<Font> LoadFromAssetMeta(const AssetMeta& meta);

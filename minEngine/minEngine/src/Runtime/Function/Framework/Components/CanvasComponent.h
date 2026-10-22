@@ -11,7 +11,7 @@ namespace minEngine
      * Child GameObject tree under this owner is the UI tree.
      */
     ME_CLASS()
-    class CanvasComponent : public Component
+    class MINENGINE_API CanvasComponent : public Component
     {
         ME_GENERATED_BODY()
     public:

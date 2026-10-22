@@ -14,7 +14,7 @@ namespace minEngine
     class Engine;
     class RHI;
 
-    class RenderSystem
+    class MINENGINE_API RenderSystem
     {
     public:
         RenderSystem() = default;

@@ -14,7 +14,7 @@ namespace minEngine
      * vertical slice: declare SceneColor and clear it.
      * Replaced once the scene passes reconnect.
      */
-    class GraphClearPass : public IRenderPass
+    class MINENGINE_API GraphClearPass : public IRenderPass
     {
     public:
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;

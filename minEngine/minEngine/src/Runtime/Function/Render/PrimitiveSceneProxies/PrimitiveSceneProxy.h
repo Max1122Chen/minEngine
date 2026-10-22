@@ -16,7 +16,7 @@ namespace minEngine
      * so vertex buffers and the material proxy live here. Non-mesh proxies
      * (Widget, lights, sky) do not inherit this type.
      */
-    class PrimitiveSceneProxy
+    class MINENGINE_API PrimitiveSceneProxy
     {
     public:
         PrimitiveSceneProxy() = default;

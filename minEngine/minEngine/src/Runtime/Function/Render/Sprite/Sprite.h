@@ -21,7 +21,7 @@ namespace minEngine
      * GetUVRectNormalized(): OpenGL-style UVs for SpriteQuadMesh (v=0 bottom); converts with V flip.
      */
     ME_CLASS()
-    class Sprite : public Asset
+    class MINENGINE_API Sprite : public Asset
     {
         ME_GENERATED_BODY()
     public:

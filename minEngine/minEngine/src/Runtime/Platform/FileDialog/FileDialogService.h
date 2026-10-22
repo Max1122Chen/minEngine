@@ -1,12 +1,14 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "IFileDialogService.h"
 
 #include <memory>
 
 namespace minEngine
 {
-    class FileDialogService
+    class MINENGINE_API FileDialogService
     {
     public:
         static FileDialogService& Get();

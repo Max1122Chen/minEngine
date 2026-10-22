@@ -36,7 +36,7 @@ namespace minEngine
 
     // Ordered, closed declaration set. No runtime AddKey after Compile.
     ME_STRUCT()
-    class ParameterSchema
+    class MINENGINE_API ParameterSchema
     {
         ME_GENERATED_BODY()
     public:

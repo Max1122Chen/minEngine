@@ -24,7 +24,7 @@ namespace minEngine
      * Owns logical→physical texture mapping after Bake/SetupAttachments.
      * physical textures are cached per ViewKey (ViewId + SceneRenderTarget*).
      */
-    class RenderGraph
+    class MINENGINE_API RenderGraph
     {
     public:
         RenderGraph() = default;

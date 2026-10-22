@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHISampler.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHIResources.h"
@@ -19,7 +21,7 @@ namespace minEngine
      * Vulkan backend: frame recording + descriptor/PSO/cmd path (S07b–d).
      * Frame sync (semaphore/fence) stays private — not exposed on RHI.
      */
-    class VulkanRHI final : public RHI
+    class MINENGINE_API VulkanRHI final : public RHI
     {
     public:
         VulkanRHI() = default;

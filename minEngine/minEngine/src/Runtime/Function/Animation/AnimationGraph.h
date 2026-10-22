@@ -107,7 +107,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class AnimationGraph : public Asset
+    class MINENGINE_API AnimationGraph : public Asset
     {
         ME_GENERATED_BODY()
     public:

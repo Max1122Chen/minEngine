@@ -15,7 +15,7 @@ namespace minEngine
 
     struct ObjectCloneContext;
 
-    class PrefabUtility
+    class MINENGINE_API PrefabUtility
     {
     public:
         /** Prefab Stage editor-only objects (temp lights); excluded from Save / top-level checks. */

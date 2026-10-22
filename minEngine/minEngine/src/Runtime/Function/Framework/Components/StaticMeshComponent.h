@@ -11,7 +11,7 @@ namespace minEngine
     class MaterialInterface;
 
     ME_CLASS()
-    class StaticMeshComponent : public PrimitiveComponent    
+    class MINENGINE_API StaticMeshComponent : public PrimitiveComponent    
     {
         ME_GENERATED_BODY()
     public:

@@ -20,7 +20,7 @@ namespace minEngine
     class MIREmitter;
     struct MIRValue;
 
-    class MaterialGraphNodeDef;
+    class MINENGINE_API MaterialGraphNodeDef;
     struct MaterialGraphNodeDefOutput;
 
     ME_STRUCT()

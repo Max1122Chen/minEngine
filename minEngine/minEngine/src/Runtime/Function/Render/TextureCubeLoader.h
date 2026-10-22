@@ -25,7 +25,7 @@ namespace minEngine
         uint32_t FaceSize = 0;
     };
 
-    class TextureCubeLoader
+    class MINENGINE_API TextureCubeLoader
     {
     public:
         /** OpenGL cubemap face order: +X, -X, +Y, -Y, +Z, -Z. */

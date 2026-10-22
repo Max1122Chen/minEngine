@@ -7,7 +7,7 @@ namespace minEngine
     class AssetMeta;
 
     ME_CLASS()
-    class Asset : public MEObject
+    class MINENGINE_API Asset : public MEObject
     {
         ME_GENERATED_BODY()
     public:

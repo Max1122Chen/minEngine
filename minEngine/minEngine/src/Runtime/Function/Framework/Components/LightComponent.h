@@ -17,7 +17,7 @@ namespace minEngine
     class LightSceneProxy;
 
     ME_CLASS(Abstract)
-    class LightComponent : public SceneComponent
+    class MINENGINE_API LightComponent : public SceneComponent
     {
         ME_GENERATED_BODY()
 

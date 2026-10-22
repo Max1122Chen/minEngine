@@ -8,7 +8,7 @@ namespace minEngine
 {
     class MEObject;
 
-    class AssetSerializeHelper
+    class MINENGINE_API AssetSerializeHelper
     {
     public:
         static bool WriteObjectToFile(

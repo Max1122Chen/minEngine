@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/GameplayFramework/Events/GameplayEvent.h"
 #include "Runtime/Function/GameplayFramework/Events/GameplayEventChannel.h"
@@ -26,7 +28,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class GameplayEventSystemComponent : public Component
+    class MINENGINE_API GameplayEventSystemComponent : public Component
     {
         ME_GENERATED_BODY()
     public:

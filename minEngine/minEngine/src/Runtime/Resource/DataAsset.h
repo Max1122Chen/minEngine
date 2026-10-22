@@ -14,7 +14,7 @@ namespace minEngine
      * Game modules may derive T : DataAsset; load uses AssetMeta::RuntimeClassName (shared .medata pipeline).
      */
     ME_CLASS()
-    class DataAsset : public Asset
+    class MINENGINE_API DataAsset : public Asset
     {
         ME_GENERATED_BODY()
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "ITestSuite.h"
 
 #include <string_view>
@@ -7,7 +9,7 @@
 
 namespace minEngine
 {
-    class TestSuiteRegistry
+    class MINENGINE_API TestSuiteRegistry
     {
     public:
         static TestSuiteRegistry& Get();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Framework/Parameters/ParameterLayout.h"
 #include "Runtime/Function/Framework/Parameters/ParameterValueType.h"
 
@@ -11,7 +13,7 @@
 namespace minEngine
 {
     // Instance memory for one compiled ParameterLayout.
-    class ParameterStore
+    class MINENGINE_API ParameterStore
     {
     public:
         void BindLayout(const std::shared_ptr<const ParameterLayout>& layout);

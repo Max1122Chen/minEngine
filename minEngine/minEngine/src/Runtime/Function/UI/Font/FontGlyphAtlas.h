@@ -18,7 +18,7 @@ namespace minEngine
      * FreeType-backed glyph atlas for one Font byte source x pixel size.
      * CPU atlas is always available; GPU Texture2D is created on demand.
      */
-    class FontGlyphAtlas
+    class MINENGINE_API FontGlyphAtlas
     {
     public:
         static constexpr uint32_t kDefaultAtlasSize = 512;

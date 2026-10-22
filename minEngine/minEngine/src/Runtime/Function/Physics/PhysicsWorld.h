@@ -12,7 +12,7 @@ namespace minEngine
     class ColliderComponent;
     class GameObject;
 
-    class PhysicsWorld
+    class MINENGINE_API PhysicsWorld
     {
     public:
         PhysicsWorld();

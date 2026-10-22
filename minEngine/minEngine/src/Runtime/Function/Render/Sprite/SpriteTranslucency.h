@@ -7,10 +7,10 @@
 namespace minEngine
 {
     /** Path A translucency predicate. */
-    bool ColorAlphaIsTranslucent(float alpha);
-    bool TextureMayHaveAlpha(const Texture2D* texture);
+    MINENGINE_API bool ColorAlphaIsTranslucent(float alpha);
+    MINENGINE_API bool TextureMayHaveAlpha(const Texture2D* texture);
 
-    bool ComputeSpriteNeedsTranslucentPass(
+    MINENGINE_API bool ComputeSpriteNeedsTranslucentPass(
         const LinearColor& color,
         const Texture2D* texture,
         bool materialIsTranslucent);

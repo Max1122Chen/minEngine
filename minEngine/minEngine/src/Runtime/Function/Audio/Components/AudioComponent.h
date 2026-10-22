@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Audio/AudioLimits.h"
 #include "Runtime/Function/Audio/AudioTypes.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
@@ -10,7 +12,7 @@ namespace minEngine
     class Scene;
 
     ME_CLASS(ScriptType)
-    class AudioComponent : public SceneComponent
+    class MINENGINE_API AudioComponent : public SceneComponent
     {
         ME_GENERATED_BODY()
 

@@ -31,7 +31,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class Skeleton : public Asset
+    class MINENGINE_API Skeleton : public Asset
     {
         ME_GENERATED_BODY()
     public:

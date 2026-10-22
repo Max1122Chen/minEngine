@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/UI/ScreenUIHitTypes.h"
 
 namespace minEngine
@@ -12,7 +14,7 @@ namespace minEngine
      * Stateless ScreenUI hit query (multi-Canvas two-phase election).
      * Not an engine subsystem; called by UISystem / tests.
      */
-    class ScreenUIHitTester
+    class MINENGINE_API ScreenUIHitTester
     {
     public:
         ScreenUIHitTester() = default;

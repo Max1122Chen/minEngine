@@ -1,12 +1,14 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Resource/AssetManager.h"
 
 #include <string_view>
 
 namespace minEngine
 {
-    class Texture2DImporter
+    class MINENGINE_API Texture2DImporter
     {
     public:
         static bool AcceptsSourceExtension(std::string_view extension);

@@ -37,7 +37,7 @@ namespace minEngine
      * Pixel buffers use ImageLoader orientation (flipVertical=true): row 0 = image bottom (GL).
      * SourceRectPx on Sprite is top-left authoring space (y down from image top).
      */
-    class SpriteAtlasPacker
+    class MINENGINE_API SpriteAtlasPacker
     {
     public:
         static SpritePackLayoutResult PackShelf(

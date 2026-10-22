@@ -1,3 +1,9 @@
+## 2026-10-22 — BUILD-F03 刀2 批5：Render/Resource/UI/Audio/Physics/Prefab/Animation · `.def`→0
+
+- **Scope:** 附录 C-A/B/C 类级/点级 `MINENGINE_API`（Asset*/Material*/Sprite*/Physics*/Prefab*/Animation*/UI*/RHI*/Test* 等）；缺 `EngineAPI.h` 的头补 include；`WindowSystem::HasInstance` 出线；`NativeGameplayTag` 全局 `ME_DECLARE` 带导出；嵌套 `ScreenUICoords::LetterboxMapping` / `AssetManager::AssetRegistryBroadcastBatchScope` 补标；`.def` 烧光 → **0**（LEGACY 仅注释）
+- **Verification:** 四类 target 绿；`--verify-coverage` missing=0；forbid-buckets PASS；`bin` 下 `smoke` / `game-module-stub` / `gameplay-tags` 全绿；DLL NumberOfFunctions≈2720
+- **Next:** 主人验收 → 切默认 `MINENGINE_EXPORT_MODE=explicit` + 清冗余 linker 旗标
+
 ## 2026-10-22 — BUILD-F03 刀2 批4：Object / Scene / Components / GameplayTag / Engine
 
 - **Scope:** 类级 `MINENGINE_API`：`MEObject`/`ObjectManager`/`ObjectCloneContext`/`GameObject`/`Component`/`SceneComponent`/`PrimitiveComponent`/`Scene`/`SceneManager`/`SceneDuplicator`/`GameInstance`/`Subsystem*`/`SubsystemCollectionBase`/`GameplayTag*`/`NativeGameplayTag*`/`Engine`/`ProjectManager`；`Engine`/`ProjectManager::HasInstance` 改 `.cpp`（避免消费者 import `s_Instance`）；按 Itanium 归属类烧 `.def` −156 → **498**

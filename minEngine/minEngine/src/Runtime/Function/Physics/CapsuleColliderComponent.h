@@ -10,7 +10,7 @@ namespace minEngine
      * total height ~= 2 * (HalfHeight + Radius).
      */
     ME_CLASS()
-    class CapsuleColliderComponent : public ColliderComponent
+    class MINENGINE_API CapsuleColliderComponent : public ColliderComponent
     {
         ME_GENERATED_BODY()
 

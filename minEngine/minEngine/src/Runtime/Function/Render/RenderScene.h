@@ -18,7 +18,7 @@ namespace minEngine
     class SkyBoxComponent;
     class WidgetComponent;
 
-    class RenderScene
+    class MINENGINE_API RenderScene
     {
     public:
         RenderScene() = default;

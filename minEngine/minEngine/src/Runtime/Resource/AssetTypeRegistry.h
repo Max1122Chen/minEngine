@@ -24,7 +24,7 @@ namespace minEngine
         std::string FileDialogFilterLabel;
     };
 
-    class AssetTypeRegistry
+    class MINENGINE_API AssetTypeRegistry
     {
     public:
         static AssetTypeRegistry& Get();

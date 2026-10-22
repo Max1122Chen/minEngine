@@ -14,7 +14,7 @@ namespace minEngine
 
     class WindowSystem;
 
-    class OpenGLRHI : public RHI
+    class MINENGINE_API OpenGLRHI : public RHI
     {
     public:
         OpenGLRHI() = default;

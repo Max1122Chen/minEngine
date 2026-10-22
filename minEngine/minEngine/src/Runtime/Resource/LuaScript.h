@@ -10,7 +10,7 @@ namespace minEngine
     class LuaScriptLoader;
 
     ME_CLASS()
-    class LuaScript : public Asset
+    class MINENGINE_API LuaScript : public Asset
     {
         ME_GENERATED_BODY()
 

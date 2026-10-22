@@ -9,7 +9,7 @@ namespace minEngine
     class LightSceneProxy;
 
     ME_CLASS()
-    class PointLightComponent : public LightComponent
+    class MINENGINE_API PointLightComponent : public LightComponent
     {
         ME_GENERATED_BODY()
     public:

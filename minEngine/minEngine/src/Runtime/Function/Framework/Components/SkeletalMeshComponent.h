@@ -20,7 +20,7 @@ namespace minEngine
     class SkeletalMeshSceneProxy;
 
     ME_CLASS()
-    class SkeletalMeshComponent : public PrimitiveComponent
+    class MINENGINE_API SkeletalMeshComponent : public PrimitiveComponent
     {
         ME_GENERATED_BODY()
     public:

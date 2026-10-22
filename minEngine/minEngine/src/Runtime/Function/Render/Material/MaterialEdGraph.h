@@ -22,7 +22,7 @@ namespace minEngine
     class MaterialGraphNodeDefInput;
 
     ME_CLASS()
-    class MaterialEdGraph : public EditorGraph
+    class MINENGINE_API MaterialEdGraph : public EditorGraph
     {
         ME_GENERATED_BODY()
 

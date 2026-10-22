@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Render/MaterialInstance.h"
 
 #include <memory>
@@ -12,7 +14,7 @@ namespace minEngine
      * Reuses MaterialInstance storage and InstanceMaterialRenderProxy; usually not serialized.
      * Prefer this for per-frame Set*; use Material for asset defaults; MIC (.memi) is.
      */
-    class MaterialInstanceDynamic : public MaterialInstance
+    class MINENGINE_API MaterialInstanceDynamic : public MaterialInstance
     {
     public:
         ~MaterialInstanceDynamic() override = default;

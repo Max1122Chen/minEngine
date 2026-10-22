@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Framework/Parameters/ParameterSchema.h"
 #include "Runtime/Function/Framework/Parameters/ParameterValueType.h"
 
@@ -21,7 +23,7 @@ namespace minEngine
 
     // Immutable after Compile. KeyId == Schema declaration order (0..n-1).
     // Memory offsets may be packed by size; ValueOffsets[KeyId] via GetEntry.
-    class ParameterLayout
+    class MINENGINE_API ParameterLayout
     {
     public:
         static bool Compile(

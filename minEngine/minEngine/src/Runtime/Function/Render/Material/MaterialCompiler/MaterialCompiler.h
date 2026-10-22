@@ -7,7 +7,7 @@ namespace minEngine
     class Material;
     class MaterialEdGraph;
 
-    class MaterialCompiler
+    class MINENGINE_API MaterialCompiler
     {
     public:
         static bool Compile(Material& target, const MaterialCompileContext& ctx = {});

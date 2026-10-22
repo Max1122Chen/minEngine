@@ -20,7 +20,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class AudioClip : public Asset
+    class MINENGINE_API AudioClip : public Asset
     {
         ME_GENERATED_BODY()
 

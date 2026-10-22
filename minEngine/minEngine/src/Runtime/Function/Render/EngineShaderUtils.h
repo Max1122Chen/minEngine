@@ -14,19 +14,19 @@ namespace minEngine
 
     namespace EngineShaderUtils
     {
-        bool ReadShaderSourceFile(
+        MINENGINE_API bool ReadShaderSourceFile(
             const std::filesystem::path& path,
             std::string& outSource,
             std::string* outError = nullptr);
 
-        RHIShaderRef CreateShaderFromFiles(
+        MINENGINE_API RHIShaderRef CreateShaderFromFiles(
             RHI& rhi,
             const std::filesystem::path& vertexShaderPath,
             const std::filesystem::path& fragmentShaderPath,
             std::string* outError = nullptr);
 
         /** GLSL files -> ShaderCompiler (backend SPIR-V target) -> RHICreateShader(bytecode). */
-        RHIShaderRef CreateShaderFromSpirvFiles(
+        MINENGINE_API RHIShaderRef CreateShaderFromSpirvFiles(
             RHI& rhi,
             const std::filesystem::path& vertexShaderPath,
             const std::filesystem::path& fragmentShaderPath,
@@ -39,7 +39,7 @@ namespace minEngine
          * generated GLSL reuses the same GPU program instead of re-linking one per Material.
          * Callers must not mutate the returned shader.
          */
-        RHIShaderRef CreateShaderFromSpirvSources(
+        MINENGINE_API RHIShaderRef CreateShaderFromSpirvSources(
             RHI& rhi,
             const std::string& vertexSource,
             const std::string& fragmentSource,
@@ -54,16 +54,16 @@ namespace minEngine
          * Lifetime compile statistics are NOT reset here (see ResetProgramCacheStats) so hit-rate
          * readings stay meaningful across invalidations.
          */
-        void ClearProgramCache();
+        MINENGINE_API void ClearProgramCache();
         /** Programs currently memoized for the most recent RHI instance. */
-        size_t GetProgramCacheEntryCount();
+        MINENGINE_API size_t GetProgramCacheEntryCount();
         /** Cumulative program-cache hits since process start (diagnostic). */
-        uint64_t GetProgramCacheHits();
-        void ResetProgramCacheStats();
+        MINENGINE_API uint64_t GetProgramCacheHits();
+        MINENGINE_API void ResetProgramCacheStats();
 
-        std::filesystem::path EngineShaderPath(const char* fileName);
+        MINENGINE_API std::filesystem::path EngineShaderPath(const char* fileName);
 
-        bool TryCompileSourcesOnGpu(
+        MINENGINE_API bool TryCompileSourcesOnGpu(
             const std::string& vertexSource,
             const std::string& fragmentSource,
             std::string* outError = nullptr);

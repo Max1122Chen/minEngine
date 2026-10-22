@@ -12,7 +12,7 @@ namespace minEngine
     class Prefab;
     class Scene;
 
-    class PrefabOverrideUtility
+    class MINENGINE_API PrefabOverrideUtility
     {
     public:
         static bool TryRecordPropertyOverride(

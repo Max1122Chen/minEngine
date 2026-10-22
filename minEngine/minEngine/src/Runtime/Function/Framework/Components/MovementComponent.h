@@ -7,7 +7,7 @@
 namespace minEngine
 {
     ME_CLASS()
-    class MovementComponent : public Component
+    class MINENGINE_API MovementComponent : public Component
     {
         ME_GENERATED_BODY()
     public:

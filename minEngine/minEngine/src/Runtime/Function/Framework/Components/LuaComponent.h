@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Core/Delegates/DelegateHandle.h"
 #include "Runtime/Function/Framework/Components/Component.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
@@ -18,7 +20,7 @@ namespace minEngine
 
     // Runs a LuaScript asset's source in a per-component environment; calls tick(dt).
     ME_CLASS(ScriptType)
-    class LuaComponent : public Component
+    class MINENGINE_API LuaComponent : public Component
     {
         ME_GENERATED_BODY()
 

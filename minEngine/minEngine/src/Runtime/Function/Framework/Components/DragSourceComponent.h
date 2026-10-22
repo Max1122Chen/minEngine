@@ -18,7 +18,7 @@ namespace minEngine
      * Listeners use UISystem::GetDragSession() for pointer / UserId context.
      */
     ME_CLASS()
-    class DragSourceComponent : public Component
+    class MINENGINE_API DragSourceComponent : public Component
     {
         ME_GENERATED_BODY()
     public:

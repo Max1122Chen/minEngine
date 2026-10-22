@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Animation/AnimationGraph.h"
 #include "Runtime/Function/Animation/Pose.h"
 #include "Runtime/Function/Framework/Parameters/ParameterLayout.h"
@@ -13,7 +15,7 @@
 namespace minEngine
 {
     // Runtime evaluator for AnimationGraph. Parallel Pose producer to AnimationPlayer.
-    class AnimationGraphInstance
+    class MINENGINE_API AnimationGraphInstance
     {
     public:
         void SetGraph(const std::shared_ptr<AnimationGraph>& graph);

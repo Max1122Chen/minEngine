@@ -42,7 +42,7 @@ namespace minEngine
         bool bWindowActive = false;
     };
 
-    class WindowSystem
+    class MINENGINE_API WindowSystem
     {
     public:
         WindowSystem() = default;
@@ -79,7 +79,7 @@ namespace minEngine
         virtual uint32_t GetWidth() = 0;
         virtual uint32_t GetHeight() = 0;
 
-        static bool HasInstance() { return s_Instance != nullptr; }
+        static bool HasInstance();
         static WindowSystem& Get();
 
         // Window event callback function types

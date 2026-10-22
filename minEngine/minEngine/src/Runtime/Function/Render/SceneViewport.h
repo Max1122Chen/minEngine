@@ -15,7 +15,7 @@ namespace minEngine
     class RHI;
 
     /** Main editor viewport (P2). P3: owned by EditorViewportClient instead of SceneManager. */
-    class SceneViewport
+    class MINENGINE_API SceneViewport
     {
     public:
         void Initialize(RHI* rhi, uint32_t width, uint32_t height);

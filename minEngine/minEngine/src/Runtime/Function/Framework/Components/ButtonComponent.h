@@ -21,7 +21,7 @@ namespace minEngine
      * Click is dispatched by UISystem; this component owns OnClicked and optional tint.
      */
     ME_CLASS(ScriptType)
-    class ButtonComponent : public Component
+    class MINENGINE_API ButtonComponent : public Component
     {
         ME_GENERATED_BODY()
     public:

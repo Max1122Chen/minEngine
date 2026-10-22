@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Framework/GameInstance/GameInstance.h"
 #include "Runtime/Function/Framework/Subsystems/Subsystem.h"
 #include "Runtime/Function/Framework/Subsystems/SubsystemCollection.h"
@@ -11,7 +13,7 @@ namespace minEngine
      * InitializeEngineSubsystems does not instantiate them.
      */
     ME_CLASS()
-    class TestEngineSubsystemAlpha : public EngineSubsystem
+    class MINENGINE_API TestEngineSubsystemAlpha : public EngineSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -26,7 +28,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class TestEngineSubsystemBeta : public EngineSubsystem
+    class MINENGINE_API TestEngineSubsystemBeta : public EngineSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -41,7 +43,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class TestGameInstanceSubsystem : public GameInstanceSubsystem
+    class MINENGINE_API TestGameInstanceSubsystem : public GameInstanceSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -56,7 +58,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class TestWorldSubsystem : public WorldSubsystem
+    class MINENGINE_API TestWorldSubsystem : public WorldSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -77,7 +79,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class TestTickableWorldSubsystem : public TickableWorldSubsystem
+    class MINENGINE_API TestTickableWorldSubsystem : public TickableWorldSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -95,7 +97,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class TestTickableGameInstanceSubsystem : public TickableGameInstanceSubsystem
+    class MINENGINE_API TestTickableGameInstanceSubsystem : public TickableGameInstanceSubsystem
     {
         ME_GENERATED_BODY()
 
@@ -113,7 +115,7 @@ namespace minEngine
 
     /** Derived hub for Resolve/Create tests. */
     ME_CLASS()
-    class TestDerivedGameInstance : public GameInstance
+    class MINENGINE_API TestDerivedGameInstance : public GameInstance
     {
         ME_GENERATED_BODY()
 

@@ -115,6 +115,11 @@ namespace minEngine
         return *s_Instance;
     }
 
+    bool WindowSystem::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     GLFWWindowSystem::~GLFWWindowSystem()
     {
         Shutdown();

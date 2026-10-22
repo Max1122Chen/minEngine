@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTag.h"
 
 #include <set>

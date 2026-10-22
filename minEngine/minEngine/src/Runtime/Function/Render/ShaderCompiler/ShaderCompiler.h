@@ -58,7 +58,7 @@ namespace minEngine
      * generated GLSL never re-launches glslang within a session. Artifacts are context-free and
      * therefore safe to share across RHI instances; GPU programs are not (see EngineShaderUtils).
      */
-    class ShaderCompiler
+    class MINENGINE_API ShaderCompiler
     {
     public:
         static ShaderCompiler& Get();

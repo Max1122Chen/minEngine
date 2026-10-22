@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Testing/TestAccess.h"
 #include "Runtime/Function/Audio/AudioMixer.h"
 #include "Runtime/Function/Audio/AudioTypes.h"
@@ -18,7 +20,7 @@ namespace minEngine
     class Scene;
     class SceneComponent;
 
-    class AudioSystem
+    class MINENGINE_API AudioSystem
     {
     public:
         AudioSystem();

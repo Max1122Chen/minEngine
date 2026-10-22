@@ -15,7 +15,7 @@ namespace minEngine
     class SpriteSceneProxy;
 
     ME_CLASS()
-    class SpriteComponent : public PrimitiveComponent
+    class MINENGINE_API SpriteComponent : public PrimitiveComponent
     {
         ME_GENERATED_BODY()
     public:

@@ -23,7 +23,7 @@ namespace minEngine
         std::string CanonicalPath;
     };
 
-    class PrefabPropertyPath
+    class MINENGINE_API PrefabPropertyPath
     {
     public:
         /**

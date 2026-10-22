@@ -33,7 +33,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class Texture2D : public Asset
+    class MINENGINE_API Texture2D : public Asset
     {
         ME_GENERATED_BODY()
     public:

@@ -34,7 +34,7 @@ namespace minEngine
      * Inputs for HitTestAt. Viewport pixels are top-left origin (+Y down),
      * in the same space as ScreenUI Letterbox Map/Unmap (image-local, not window).
      */
-    struct ScreenUIHitQuery
+    struct MINENGINE_API ScreenUIHitQuery
     {
         Vector2 ViewportPoint{ 0.0f, 0.0f };
         float ViewportWidth = 0.0f;

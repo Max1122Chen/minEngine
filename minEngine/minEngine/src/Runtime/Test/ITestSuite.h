@@ -1,12 +1,14 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "TestSuiteMetadata.h"
 
 namespace minEngine
 {
     class TestContext;
 
-    class ITestSuite
+    class MINENGINE_API ITestSuite
     {
     public:
         virtual ~ITestSuite() = default;

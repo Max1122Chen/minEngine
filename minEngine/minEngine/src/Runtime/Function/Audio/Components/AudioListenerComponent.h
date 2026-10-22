@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 
 namespace minEngine
 {
     ME_CLASS()
-    class AudioListenerComponent : public SceneComponent
+    class MINENGINE_API AudioListenerComponent : public SceneComponent
     {
         ME_GENERATED_BODY()
 

@@ -9,7 +9,7 @@ namespace minEngine
     class RigidBodyComponent;
 
     ME_CLASS()
-    class BoxColliderComponent : public ColliderComponent
+    class MINENGINE_API BoxColliderComponent : public ColliderComponent
     {
         ME_GENERATED_BODY()
 

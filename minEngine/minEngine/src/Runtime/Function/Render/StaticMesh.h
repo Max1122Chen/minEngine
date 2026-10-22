@@ -20,7 +20,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class StaticMesh : public Asset
+    class MINENGINE_API StaticMesh : public Asset
     {
         ME_GENERATED_BODY()
     public:

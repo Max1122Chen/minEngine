@@ -7,7 +7,7 @@
 
 namespace minEngine
 {
-    class RenderCamera
+    class MINENGINE_API RenderCamera
     {
     public:
         friend class RenderSystem;

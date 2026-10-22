@@ -16,7 +16,7 @@ namespace minEngine
     class RHICommandList;
 
     /** RenderGraph step node (Granite RenderPass). Not Legacy RenderPasses/* classes. */
-    class RenderPass
+    class MINENGINE_API RenderPass
     {
     public:
         RenderPass(RenderGraph& graph, uint32_t index, std::string name, RDGQueue queue);

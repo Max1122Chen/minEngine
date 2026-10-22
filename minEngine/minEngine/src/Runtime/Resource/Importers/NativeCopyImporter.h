@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Resource/AssetManager.h"
 
 #include <filesystem>
@@ -8,7 +10,7 @@
 namespace minEngine
 {
     /** copy registered native extensions into Content (no cook). */
-    class NativeCopyImporter
+    class MINENGINE_API NativeCopyImporter
     {
     public:
         static bool AcceptsSourceExtension(std::string_view extension);

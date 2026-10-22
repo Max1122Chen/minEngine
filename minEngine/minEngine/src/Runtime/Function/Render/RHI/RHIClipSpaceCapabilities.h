@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Render/RHI/RHIGraphicsPipelineState.h"
 
 #include <cstdint>
@@ -64,8 +66,8 @@ namespace minEngine
     bool GetViewportFlipY(RHIViewportConvention convention);
     /** Lit-pass shadow UV flip: compensates TextureOriginY when sampling rendered depth. */
     bool GetShadowMapSampleFlipY();
-    float GetFrustumNdcZNear();
-    float GetFrustumNdcZFar();
-    RHIImGuiSceneColorUv GetImGuiSceneColorUv();
+    MINENGINE_API float GetFrustumNdcZNear();
+    MINENGINE_API float GetFrustumNdcZFar();
+    MINENGINE_API RHIImGuiSceneColorUv GetImGuiSceneColorUv();
 
 } // namespace minEngine

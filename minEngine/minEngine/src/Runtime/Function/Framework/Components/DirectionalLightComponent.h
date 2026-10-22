@@ -6,7 +6,7 @@
 namespace minEngine
 {
     ME_CLASS()
-    class DirectionalLightComponent : public LightComponent
+    class MINENGINE_API DirectionalLightComponent : public LightComponent
     {
         ME_GENERATED_BODY()
 

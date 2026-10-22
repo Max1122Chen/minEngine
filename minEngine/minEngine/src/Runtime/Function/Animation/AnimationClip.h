@@ -15,7 +15,7 @@ namespace minEngine
     class Skeleton;
 
     ME_CLASS()
-    class AnimationClip : public Asset
+    class MINENGINE_API AnimationClip : public Asset
     {
         ME_GENERATED_BODY()
     public:

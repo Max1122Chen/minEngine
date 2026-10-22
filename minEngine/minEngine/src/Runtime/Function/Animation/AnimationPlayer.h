@@ -17,7 +17,7 @@ namespace minEngine
     };
 
     // Composed into SkeletalMeshComponent (F02). Never touches RHI / Assimp.
-    class AnimationPlayer
+    class MINENGINE_API AnimationPlayer
     {
     public:
         void SetClip(const std::shared_ptr<AnimationClip>& clip);

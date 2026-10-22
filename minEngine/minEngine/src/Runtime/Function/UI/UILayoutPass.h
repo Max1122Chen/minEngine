@@ -10,7 +10,7 @@ namespace minEngine
     class WidgetComponent;
 
     /** Depth-first Canvas subtree layout into Widget ComputedRect (reference pixels). */
-    class UILayoutPass
+    class MINENGINE_API UILayoutPass
     {
     public:
         static void LayoutCanvas(CanvasComponent& canvas);

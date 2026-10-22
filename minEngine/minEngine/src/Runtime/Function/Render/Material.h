@@ -43,7 +43,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class Material : public MaterialInterface
+    class MINENGINE_API Material : public MaterialInterface
     {
         ME_GENERATED_BODY()
         friend class MaterialCompiler;

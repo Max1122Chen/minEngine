@@ -40,7 +40,7 @@ namespace minEngine
     };
 
     ME_CLASS()
-    class ReflectionSampleComponent : public Component
+    class MINENGINE_API ReflectionSampleComponent : public Component
     {
         ME_GENERATED_BODY()
     public:

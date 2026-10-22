@@ -7,7 +7,7 @@ namespace minEngine
 {
 
     ME_CLASS()
-    class SpotLightComponent : public PointLightComponent
+    class MINENGINE_API SpotLightComponent : public PointLightComponent
     {
         ME_GENERATED_BODY()
 

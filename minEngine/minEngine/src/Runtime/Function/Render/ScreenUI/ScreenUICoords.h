@@ -6,7 +6,7 @@
 namespace minEngine
 {
     /** Pixel top-left screen-space helpers for Path B ScreenUI. */
-    class ScreenUICoords
+    class MINENGINE_API ScreenUICoords
     {
     public:
         /** Ortho proj: origin top-left, +Y down, matches viewport pixels. */
@@ -27,7 +27,7 @@ namespace minEngine
         static Matrix4 MakeWidgetLocalPixelModelMatrix(const Vector2& topLeftPx, float uniformScale);
 
         /** Letterbox: fit ref resolution inside viewport, preserve aspect, center. */
-        struct LetterboxMapping
+        struct MINENGINE_API LetterboxMapping
         {
             float Scale = 1.0f;
             Vector2 Offset{ 0.0f, 0.0f };

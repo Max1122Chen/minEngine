@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include <cstdint>
 
 namespace minEngine
@@ -11,7 +13,7 @@ namespace minEngine
     };
 
     /** Process-wide backend chosen from CLI before Window/Render init. */
-    class RHIBackendSelection
+    class MINENGINE_API RHIBackendSelection
     {
     public:
         static void Set(RHIBackendType backend);

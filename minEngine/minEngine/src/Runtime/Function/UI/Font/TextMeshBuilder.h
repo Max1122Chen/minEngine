@@ -25,7 +25,7 @@ namespace minEngine
      * Builds ScreenUI text geometry in Widget-local pixels (origin top-left, Y down).
      * Vertex layout matches SpriteQuadMesh (Position3/TexCoord2/Normal3/Tangent4).
      */
-    class TextMeshBuilder
+    class MINENGINE_API TextMeshBuilder
     {
     public:
         static bool Build(

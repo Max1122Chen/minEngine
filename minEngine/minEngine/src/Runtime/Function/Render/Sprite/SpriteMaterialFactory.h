@@ -30,7 +30,7 @@ namespace minEngine
      * compiled once per RHI instance, and every CreateInstance() derives a runtime sibling that
      * shares its GPU program while keeping private parameter tables (tint/opacity/UV per sprite).
      */
-    class SpriteMaterialFactory
+    class MINENGINE_API SpriteMaterialFactory
     {
     public:
         static std::shared_ptr<Material> CreateInstance(RHI& rhi, bool translucent);

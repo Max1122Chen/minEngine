@@ -12,7 +12,7 @@ namespace minEngine
 {
     // Marks disk paths touched by Editor-initiated AssetManager CRUD so ProjectAssetWatcher
     // can ignore duplicate efsw notifications (registry is already updated by CRUD).
-    class EditorFilesystemMutationPass
+    class MINENGINE_API EditorFilesystemMutationPass
     {
     public:
         class Scope

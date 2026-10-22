@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTag.h"
 
 #include <mutex>
@@ -37,7 +39,7 @@ namespace minEngine
 }
 
 /// Declare a native gameplay tag defined in a .cpp (UE_DECLARE_GAMEPLAY_TAG_EXTERN analogue).
-#define ME_DECLARE_GAMEPLAY_TAG_EXTERN(TagName) extern ::minEngine::NativeGameplayTag TagName
+#define ME_DECLARE_GAMEPLAY_TAG_EXTERN(TagName) extern MINENGINE_API ::minEngine::NativeGameplayTag TagName
 
 /// Define and register a native gameplay tag (UE_DEFINE_GAMEPLAY_TAG analogue). Use in .cpp only.
 #define ME_DEFINE_GAMEPLAY_TAG(TagName, TagString) ::minEngine::NativeGameplayTag TagName(TagString)

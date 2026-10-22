@@ -8,7 +8,7 @@ namespace minEngine
     class RenderCamera;
 
     ME_CLASS()
-    class CameraComponent : public SceneComponent
+    class MINENGINE_API CameraComponent : public SceneComponent
     {
         ME_GENERATED_BODY()
     public:

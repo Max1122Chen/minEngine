@@ -18,7 +18,7 @@ namespace minEngine
      * Disk: .meprefab + .meta
      */
     ME_CLASS()
-    class Prefab : public Asset
+    class MINENGINE_API Prefab : public Asset
     {
         ME_GENERATED_BODY()
     public:

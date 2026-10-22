@@ -13,7 +13,7 @@ namespace minEngine
     class Texture2D;
 
     /** Unlit translucent materials for ScreenUI widgets (reuses sprite graph). */
-    class ScreenUIMaterialFactory
+    class MINENGINE_API ScreenUIMaterialFactory
     {
     public:
         static std::shared_ptr<Material> CreateInstance(RHI& rhi);

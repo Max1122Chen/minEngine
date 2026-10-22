@@ -42,7 +42,7 @@ namespace minEngine
      * Draw code must use GetRenderProxy. Disk form is.memi.
      */
     ME_CLASS()
-    class MaterialInstance : public MaterialInterface
+    class MINENGINE_API MaterialInstance : public MaterialInterface
     {
         ME_GENERATED_BODY()
         friend class InstanceMaterialRenderProxy;

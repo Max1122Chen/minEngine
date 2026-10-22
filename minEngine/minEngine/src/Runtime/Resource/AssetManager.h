@@ -41,7 +41,7 @@ namespace minEngine
     class AnimationClip;
     class AnimationGraph;
     class Asset;
-    class AssetManager;
+    class MINENGINE_API AssetManager;
 
     struct ImportAssetResult
     {
@@ -188,7 +188,7 @@ namespace minEngine
         void ClearProjectRegistry();
         void EvictLoadedAssetCache(std::string_view projectRelativePath);
 
-        class AssetRegistryBroadcastBatchScope
+        class MINENGINE_API AssetRegistryBroadcastBatchScope
         {
         public:
             AssetRegistryBroadcastBatchScope();

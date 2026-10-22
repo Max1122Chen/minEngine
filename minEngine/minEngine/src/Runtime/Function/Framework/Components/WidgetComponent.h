@@ -23,7 +23,7 @@ namespace minEngine
      * Pointer events are dispatched by UISystem (hit surface).
      */
     ME_CLASS()
-    class WidgetComponent : public SceneComponent
+    class MINENGINE_API WidgetComponent : public SceneComponent
     {
         ME_GENERATED_BODY()
     public:

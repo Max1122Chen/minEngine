@@ -26,7 +26,7 @@ namespace minEngine
     };
 
     /** Pass draw item built from a MeshBatch by a MeshPassProcessor. Proxies do not submit this type. */
-    class MeshDrawCommand
+    class MINENGINE_API MeshDrawCommand
     {
     public:
         MeshDrawCommand() = default;

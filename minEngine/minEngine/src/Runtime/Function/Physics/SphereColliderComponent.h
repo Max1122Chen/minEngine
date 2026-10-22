@@ -6,7 +6,7 @@
 namespace minEngine
 {
     ME_CLASS()
-    class SphereColliderComponent : public ColliderComponent
+    class MINENGINE_API SphereColliderComponent : public ColliderComponent
     {
         ME_GENERATED_BODY()
 

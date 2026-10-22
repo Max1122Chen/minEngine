@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Runtime/Core/EngineAPI.h"
 #include "Reflection/ReflectionAnnotations.h"
 #include <cstdint>
 #include <cstdio>
@@ -67,7 +69,7 @@ namespace minEngine
     
 
     // Using UUID v4 (random) for GUID generation
-    GUID GenerateGUID();
+    MINENGINE_API GUID GenerateGUID();
 }
 
 #include "GUID.gen.h"

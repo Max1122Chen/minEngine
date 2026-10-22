@@ -18,7 +18,7 @@ namespace minEngine
      * rejects a second super class, so Material : Asset + MaterialInterface is not viable.
      */
     ME_CLASS()
-    class MaterialInterface : public Asset
+    class MINENGINE_API MaterialInterface : public Asset
     {
         ME_GENERATED_BODY()
 

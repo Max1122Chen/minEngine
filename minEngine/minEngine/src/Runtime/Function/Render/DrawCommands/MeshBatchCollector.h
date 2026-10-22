@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Runtime/Core/EngineAPI.h"
+
 #include "Runtime/Function/Render/DrawCommands/MeshBatch.h"
 
 #include <vector>
@@ -9,7 +11,7 @@ namespace minEngine
     class MeshPassProcessor;
 
     /** Frame-local list of mesh batches. Does not own GPU resources. */
-    class MeshBatchCollector
+    class MINENGINE_API MeshBatchCollector
     {
     public:
         void AddMesh(const MeshBatch& batch);

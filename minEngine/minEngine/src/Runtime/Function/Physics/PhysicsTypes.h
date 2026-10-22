@@ -101,7 +101,7 @@ namespace minEngine
         GameObject* IgnoreGameObject{nullptr};
     };
 
-    class CollisionChannelRegistry
+    class MINENGINE_API CollisionChannelRegistry
     {
     public:
         static CollisionChannelRegistry& Get();

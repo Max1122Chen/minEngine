@@ -14,7 +14,7 @@ namespace minEngine
      * owns that space conversion.
      * Vertex layout matches StaticMeshLoader (a_Position/a_TexCoord/a_Normal/a_Tangent).
      */
-    class SpriteQuadMesh
+    class MINENGINE_API SpriteQuadMesh
     {
     public:
         static constexpr uint32_t VertexCount = 4;
