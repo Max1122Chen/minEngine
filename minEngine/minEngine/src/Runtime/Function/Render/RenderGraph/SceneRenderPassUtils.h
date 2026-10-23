@@ -23,8 +23,15 @@ namespace minEngine
         }
     }
 
-    /** Shared BeginRenderPass info for scene color+depth passes (Sky / Opaque / Translucent). */
-    inline RHIRenderPassInfo MakeSceneRenderPassInfo(RHITexture* color, RHITexture* depth, bool clearTargets)
+    /** Shared BeginRenderPass info for scene color+depth passes (Sky / Opaque / Translucent).
+     *  When clearTargets is true and clearColor is non-null, the caller-provided RGBA/depth is used;
+     *  otherwise a default slate-blue clear keeps existing behavior. */
+    inline RHIRenderPassInfo MakeSceneRenderPassInfo(
+        RHITexture* color,
+        RHITexture* depth,
+        bool clearTargets,
+        const float clearColor[4] = nullptr,
+        float depthClear = 1.0f)
     {
         RHIRenderPassInfo info(
             color,
@@ -34,12 +41,22 @@ namespace minEngine
                          : RHIDepthStencilTargetActions::LoadDepthStencilStoreDepthStencil);
         if (clearTargets)
         {
-            // Default scene clear when Sky is off / BasePass owns clear.
-            info.ClearValue.Color[0] = 0.18f;
-            info.ClearValue.Color[1] = 0.32f;
-            info.ClearValue.Color[2] = 0.48f;
-            info.ClearValue.Color[3] = 1.0f;
-            info.ClearValue.Depth = 1.0f;
+            if (clearColor != nullptr)
+            {
+                info.ClearValue.Color[0] = clearColor[0];
+                info.ClearValue.Color[1] = clearColor[1];
+                info.ClearValue.Color[2] = clearColor[2];
+                info.ClearValue.Color[3] = clearColor[3];
+            }
+            else
+            {
+                // Default scene clear when Sky is off / BasePass owns clear.
+                info.ClearValue.Color[0] = 0.18f;
+                info.ClearValue.Color[1] = 0.32f;
+                info.ClearValue.Color[2] = 0.48f;
+                info.ClearValue.Color[3] = 1.0f;
+            }
+            info.ClearValue.Depth = depthClear;
         }
         return info;
     }

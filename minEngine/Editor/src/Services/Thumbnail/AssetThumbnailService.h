@@ -2,7 +2,7 @@
 
 #include "Core.h"
 #include "Preview/PreviewScene.h"
-#include "Runtime/Function/Render/SceneViewport.h"
+#include "Runtime/Function/Render/OffscreenRenderer.h"
 
 #include <memory>
 #include <string>
@@ -70,7 +70,7 @@ namespace minEngine
             uint32_t ViewportHeight = 0;
             int LastAccessFrame = 0;
 
-            SceneViewport Viewport;
+            OffscreenRenderer Offscreen;
             ThumbnailView CachedView{};
 
             // Keep assets alive for this thumbnail.
@@ -106,7 +106,7 @@ namespace minEngine
 
         // Inspector target preview state (single active target).
         PreviewScene m_InspectorPreviewScene;
-        SceneViewport m_InspectorViewport;
+        OffscreenRenderer m_InspectorOffscreen;
         bool m_ViewportInitialized = false;
         uint32_t m_ViewportWidth = 0;
         uint32_t m_ViewportHeight = 0;

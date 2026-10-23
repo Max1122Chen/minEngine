@@ -74,21 +74,6 @@ namespace minEngine
         m_DepthTexture = std::move(depthTexture);
     }
 
-    RHIRenderPassInfo SceneRenderTarget::BuildRenderPassInfo() const
-    {
-        RHIRenderPassInfo info(
-            m_ColorTexture.get(),
-            RHIRenderTargetActions::ClearStore,
-            m_DepthTexture.get(),
-            RHIDepthStencilTargetActions::ClearDepthStencilStoreDepthStencil);
-        info.ClearValue.Color[0] = 0.1f;
-        info.ClearValue.Color[1] = 0.1f;
-        info.ClearValue.Color[2] = 0.1f;
-        info.ClearValue.Color[3] = 1.0f;
-        info.ClearValue.Depth = 1.0f;
-        return info;
-    }
-
     void SceneRenderTarget::Shutdown()
     {
         m_ColorTexture.reset();

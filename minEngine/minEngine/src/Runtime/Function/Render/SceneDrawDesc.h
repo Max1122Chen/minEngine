@@ -41,5 +41,10 @@ namespace minEngine
         /** stable view identity from SceneViewport; 0 = invalid. */
         uint64_t ViewId = 0;
         SceneDrawFlags Flags = SceneDrawFlags::Default;
+
+        /** Clear color applied to the scene color target (RGBA). Default slate-blue, kept for back-compat. */
+        float ClearColor[4] = {0.18f, 0.32f, 0.48f, 1.0f};
+        /** Clear depth applied to the scene depth target. */
+        float DepthClear = 1.0f;
     };
 }

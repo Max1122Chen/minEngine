@@ -3,6 +3,7 @@
 #include "Render/RenderGraph/RenderGraph.h"
 #include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderGraph/SceneRenderPassUtils.h"
+#include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RenderPipeline/SceneMeshDrawUtils.h"
@@ -80,7 +81,13 @@ namespace minEngine
             return;
         }
 
-        RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, m_ClearSceneTargets);
+        const SceneDrawDesc* drawDesc = graph.GetFrameContext().DrawDesc;
+        RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(
+            colorTexture,
+            depthTexture,
+            m_ClearSceneTargets,
+            (m_ClearSceneTargets && drawDesc != nullptr) ? drawDesc->ClearColor : nullptr,
+            (m_ClearSceneTargets && drawDesc != nullptr) ? drawDesc->DepthClear : 1.0f);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(
             0,

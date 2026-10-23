@@ -3921,3 +3921,15 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
   Design/Impl draft only; no code yet.
 - Next step:
   ED-F01-S01: copy `imgui_impl_vulkan` + CMake; then S02 ImGui empty frame.
+
+## 2026-10-23 — RND-F25 Render-to-Texture / Clear API / thumbnail unification (S01-S05)
+
+- 设计: docs/ai/Render/RND-F25_RENDER_TO_TEXTURE_DESIGN.md
+- S01: `SceneDrawDesc` 加 `ClearColor`/`DepthClear`; `MakeSceneRenderPassInfo` 参数化; `BasePass`/`SkyBoxPass`/`ManualRenderer` 从 DrawDesc 透传; 删死代码 `SceneRenderTarget::BuildRenderPassInfo`.
+- S02: 新增 `Runtime/Function/Render/OffscreenRenderer` (runtime, 编辑器无关; 持有 SceneViewport, RenderOnce 提交到 ForwardRenderer).
+- S03: 离屏路径验证 (PresentToBackBuffer 未置位渲染到 offscreen RT).
+- S04: `AssetThumbnailService` Inspector + tile 路径统一到 OffscreenRenderer, PreviewScene 两边共享; 缩略图默认透明背景.
+- S05: `render-graph` 新增测试 "DrawDesc transparent clear color reaches the backbuffer" — readback 验证 alpha==0; suite 8/8 PASS.
+- build: libminEngined/Editor/minEngineTests 全绿; render-graph + smoke PASS.
+- 退役: BUILD-F04 过期 engine-export-count 断言 (MODULE_API explicit exports 已取代固定计数); boundary audit 18/18 PASS.
+- 遗留 (非本 Feature): verify 的 consumer-coverage 报 minCraft `GameplayTag::operator==` 缺失 (GP-F03 遗留; minCraft 需重建).

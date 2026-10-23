@@ -38,7 +38,7 @@ namespace minEngine
 
             if (m_ViewportInitialized)
             {
-                m_InspectorViewport.SetObservedScene(nullptr);
+                m_InspectorOffscreen.SetScene(nullptr);
             }
 
             m_InspectorPreviewScene.Shutdown();
@@ -72,7 +72,7 @@ namespace minEngine
 
         if (m_ViewportInitialized)
         {
-            m_InspectorViewport.SetObservedScene(nullptr);
+            m_InspectorOffscreen.SetScene(nullptr);
         }
 
         m_InspectorPreviewScene.Shutdown();
@@ -109,7 +109,7 @@ namespace minEngine
     {
         if (m_ViewportInitialized)
         {
-            m_InspectorViewport.SetObservedScene(nullptr);
+            m_InspectorOffscreen.SetScene(nullptr);
         }
 
         m_InspectorPreviewScene.Shutdown();
@@ -178,36 +178,29 @@ namespace minEngine
 
     void AssetThumbnailService::EnsureSceneViewport()
     {
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (!rhi)
-        {
-            return;
-        }
-
         if (!m_ViewportInitialized)
         {
-            m_InspectorViewport.Initialize(rhi, kScene3DRenderSize, kScene3DRenderSize);
+            m_InspectorOffscreen.Initialize(kScene3DRenderSize, kScene3DRenderSize);
+            m_InspectorOffscreen.SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            m_InspectorOffscreen.SetFlags(SceneDrawFlags::None);
             m_ViewportInitialized = true;
-            m_ViewportWidth = kScene3DRenderSize;
-            m_ViewportHeight = kScene3DRenderSize;
             SetupDefaultPreviewCamera();
             return;
         }
 
-        if (m_ViewportWidth == kScene3DRenderSize && m_ViewportHeight == kScene3DRenderSize)
+        if (m_InspectorOffscreen.GetWidth() == kScene3DRenderSize
+            && m_InspectorOffscreen.GetHeight() == kScene3DRenderSize)
         {
             return;
         }
 
-        if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
-        {
-            const float widthRatio = static_cast<float>(kScene3DRenderSize) / static_cast<float>(m_ViewportWidth);
-            const float heightRatio = static_cast<float>(kScene3DRenderSize) / static_cast<float>(m_ViewportHeight);
-            m_InspectorViewport.RequestResizeByRatio(widthRatio, heightRatio);
-        }
-
-        m_ViewportWidth = kScene3DRenderSize;
-        m_ViewportHeight = kScene3DRenderSize;
+        // Size mismatch: rebuild at the fixed thumbnail size.
+        m_InspectorOffscreen.Shutdown();
+        m_InspectorOffscreen.Initialize(kScene3DRenderSize, kScene3DRenderSize);
+        m_InspectorOffscreen.SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        m_InspectorOffscreen.SetFlags(SceneDrawFlags::None);
+        m_ViewportInitialized = true;
+        SetupDefaultPreviewCamera();
     }
 
     void AssetThumbnailService::ShutdownSceneViewport()
@@ -217,7 +210,7 @@ namespace minEngine
             return;
         }
 
-        m_InspectorViewport.Shutdown();
+        m_InspectorOffscreen.Shutdown();
         m_ViewportInitialized = false;
         m_ViewportWidth = 0;
         m_ViewportHeight = 0;
@@ -225,7 +218,7 @@ namespace minEngine
 
     void AssetThumbnailService::SetupDefaultPreviewCamera()
     {
-        RenderCamera* camera = m_InspectorViewport.GetCamera();
+        RenderCamera* camera = m_InspectorOffscreen.EnsureInternalCamera();
         if (!camera)
         {
             return;
@@ -246,13 +239,13 @@ namespace minEngine
 
     void AssetThumbnailService::SyncPreviewCameraAspect()
     {
-        RenderCamera* camera = m_InspectorViewport.GetCamera();
+        RenderCamera* camera = m_InspectorOffscreen.EnsureInternalCamera();
         if (!camera)
         {
             return;
         }
 
-        const Vector2 bufferSize = m_InspectorViewport.GetBufferSize();
+        const Vector2 bufferSize(static_cast<float>(m_InspectorOffscreen.GetWidth()), static_cast<float>(m_InspectorOffscreen.GetHeight()));
         if (bufferSize.x > 0.0f && bufferSize.y > 0.0f)
         {
             camera->m_AspectRatio = bufferSize.x / bufferSize.y;
@@ -279,22 +272,11 @@ namespace minEngine
             return ThumbnailView{};
         }
 
-        m_InspectorViewport.SetObservedScene(m_InspectorPreviewScene.GetRenderScene());
+        m_InspectorOffscreen.SetScene(m_InspectorPreviewScene.GetRenderScene());
         SyncPreviewCameraAspect();
         m_InspectorPreviewScene.RefreshRenderScene();
 
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        m_InspectorViewport.ApplyPendingResize(rhi);
-
-        const SceneDrawDesc desc = m_InspectorViewport.BuildDrawDesc(SceneDrawFlags::EnablePostProcess);
-        if (!(desc.Scene && desc.Camera && desc.RenderTarget))
-        {
-            return ThumbnailView{};
-        }
-
-        RenderSystem::Get().SubmitSceneDraw(desc);
-
-        const RHITextureRef& displayTexture = m_InspectorViewport.GetColorTexture();
+        const RHITextureRef& displayTexture = m_InspectorOffscreen.RenderOnce();
         const RHITextureCreateDesc& displayDesc = displayTexture ? displayTexture->GetDesc() : RHITextureCreateDesc{};
         if (!displayTexture || displayDesc.Width == 0 || displayDesc.Height == 0)
         {
@@ -444,20 +426,16 @@ namespace minEngine
 
     void AssetThumbnailService::EnsureEntryViewport(Scene3DThumbnailEntry& entry)
     {
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (!rhi)
-        {
-            return;
-        }
-
         if (!entry.bViewportInitialized)
         {
-            entry.Viewport.Initialize(rhi, kScene3DRenderSize, kScene3DRenderSize);
+            entry.Offscreen.Initialize(kScene3DRenderSize, kScene3DRenderSize);
+            entry.Offscreen.SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            entry.Offscreen.SetFlags(SceneDrawFlags::None);
             entry.bViewportInitialized = true;
             entry.ViewportWidth = kScene3DRenderSize;
             entry.ViewportHeight = kScene3DRenderSize;
 
-            RenderCamera* camera = entry.Viewport.GetCamera();
+            RenderCamera* camera = entry.Offscreen.EnsureInternalCamera();
             if (camera)
             {
                 const Vector3 eye(1.15f, 0.8f, 1.15f);
@@ -526,15 +504,16 @@ namespace minEngine
             return ThumbnailView{};
         }
 
-        entry.Viewport.SetObservedScene(m_TilePreviewScene.GetRenderScene());
+        entry.Offscreen.SetScene(m_TilePreviewScene.GetRenderScene());
 
-        RenderCamera* camera = entry.Viewport.GetCamera();
+        RenderCamera* camera = entry.Offscreen.EnsureInternalCamera();
         if (camera)
         {
-            const Vector2 bufferSize = entry.Viewport.GetBufferSize();
-            if (bufferSize.x > 0.0f && bufferSize.y > 0.0f)
+            const float bufferWidth = static_cast<float>(entry.Offscreen.GetWidth());
+            const float bufferHeight = static_cast<float>(entry.Offscreen.GetHeight());
+            if (bufferWidth > 0.0f && bufferHeight > 0.0f)
             {
-                camera->m_AspectRatio = bufferSize.x / bufferSize.y;
+                camera->m_AspectRatio = bufferWidth / bufferHeight;
                 camera->UpdateProjectionMatrix();
                 camera->UpdateViewProjMatrix();
             }
@@ -542,18 +521,7 @@ namespace minEngine
 
         m_TilePreviewScene.RefreshRenderScene();
 
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        entry.Viewport.ApplyPendingResize(rhi);
-
-        const SceneDrawDesc desc = entry.Viewport.BuildDrawDesc(SceneDrawFlags::EnablePostProcess);
-        if (!(desc.Scene && desc.Camera && desc.RenderTarget))
-        {
-            return ThumbnailView{};
-        }
-
-        RenderSystem::Get().SubmitSceneDraw(desc);
-
-        const RHITextureRef& displayTexture = entry.Viewport.GetColorTexture();
+        const RHITextureRef& displayTexture = entry.Offscreen.RenderOnce();
         const RHITextureCreateDesc& displayDesc = displayTexture ? displayTexture->GetDesc() : RHITextureCreateDesc{};
         if (!displayTexture || displayDesc.Width == 0 || displayDesc.Height == 0)
         {
@@ -639,7 +607,7 @@ namespace minEngine
         {
             if (entry.bViewportInitialized)
             {
-                entry.Viewport.Shutdown();
+                entry.Offscreen.Shutdown();
             }
         }
         m_Scene3DThumbnailCache.clear();

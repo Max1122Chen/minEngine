@@ -275,7 +275,12 @@ namespace minEngine
             return;
         }
 
-        RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, true);
+        RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(
+            colorTexture,
+            depthTexture,
+            true,
+            context.DrawDesc != nullptr ? context.DrawDesc->ClearColor : nullptr,
+            context.DrawDesc != nullptr ? context.DrawDesc->DepthClear : 1.0f);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
         if (m_ShouldRender && m_DrawPacket.PipelineState)

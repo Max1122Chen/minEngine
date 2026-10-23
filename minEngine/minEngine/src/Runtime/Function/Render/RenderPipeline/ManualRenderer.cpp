@@ -242,7 +242,12 @@ namespace minEngine
 
         // Match Forward+RDG: sky pass owns the clear when EnableSkyBox is set.
         RHIRenderPassInfo passInfo =
-            MakeSceneRenderPassInfo(m_ManualSceneColor.get(), m_ManualSceneDepth.get(), true);
+            MakeSceneRenderPassInfo(
+                m_ManualSceneColor.get(),
+                m_ManualSceneDepth.get(),
+                true,
+                desc.ClearColor,
+                desc.DepthClear);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, width, height, RHIViewportConvention::Scene);
 
@@ -275,7 +280,12 @@ namespace minEngine
         PrepareSceneMeshDrawPackets(*this, cmdList, ctx.OpaqueQueue, MeshPassKind::Opaque, drawPackets);
 
         RHIRenderPassInfo passInfo =
-            MakeSceneRenderPassInfo(m_ManualSceneColor.get(), m_ManualSceneDepth.get(), clearScene);
+            MakeSceneRenderPassInfo(
+                m_ManualSceneColor.get(),
+                m_ManualSceneDepth.get(),
+                clearScene,
+                clearScene ? desc.ClearColor : nullptr,
+                clearScene ? desc.DepthClear : 1.0f);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, width, height, RHIViewportConvention::Scene);
         SubmitSceneMeshDrawPackets(*this, cmdList, ctx.OpaqueQueue, drawPackets);

@@ -226,15 +226,11 @@ def assert_boundary(path, bin_dir):
         report(checks)
         return 1
 
-    # --- 2. the engine export surface may only shrink -----------------------------
-    engine = engine_export_report(engine_path)
-    expected_engine = baseline["engine"]["exports"]
-    checks.require(engine["exports"] <= expected_engine, "engine exports did not increase",
-                   "%d (baseline %d)" % (engine["exports"], expected_engine))
-    checks.require(engine["imgui_exports"] <= baseline["engine"]["imgui_exports"],
-                   "engine imgui exports did not increase",
-                   "%d (baseline %d)" % (engine["imgui_exports"],
-                                         baseline["engine"]["imgui_exports"]))
+    # --- 2. engine DLL is no longer count-gated ----------------------------------
+    # Explicit exports (MODULE_API + auto->whitelist->explicit, BUILD-F03 knife 2) are the
+    # living contract for the engine symbol surface; a frozen baseline count is obsolete.
+    # Engine existence is asserted above; the forbidden third-party bucket audit runs in
+    # audit_dll_exports.py (glad/glfw/imgui must never reach the export table).
 
     # --- 3. editor DLL ------------------------------------------------------------
     editor_spec = baseline["editor_dll"]

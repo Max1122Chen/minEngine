@@ -30,8 +30,6 @@ namespace minEngine
         void PublishGraphColorTexture(RHITextureRef colorTexture);
         void PublishGraphDepthTexture(RHITextureRef depthTexture);
 
-        RHIRenderPassInfo BuildRenderPassInfo() const;
-
     private:
         static RHITextureCreateDesc MakeColorDesc(uint32_t width, uint32_t height);
         static RHITextureCreateDesc MakeDepthDesc(uint32_t width, uint32_t height);

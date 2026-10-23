@@ -3,6 +3,7 @@
 #include "Render/RenderGraph/RenderGraph.h"
 #include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderGraph/SceneRenderPassUtils.h"
+#include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Render/OpenGL/OpenGLRHI.h"
 #include "Render/RHI/RHICommandList.h"
 #include "Render/RenderPipeline/RenderPasses/GraphClearPass.h"
@@ -273,6 +274,49 @@ namespace minEngine
             std::string* m_Trace = nullptr;
         };
 
+        class SceneClearOutputPass : public IRenderPass
+        {
+        public:
+            void SetupDependencies(RenderPass& self, RenderGraph& graph) override
+            {
+                (void)graph;
+                RDGAttachmentInfo color{};
+                color.SizeClass = RDGSizeClass::SwapchainRelative;
+                color.SizeX = 1.0f;
+                color.SizeY = 1.0f;
+                color.Format = TextureFormat::RGBA8;
+                RDGAttachmentInfo depth{};
+                depth.SizeClass = RDGSizeClass::SwapchainRelative;
+                depth.SizeX = 1.0f;
+                depth.SizeY = 1.0f;
+                depth.Format = TextureFormat::DEPTH24STENCIL8;
+                self.AddColorOutput(kRDGSceneColor, color);
+                self.SetDepthStencilOutput(kRDGSceneDepth, depth);
+            }
+
+            // Mirrors BasePass: clears scene color using the frame context DrawDesc ClearColor/DepthClear.
+            void BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph) override
+            {
+                const RenderGraphFrameContext& ctx = graph.GetFrameContext();
+                RHITexture* color = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneColor));
+                RHITexture* depth = graph.TryGetPhysicalTexture(&graph.GetTextureResource(kRDGSceneDepth));
+                if (color == nullptr || depth == nullptr)
+                {
+                    return;
+                }
+                const SceneDrawDesc* desc = ctx.DrawDesc;
+                RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(
+                    color,
+                    depth,
+                    true,
+                    (desc != nullptr) ? desc->ClearColor : nullptr,
+                    (desc != nullptr) ? desc->DepthClear : 1.0f);
+                cmdList.BeginRenderPass(passInfo);
+                cmdList.SetViewport(0, 0, color->GetDesc().Width, color->GetDesc().Height);
+                cmdList.EndRenderPass();
+            }
+        };
+
         class OrphanTextureConsumerPass : public IRenderPass
         {
         public:
@@ -495,5 +539,60 @@ namespace minEngine
         graph.SetActiveViewKey(10, nullptr);
         RHITexture* textureAAgain = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
         CHECK(textureAAgain == textureA);
+    }
+
+    TEST_CASE("render-graph: DrawDesc transparent clear color reaches the backbuffer")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        SceneClearOutputPass clearPass;
+        RenderPass& pass = graph.AddPass("Scene.Clear");
+        pass.SetImplementation(&clearPass);
+
+        graph.SetBackbufferSource(kRDGSceneColor);
+        graph.SetBackbufferDimensions(8, 8);
+        graph.SetActiveViewKey(1, nullptr);
+
+        // Transparent clear: RGBA = (0,0,0,0), the RTT icon background.
+        SceneDrawDesc desc{};
+        desc.ClearColor[0] = 0.0f;
+        desc.ClearColor[1] = 0.0f;
+        desc.ClearColor[2] = 0.0f;
+        desc.ClearColor[3] = 0.0f;
+        desc.DepthClear = 1.0f;
+        RenderGraphFrameContext ctx;
+        ctx.DrawDesc = &desc;
+        graph.SetFrameContext(ctx);
+
+        graph.Bake();
+        graph.SetupAttachments(rhi, nullptr);
+        RHICommandList cmdList(&rhi);
+        graph.EnqueueRenderPasses(cmdList);
+
+        RHITexture* color = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGSceneColor));
+        REQUIRE(color != nullptr);
+
+        const GLuint textureId = color->GetNativeHandle();
+        REQUIRE(textureId != 0);
+
+        std::vector<uint8_t> pixels(static_cast<size_t>(8) * 8 * 4);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // Every pixel must be fully transparent black after the clear.
+        bool allTransparent = true;
+        for (size_t i = 0; i < pixels.size(); i += 4)
+        {
+            if (pixels[i] != 0u || pixels[i + 1] != 0u || pixels[i + 2] != 0u || pixels[i + 3] != 0u)
+            {
+                allTransparent = false;
+                break;
+            }
+        }
+        CHECK(allTransparent);
     }
 }
