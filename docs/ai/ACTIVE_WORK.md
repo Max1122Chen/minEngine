@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-22（BUILD-F03 刀2 `explicit` 默认 Done）
+Last updated: 2026-10-24（feat/render：RND-F26 引擎 Done；minCraft 已跟进）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,11 +11,12 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（紧急）：** `ASSET-F10` DataAsset 多态 Load/Create（minCraft 派生表阻塞）。`CORE-F38` 并行候选（Design 已收窄）。收尾项不挡：F33 review / ASSET-F04。
+**Primary（本工作树 `feat/render`）：** `RND-F26` **Done**（引擎 + minCraft Chunk 细剔）；待 commit。主仓 Primary 仍可以是 `ASSET-F10`。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
+| 0 | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（S01–S02 + consumer） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
+| — | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
 | 1 | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
 | — | BUILD-F03 刀2 | 烧 `.def`→`explicit`（标宏 + codegen `MODULE_API`） | **Done**（批0–5 + 默认 `explicit`） | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · 附录 C |
 | — | GP-F03 | GameplayTag 名身份修订（去 Tag 上 Manager* + hash） | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
@@ -37,7 +38,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** ASSET-F10 主链。并行：审批 [CORE-F38](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md)。收尾：RND-F24 S04 / F33 / ASSET-F04。UI-F08 / CORE-F40 见并行表。
+**下一动作（`feat/render`）：** 审批后 commit RND-F26；可选手验 minCraft 低头 UBO。  
+**主仓旁路：** ASSET-F10；`RND-F21` 仍 Deferred。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
@@ -181,7 +183,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
-| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 原 RND + Sprite MVP；族完成后可对齐 master |
+| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 2026-10-24 已 ff→`master`（`a0626b67`）；当前 **RND-F26** Draft |
 
 `MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。
 

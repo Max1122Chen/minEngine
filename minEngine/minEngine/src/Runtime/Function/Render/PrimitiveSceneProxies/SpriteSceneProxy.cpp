@@ -9,8 +9,11 @@ namespace minEngine
         return m_ModelMatrix;
     }
 
-    void SpriteSceneProxy::GetMeshBatches(MeshBatchCollector& collector) const
+    void SpriteSceneProxy::GetMeshBatches(
+        MeshBatchCollector& collector,
+        const MeshCollectContext& context) const
     {
+        (void)context;
         if (m_Texture == nullptr || m_VertexBuffer == nullptr || m_VertexInputLayout == nullptr || m_MaterialProxy == nullptr)
         {
             return;

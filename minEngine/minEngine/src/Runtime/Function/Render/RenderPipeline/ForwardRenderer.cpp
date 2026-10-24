@@ -5,6 +5,7 @@
 #include "Render/RenderScene.h"
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Render/DrawCommands/MeshBatchCollector.h"
+#include "Render/DrawCommands/MeshCollectContext.h"
 #include "Render/DrawCommands/MeshPassProcessor.h"
 #include "Render/DrawCommands/MeshDrawCommandSort.h"
 #include "Render/SceneProxies/WidgetSceneProxy.h"
@@ -1176,6 +1177,17 @@ namespace minEngine
         MeshBatchCollector mainCollector;
         MeshBatchCollector shadowOnlyCollector;
 
+        MeshCollectContext mainCollectContext;
+        mainCollectContext.Purpose = MeshCollectPurpose::MainView;
+        if (cullEnabled)
+        {
+            mainCollectContext.ViewFrustum = &mainFrustum;
+        }
+
+        MeshCollectContext shadowOnlyCollectContext;
+        shadowOnlyCollectContext.Purpose = MeshCollectPurpose::ShadowOnly;
+        // No main-view frustum: sub-culling would drop casters outside the camera cone.
+
         for (PrimitiveSceneProxy* primitiveProxy : renderScene->m_PrimitiveSceneProxies)
         {
             if (!primitiveProxy || !primitiveProxy->m_PrimitiveComponent)
@@ -1207,11 +1219,11 @@ namespace minEngine
 
             if (bMainViewVisible)
             {
-                primitiveProxy->GetMeshBatches(mainCollector);
+                primitiveProxy->GetMeshBatches(mainCollector, mainCollectContext);
             }
             else
             {
-                primitiveProxy->GetMeshBatches(shadowOnlyCollector);
+                primitiveProxy->GetMeshBatches(shadowOnlyCollector, shadowOnlyCollectContext);
             }
         }
 

@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Math/Geometry/AABB.h"
 #include "Runtime/Function/Framework/Transform/Transform.h"
+#include "Runtime/Function/Render/DrawCommands/MeshCollectContext.h"
 
 namespace minEngine
 {
@@ -9,6 +10,7 @@ namespace minEngine
     class MaterialRenderProxy;
     class RHIBuffer;
     class RHIVertexInputLayout;
+    class MeshBatchCollector;
 
     /**
      * Scene representation of a drawable primitive.
@@ -50,7 +52,11 @@ namespace minEngine
         /** Local→world used for ResolveWorldBounds (Sprite overrides with m_ModelMatrix). */
         virtual Matrix4 GetBoundsLocalToWorld() const;
 
-        /** Emit pass-agnostic mesh descriptions. Default: one batch from the fields above when drawable. */
-        virtual void GetMeshBatches(class MeshBatchCollector& collector) const;
+        /**
+         * Emit pass-agnostic mesh descriptions.
+         * Default: one batch from the fields above when drawable (ignores context).
+         * Multi-section proxies may use context.ViewFrustum to skip sub-bounds.
+         */
+        virtual void GetMeshBatches(MeshBatchCollector& collector, const MeshCollectContext& context) const;
     };
 }

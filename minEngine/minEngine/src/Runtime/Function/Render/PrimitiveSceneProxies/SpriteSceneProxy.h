@@ -23,6 +23,6 @@ namespace minEngine
         bool m_bNeedsTranslucentPass = false;
 
         Matrix4 GetBoundsLocalToWorld() const override;
-        void GetMeshBatches(class MeshBatchCollector& collector) const override;
+        void GetMeshBatches(MeshBatchCollector& collector, const MeshCollectContext& context) const override;
     };
 }

@@ -14,6 +14,6 @@ namespace minEngine
 
         std::vector<Matrix4> m_BonePalette;
 
-        void GetMeshBatches(class MeshBatchCollector& collector) const override;
+        void GetMeshBatches(MeshBatchCollector& collector, const MeshCollectContext& context) const override;
     };
 }
