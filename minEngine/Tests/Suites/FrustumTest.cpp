@@ -1,5 +1,8 @@
 #include "Math/Geometry/Frustum.h"
 #include "Math/Math.h"
+#include "Render/DrawCommands/MeshBatchCollector.h"
+#include "Render/DrawCommands/MeshCollectContext.h"
+#include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Render/RHI/RHIClipSpace.h"
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
 
@@ -7,6 +10,8 @@
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <array>
 
 namespace
 {
@@ -31,6 +36,31 @@ namespace
 
         return proj * view;
     }
+
+    /** Test-only multi-section proxy: emits one batch per section AABB that AllowsWorldBounds. */
+    class FakeMultiSectionSceneProxy : public minEngine::PrimitiveSceneProxy
+    {
+    public:
+        std::array<minEngine::Math::Geometry::AABB, 2> SectionWorldBounds{};
+
+        void GetMeshBatches(
+            minEngine::MeshBatchCollector& collector,
+            const minEngine::MeshCollectContext& context) const override
+        {
+            for (const minEngine::Math::Geometry::AABB& sectionBounds : SectionWorldBounds)
+            {
+                if (!context.AllowsWorldBounds(sectionBounds))
+                {
+                    continue;
+                }
+
+                minEngine::MeshBatch batch;
+                batch.m_BoundingBox = sectionBounds;
+                batch.m_Proxy = this;
+                collector.AddMesh(batch);
+            }
+        }
+    };
 }
 
 TEST_CASE("frustum: unit box at origin intersects look-at frustum [smoke]")
@@ -104,6 +134,54 @@ TEST_CASE("frustum: zero-to-one near plane differs from negative-one [full]")
     const bool sameNear =
         openGlNear.Normal == vulkanNear.Normal && openGlNear.Distance == vulkanNear.Distance;
     CHECK_FALSE(sameNear);
+}
+
+TEST_CASE("mesh-collect: MainView frustum skips off-screen section [full]")
+{
+    using namespace minEngine;
+    using namespace minEngine::Math::Geometry;
+
+    const Matrix4 viewProj = MakeLookAtViewProj(-1.0f);
+    const Frustum frustum = Frustum::FromViewProjection(viewProj, -1.0f, 1.0f);
+
+    FakeMultiSectionSceneProxy proxy;
+    // In front of camera (look-at origin from z=5).
+    proxy.SectionWorldBounds[0] = AABB(Vector3(-0.5f), Vector3(0.5f));
+    // Behind camera.
+    proxy.SectionWorldBounds[1] = AABB(Vector3(-0.5f, -0.5f, 9.5f), Vector3(0.5f, 0.5f, 10.5f));
+
+    MeshCollectContext context;
+    context.Purpose = MeshCollectPurpose::MainView;
+    context.ViewFrustum = &frustum;
+
+    MeshBatchCollector collector;
+    proxy.GetMeshBatches(collector, context);
+
+    CHECK(collector.GetBatches().size() == 1);
+    CHECK(collector.GetBatches()[0].m_BoundingBox == proxy.SectionWorldBounds[0]);
+}
+
+TEST_CASE("mesh-collect: ShadowOnly with null frustum emits all sections [full]")
+{
+    using namespace minEngine;
+    using namespace minEngine::Math::Geometry;
+
+    const Matrix4 viewProj = MakeLookAtViewProj(-1.0f);
+    const Frustum frustum = Frustum::FromViewProjection(viewProj, -1.0f, 1.0f);
+
+    FakeMultiSectionSceneProxy proxy;
+    proxy.SectionWorldBounds[0] = AABB(Vector3(-0.5f), Vector3(0.5f));
+    proxy.SectionWorldBounds[1] = AABB(Vector3(-0.5f, -0.5f, 9.5f), Vector3(0.5f, 0.5f, 10.5f));
+
+    MeshCollectContext context;
+    context.Purpose = MeshCollectPurpose::ShadowOnly;
+    context.ViewFrustum = nullptr;
+    (void)frustum;
+
+    MeshBatchCollector collector;
+    proxy.GetMeshBatches(collector, context);
+
+    CHECK(collector.GetBatches().size() == 2);
 }
 
 TEST_CASE("frustum: active-clip FromViewProjection matches explicit NDC helpers [full]")

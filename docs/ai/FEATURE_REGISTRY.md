@@ -97,6 +97,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F23` | Scene Mesh Pass 默认背面剔除（Opaque/Translucent） | **Done** | — | [Design](./Render/RND-F23_MESH_PASS_BACKFACE_CULL_DESIGN.md) |
 | `RND-F24` | 程序化网格顶点语义属性（Color → CustomN · Material 消费） | **In Progress** | — | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) · S01–S03 **Done** · [S03](./Render/RND-F24_S03_VERTEX_CUSTOM_DESIGN.md) · S04 Pending · `material-ir` |
 | `RND-F25` | Render-to-Texture · OffscreenRenderer · Clear Color API | **Implemented** (awaiting review) | — | [Design](./Render/RND-F25_RENDER_TO_TEXTURE_DESIGN.md) · S01-S05 Done · OffscreenRenderer + thumbnail unified |
+| `RND-F26` | View-Aware Mesh Collect（Proxy 子 mesh / Section 剔除钩子） | **Done** | — | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) · L2 · `feat/render` · `test frustum` 8/8 · minCraft Chunk 已跟进 |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
@@ -219,7 +220,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET` | **F12** | F09 Done；**F11** Draft（JSON AsyncLoad 通用化，低优）；**F04**/F10 In Progress；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
-| `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F12 Deferred |
+| `RND` | **F27** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F24 In Progress；F25 Implemented；**F26 Draft**；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |

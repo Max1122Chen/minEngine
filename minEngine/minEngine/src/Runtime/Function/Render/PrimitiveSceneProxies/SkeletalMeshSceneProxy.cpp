@@ -4,8 +4,11 @@
 
 namespace minEngine
 {
-    void SkeletalMeshSceneProxy::GetMeshBatches(MeshBatchCollector& collector) const
+    void SkeletalMeshSceneProxy::GetMeshBatches(
+        MeshBatchCollector& collector,
+        const MeshCollectContext& context) const
     {
+        (void)context;
         if (m_VertexBuffer == nullptr || m_VertexInputLayout == nullptr || m_MaterialProxy == nullptr)
         {
             return;

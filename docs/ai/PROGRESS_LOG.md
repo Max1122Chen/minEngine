@@ -4025,6 +4025,23 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
   ED-F01-S01: copy `imgui_impl_vulkan` + CMake; then S02 ImGui empty frame.
 
+## 2026-10-24 — RND-F26 S01/S02 落地（feat/render）
+
+- API: `MeshCollectContext`（Purpose + Frustum* + `AllowsWorldBounds`）；`GetMeshBatches(collector, context)`。
+- Renderer: MainView 传主锥；ShadowOnly `ViewFrustum=nullptr`。
+- Engine proxies: 忽略 context（行为不变）。
+- Tests: `frustum` 增 MainView 细剔 / ShadowOnly 全交；`test frustum` **8/8 PASS**（本树临时去掉 EXTRA minCraft harness 以链接；与 F26 无关）。
+- Consumer: minCraft `ChunkMeshSceneProxy` 跟进签名 + section `AllowsWorldBounds`。
+- Next: 准备 commit（`feat/render` docs+code）；合入前勿伤 `master` 工作树。
+
+## 2026-10-24 — RND-F26 Design Draft + feat/render 对齐 master
+
+- Worktree: `D:/Dev/GitRepo/minEngine-render` · `feat/render` ff-only → `master` @ `a0626b67`（此前落后 ~56，无独有提交）。
+- Registered `RND-F26` Draft：[RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md)。
+- Registry / ACTIVE_WORK（本树）指向 F26；`RND` next → F27；`RND-F21` 仍 Deferred。
+- Validation: docs only；**待审批**后再 Implementation Plan / 开码。
+- Next: 维护者批 Design（Option A + Open Questions）→ Status Planned。
+
 ## 2026-10-23 — RND-F25 Render-to-Texture / Clear API / thumbnail unification (S01-S05)
 
 - 设计: docs/ai/Render/RND-F25_RENDER_TO_TEXTURE_DESIGN.md
