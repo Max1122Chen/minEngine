@@ -433,6 +433,7 @@ namespace minEngine
         InitializeEngineSubsystems();
 
         m_TaskSystem = std::make_unique<TaskSystem>();
+        TaskSystem::SetInstance(m_TaskSystem.get());
         m_TaskSystem->Init();
 
         m_GameplayTagManager = std::make_shared<GameplayTagManager>();
@@ -490,9 +491,15 @@ namespace minEngine
         DestroyGameInstance();
         DeinitializeEngineSubsystems();
 
+        if (m_AssetManager)
+        {
+            m_AssetManager->FlushAsyncLoadsForShutdown();
+        }
+
         if (m_TaskSystem)
         {
             m_TaskSystem->Shutdown();
+            TaskSystem::SetInstance(nullptr);
             m_TaskSystem.reset();
         }
 
@@ -746,9 +753,9 @@ namespace minEngine
     void Engine::LogicalTick(float deltaTime)
     {
         m_InputSystem->Tick(deltaTime);
-        if (m_TaskSystem)
+        if (TaskSystem::HasInstance() && TaskSystem::Get().IsRunning())
         {
-            m_TaskSystem->DrainCompletions();
+            TaskSystem::Get().DrainCompletions();
         }
         TickGameplayFixedPhase(deltaTime);
         TickGameplayVariablePhase(deltaTime);

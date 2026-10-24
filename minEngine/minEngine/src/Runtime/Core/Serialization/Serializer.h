@@ -90,6 +90,21 @@ namespace minEngine::Serialization
                                         ReaderArchive& archive,
                                         const SerializerOptions& options = SerializerOptions{});
 
+        // File → Json (read + parse + disk meta). Does not construct MEObject.
+        static SerializeResult LoadJsonFromFile(const std::string& filePath, Json& outRoot);
+
+        // Json → Object + ResolvePendingObjectRefs (sync). Pair with LoadJsonFromFile;
+        // FromFile for JSON archives composes these two. Fill-only remains DeserializeObjectFromJson.
+        static SerializeResult FromJson(const Reflection::MEClass* rootClass,
+                                        void* outRootObject,
+                                        const Json& root,
+                                        const SerializerOptions& options = SerializerOptions{});
+
+        static SerializeResult FromJson(const std::string& rootClassName,
+                                        void* outRootObject,
+                                        const Json& root,
+                                        const SerializerOptions& options = SerializerOptions{});
+
         static SerializeResult SerializeProperty(void* ownerObject,
                                                  const Reflection::MEClass* ownerClass,
                                                  const std::string& propertyName,
@@ -208,6 +223,14 @@ namespace minEngine::Serialization
                                         const SerializerOptions& options = SerializerOptions{})
         {
             return FromFile(filePath, T::StaticClass(), static_cast<void*>(outRootObject), archive, options);
+        }
+
+        template <typename T>
+        static SerializeResult FromJson(T* outRootObject,
+                                        const Json& root,
+                                        const SerializerOptions& options = SerializerOptions{})
+        {
+            return FromJson(T::StaticClass(), static_cast<void*>(outRootObject), root, options);
         }
 
         template <typename T>

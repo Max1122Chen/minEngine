@@ -4,7 +4,7 @@ Last updated: 2026-10-16
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Workflow **`learning-mentor`**. Branch **`feat/core`**. `CORE-F38` TaskSystem **Done**（suite `task-system`）。Primary 回 `ASSET-F10` 收尾。`ASSET-F09` **Deferred**。详见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。
+**Snapshot:** Workflow **`learning-mentor`**. `CORE-F38` / `CORE-F44` / `ASSET-F09` **Done**（TaskSystem 单例 + async DataAsset）。`ASSET-F10` S01/S02 Done。详见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。
 
 ---
 

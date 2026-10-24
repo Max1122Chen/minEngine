@@ -53,8 +53,33 @@ namespace minEngine
         return true;
     }
 
-    bool AssetSerializeHelper::ReadObjectFromFile(
+    bool AssetSerializeHelper::ReadJsonFromFile(
         const std::string& absolutePath,
+        Json& outRoot,
+        std::string* outError)
+    {
+        const Serialization::SerializeResult result =
+            Serialization::Serializer::LoadJsonFromFile(absolutePath, outRoot);
+        if (!result.ok)
+        {
+            if (outError != nullptr)
+            {
+                *outError = result.message;
+            }
+            ME_LOG(
+                LogAsset,
+                Error,
+                "AssetSerializeHelper: LoadJsonFromFile failed for '{}'. Error: {}. Field path: {}",
+                absolutePath,
+                result.message,
+                result.fieldPath);
+            return false;
+        }
+        return true;
+    }
+
+    bool AssetSerializeHelper::ReadObjectFromJson(
+        const Json& root,
         MEObject& object,
         std::string* outError)
     {
@@ -63,19 +88,16 @@ namespace minEngine
         {
             if (outError != nullptr)
             {
-                *outError = "ReadObjectFromFile: object has no runtime class";
+                *outError = "ReadObjectFromJson: object has no runtime class";
             }
-            ME_LOG(LogAsset, Error, "AssetSerializeHelper: '{}' has null GetClass().", absolutePath);
+            ME_LOG(LogAsset, Error, "AssetSerializeHelper: ReadObjectFromJson has null GetClass().");
             return false;
         }
 
-        Serialization::JsonReaderArchive archive;
-        // Must use runtime class — template FromFile<MEObject> skips derived fields as unknown.
-        const Serialization::SerializeResult result = Serialization::Serializer::FromFile(
-            absolutePath,
+        const Serialization::SerializeResult result = Serialization::Serializer::FromJson(
             rootClass,
             static_cast<void*>(&object),
-            archive,
+            root,
             Serialization::SerializerOptions{
                 .enumAsString = true,
                 .strictTypeCheck = false,
@@ -89,12 +111,24 @@ namespace minEngine
             ME_LOG(
                 LogAsset,
                 Error,
-                "AssetSerializeHelper: deserialize failed for '{}'. Error: {}. Field path: {}",
-                absolutePath,
+                "AssetSerializeHelper: FromJson failed. Error: {}. Field path: {}",
                 result.message,
                 result.fieldPath);
             return false;
         }
         return true;
+    }
+
+    bool AssetSerializeHelper::ReadObjectFromFile(
+        const std::string& absolutePath,
+        MEObject& object,
+        std::string* outError)
+    {
+        Json root;
+        if (!ReadJsonFromFile(absolutePath, root, outError))
+        {
+            return false;
+        }
+        return ReadObjectFromJson(root, object, outError);
     }
 }

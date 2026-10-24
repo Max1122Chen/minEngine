@@ -10,6 +10,8 @@
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Reflection/ReflectionUtils.h"
+#include "Runtime/Core/Tasks/TaskHandle.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Resource/DataAsset.h"
@@ -20,6 +22,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace minEngine
 {
@@ -441,11 +444,341 @@ namespace minEngine
             ME_LOG(LogTest, Info, "DataAssetTest: smoke tests passed.");
             return true;
         }
+
+        bool CreateSavedDataAssetForAsync(
+            AssetManager& assetManager,
+            const std::string& assetName,
+            const std::string& notes,
+            std::string& outPath,
+            GUID& outGuid)
+        {
+            std::string createError;
+            std::shared_ptr<Asset> createdBase = assetManager.CreateAssetByTypeId(
+                "DataAsset", assetName, "Assets/_DataAssetUnitTest", createError);
+            std::shared_ptr<DataAsset> created = Cast<DataAsset>(createdBase);
+            if (!created || created->GetMeta() == nullptr)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: async fixture create failed ({})", createError);
+                return false;
+            }
+
+            outPath = created->GetMeta()->AssetPath;
+            outGuid = created->GetGuid();
+            created->SetNotes(notes);
+            if (!assetManager.SaveAsset(outPath, *created))
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: async fixture save failed.");
+                return false;
+            }
+
+            created.reset();
+            createdBase.reset();
+            assetManager.EvictLoadedAssetCache(outPath);
+            return true;
+        }
+
+        bool TestAsyncLoadSuccessAndMatchesSync()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            std::string assetPath;
+            GUID assetGuid;
+            if (!CreateSavedDataAssetForAsync(
+                    assetManager, "AsyncRoundtrip", "async-notes", assetPath, assetGuid))
+            {
+                return false;
+            }
+
+            TaskSystem tasks;
+            tasks.Init(2);
+            TaskSystem::SetInstance(&tasks);
+
+            std::string syncError;
+            std::shared_ptr<DataAsset> syncLoaded =
+                Cast<DataAsset>(assetManager.LoadAssetByPath(assetPath, syncError));
+            if (!syncLoaded || syncLoaded->GetNotes() != "async-notes")
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: sync baseline failed ({})", syncError);
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            assetManager.EvictLoadedAssetCache(assetPath);
+
+            std::shared_ptr<Asset> asyncAsset;
+            bool asyncOk = false;
+            std::string asyncError;
+            const AsyncLoadHandle handle = assetManager.AsyncLoadAssetByPath(
+                assetPath,
+                [&](std::shared_ptr<Asset> asset, bool bSucceeded, std::string_view error) {
+                    asyncAsset = std::move(asset);
+                    asyncOk = bSucceeded;
+                    asyncError = std::string(error);
+                });
+
+            if (!handle.IsValid())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: AsyncLoadAssetByPath returned invalid handle.");
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            tasks.Wait(TaskHandle{handle.Id});
+            tasks.DrainCompletions();
+            (void)assetGuid;
+
+            TaskSystem::SetInstance(nullptr);
+            tasks.Shutdown();
+
+            if (!asyncOk || !asyncAsset)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: async load failed ({})", asyncError);
+                return false;
+            }
+
+            std::shared_ptr<DataAsset> asyncData = Cast<DataAsset>(asyncAsset);
+            if (!asyncData || asyncData->GetNotes() != "async-notes"
+                || asyncData->GetGuid() != syncLoaded->GetGuid())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: async result mismatch vs sync.");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TestAsyncLoadCoalesceAndSyncJoin()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            std::string assetPath;
+            GUID assetGuid;
+            if (!CreateSavedDataAssetForAsync(
+                    assetManager, "AsyncCoalesce", "coalesce-notes", assetPath, assetGuid))
+            {
+                return false;
+            }
+
+            TaskSystem tasks;
+            tasks.Init(2);
+            TaskSystem::SetInstance(&tasks);
+
+            int callbackCount = 0;
+            std::shared_ptr<Asset> firstAsset;
+            std::shared_ptr<Asset> secondAsset;
+
+            const AsyncLoadHandle handleA = assetManager.AsyncLoadAssetByPath(
+                assetPath,
+                [&](std::shared_ptr<Asset> asset, bool bSucceeded, std::string_view) {
+                    if (bSucceeded)
+                    {
+                        firstAsset = std::move(asset);
+                        ++callbackCount;
+                    }
+                });
+            const AsyncLoadHandle handleB = assetManager.AsyncLoadAssetByPath(
+                assetPath,
+                [&](std::shared_ptr<Asset> asset, bool bSucceeded, std::string_view) {
+                    if (bSucceeded)
+                    {
+                        secondAsset = std::move(asset);
+                        ++callbackCount;
+                    }
+                });
+
+            if (!handleA.IsValid() || !handleB.IsValid() || handleA != handleB)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: coalesce should share one AsyncLoadHandle.");
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            std::string syncError;
+            std::shared_ptr<DataAsset> joined =
+                Cast<DataAsset>(assetManager.LoadAssetByPath(assetPath, syncError));
+            if (!joined || joined->GetNotes() != "coalesce-notes")
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: sync join failed ({})", syncError);
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            if (callbackCount != 0)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: callbacks must not run before Drain.");
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            tasks.DrainCompletions();
+            TaskSystem::SetInstance(nullptr);
+            tasks.Shutdown();
+
+            if (callbackCount != 2 || firstAsset.get() != secondAsset.get()
+                || firstAsset.get() != joined.get())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: coalesce/join instance mismatch.");
+                return false;
+            }
+
+            (void)assetGuid;
+            return true;
+        }
+
+        bool TestAsyncLoadCacheHitEnqueuesDrain()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            std::string assetPath;
+            GUID assetGuid;
+            if (!CreateSavedDataAssetForAsync(
+                    assetManager, "AsyncCacheHit", "cache-notes", assetPath, assetGuid))
+            {
+                return false;
+            }
+
+            TaskSystem tasks;
+            tasks.Init(2);
+            TaskSystem::SetInstance(&tasks);
+
+            std::string syncError;
+            std::shared_ptr<Asset> warm = assetManager.LoadAssetByPath(assetPath, syncError);
+            if (!warm)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: cache warm failed ({})", syncError);
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            bool callbackRan = false;
+            std::shared_ptr<Asset> asyncAsset;
+            const AsyncLoadHandle handle = assetManager.AsyncLoadAssetByPath(
+                assetPath,
+                [&](std::shared_ptr<Asset> asset, bool bSucceeded, std::string_view) {
+                    callbackRan = bSucceeded;
+                    asyncAsset = std::move(asset);
+                });
+
+            if (!handle.IsValid() || callbackRan)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: cache-hit callback must wait for Drain.");
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            tasks.DrainCompletions();
+            TaskSystem::SetInstance(nullptr);
+            tasks.Shutdown();
+
+            if (!callbackRan || asyncAsset.get() != warm.get())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: cache-hit async mismatch.");
+                return false;
+            }
+
+            (void)assetGuid;
+            return true;
+        }
+
+        bool TestAsyncLoadRejectsNonDataAsset()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            std::string createError;
+            std::shared_ptr<Asset> prefab = assetManager.CreateAssetByTypeId(
+                "Prefab", "AsyncRejectPrefab", "Assets/_DataAssetUnitTest", createError);
+            if (!prefab || prefab->GetMeta() == nullptr)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: prefab fixture create failed ({})", createError);
+                return false;
+            }
+
+            const std::string path = prefab->GetMeta()->AssetPath;
+            prefab.reset();
+
+            TaskSystem tasks;
+            tasks.Init(2);
+            TaskSystem::SetInstance(&tasks);
+
+            bool gotFailure = false;
+            std::string errorText;
+            const AsyncLoadHandle handle = assetManager.AsyncLoadAssetByPath(
+                path,
+                [&](std::shared_ptr<Asset> asset, bool bSucceeded, std::string_view error) {
+                    gotFailure = !bSucceeded && asset == nullptr;
+                    errorText = std::string(error);
+                });
+
+            if (!handle.IsValid())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: non-DataAsset should still enqueue failure.");
+                TaskSystem::SetInstance(nullptr);
+                tasks.Shutdown();
+                return false;
+            }
+
+            tasks.DrainCompletions();
+            TaskSystem::SetInstance(nullptr);
+            tasks.Shutdown();
+
+            if (!gotFailure || errorText.find("DataAsset") == std::string::npos)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: expected DataAsset-only rejection ({})", errorText);
+                return false;
+            }
+
+            return true;
+        }
+
+        bool RunDataAssetAsyncSmokeTestsImpl(int argc, char** argv)
+        {
+            if (!EnsureEnginePathsReady(argc, argv))
+            {
+                return false;
+            }
+
+            DataAssetTestScope scope;
+            if (!TestAsyncLoadSuccessAndMatchesSync())
+            {
+                return false;
+            }
+            if (!TestAsyncLoadCoalesceAndSyncJoin())
+            {
+                return false;
+            }
+            if (!TestAsyncLoadCacheHitEnqueuesDrain())
+            {
+                return false;
+            }
+            if (!TestAsyncLoadRejectsNonDataAsset())
+            {
+                return false;
+            }
+
+            ME_LOG(LogTest, Info, "DataAssetTest: async smoke tests passed.");
+            return true;
+        }
     }
 
     bool RunDataAssetSmokeTests(int argc, char** argv)
     {
         return RunDataAssetSmokeTestsImpl(argc, argv);
+    }
+
+    bool RunDataAssetAsyncSmokeTests(int argc, char** argv)
+    {
+        return RunDataAssetAsyncSmokeTestsImpl(argc, argv);
     }
 }
 
@@ -458,4 +791,11 @@ TEST_CASE("data-asset: create save reload notes [smoke]")
     minEngine::EngineReflectionFixture fixture;
     REQUIRE(fixture.IsReflectionReady());
     CHECK(minEngine::RunDataAssetSmokeTests(fixture.GetArgc(), fixture.GetArgv()));
+}
+
+TEST_CASE("data-asset: async load drain coalesce [smoke]")
+{
+    minEngine::EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    CHECK(minEngine::RunDataAssetAsyncSmokeTests(fixture.GetArgc(), fixture.GetArgv()));
 }

@@ -7,9 +7,11 @@
 #include "AssetRegistryTypes.h"
 #include "AssetRegistry.h"
 #include "AssetTypeRegistry.h"
+#include "Runtime/Core/Serialization/Json.h"
 
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -112,6 +114,22 @@ namespace minEngine
         ImportResult (*Import)(AssetManager& manager, const ImportRequest& request) = nullptr;
     };
 
+    /** Opaque handle for AsyncLoadAsset*; zero means rejected / invalid. */
+    struct MINENGINE_API AsyncLoadHandle
+    {
+        uint64_t Id = 0;
+
+        bool IsValid() const { return Id != 0; }
+
+        bool operator==(const AsyncLoadHandle& other) const { return Id == other.Id; }
+        bool operator!=(const AsyncLoadHandle& other) const { return Id != other.Id; }
+    };
+
+    using AsyncLoadAssetCallback = std::function<void(
+        std::shared_ptr<Asset> asset,
+        bool bSucceeded,
+        std::string_view error)>;
+
     class AssetManager
     {
     public:
@@ -122,6 +140,12 @@ namespace minEngine
 
         void Initialize();
         void Shutdown();
+
+        /**
+         * Wait accepted DataAsset worker jobs; drop undispatched callbacks (Warn).
+         * Call before TaskSystem::Shutdown.
+         */
+        void FlushAsyncLoadsForShutdown();
 
         // Register before untyped Load (typically from Loader pipeline bootstrap).
         void RegisterLoadHandler(std::string_view assetTypeId, AssetLoadHandlerFn handler);
@@ -204,6 +228,15 @@ namespace minEngine
         std::shared_ptr<Asset> LoadAssetByGUID(const GUID& guid, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByPath(const std::string& path, std::string& outErrorMessage);
         std::shared_ptr<Asset> LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage);
+
+        /**
+         * Async DataAsset load (MVP). Worker: LoadJsonFromFile. Game thread (Drain):
+         * NewObject + FromJson (sync nested refs) + cache + callback.
+         * Requires BindTaskSystem + Running + game thread.
+         */
+        AsyncLoadHandle AsyncLoadAssetByPath(const std::string& path, AsyncLoadAssetCallback onComplete);
+        AsyncLoadHandle AsyncLoadAssetByGUID(const GUID& guid, AsyncLoadAssetCallback onComplete);
+        AsyncLoadHandle AsyncLoadAssetByMeta(const AssetMeta& meta, AsyncLoadAssetCallback onComplete);
 
         const AssetMeta* FindAssetMetaByPath(const std::string& path) const;
         const AssetMeta* FindAssetMetaByGuid(const GUID& guid) const;
@@ -356,6 +389,28 @@ namespace minEngine
 
         std::shared_ptr<Asset> LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage);
 
+        struct AsyncDataAssetWorkerResult;
+        struct AsyncDataAssetLoadRecord;
+
+        AsyncLoadHandle AsyncLoadAssetByMeta_Internal(
+            const AssetMeta& meta,
+            AsyncLoadAssetCallback onComplete);
+        AsyncLoadHandle EnqueueAsyncLoadFailure(
+            AsyncLoadAssetCallback onComplete,
+            std::string errorMessage);
+        AsyncLoadHandle EnqueueAsyncLoadCacheHit(
+            std::shared_ptr<Asset> asset,
+            AsyncLoadAssetCallback onComplete);
+        void TryAssembleInFlightDataAsset(const std::shared_ptr<AsyncDataAssetLoadRecord>& record);
+        void FinishInFlightDataAsset(const std::shared_ptr<AsyncDataAssetLoadRecord>& record);
+        std::shared_ptr<Asset> JoinInFlightDataAssetLoad(
+            const std::shared_ptr<AsyncDataAssetLoadRecord>& record,
+            std::string& outErrorMessage);
+        std::shared_ptr<Asset> AssembleDataAssetFromJson(
+            const AssetMeta& meta,
+            const Json& root,
+            std::string& outErrorMessage);
+
         /** True when AssetType can map to more than one runtime class (today: DataAsset). */
         static bool RequiresRuntimeClassNameForLoad(std::string_view assetTypeId);
         void SyncRuntimeClassNameAfterSave(const AssetMeta& meta, const Asset& asset) const;
@@ -391,6 +446,8 @@ namespace minEngine
         std::unordered_map<std::string, AssetCreateHandlerFn> m_CreateHandlers;
         std::vector<ImportProductDescriptor> m_ImportProducts;
         int m_RegistryBroadcastBatchDepth = 0;
+
+        std::unordered_map<std::string, std::shared_ptr<AsyncDataAssetLoadRecord>> m_InFlightDataAssetLoads;
     };
 
 } // namespace minEngine

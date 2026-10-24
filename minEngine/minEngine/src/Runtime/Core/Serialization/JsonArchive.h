@@ -118,6 +118,9 @@ namespace minEngine::Serialization
         bool ReadFromFile(const std::string& filePath) override;
         const std::string& GetLastArchiveError() const override { return m_LastArchiveError; }
 
+        // Populated by ReadFromFile. Not used when only BindRoot was called.
+        const Json& GetOwnedRoot() const { return m_OwnedRoot; }
+
         // Parsed from root "$schemaVersion"; missing => 0.
         uint32_t GetReadSchemaVersion() const { return m_ReadSchemaVersion; }
         // Parsed from root "$engineVersion"; missing => empty.

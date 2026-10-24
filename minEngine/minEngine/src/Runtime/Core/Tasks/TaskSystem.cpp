@@ -1,5 +1,6 @@
 #include "TaskSystem.h"
 
+#include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
 #include <taskflow/taskflow.hpp>
@@ -171,6 +172,24 @@ namespace minEngine
         }
     };
 
+    TaskSystem* TaskSystem::s_Instance = nullptr;
+
+    void TaskSystem::SetInstance(TaskSystem* instance)
+    {
+        s_Instance = instance;
+    }
+
+    TaskSystem& TaskSystem::Get()
+    {
+        ME_ASSERT(s_Instance != nullptr, "TaskSystem is not initialized");
+        return *s_Instance;
+    }
+
+    bool TaskSystem::HasInstance()
+    {
+        return s_Instance != nullptr;
+    }
+
     TaskSystem::TaskSystem()
         : m_Impl(std::make_unique<Impl>())
     {
@@ -181,6 +200,10 @@ namespace minEngine
         if (m_Impl && m_Impl->StateValue != Impl::State::Stopped)
         {
             Shutdown();
+        }
+        if (s_Instance == this)
+        {
+            s_Instance = nullptr;
         }
     }
 

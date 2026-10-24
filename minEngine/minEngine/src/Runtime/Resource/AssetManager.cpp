@@ -144,6 +144,7 @@ namespace minEngine
 
     void AssetManager::Shutdown()
     {
+        FlushAsyncLoadsForShutdown();
         m_RegistryBroadcastBatchDepth = 0;
         m_Registry.Shutdown();
         m_LoadedAssetCache.clear();
@@ -1442,6 +1443,17 @@ namespace minEngine
                 if (cachedObject)
                 {
                     return Cast<Asset>(cachedObject);
+                }
+            }
+
+            // MVP: only DataAsset uses AsyncLoad / m_InFlightDataAssetLoads. Sync join waits the
+            // worker and assembles here — never DrainCompletions for coalescing.
+            if (meta.AssetType == "DataAsset")
+            {
+                const auto inFlightIt = m_InFlightDataAssetLoads.find(registryKey);
+                if (inFlightIt != m_InFlightDataAssetLoads.end() && inFlightIt->second != nullptr)
+                {
+                    return JoinInFlightDataAssetLoad(inFlightIt->second, outErrorMessage);
                 }
             }
         }

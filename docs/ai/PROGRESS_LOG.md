@@ -1,3 +1,31 @@
+## 2026-10-24 — ASSET-F09 Done：异步 DataAsset + TaskSystem 单例
+
+- **Scope:** `AsyncLoadAssetByPath/GUID/Meta`；Worker `LoadJsonFromFile`；Drain 上 `FromJson`+同步递归引用；coalesce；sync Wait join（禁 Drain）；TaskSystem `Get`/`SetInstance`
+- **Completed:** `AssetManager_AsyncLoad.cpp`；Engine 接线；`data-asset` async smoke；去掉 `BindTaskSystem`
+- **Verification:** `bin/minEngineTests.exe test data-asset` / `task-system` / `serialization-archive` — PASS
+- **Next:** 可选一并 commit（F44+F09）
+
+## 2026-10-24 — CORE-F44 Done：Serializer File/Json/Object 分段
+
+- **Scope:** `LoadJsonFromFile` + `FromJson`；`FromFile`(JSON) 组合；Helper `ReadJsonFromFile` / `ReadObjectFromJson`
+- **Completed:** Serializer/Helper API；`serialization-archive` 等价用例；Design/Registry → **Done**
+- **Verification:** `serialization-archive` / `data-asset` / `prefab` — PASS
+- **Next:** 见上条 F09 Done
+
+## 2026-10-24 — CORE-F44 + ASSET-F09：讨论结论落档（待审批）
+
+- **Scope:** 序列化 File/Json/Object 分段前置；F09 嵌套引用 MVP=同步递归、不做双模式开关
+- **Completed:** F44/F09 Design Draft + Registry；维护者已批准并开工
+- **Verification:** docs only（当时）
+- **Next:** 见上条 F44 Done
+
+## 2026-10-24 — ASSET-F09 Design Draft：异步 DataAsset
+
+- **Scope:** minCraft 批量 Catalog / `.medata` 加载动机；F38 后第一个真实客户
+- **Completed:** [Design Draft](./Asset/ASSET-F09_ASYNC_DATAASSET_LOAD_DESIGN.md) — Worker→Json；游戏线程装盘；同步 Load 可 Wait Worker 禁止合流 Drain；coalesce；仅 DataAsset。Registry **Draft**
+- **Verification:** docs only
+- **Next:** 见上条（F44 前置 + 嵌套引用锁定）
+
 ## 2026-10-24 — CORE-F38 Done：TaskSystem S00–S02
 
 - **Scope:** TaskFlow vendor + `TaskSystem` Submit/Wait/Drain + Engine 挂接 + 合成证明

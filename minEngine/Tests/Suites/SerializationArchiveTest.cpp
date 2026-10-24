@@ -9,6 +9,9 @@
 #include "JsonArchive.h"
 #include "Serializer.h"
 #include "Runtime/Core/GUID/GUID.h"
+#include "Runtime/Resource/AssetSerializeHelper.h"
+
+#include <filesystem>
 
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
@@ -953,11 +956,134 @@ namespace minEngine
             return true;
         }
 
+        bool TestLoadJsonFromFileAndFromJsonMatchesFromFile()
+        {
+            SerializationArchiveTestScope scope;
+
+            const GUID sourceGuid(0xF440000000000001ull, 0x0123456789ABCDEFull);
+            std::shared_ptr<GameObject> sourceObject = NewObject<GameObject>("SplitPipelineGO", nullptr, sourceGuid);
+
+            const std::filesystem::path tempPath =
+                std::filesystem::temp_directory_path() / "minEngine_SerializerSplit_F44.json";
+            {
+                Serialization::JsonWriterArchive writer;
+                const Serialization::SerializeResult writeResult = Serialization::Serializer::ToFile(
+                    tempPath.string(),
+                    sourceObject.get(),
+                    writer,
+                    Serialization::SerializerOptions{
+                        .enumAsString = true,
+                        .strictTypeCheck = false,
+                        .skipUnknownField = true,
+                        .writeSchemaVersion = true,
+                        .schemaVersion = 1u,
+                    });
+                if (!writeResult.ok)
+                {
+                    ME_LOG(LogTest, Error,
+                        "SerializationArchiveTest: ToFile for split pipeline failed: {}",
+                        writeResult.message);
+                    return false;
+                }
+            }
+
+            std::shared_ptr<GameObject> fromFileObject = NewObject<GameObject>("FromFileGO");
+            {
+                Serialization::JsonReaderArchive reader;
+                const Serialization::SerializeResult fromFileResult = Serialization::Serializer::FromFile(
+                    tempPath.string(),
+                    fromFileObject.get(),
+                    reader,
+                    Serialization::SerializerOptions{
+                        .enumAsString = true,
+                        .strictTypeCheck = false,
+                        .skipUnknownField = true,
+                    });
+                if (!fromFileResult.ok)
+                {
+                    ME_LOG(LogTest, Error,
+                        "SerializationArchiveTest: FromFile failed: {}",
+                        fromFileResult.message);
+                    std::error_code removeError;
+                    std::filesystem::remove(tempPath, removeError);
+                    return false;
+                }
+            }
+
+            Json loadedRoot;
+            const Serialization::SerializeResult loadJsonResult =
+                Serialization::Serializer::LoadJsonFromFile(tempPath.string(), loadedRoot);
+            if (!loadJsonResult.ok || !loadedRoot.is_object())
+            {
+                ME_LOG(LogTest, Error,
+                    "SerializationArchiveTest: LoadJsonFromFile failed: {}",
+                    loadJsonResult.message);
+                std::error_code removeError;
+                std::filesystem::remove(tempPath, removeError);
+                return false;
+            }
+
+            std::shared_ptr<GameObject> fromJsonObject = NewObject<GameObject>("FromJsonGO");
+            const Serialization::SerializeResult fromJsonResult = Serialization::Serializer::FromJson(
+                fromJsonObject.get(),
+                loadedRoot,
+                Serialization::SerializerOptions{
+                    .enumAsString = true,
+                    .strictTypeCheck = false,
+                    .skipUnknownField = true,
+                });
+            if (!fromJsonResult.ok)
+            {
+                ME_LOG(LogTest, Error,
+                    "SerializationArchiveTest: FromJson failed: {}",
+                    fromJsonResult.message);
+                std::error_code removeError;
+                std::filesystem::remove(tempPath, removeError);
+                return false;
+            }
+
+            if (fromFileObject->GetGuid() != sourceGuid || fromJsonObject->GetGuid() != sourceGuid
+                || fromFileObject->GetName() != fromJsonObject->GetName())
+            {
+                ME_LOG(LogTest, Error,
+                    "SerializationArchiveTest: FromFile vs LoadJson+FromJson mismatch.");
+                std::error_code removeError;
+                std::filesystem::remove(tempPath, removeError);
+                return false;
+            }
+
+            std::shared_ptr<GameObject> helperSplitObject = NewObject<GameObject>("HelperSplitGO");
+            std::string helperError;
+            Json helperRoot;
+            if (!AssetSerializeHelper::ReadJsonFromFile(tempPath.string(), helperRoot, &helperError)
+                || !AssetSerializeHelper::ReadObjectFromJson(helperRoot, *helperSplitObject, &helperError))
+            {
+                ME_LOG(LogTest, Error,
+                    "SerializationArchiveTest: Helper Json split failed: {}",
+                    helperError);
+                std::error_code removeError;
+                std::filesystem::remove(tempPath, removeError);
+                return false;
+            }
+
+            if (helperSplitObject->GetGuid() != sourceGuid)
+            {
+                ME_LOG(LogTest, Error, "SerializationArchiveTest: Helper ReadJson+FromJson GUID mismatch.");
+                std::error_code removeError;
+                std::filesystem::remove(tempPath, removeError);
+                return false;
+            }
+
+            std::error_code removeError;
+            std::filesystem::remove(tempPath, removeError);
+            return true;
+        }
+
         bool TestJsonMissingFieldKeepsDefault()
         {
             SerializationArchiveTestScope scope;
 
-            // Minimal object JSON without m_Name / m_Guid â€?should load with defaults under loose options.
+            // Minimal object JSON without m_Name / m_Guid â€” load keeps defaults under loose options.
             const Json root = Json::object();
 
             std::shared_ptr<GameObject> restoredObject = NewObject<GameObject>("JsonMissingFieldsGO");
@@ -998,7 +1124,9 @@ namespace minEngine
                    && TestGameObjectWithComponentsSerializeRoundTrip()
                    && TestNestedGuidObjectFieldRoundTrip() && TestGuidRefObjectFieldRoundTrip()
                    && TestArrayOfInlineObjectPtrFieldRoundTrip()
-                   && TestJsonSchemaVersionAndUnknownFieldCompat() && TestJsonMissingFieldKeepsDefault();
+                   && TestJsonSchemaVersionAndUnknownFieldCompat()
+                   && TestLoadJsonFromFileAndFromJsonMatchesFromFile()
+                   && TestJsonMissingFieldKeepsDefault();
         }
 
         bool RunSerializationArchivePrimitiveTestsImpl()

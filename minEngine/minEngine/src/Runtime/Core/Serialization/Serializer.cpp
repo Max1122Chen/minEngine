@@ -476,6 +476,66 @@ namespace minEngine::Serialization
         return ToFile(filePath, rootClass, rootObject, archive, options);
     }
 
+    SerializeResult Serializer::LoadJsonFromFile(const std::string& filePath, Json& outRoot)
+    {
+        if (filePath.empty())
+        {
+            return SerializeResult::Failure("LoadJsonFromFile failed: filePath is empty.");
+        }
+
+        JsonReaderArchive reader;
+        if (!reader.ReadFromFile(filePath))
+        {
+            std::string message = "LoadJsonFromFile failed: archive read failed.";
+            const std::string& archiveError = reader.GetLastArchiveError();
+            if (!archiveError.empty())
+            {
+                message += " reason: " + archiveError;
+            }
+
+            return SerializeResult::Failure(message, filePath);
+        }
+
+        const SerializeResult versionResult = SerializerDiskMeta::ValidateReader(reader, filePath);
+        if (!versionResult.ok)
+        {
+            return versionResult;
+        }
+
+        outRoot = reader.GetOwnedRoot();
+        return SerializeResult::Success();
+    }
+
+    SerializeResult Serializer::FromJson(const MEClass* rootClass,
+                                         void* outRootObject,
+                                         const Json& root,
+                                         const SerializerOptions& options)
+    {
+        std::vector<PendingObjectRef> unresolvedRefs;
+        const SerializeResult deserializeResult =
+            DeserializeObjectFromJson(rootClass, outRootObject, root, unresolvedRefs, options);
+        if (!deserializeResult.ok)
+        {
+            return deserializeResult;
+        }
+
+        return ResolvePendingObjectRefs(unresolvedRefs);
+    }
+
+    SerializeResult Serializer::FromJson(const std::string& rootClassName,
+                                         void* outRootObject,
+                                         const Json& root,
+                                         const SerializerOptions& options)
+    {
+        const MEClass* rootClass = ReflectionSystem::Get().FindClass(rootClassName);
+        if (rootClass == nullptr)
+        {
+            return SerializeResult::Failure("FromJson failed: root class not found.", rootClassName);
+        }
+
+        return FromJson(rootClass, outRootObject, root, options);
+    }
+
     SerializeResult Serializer::FromFile(const std::string& filePath,
                                          const MEClass* rootClass,
                                          void* outRootObject,
@@ -485,6 +545,19 @@ namespace minEngine::Serialization
         if (filePath.empty())
         {
             return SerializeResult::Failure("FromFile failed: filePath is empty.");
+        }
+
+        // JSON path: File → Json → Object+Resolve via the public split APIs.
+        if (dynamic_cast<JsonReaderArchive*>(&archive) != nullptr)
+        {
+            Json root;
+            const SerializeResult loadResult = LoadJsonFromFile(filePath, root);
+            if (!loadResult.ok)
+            {
+                return loadResult;
+            }
+
+            return FromJson(rootClass, outRootObject, root, options);
         }
 
         std::vector<PendingObjectRef> unresolvedRefs;
@@ -500,15 +573,6 @@ namespace minEngine::Serialization
             }
 
             return SerializeResult::Failure(message, filePath);
-        }
-
-        if (const auto* jsonReader = dynamic_cast<const JsonReaderArchive*>(&archive))
-        {
-            const SerializeResult versionResult = SerializerDiskMeta::ValidateReader(*jsonReader, filePath);
-            if (!versionResult.ok)
-            {
-                return versionResult;
-            }
         }
 
         SerializeResult deserializeResult = Deserialize(rootClass, outRootObject, archive, unresolvedRefs, options);

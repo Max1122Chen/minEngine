@@ -23,7 +23,7 @@
 
 ## Requirements
 
-- Engine 拥有可 Init / Shutdown 的 `TaskSystem`。
+- Engine 拥有可 Init / Shutdown 的 `TaskSystem`；对外经 `TaskSystem::Get` / `SetInstance` / `HasInstance` 访问（与其它系统一致；Engine 仍持有实例）。
 - 调度内核 = **TaskFlow**；引擎不自研 work-stealing。
 - API（MVP）：`Init` / `Shutdown`、`Submit`（可带完成回调）、`Wait`、`DrainCompletions`。**不**暴露任务依赖图、TaskGroup、Future/Promise、无锁队列。
 - 阶段必须可区分：接受提交 → Worker 跑工作函数 → 完成事件入队 → 游戏线程 Drain 派发回调。`Wait` 只覆盖到工作函数结束；`Drain` **不是**「等所有 Worker 干完」。
@@ -379,3 +379,4 @@ Profiler、Sleep 封装、Asset 异步、任务依赖图不在这些切片里。
 | 2026-10-18 | 评审修订：四阶段与句柄；Drain 批次与无 FIFO；Shutdown 拒绝再提交；Worker 禁止 Submit；异常必达 `Failed`；功能/性能验收分离 |
 | 2026-10-24 | 开工前评审落地：游戏线程=`Init` thread id；回调无结果载荷；`MINENGINE_API`；Decision 9–11；Status **`Planned`**；维护者批准开工 |
 | 2026-10-24 | S00–S02 实现落地；Status **`Done`**；验收见 Progress / Impl Landing notes |
+| 2026-10-24 | 补 `Get`/`SetInstance`/`HasInstance`（ASSET-F09 消费；Engine 仍拥有） |

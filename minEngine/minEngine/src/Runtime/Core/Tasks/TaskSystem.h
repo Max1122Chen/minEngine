@@ -28,6 +28,10 @@ namespace minEngine
         TaskSystem(TaskSystem&&) = delete;
         TaskSystem& operator=(TaskSystem&&) = delete;
 
+        static TaskSystem& Get();
+        static bool HasInstance();
+        static void SetInstance(TaskSystem* instance);
+
         /**
          * Start the worker pool. Records the calling thread as the game thread.
          * workerCount <= 0 uses max(1, hardware_concurrency - 1).
@@ -53,5 +57,6 @@ namespace minEngine
     private:
         struct Impl;
         std::unique_ptr<Impl> m_Impl;
+        static TaskSystem* s_Instance;
     };
 }
