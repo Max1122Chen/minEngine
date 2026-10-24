@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-24（CORE-F44 Draft；ASSET-F09 依赖更新）
+Last updated: 2026-10-24（CORE-F45 Survey；ASSET-F11 挂号）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -70,6 +70,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F40` | Input Key Catalog（键盘/鼠侧键补全 · 合成修饰键 · canonical Gamepad） | **Done** | — | [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) · [Impl](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_IMPLEMENTATION.md) · `test input-key-catalog` · 软解锁 [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
 | `CORE-F41` | 会话日志文件 + Automation 读环 + Console 单条复制 | **Review** | — | [Design](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md) · L2 · `test logging-channels` · Console 手工待点验 |
 | `CORE-F44` | Serializer File→Json / Json→Object+Resolve 分段（`FromFile` 组合复用） | **Done** | — | [Design](./Platform/Serialization/CORE-F44_SERIALIZER_FILE_JSON_OBJECT_SPLIT_DESIGN.md) · L1 · 解锁 [ASSET-F09](./Asset/ASSET-F09_ASYNC_DATAASSET_LOAD_DESIGN.md) · `serialization-archive` |
+| `CORE-F45` | 帧线程分离（Game / Render / 可选 RHI）— Survey 先行 | **Draft** | — | [Survey](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md) · L3 · 默认 MVP 两线程；**非** TaskSystem 池 |
 | `BUILD-F03` | 符号契约盘点与 rollout（刀1 出表 · 刀2 标宏烧 `.def`→`explicit`） | **Done**（刀1 + 刀2 批0–5 + 默认 `explicit`；刀3/F04 边界已大部） | — | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · [刀1 Impl](./Platform/ProductBuild/BUILD-F03_KNIFE1_AND_REMOVAL_GUARD_IMPLEMENTATION.md) |
 | `BUILD-F04` | 编辑器模块边界：引擎 DLL + 编辑器 DLL + imgui 迁出 | **In Progress**（S01–S05 大部落地；余量不挡 F03 刀2） | — | [Design](./Platform/ProductBuild/BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md) · [S01–S03](./Platform/ProductBuild/BUILD-F04_S01_S03_EDITOR_DLL_IMPLEMENTATION.md) · [S04](./Platform/ProductBuild/BUILD-F04_S04_IMGUI_RELOCATION_IMPLEMENTATION.md) |
 | `BUILD-F02` | 显式导出：`MINENGINE_API` + `auto→whitelist→explicit`（去序号炸弹） | **Done**（S00–S02 + S04–S06；默认 `explicit`，经 F03 刀2） | — | [Design](./Platform/ProductBuild/BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md) · [Impl S01](./Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md) |
@@ -152,6 +153,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET-F08` | 移除 `LoadAsset<T>` 类型糖衣（默认含 `CreateAsset<T>`；`Cast<T>` 窄化） | **Done** | — | [Design](./Asset/ASSET-F08_LOADASSET_TYPED_SUGAR_REMOVAL_DESIGN.md) · [Review](./Asset/ASSET-F08_LOADASSET_TYPED_SUGAR_REMOVAL_DESIGN_REVIEW.md) · `ObjectCast.h` · 解锁 F07 |
 | `ASSET-F09` | 异步 DataAsset 加载（Worker→Json；游戏线程 FromJson+同步递归引用） | **Done** | — | [Design](./Asset/ASSET-F09_ASYNC_DATAASSET_LOAD_DESIGN.md) · 依赖 F38/F44/F10 · suite `data-asset` async · **不含** Texture/GPU / 异步依赖图 |
 | `ASSET-F10` | DataAsset 多态 Load/Create（meta.RuntimeClassName；共享管线；游戏零 handler 注册） | **In Progress**（S01/S02 Done；S03 AES/Inspector Deferred） | — | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) · suite `data-asset` |
+| `ASSET-F11` | AsyncLoad JSON 资产通用化（白名单；Prefab 资产候选） | **Draft** | — | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) · 依赖 F09；**不挡** CORE-F45；Scene/GPU 后置 |
 | `ANIM-F01` | Skeletal Mesh Pipeline（Pose → palette → GPU） | **Done** | — | [Design](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_DESIGN.md) · [Impl](./Animation/ANIM-F01_SKELETAL_MESH_PIPELINE_IMPLEMENTATION.md) · 旧 Placeholder `ANIM-F01_ANIMATION_SYSTEM_DESIGN.md` 已废弃勿用 |
 | `ANIM-F02` | Clip Playback（Track / Player / SMC / `.meaclip`） | **Done** | — | [Design](./Animation/ANIM-F02_CLIP_PLAYBACK_DESIGN.md) · [Impl](./Animation/ANIM-F02_CLIP_PLAYBACK_IMPLEMENTATION.md) |
 | `ANIM-F03` | Animation Graph MVP（FSM + Params + Pose Blend + Editor） | **In Progress** *(runtime+Editor 已合入；人型闭环 smoke 收口)* | — | [Design](./Animation/ANIM-F03_ANIMATION_GRAPH_DESIGN.md) · [Impl](./Animation/ANIM-F03_ANIMATION_GRAPH_IMPLEMENTATION.md) |
@@ -213,8 +215,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F45** | F27–F32/F34–**F36 Done**；**F33** In Progress；**F37** In Progress；**F38** Done；**F39** Cancelled；**F43** Implemented；**F44** Done（Serializer 分段）；F29/F30；Prefab MVP **Done** |
-| `ASSET` | **F11** | F01–F03/F05–F08 Done；**F04** In Progress；**F09** Done（async DataAsset）；**F10** In Progress（多态）；Async Lifetime 愿景见 Capability Roadmap |
+| `CORE` | **F46** | F38/F44 Done；**F45** Draft Survey（帧线程分离）；**F33**/F37 In Progress；F39 Cancelled；F43 Implemented |
+| `ASSET` | **F12** | F09 Done；**F11** Draft（JSON AsyncLoad 通用化，低优）；**F04**/F10 In Progress；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
 | `RND` | **F24** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F12 Deferred |

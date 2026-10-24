@@ -12,7 +12,15 @@ namespace minEngine
 {
     /**
      * Thin TaskFlow wrapper: Submit CPU work on workers, DrainCompletions on the game thread.
-     * Game thread is the thread that called Init. Workers must not touch engine object systems.
+     *
+     * Usage contract (engine and game modules):
+     * - Game thread = the thread that called Init (normally the logical/frame thread).
+     * - Workers may only run pure CPU / local data work. Do not call NewObject, ObjectManager,
+     *   AssetManager, Scene, RHI, Lua, ImGui, or Submit/Wait/Drain/Shutdown from a worker.
+     * - onComplete runs only on the game thread via DrainCompletions (Engine drains once per
+     *   logical tick after Input, before Fixed). Product code should not Drain ad hoc.
+     * - Wait covers the worker function only; it does not mean onComplete has run.
+     * - This pool is not a substitute for game/render/RHI frame-thread separation.
      */
     class MINENGINE_API TaskSystem
     {
@@ -41,6 +49,7 @@ namespace minEngine
         /** Game-thread only. Wait for accepted work, drain remaining completions, destroy pool. */
         void Shutdown();
 
+        /** Game-thread only. Rejected off the game thread (invalid handle). */
         TaskHandle Submit(WorkFn work);
         TaskHandle Submit(WorkFn work, CompletionFn onComplete);
 

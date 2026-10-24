@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-24（CORE-F44 / ASSET-F09 Done）
+Last updated: 2026-10-24（Primary → CORE-F45 帧线程 Survey）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,13 +11,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary：** 多线程资产轨本波收口（`CORE-F44` + `ASSET-F09` **Done**）。下一焦点待定（F10 S03 / F33 / ASSET-F04 等不挡）。
+**Primary（调研→设计）：** `CORE-F45` **Game \| Render \| RHI 三线程**（已锁）。Physics / ScreenUI 仿真跟 Game；Game→Render 经 Proxy。工作树：`minEngine-core` @ `feat/core`。未 Design-ready 前不写拆线程代码。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| — | ASSET-F09 | 异步 DataAsset（Worker→Json；FromJson+同步递归引用） | **Done** | [Design](./Asset/ASSET-F09_ASYNC_DATAASSET_LOAD_DESIGN.md) |
-| — | CORE-F44 | Serializer File→Json / Json→Object+Resolve 分段 | **Done** | [Design](./Platform/Serialization/CORE-F44_SERIALIZER_FILE_JSON_OBJECT_SPLIT_DESIGN.md) |
-| 0 | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
+| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Draft** Survey（目标已锁） | [Survey](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md) |
+| — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
+| — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
+| 1 | ASSET-F10 | DataAsset 多态 Load/Create | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
 | — | CORE-F38 | TaskSystem · TaskFlow + 合成证明 | **Done** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · [Impl](./Platform/Core/CORE-F38_TASK_SYSTEM_IMPLEMENTATION.md) |
 | — | BUILD-F03 刀2 | 烧 `.def`→`explicit`（标宏 + codegen `MODULE_API`） | **Done**（批0–5 + 默认 `explicit`） | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · 附录 C |
 | — | GP-F03 | GameplayTag 名身份修订（去 Tag 上 Manager* + hash） | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
@@ -38,7 +39,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** 维护者选下一 Primary；可选 commit（F44+F09）。收尾不挡：ASSET-F10 S03 / F33 / ASSET-F04。UI-F08 见并行表。
+**下一动作：** 在 **`minEngine-core`** 开 CORE-F45 **三线程 Design** → design-review。主树 `master` 保持稳定供 minCraft。ASSET-F11 不挡。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
@@ -46,8 +47,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 |----|------|------|
 | 构建 · 导出契约 | 刀2：标注烧 `.def`→`explicit`；反射 `MODULE_API`；单例/常量表单份 | **BUILD-F03 刀2 Done**（默认 `explicit`）；F02/刀1/F04 大部已落地 |
 | 多线程 · TaskSystem | 引入 TaskFlow；Drain；合成作业 1 vs N | **CORE-F38 Done** |
-| 多线程 · 资产异步 | DataAsset 真实客户（minCraft Catalog） | **CORE-F44 + ASSET-F09 Done** |
-| 多线程 · 帧线程 | 逻辑/渲染分离 | 后置 |
+| 多线程 · 资产异步 | DataAsset + F44 | **Done**；F11 通用化 Draft 低优 |
+| 多线程 · 帧线程 | Game / Render / RHI 三线程 | **CORE-F45 Survey（目标已锁；Primary）** |
 | 光照 | Atmosphere | 后置 |
 | 模块边界 | Plugin / Package | 后置 |
 
@@ -175,8 +176,9 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 路径 | 分支 | 用途 |
 |------|------|------|
-| `D:/Dev/GitRepo/minEngine` | **`feat/asset-load-api`** | ASSET-F08/F07 已合入 master；可对齐或归档；可能仍有本地 WIP |
-| `D:/Dev/GitRepo/minEngine-ui` | **`master`** | 主协作树（UI-F05/F06 + ASSET-F08/F07 已合入） |
+| `D:/Dev/GitRepo/minEngine` | **`master`** | 主树：稳定给 minCraft；勿长期挂 WIP 大改 |
+| `D:/Dev/GitRepo/minEngine-core` | **`feat/core`** | CORE-F45 帧线程分离（及 core 轨） |
+| `D:/Dev/GitRepo/minEngine-ui` | **`master`** / 既有 UI 轨 | 可对齐主协作 |
 | `D:/Dev/GitRepo/minEngine-lua-script` | **`feat/lua-script`** | 可对齐 master 后归档 |
 | `D:/Dev/GitRepo/minEngine-prefab` | **`feat/prefab`** | 可对齐 master 后归档 |
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |

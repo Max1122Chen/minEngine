@@ -1,3 +1,10 @@
+## 2026-10-24 — CORE-F45 Survey + ASSET-F11 挂号；TaskSystem 契约注释
+
+- **Scope:** 帧线程分离升 Primary（Survey）；AsyncLoad 通用化仅挂号；TaskSystem 头注释 + game-module 风格示例测试
+- **Completed:** [CORE-F45 Survey](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md)；[ASSET-F11 Draft](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md)；`TaskSystem.h` 用法契约；`task-system: game-module style submit apply on drain`
+- **Verification:** docs + 待跑 `test task-system`（示例用例）
+- **Next:** 维护者审 Survey 默认（两线程 MVP、1 帧延迟）→ Design；**不**直接拆线程实现
+
 ## 2026-10-24 — ASSET-F09 Done：异步 DataAsset + TaskSystem 单例
 
 - **Scope:** `AsyncLoadAssetByPath/GUID/Meta`；Worker `LoadJsonFromFile`；Drain 上 `FromJson`+同步递归引用；coalesce；sync Wait join（禁 Drain）；TaskSystem `Get`/`SetInstance`

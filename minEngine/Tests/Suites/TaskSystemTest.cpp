@@ -92,6 +92,45 @@ TEST_CASE("task-system: wait then drain completion [smoke]")
     tasks.Shutdown();
 }
 
+TEST_CASE("task-system: game-module style submit apply on drain [smoke]")
+{
+    // Recommended product pattern: Get() after SetInstance; worker writes local result only;
+    // game state is updated in onComplete after Engine-style Drain (here explicit for the test).
+    TaskSystem tasks;
+    TaskSystem::SetInstance(&tasks);
+    tasks.Init(2);
+
+    std::atomic<uint64_t> workerHash{0};
+    uint64_t appliedOnGameThread = 0;
+
+    const TaskHandle handle = TaskSystem::Get().Submit(
+        [&workerHash]() {
+            uint64_t x = 0xC0FFEEULL;
+            for (int i = 0; i < 1000; ++i)
+            {
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+            }
+            workerHash.store(x, std::memory_order_relaxed);
+        },
+        [&workerHash, &appliedOnGameThread](bool bSucceeded) {
+            CHECK(bSucceeded);
+            appliedOnGameThread = workerHash.load(std::memory_order_relaxed);
+        });
+
+    CHECK(handle.IsValid());
+    TaskSystem::Get().Wait(handle);
+    CHECK(appliedOnGameThread == 0);
+
+    TaskSystem::Get().DrainCompletions();
+    CHECK(appliedOnGameThread != 0);
+    CHECK(appliedOnGameThread == workerHash.load(std::memory_order_relaxed));
+
+    TaskSystem::SetInstance(nullptr);
+    tasks.Shutdown();
+}
+
 TEST_CASE("task-system: async completion without guessing sleep [smoke]")
 {
     TaskSystem tasks;
