@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/CLI/CommandLineResult.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Function/Framework/Subsystems/Subsystem.h"
 #include "Runtime/Function/Framework/Subsystems/SubsystemCollection.h"
@@ -35,6 +36,7 @@ namespace minEngine
     class Scene;
     class GameplayFixedTickClock;
     class TaskSystem;
+    class FrameThreading;
 
     ME_CLASS()
     class MINENGINE_API Engine : public MEObject
@@ -132,7 +134,11 @@ namespace minEngine
         /** Owned task pool; null until StartSystems / explicit Init. */
         TaskSystem* GetTaskSystem() const { return m_TaskSystem.get(); }
 
+        /** Frame role identity / mode; null until Initialize. */
+        FrameThreading* GetFrameThreading() const { return m_FrameThreading.get(); }
+
     private:
+        void InitializeFrameThreading(std::optional<FrameThreadMode> commandLineOverride);
         std::shared_ptr<GameInstance> CreateGameInstanceOfResolvedClass(
             const std::string& objectName,
             Scene* primaryScene,
@@ -174,6 +180,7 @@ namespace minEngine
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
         std::unique_ptr<GameplayFixedTickClock> m_GameplayFixedTickClock;
         std::unique_ptr<TaskSystem> m_TaskSystem;
+        std::unique_ptr<FrameThreading> m_FrameThreading;
     };
 }
 

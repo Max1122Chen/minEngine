@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-24（Primary → CORE-F45 S00；已 merge feat/render RND-F26）
+Last updated: 2026-10-24（Primary → CORE-F45 S01；S00 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,11 +11,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `feat/core`）：** `CORE-F45` Mode A 收口，**Ready = yes**（用户已要求开工）。工作树 `minEngine-core`。下一刀 **S00**（身份 + Mode）。已合并 `feat/render`：`RND-F26` Done。
+**Primary（本工作树 `feat/core`）：** `CORE-F45` **S00 Done**（身份 + Mode + CLI + smoke）。下一刀 **S01**（四家族 Enqueue + Apply*_RT）。已合并 `feat/render`：`RND-F26` Done。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
+| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00 Done · 下一 S01） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（自 feat/render） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
@@ -40,7 +40,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** CORE-F45 **S00**（线程身份 + `FrameThreadMode`）。主树 `master` 稳供 minCraft。
+**下一动作：** CORE-F45 **S01**（四家族 Enqueue；删 GT 热 Sync）。主树 `master` 稳供 minCraft。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
@@ -49,7 +49,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 构建 · 导出契约 | 刀2：标注烧 `.def`→`explicit`；反射 `MODULE_API`；单例/常量表单份 | **BUILD-F03 刀2 Done**（默认 `explicit`）；F02/刀1/F04 大部已落地 |
 | 多线程 · TaskSystem | 引入 TaskFlow；Drain；合成作业 1 vs N | **CORE-F38 Done** |
 | 多线程 · 资产异步 | DataAsset + F44 | **Done**；F11 通用化 Draft 低优 |
-| 多线程 · 帧线程 | Game / Render / RHI + Single/Multi | **CORE-F45 In Progress · S00** |
+| 多线程 · 帧线程 | Game / Render / RHI + Single/Multi | **CORE-F45 In Progress · S00 Done → S01** |
 | 光照 | Atmosphere | 后置 |
 | 模块边界 | Plugin / Package | 后置 |
 

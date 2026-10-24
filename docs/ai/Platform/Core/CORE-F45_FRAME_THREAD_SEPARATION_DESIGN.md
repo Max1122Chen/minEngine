@@ -4,7 +4,7 @@
 - **ID:** `CORE-F45`
 - **Type:** `Feature`（真 refactor：帧所有权与命令边界）
 - **Complexity:** `L3`
-- **Status:** `Review`（内部 Mode A 已收口；**待维护者终审 ACK → 开工 S00**）
+- **Status:** `In Progress`（**S00 Done**；下一刀 S01 四家族 Enqueue）
 - **Owner:** project maintainer
 - **Last updated:** `2026-10-24`
 - **Doc role:** **综述** — 跨线程契约、`FrameThreadMode`、切片总序、验收。角色细节见子 Design。
@@ -14,7 +14,7 @@
   - [CORE-F38](./CORE-F38_TASK_SYSTEM_DESIGN.md) · [CORE-F22 Profiler](./CORE-F22_PROFILER_HARNESS_DESIGN.md)
   - UE：`D:/Dev/GitRepo/UnrealEngine`（只读）
 - **Branch / worktree:** `feat/core` @ `D:/Dev/GitRepo/minEngine-core`
-- **Ready for implementation?** `yes` — **仍须维护者 ACK** 后方可改 `TickOneFrame`
+- **Ready for implementation?** `yes` — S00 已落地；S01 待开工
 
 ## TL;DR
 
@@ -149,7 +149,7 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 
 | Slice | Done when |
 |-------|-----------|
-| **S00** | 身份 + Mode 解析/日志；Single 顺序跑通≈今日；**尚不改 Proxy 热路径** |
+| **S00** | ✅ 身份 + Mode 解析/日志；Single 顺序跑通≈今日；**尚不改 Proxy 热路径** |
 | S01 | 四家族 Enqueue + Apply*_RT；删 GT 热 Sync；队列+Flush |
 | S02 | ViewIntent 代际；N−1 可测 |
 | S03 | List Recording + Immediate；Pass 调用约定不变 |
@@ -185,17 +185,19 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 | D09 | 巨石 POD / 缺 Light·Sky | 已纠偏（D3） |
 
 **Verdict：** Ready after clarifications → **澄清已写入 Decisions 12–18**。  
-**Ready for implementation?** `yes`（**维护者 ACK 后**开 S00）。
+**Ready for implementation?** `yes`（维护者已 ACK；S00 进行中）。
 
 ### 维护者终审清单（请勾）
 
-- [ ] 接受 D1–D18（尤其 D3 家族 Enqueue、D8/D14 Mode、D12–D13 管道）
-- [ ] 接受 S00 先只做身份+Mode、S01 再动 Proxy
-- [ ] ACK 后 Status → `In Progress` / 开工
+- [x] 接受 D1–D18（尤其 D3 家族 Enqueue、D8/D14 Mode、D12–D13 管道）
+- [x] 接受 S00 先只做身份+Mode、S01 再动 Proxy
+- [x] ACK 后 Status → `In Progress` / 开工
 
 ## 变更记录
 
 | Date | Change |
 |------|--------|
+| 2026-10-24 | **S00 Done：** `FrameThreading` + CLI + Engine assert/scope + suite `frame-threading` |
+| 2026-10-24 | Status → In Progress；S00 开工 |
 | 2026-10-24 | Draft→Review；拆分；List 录制；Mode；Proxy 家族纠偏 |
 | 2026-10-24 | **Mode A 收口：** 锁 D12–D18；修 Single/Multi 工序矛盾；Ready=yes 待 ACK |

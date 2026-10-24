@@ -26,6 +26,7 @@
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Function/Framework/Time/GameplayFixedTickClock.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 
 #include <vector>
 
@@ -96,6 +97,23 @@ namespace minEngine
         Profile::StopSession();
     }
 
+    void Engine::InitializeFrameThreading(std::optional<FrameThreadMode> commandLineOverride)
+    {
+        const std::optional<FrameThreadMode> resolved = FrameThreading::ResolveMode(commandLineOverride);
+        if (!resolved.has_value())
+        {
+            ME_LOG(
+                LogCore,
+                Error,
+                "Invalid MINENGINE_FRAME_THREADS / --frame-threads value. Expected single|multi.");
+            ME_ASSERT(false, "Invalid FrameThreadMode configuration");
+            return;
+        }
+
+        m_FrameThreading = std::make_unique<FrameThreading>();
+        m_FrameThreading->Initialize(*resolved);
+    }
+
     void Engine::Initialize(const CommandLineResult& commandLine)
     {
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
@@ -105,6 +123,7 @@ namespace minEngine
         m_SceneRendererKind = commandLine.SceneRenderer;
 
         LogSystem::Get().Initialize();
+        InitializeFrameThreading(commandLine.FrameThreads);
         BeginEngineProfileStartup();
         {
             ME_PROFILE_SCOPE("Engine.Initialize");
@@ -137,6 +156,7 @@ namespace minEngine
         s_Instance = this;
 
         LogSystem::Get().Initialize();
+        InitializeFrameThreading(std::nullopt);
         BeginEngineProfileStartup();
         {
             ME_PROFILE_SCOPE("Engine.Initialize");
@@ -196,13 +216,24 @@ namespace minEngine
 
     void Engine::TickLogicalFrame(float deltaTime)
     {
+        if (FrameThreading::HasInstance())
+        {
+            FrameThreading::Get().AssertIsFrameThread(FrameThreadKind::Game, "TickLogicalFrame");
+        }
         LogicalTick(deltaTime);
     }
 
     void Engine::TickRendererFrame(float deltaTime)
     {
         (void)deltaTime;
-        RendererTick(deltaTime);
+        if (FrameThreading::HasInstance())
+        {
+            FrameThreading::Get().AssertIsFrameThread(FrameThreadKind::Render, "TickRendererFrame");
+        }
+        {
+            ME_PROFILE_SCOPE("Frame.Render.Record");
+            RendererTick(deltaTime);
+        }
 
         // Retired scenes may have been referenced by draws submitted before retirement; the
         // renderer consumed them just now, so this is the first safe point to destroy them.
@@ -219,11 +250,11 @@ namespace minEngine
             ME_PROFILE_SCOPE("Engine.Frame");
             PollEvents();
             {
-                ME_PROFILE_SCOPE("Engine.LogicalTick");
+                ME_PROFILE_SCOPE("Frame.Game.Logical");
                 TickLogicalFrame(deltaTime);
             }
             {
-                ME_PROFILE_SCOPE("Engine.RendererTick");
+                // Single mode: Render + RHI roles share this OS thread and this tick.
                 TickRendererFrame(deltaTime);
             }
         }
@@ -587,6 +618,12 @@ namespace minEngine
             m_GameplayTagManager->Shutdown();
             GameplayTagManager::SetInstance(nullptr);
             m_GameplayTagManager.reset();
+        }
+
+        if (m_FrameThreading)
+        {
+            m_FrameThreading->Shutdown();
+            m_FrameThreading.reset();
         }
     }
 

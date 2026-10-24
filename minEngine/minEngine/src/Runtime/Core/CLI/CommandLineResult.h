@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/SceneRendererKind.h"
 
@@ -37,6 +38,12 @@ namespace minEngine
 
         /** Default ForwardRenderer; `--renderer manual` selects diagnostic path. */
         SceneRendererKind SceneRenderer = SceneRendererKind::Forward;
+
+        /**
+         * Optional `--frame-threads single|multi`. When unset, env MINENGINE_FRAME_THREADS
+         * then default Single (see FrameThreading::ResolveMode).
+         */
+        std::optional<FrameThreadMode> FrameThreads;
 
         TestRunKind TestKind = TestRunKind::Smoke;
         std::string SuiteId;

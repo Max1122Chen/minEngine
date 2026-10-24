@@ -3,6 +3,7 @@
 #include "CLI11.hpp"
 #include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Core/ProductBranding.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/SceneRendererKind.h"
 
 #include <cstdio>
@@ -109,6 +110,13 @@ namespace minEngine
             "Scene renderer: forward|manual (aliases rdg|handpass). Default: forward")
             ->option_text("<forward|manual>");
 
+        std::string frameThreads;
+        app.add_option(
+            "--frame-threads",
+            frameThreads,
+            "Frame thread mode: single|multi (env MINENGINE_FRAME_THREADS). Default: single")
+            ->option_text("<single|multi>");
+
         std::string automationPipe;
         app.add_option(
             "--automation-pipe",
@@ -203,6 +211,21 @@ namespace minEngine
                 return std::nullopt;
             }
             result.SceneRenderer = *parsedRenderer;
+        }
+
+        if (!frameThreads.empty())
+        {
+            const std::optional<FrameThreadMode> parsedMode = FrameThreading::TryParseMode(frameThreads);
+            if (!parsedMode.has_value())
+            {
+                std::fprintf(
+                    stderr,
+                    "Invalid --frame-threads '%s'. Expected single|multi.\n",
+                    frameThreads.c_str());
+                s_LastExitCode = CommandLineExitCode::UsageError;
+                return std::nullopt;
+            }
+            result.FrameThreads = parsedMode;
         }
 
         if (app.got_subcommand("test"))

@@ -62,6 +62,7 @@ namespace minEngine
             "input-trigger-lifecycle",
             "texture-sampler",
             "task-system",
+            "frame-threading",
         };
 
         std::vector<ITestSuite*> ordered;

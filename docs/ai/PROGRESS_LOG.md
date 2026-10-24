@@ -1,3 +1,14 @@
+## 2026-10-24 — CORE-F45 S00 落地（身份 + Mode）
+
+- **Scope:** `FrameThreading` 角色身份 / `FrameThreadMode`；CLI + Engine 接入；**不改 Proxy 热路径**
+- **Completed:**
+  - `Runtime/Core/Threading/FrameThreading.{h,cpp}`：Kind/Mode、Bind、Assert、Resolve（CLI → env → Single）
+  - `--frame-threads single|multi`；`MINENGINE_FRAME_THREADS`；Multi 本期仍单 OS 线程 + Warn
+  - Engine：Init/Shutdown；`TickLogicalFrame`/`TickRendererFrame` 断言；`Frame.Game.Logical` / `Frame.Render.Record` scope
+  - suite `frame-threading`（smoke 列表已挂）
+- **Verification:** `minEngineTests.exe test frame-threading`；`test smoke`（含 frame-threading）exit 0 @ `minEngine-core`
+- **Next:** S01 四家族 Enqueue + Apply*_RT
+
 ## 2026-10-24 — CORE-F45 Mode A 收口 → Ready（待 ACK）
 
 - **Scope:** 子 agent 中断后主会话 Mode A；锁开工歧义；不改帧循环代码
