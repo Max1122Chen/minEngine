@@ -1,9 +1,59 @@
+## 2026-10-24 — CORE-F45 Mode A 收口 → Ready（待 ACK）
+
+- **Scope:** 子 agent 中断后主会话 Mode A；锁开工歧义；不改帧循环代码
+- **Completed:**
+  - Decisions **D12–D18**（入队+Flush、可调用体载体、Mode 优先级与默认 Single、Immediate/Recording、Present@RHIRole、Recreate MVP、队列常量）
+  - 修 Single/Multi 工序与「同步 Enqueue」矛盾；综述 **Ready for implementation = yes**
+  - 终审清单写入综述 Design Review 节
+- **Verification:** docs only
+- **Next:** 维护者 ACK → S00（身份+Mode only）
+
+## 2026-10-24 — CORE-F45 Proxy 推送纠偏（对齐 UE 家族 Enqueue）
+
+- **Scope:** 统一 POD + Light/Sky 遗漏；对照 UE 家族 Enqueue
+- **Completed:** 撤回巨石 payload；四家族；Recreate vs UpdateFast
+- **Verification:** docs only
+- **Next:** （已完成）Mode A 收口
+
+## 2026-10-24 — CORE-F45 加厚：双模式 + 子文口径
+
+- **Scope:** 工序/世代/Mode/Profile；Single/Multi 一等公民
+- **Completed:** 综述 Mode；Game/Render/RHI 加厚（其后 Proxy 口径见上条纠偏）
+- **Verification:** docs only
+- **Next:** （已完成）Proxy 家族纠偏
+
+## 2026-10-24 — CORE-F45 文档拆分：综述 + 三线程子 Design
+
+- **Scope:** 避免三角色细节堆一篇；修正 CS5「旁路 List」误述
+- **Completed:** 综述 + Game/Render/RHI 初版拆分；List 录制化（非另起类型）
+- **Verification:** docs only
+- **Next:** （已完成）加厚 + FrameThreadMode
+
+## 2026-10-24 — CORE-F45 Design 修订：Mode A + UE 源码锚点
+
+- **Scope:** 按 design-review blocking 项锁契约；对照本机 UE（只读）
+- **Completed:**
+  - Design Status → **Review**；锁 CS2=UE 风格 Enqueue；Game=窗口线程；Intent(N)↔World(N−1)；队列满阻塞；后澄清为 List 录制化（非旁路新类型）
+  - UE 锚点：`RenderingThread.h`；`RendererScene.cpp` AddPrimitive；`RHICommandList.h` FinishRecording / Dispatch
+- **Verification:** docs only
+- **Next:** （已完成）拆分为综述 + 三子文
+
+## 2026-10-24 — CORE-F45 Design Draft：临界区 + 接触面
+
+- **Scope:** Survey 证据 → Design Spec；不改帧循环代码
+- **Completed:**
+  - [Design Draft](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md)：CS1–CS8；Proxy Publish；RenderQueue；ViewIntent；切片 S00–S06
+  - 代码锚点：`RenderScene::UpdatePrimitive` MT TODO；即时 `RHICommandList`；`SubmitSceneDraw`→同帧 Execute；Vulkan 录制 / GL 上下文
+  - Survey → **Reference**；Registry / ACTIVE_WORK 指向 Design
+- **Verification:** docs only
+- **Next:** （已完成）Mode A → 本上条修订
+
 ## 2026-10-24 — CORE-F45 Survey + ASSET-F11 挂号；TaskSystem 契约注释
 
 - **Scope:** 帧线程分离升 Primary（Survey）；AsyncLoad 通用化仅挂号；TaskSystem 头注释 + game-module 风格示例测试
 - **Completed:** [CORE-F45 Survey](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md)；[ASSET-F11 Draft](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md)；`TaskSystem.h` 用法契约；`task-system: game-module style submit apply on drain`
 - **Verification:** docs + 待跑 `test task-system`（示例用例）
-- **Next:** 维护者审 Survey 默认（两线程 MVP、1 帧延迟）→ Design；**不**直接拆线程实现
+- **Next:** （已完成）三线程 Design Draft → design-review
 
 ## 2026-10-24 — ASSET-F09 Done：异步 DataAsset + TaskSystem 单例
 

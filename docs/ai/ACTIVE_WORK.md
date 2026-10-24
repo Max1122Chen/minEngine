@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-24（Primary → CORE-F45 帧线程 Survey）
+Last updated: 2026-10-24（Primary → CORE-F45 Ready 待维护者 ACK）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,11 +11,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（调研→设计）：** `CORE-F45` **Game \| Render \| RHI 三线程**（已锁）。Physics / ScreenUI 仿真跟 Game；Game→Render 经 Proxy。工作树：`minEngine-core` @ `feat/core`。未 Design-ready 前不写拆线程代码。
+**Primary（待你终审 ACK）：** `CORE-F45` Mode A 收口，**Ready for implementation = yes**（改代码前仍须 ACK）。要点：家族 Enqueue、禁巨石 POD、`FrameThreadMode` Single/Multi、D12–D18。工作树 `minEngine-core` @ `feat/core`。ACK 后开 **S00**（身份+Mode only）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Draft** Survey（目标已锁） | [Survey](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md) |
+| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Review**（Ready 待 ACK） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
 | 1 | ASSET-F10 | DataAsset 多态 Load/Create | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
@@ -39,7 +39,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** 在 **`minEngine-core`** 开 CORE-F45 **三线程 Design** → design-review。主树 `master` 保持稳定供 minCraft。ASSET-F11 不挡。
+**下一动作：** 你审综述 **终审清单** → ACK → S00。主树 `master` 稳供 minCraft。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
@@ -48,7 +48,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 构建 · 导出契约 | 刀2：标注烧 `.def`→`explicit`；反射 `MODULE_API`；单例/常量表单份 | **BUILD-F03 刀2 Done**（默认 `explicit`）；F02/刀1/F04 大部已落地 |
 | 多线程 · TaskSystem | 引入 TaskFlow；Drain；合成作业 1 vs N | **CORE-F38 Done** |
 | 多线程 · 资产异步 | DataAsset + F44 | **Done**；F11 通用化 Draft 低优 |
-| 多线程 · 帧线程 | Game / Render / RHI 三线程 | **CORE-F45 Survey（目标已锁；Primary）** |
+| 多线程 · 帧线程 | Game / Render / RHI + Single/Multi | **CORE-F45 Ready 待 ACK → S00** |
 | 光照 | Atmosphere | 后置 |
 | 模块边界 | Plugin / Package | 后置 |
 

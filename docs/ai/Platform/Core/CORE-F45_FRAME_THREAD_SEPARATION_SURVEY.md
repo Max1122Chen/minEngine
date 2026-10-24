@@ -4,24 +4,26 @@
 - **ID:** `CORE-F45`
 - **Type:** `Feature`（调研先行；正式 Design 另文或本文升级）
 - **Complexity:** `L3`
-- **Status:** `Draft`（Survey）
+- **Status:** `Reference`（Survey 收口；正式契约见 Design）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-24`（维护者锁定三线程目标模型）
+- **Last updated:** `2026-10-24`（Design Draft 已起草）
 - **Related:**
+  - [综述 / 契约](./CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md)（权威跨线程 Decisions）
+  - [Game](./CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./CORE-F45_RHI_THREAD_DESIGN.md)
   - [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../../ACTIVE_WORK.md)
   - [CORE-F38 TaskSystem](./CORE-F38_TASK_SYSTEM_DESIGN.md)（池 + Drain；**不是**帧线程模型）
   - [ENGINE_DESIGN_PHILOSOPHY](../../ENGINE_DESIGN_PHILOSOPHY.md) · Prefer Simplicity（三线程成本已记录）
   - 后置客户：ASSET-F11 JSON AsyncLoad 通用化（不挡本调研）
 - **Branch / worktree:** `feat/core` @ `D:/Dev/GitRepo/minEngine-core`（主树保持稳定给 minCraft）
-- **Authority:** 本文为 **Survey** — 重建现状与选项；**不**授权大范围改帧循环，直至 Design + readiness。
+- **Authority:** Survey 锁定目标模型；**实现授权**仅来自 Design + readiness。
 
 ## TL;DR
 
 目标能力：把今日单线程「LogicalTick → RendererTick」演进为 **Game / Render / RHI 三 OS 线程**：
 
 - **Game：** 逻辑 + 向 Render 推送 Proxy / 场景表示更新；Physics / ScreenUI 仿真跟 Game。
-- **Render：** Cull / Sort / Batch，生产 Draw / RenderCommand，写入 RenderQueue。
-- **RHI：** 消费 RenderQueue，真正提交 GPU。
+- **Render：** Cull / Sort / Batch；向 `RHICommandList` 录制（详见子 Design）。
+- **RHI：** 回放 List，真正提交 GPU。
 
 本阶段只做 **Survey → Design**；**禁止**未 readiness 前拆线程实现。
 
@@ -150,12 +152,12 @@ Engine::TickOneFrame  (single OS thread = TaskSystem game thread)
 | D3 | Physics、ScreenUI 仿真 **跟 Game** |
 | D4 | Game 经 **Proxy（或等价）** 推送给 Render |
 | D5 | 协作在 **`feat/core` + `minEngine-core` 工作树**；主树稳定供 minCraft |
-| D6 | 下一步 = 收口 Survey → **三线程 Design**；不直接改帧循环代码 |
+| D6 | Survey → Design 已完成；下一步 = **design-review**；不直接改帧循环代码 |
 
 ## Design Review
 
-- **Verdict:** `Pending`（Survey；目标模型已锁，待进 Design）
-- **Ready for implementation?** `no`
+- **Verdict:** `Superseded by Design` — 见 [CORE-F45 Design](./CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md)
+- **Ready for implementation?** `no`（Design 为 Review，待确认）
 
 ## 变更记录
 
@@ -163,3 +165,5 @@ Engine::TickOneFrame  (single OS thread = TaskSystem game thread)
 |------|--------|
 | 2026-10-24 | Survey Draft：现状锚点；两线程默认；硬问题表；与 F38/F09 边界 |
 | 2026-10-24 | 维护者锁定三线程 + Proxy + Physics/UI 跟 Game；澄清 ScreenUI 含义；工作树策略 |
+| 2026-10-24 | Design Draft 落档；本文 Status → Reference；D6 指向 design-review |
+| 2026-10-24 | Design 拆为综述 + Game/Render/RHI 三子文；链接更新 |
