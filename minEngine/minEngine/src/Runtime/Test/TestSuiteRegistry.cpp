@@ -61,6 +61,7 @@ namespace minEngine
             "widget-graphic",
             "input-trigger-lifecycle",
             "texture-sampler",
+            "task-system",
         };
 
         std::vector<ITestSuite*> ordered;

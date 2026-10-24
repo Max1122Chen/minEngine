@@ -65,7 +65,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F35` | GameInstance 会话中枢 · 项目可选派生类（Hub vs Subsystem） | **Done** | — | [Design](./Platform/Core/CORE-F35_GAME_INSTANCE_HUB_AND_PROJECT_CLASS_DESIGN.md) · L2 · S01–S03；S04 minCraft Deferred |
 | `CORE-F36` | Gameplay FixedTick + 变步 Tick 相位对齐（唯一逻辑时钟 · 分层派发） | **Done** | — | [Design](./Platform/Core/CORE-F36_GAMEPLAY_FIXED_TICK_DESIGN.md) · L2 · S00–S04；S05 Stub Deferred · suite `gameplay-fixed-tick` · minCraft `ENG-GAP-FIXED-TICK` |
 | `CORE-F37` | RTTI hygiene 战役（Survey → 分簇 Design/机械波） | **In Progress** | — | [Survey](./Platform/Core/CORE-F37_RTTI_HYGIENE_SURVEY.md) · S01/B1-a/MAT-F07/S02 **Done**；B2/B1-b 后置 · [S02 Design](./Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) · TD-033 |
-| `CORE-F38` | TaskSystem（TaskFlow 薄包装 · Drain · 合成作业证明） | **Draft** | — | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · L2 · **不含** Asset 异步 · 不含逻辑/渲染分离 |
+| `CORE-F38` | TaskSystem（TaskFlow 薄包装 · Drain · 合成作业证明） | **Done** | — | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · [Impl](./Platform/Core/CORE-F38_TASK_SYSTEM_IMPLEMENTATION.md) · L2 · S00–S02 · suite `task-system` · **不含** Asset 异步 |
 | `CORE-F39` | 值类型 Codec 注册（特征分类 + 运行期表） | **Cancelled** | — | [Design](./Platform/Serialization/CORE-F39_VALUE_CODEC_REGISTRATION_DESIGN.md) · 根因改为句柄形状；由 [GP-F03](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) 承接 · ID 不回收 |
 | `CORE-F40` | Input Key Catalog（键盘/鼠侧键补全 · 合成修饰键 · canonical Gamepad） | **Done** | — | [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) · [Impl](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_IMPLEMENTATION.md) · `test input-key-catalog` · 软解锁 [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
 | `CORE-F41` | 会话日志文件 + Automation 读环 + Console 单条复制 | **Review** | — | [Design](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md) · L2 · `test logging-channels` · Console 手工待点验 |
@@ -212,7 +212,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CLI` | **F03** | F01 Done；**F02** Automation launch **Planned** |
 | `TEST` | **F06** | F04 Done；**F05** Draft（外仓测试） |
 | `WF` | **F05** | F02 handbook In Progress；**F03** branding Done；**F04** engineering-design sync **Done** |
-| `CORE` | **F43** | F27–F32/F34–**F36 Done**；**F33** In Progress；**F37** In Progress（战役收口）；**F38** Draft TaskSystem；**F39** Cancelled（值 Codec）；F29/F30；Prefab MVP **Done** |
+| `CORE` | **F43** | F27–F32/F34–**F36 Done**；**F33** In Progress；**F37** In Progress（战役收口）；**F38** Done TaskSystem；**F39** Cancelled（值 Codec）；F29/F30；Prefab MVP **Done** |
 | `ASSET` | **F11** | F01–F03/F05–F08 Done；**F04** In Progress；**F09** Deferred（async DataAsset · 等 F38）；**F10** In Progress（多态）；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |

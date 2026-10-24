@@ -1,3 +1,21 @@
+## 2026-10-24 — CORE-F38 Done：TaskSystem S00–S02
+
+- **Scope:** TaskFlow vendor + `TaskSystem` Submit/Wait/Drain + Engine 挂接 + 合成证明
+- **Completed:**
+  - Vendor TaskFlow v3.10.0 → `Third-Party/taskflow`
+  - `Runtime/Core/Tasks`；Engine Init/Shutdown；LogicalTick Drain（Input 后、Fixed 前）
+  - Suite `task-system` + smoke 序；功能/异常/Shutdown/非游戏线程拒绝；1 vs N perf（可 `MINENGINE_SKIP_TASK_PERF`）
+  - Design/Impl/Registry/ACTIVE_WORK → **Done**
+- **Verification:** `bin/minEngineTests.exe test task-system` — 8 passed / 36 assert（speedup ~6.3 本机）；`test smoke` from `bin` — EXIT 0（含 task-system）
+- **Next:** 一并 commit（docs+code）；真实客户另开 `ASSET-F09`
+
+## 2026-10-24 — CORE-F38 批准开工：Design Planned + Impl Plan
+
+- **Scope:** 吸收开工前 design-review（游戏线程=`Init` thread id；回调无结果载荷；`MINENGINE_API`）；维护者批准
+- **Completed:** Design Status → **Planned**；[Impl Plan](./Platform/Core/CORE-F38_TASK_SYSTEM_IMPLEMENTATION.md) S00–S02；Registry / ACTIVE_WORK / Digest 同步；`ASSET-F09` 仍 Deferred
+- **Verification:** docs only
+- **Next:** `feat/core` 对齐 `master` → S00（TaskFlow vendor + Init/Shutdown）
+
 ## 2026-10-22 — BUG-EDITOR-009：scene.set_property 空串 string 崩溃
 
 - **Scope:** `WritePropertyValue` 去掉对未构造 raw buffer 的 `GetProperty`/`SetProperty`；对齐 Graph 域 blob + `CommitObjectPropertyBlobs`；新增 suite `scene-property-string`（smoke）

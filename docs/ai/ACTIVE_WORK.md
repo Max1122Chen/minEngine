@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-22（BUILD-F03 刀2 `explicit` 默认 Done）
+Last updated: 2026-10-24（CORE-F38 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,12 +11,12 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（紧急）：** `ASSET-F10` DataAsset 多态 Load/Create（minCraft 派生表阻塞）。`CORE-F38` 并行候选（Design 已收窄）。收尾项不挡：F33 review / ASSET-F04。
+**Primary：** `ASSET-F10` 收尾 / 其它收尾（F33、ASSET-F04）。`CORE-F38` TaskSystem **Done**（`feat/core`）。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | 0 | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
-| 1 | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
+| — | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Done**（S00–S02；`test task-system`） | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · [Impl](./Platform/Core/CORE-F38_TASK_SYSTEM_IMPLEMENTATION.md) |
 | — | BUILD-F03 刀2 | 烧 `.def`→`explicit`（标宏 + codegen `MODULE_API`） | **Done**（批0–5 + 默认 `explicit`） | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · 附录 C |
 | — | GP-F03 | GameplayTag 名身份修订（去 Tag 上 Manager* + hash） | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
 | — | CORE-F39 | 值类型 Codec 注册 | **Cancelled** | 由 GP-F03 取代；勿开工 |
@@ -37,14 +37,14 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** ASSET-F10 主链。并行：审批 [CORE-F38](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md)。收尾：RND-F24 S04 / F33 / ASSET-F04。UI-F08 / CORE-F40 见并行表。
+**下一动作：** ASSET-F10 / RND-F24 S04 / F33 / ASSET-F04。多线程下一客户另开 `ASSET-F09` Design（等需要时）。UI-F08 见并行表。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
 | 轨 | 意图 | 状态 |
 |----|------|------|
 | 构建 · 导出契约 | 刀2：标注烧 `.def`→`explicit`；反射 `MODULE_API`；单例/常量表单份 | **BUILD-F03 刀2 Done**（默认 `explicit`）；F02/刀1/F04 大部已落地 |
-| 多线程 · TaskSystem | 引入 TaskFlow；Drain；合成作业 1 vs N。**本波不做 Asset 异步** | **CORE-F38 Draft（已收窄）** |
+| 多线程 · TaskSystem | 引入 TaskFlow；Drain；合成作业 1 vs N。**本波不做 Asset 异步** | **CORE-F38 Done** |
 | 多线程 · 资产异步 | DataAsset 等真实客户 | **ASSET-F09 Deferred** |
 | 多线程 · 帧线程 | 逻辑/渲染分离 | 后置 |
 | 光照 | Atmosphere | 后置 |

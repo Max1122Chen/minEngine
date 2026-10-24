@@ -25,6 +25,7 @@
 #include "Runtime/Function/GameplayFramework/Tags/GameplayTagManager.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
 #include "Runtime/Function/Framework/Time/GameplayFixedTickClock.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 
 #include <vector>
 
@@ -431,6 +432,9 @@ namespace minEngine
         ObjectManager::Initialize();
         InitializeEngineSubsystems();
 
+        m_TaskSystem = std::make_unique<TaskSystem>();
+        m_TaskSystem->Init();
+
         m_GameplayTagManager = std::make_shared<GameplayTagManager>();
         GameplayTagManager::SetInstance(m_GameplayTagManager.get());
         m_GameplayTagManager->Initialize();
@@ -485,6 +489,12 @@ namespace minEngine
         DestroyAllPIEGameInstances();
         DestroyGameInstance();
         DeinitializeEngineSubsystems();
+
+        if (m_TaskSystem)
+        {
+            m_TaskSystem->Shutdown();
+            m_TaskSystem.reset();
+        }
 
         if (m_FileDialogService)
         {
@@ -736,6 +746,10 @@ namespace minEngine
     void Engine::LogicalTick(float deltaTime)
     {
         m_InputSystem->Tick(deltaTime);
+        if (m_TaskSystem)
+        {
+            m_TaskSystem->DrainCompletions();
+        }
         TickGameplayFixedPhase(deltaTime);
         TickGameplayVariablePhase(deltaTime);
         if (m_AudioSystem)

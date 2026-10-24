@@ -34,6 +34,7 @@ namespace minEngine
     class GameInstance;
     class Scene;
     class GameplayFixedTickClock;
+    class TaskSystem;
 
     ME_CLASS()
     class MINENGINE_API Engine : public MEObject
@@ -128,6 +129,9 @@ namespace minEngine
         /** Test / tooling bypass for ProjectSettings.GameInstanceClass. nullptr clears. */
         void SetGameInstanceClassOverride(const Reflection::MEClass* gameInstanceClass);
 
+        /** Owned task pool; null until StartSystems / explicit Init. */
+        TaskSystem* GetTaskSystem() const { return m_TaskSystem.get(); }
+
     private:
         std::shared_ptr<GameInstance> CreateGameInstanceOfResolvedClass(
             const std::string& objectName,
@@ -169,6 +173,7 @@ namespace minEngine
 
         std::chrono::steady_clock::time_point m_LastTickTimePoint{std::chrono::steady_clock::now()};
         std::unique_ptr<GameplayFixedTickClock> m_GameplayFixedTickClock;
+        std::unique_ptr<TaskSystem> m_TaskSystem;
     };
 }
 

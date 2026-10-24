@@ -166,7 +166,13 @@ target_include_directories(${ENGINE_NAME} PUBLIC ./src
                                           PUBLIC ${THIRD_PARTY_PATH}/json
                                           PUBLIC ${THIRD_PARTY_PATH}/CLI11
                                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/miniaudio
+                                          PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/taskflow
                                           )
+
+# TaskFlow is header-only (vendored). Fail configure early if the pin is missing.
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Third-Party/taskflow/taskflow/taskflow.hpp")
+    message(FATAL_ERROR "Vendored TaskFlow not found. See Third-Party/taskflow/VENDOR.md.")
+endif()
 
 if(ASSIMP_LINK_TARGET STREQUAL "")
     message(FATAL_ERROR "Assimp library not found. Put libassimp-6.dll in ${EXECUTABLE_PATH} or provide Third-Party/assimp source.")

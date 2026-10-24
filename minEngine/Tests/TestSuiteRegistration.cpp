@@ -70,6 +70,7 @@
 #include "Suites/SpriteRuntimeConsumeTest.h"
 #include "Suites/SpriteAuthoringTest.h"
 #include "Suites/MaterialCompileCacheTest.h"
+#include "Suites/TaskSystemTest.h"
 
 namespace minEngine
 {
@@ -1305,6 +1306,28 @@ namespace minEngine
             }
         };
 
+        struct TaskSystemTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "task-system",
+                    "TaskSystem Submit / Wait / Drain",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'task-system'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "task-system",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MaterialCompileCacheTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1399,6 +1422,7 @@ namespace minEngine
         using WorldSubsystemSuite = TypedTestSuite<WorldSubsystemTestSuiteTraits>;
         using TickableSubsystemSuite = TypedTestSuite<TickableSubsystemTestSuiteTraits>;
         using GameplayFixedTickSuite = TypedTestSuite<GameplayFixedTickTestSuiteTraits>;
+        using TaskSystemSuite = TypedTestSuite<TaskSystemTestSuiteTraits>;
         using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -1482,6 +1506,7 @@ namespace minEngine
             registry.Register(WorldSubsystemSuite::Get());
             registry.Register(TickableSubsystemSuite::Get());
             registry.Register(GameplayFixedTickSuite::Get());
+            registry.Register(TaskSystemSuite::Get());
             registry.Register(MaterialCompileCacheSuite::Get());
             s_Registered = true;
 
