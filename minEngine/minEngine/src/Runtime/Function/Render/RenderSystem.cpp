@@ -1,5 +1,6 @@
 #include "RenderSystem.h"
 
+#include "Runtime/Core/Threading/RenderCommandPipe.h"
 #include "EngineShaderUtils.h"
 #include "OpenGL/OpenGLRHI.h"
 #include "ScreenUI/ScreenUIMaterialFactory.h"
@@ -152,7 +153,19 @@ namespace minEngine
 
     void RenderSystem::SubmitSceneDraw(const SceneDrawDesc& desc)
     {
+        if (RenderCommandPipe::HasInstance())
+        {
+            RenderCommandPipe::Get().SubmitViewIntent(desc);
+            return;
+        }
+
+        // Headless helpers that never started Engine frame pipe.
         m_PendingDraws.push_back(desc);
+    }
+
+    void RenderSystem::ReplacePendingDraws(std::vector<SceneDrawDesc> draws)
+    {
+        m_PendingDraws = std::move(draws);
     }
 
     void RenderSystem::PresentFrame()

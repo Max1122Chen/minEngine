@@ -264,8 +264,23 @@ namespace minEngine
             return;
         }
 
-        renderScene->UpdatePrimitive(m_PreviewMeshComponent.get());
-        renderScene->UpdateLight(m_PreviewLightComponent.get());
+        if (m_PreviewMeshComponent->GetSceneProxy() == nullptr)
+        {
+            renderScene->AddPrimitive(m_PreviewMeshComponent.get());
+        }
+        else
+        {
+            renderScene->RecreatePrimitive(m_PreviewMeshComponent.get());
+        }
+
+        if (m_PreviewLightComponent->GetSceneProxy() == nullptr)
+        {
+            renderScene->AddLight(m_PreviewLightComponent.get());
+        }
+        else
+        {
+            renderScene->RecreateLight(m_PreviewLightComponent.get());
+        }
     }
 
     void PreviewScene::Shutdown()

@@ -54,6 +54,18 @@ namespace minEngine
         }
     }
 
+    void SceneComponent::MarkRenderTransformDirty()
+    {
+        m_bRenderTransformDirty = true;
+        MarkForNeededEndOfFrameUpdate();
+    }
+
+    void SceneComponent::MarkRenderColorDirty()
+    {
+        m_bRenderColorDirty = true;
+        MarkForNeededEndOfFrameUpdate();
+    }
+
     void SceneComponent::MarkRenderStateDirty()
     {
         m_bRenderStateDirty = true;
@@ -64,7 +76,7 @@ namespace minEngine
     {
         m_bTransformDirty = true;
         m_PendingTeleportType = teleport;
-        MarkRenderStateDirty();
+        MarkRenderTransformDirty();
 
         for (SceneComponent* child : m_AttachChildren)
         {

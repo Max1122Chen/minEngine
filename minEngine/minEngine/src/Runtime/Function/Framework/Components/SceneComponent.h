@@ -24,7 +24,11 @@ namespace minEngine
         SceneComponent();
         virtual ~SceneComponent() override;
 
-        /** Marks this component's render proxy dirty (does not cascade). */
+        /** Marks transform-only render dirty (UpdateTransform fast path when supported). */
+        void MarkRenderTransformDirty();
+        /** Marks light color/intensity-style dirty (UpdateLightColor fast path). */
+        void MarkRenderColorDirty();
+        /** Marks render state/resources dirty (Recreate). */
         void MarkRenderStateDirty();
         /**
          * Local transform changed: dirty self for physics/render and cascade to attach children
@@ -44,7 +48,7 @@ namespace minEngine
 
             m_bVisible = visible;
             m_EffectiveVisibleCache = kEffectiveStateUnknown;
-            MarkRenderStateDirty();
+            MarkRenderTransformDirty();
         }
 
         /**
@@ -146,6 +150,8 @@ namespace minEngine
         std::vector<SceneComponent*> m_AttachChildren;
 
         bool m_bRenderStateDirty{ false };
+        bool m_bRenderTransformDirty{ false };
+        bool m_bRenderColorDirty{ false };
         bool m_bTransformDirty{ false };
         ETeleportType m_PendingTeleportType{ ETeleportType::ResetPhysics };
 

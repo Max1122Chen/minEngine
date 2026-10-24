@@ -50,17 +50,26 @@ namespace minEngine
 
     void SkyBoxComponent::DoEndOfFrameUpdate()
     {
-        if (!m_bRenderStateDirty || !IsActive())
+        if ((!m_bRenderStateDirty && !m_bRenderTransformDirty) || !IsActive())
         {
             return;
         }
 
         if (RenderScene* renderScene = GetOwningRenderScene())
         {
-            renderScene->UpdateSkyBox(this);
+            if (GetSceneProxy() == nullptr)
+            {
+                renderScene->SetSkyBox(this);
+            }
+            else
+            {
+                // MVP: property / transform changes recreate (no Sky snapshot packet).
+                renderScene->RecreateSkyBox(this);
+            }
         }
 
         m_bRenderStateDirty = false;
+        m_bRenderTransformDirty = false;
     }
 
     void SkyBoxComponent::ApplyActivationToSystems()

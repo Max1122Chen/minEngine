@@ -43,49 +43,49 @@ namespace minEngine
         if (!(m_LightColor == clampedColor))
         {
             m_LightColor = clampedColor;
-            MarkRenderStateDirty();
+            MarkRenderColorDirty();
         }
     }
 
     void LightComponent::SetIntensity(float inIntensity)
     {
-        if(!(m_Intensity == inIntensity))
+        if (!(m_Intensity == inIntensity))
         {
             m_Intensity = inIntensity < 0.0f ? 0.0f : inIntensity;
-            MarkRenderStateDirty();
+            MarkRenderColorDirty();
         }
     }
-    
+
     void LightComponent::SetDiffuseFactor(float inDiffuseFactor)
     {
-        if(!(m_DiffuseFactor == inDiffuseFactor))
+        if (!(m_DiffuseFactor == inDiffuseFactor))
         {
             m_DiffuseFactor = inDiffuseFactor < 0.0f ? 0.0f : inDiffuseFactor;
-            MarkRenderStateDirty();
+            MarkRenderColorDirty();
         }
     }
 
     void LightComponent::SetSpecularFactor(float inSpecularFactor)
     {
-        if(!(m_SpecularFactor == inSpecularFactor))
+        if (!(m_SpecularFactor == inSpecularFactor))
         {
             m_SpecularFactor = inSpecularFactor < 0.0f ? 0.0f : inSpecularFactor;
-            MarkRenderStateDirty();
+            MarkRenderColorDirty();
         }
     }
 
     void LightComponent::SetCastShadow(bool bInCastShadow)
     {
-        if(!(m_CastShadow == bInCastShadow))
+        if (!(m_CastShadow == bInCastShadow))
         {
             m_CastShadow = bInCastShadow;
             MarkRenderStateDirty();
         }
     }
-    
+
     void LightComponent::DoEndOfFrameUpdate()
     {
-        if (!m_bRenderStateDirty || !IsActive())
+        if ((!m_bRenderStateDirty && !m_bRenderTransformDirty && !m_bRenderColorDirty) || !IsActive())
         {
             return;
         }
@@ -108,11 +108,36 @@ namespace minEngine
             m_SpecularFactor = 0.0f;
         }
 
-        if (RenderScene* renderScene = GetOwningRenderScene())
+        RenderScene* renderScene = GetOwningRenderScene();
+        if (renderScene == nullptr)
         {
-            renderScene->UpdateLight(this);
+            return;
         }
+
+        LightSceneProxy* proxy = GetSceneProxy();
+        if (proxy == nullptr)
+        {
+            renderScene->AddLight(this);
+        }
+        else if (m_bRenderStateDirty || proxy->m_LightType != GetLightType())
+        {
+            renderScene->RecreateLight(this);
+        }
+        else
+        {
+            if (m_bRenderTransformDirty)
+            {
+                renderScene->UpdateLightTransform(this);
+            }
+            if (m_bRenderColorDirty)
+            {
+                renderScene->UpdateLightColor(this);
+            }
+        }
+
         m_bRenderStateDirty = false;
+        m_bRenderTransformDirty = false;
+        m_bRenderColorDirty = false;
     }
 
     void LightComponent::ApplyActivationToSystems()
@@ -125,6 +150,8 @@ namespace minEngine
         if (!m_LightSceneProxy)
         {
             m_bRenderStateDirty = false;
+            m_bRenderTransformDirty = false;
+            m_bRenderColorDirty = false;
             return;
         }
 
@@ -142,5 +169,7 @@ namespace minEngine
 
         m_LightSceneProxy = nullptr;
         m_bRenderStateDirty = false;
+        m_bRenderTransformDirty = false;
+        m_bRenderColorDirty = false;
     }
 }

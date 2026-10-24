@@ -4,7 +4,7 @@
 - **ID:** `CORE-F45`
 - **Type:** `Feature`（真 refactor：帧所有权与命令边界）
 - **Complexity:** `L3`
-- **Status:** `In Progress`（**S00 Done**；下一刀 S01 四家族 Enqueue）
+- **Status:** `In Progress`（**S00 Done**；S01 Design **Review 待 ACK** — UE 对齐加厚后再实现）
 - **Owner:** project maintainer
 - **Last updated:** `2026-10-24`
 - **Doc role:** **综述** — 跨线程契约、`FrameThreadMode`、切片总序、验收。角色细节见子 Design。
@@ -14,7 +14,7 @@
   - [CORE-F38](./CORE-F38_TASK_SYSTEM_DESIGN.md) · [CORE-F22 Profiler](./CORE-F22_PROFILER_HARNESS_DESIGN.md)
   - UE：`D:/Dev/GitRepo/UnrealEngine`（只读）
 - **Branch / worktree:** `feat/core` @ `D:/Dev/GitRepo/minEngine-core`
-- **Ready for implementation?** `yes` — S00 已落地；S01 待开工
+- **Ready for implementation?** S00 已落地；**S01 待 Game 子文 ACK**（UE 对齐加厚）后再开工
 
 ## TL;DR
 
@@ -142,7 +142,7 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 | 14 | Mode 配置优先级 CLI>Env>Config>**默认 Single**；非法值启动失败 |
 | 15 | Single List = **Immediate**；Multi = **Recording** |
 | 16 | Present = **RHIRole 末尾**统一调用（不强制进 List Op） |
-| 17 | Recreate vs UpdateFast MVP 标准见 Game 子文锁定表 |
+| 17 | Proxy 推送：**UE 模型** — Create≠登记；`MarkRenderTransformDirty`→具名小包；`MarkRenderStateDirty`→Recreate；Light 另有 Color 小包；Sky 指针 Set/Disable；**禁**全家桶 Snapshot / Sync-scratch（细则见 Game） |
 | 18 | 有界常量见上节 |
 
 ## Implementation slices
@@ -150,7 +150,7 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 | Slice | Done when |
 |-------|-----------|
 | **S00** | ✅ 身份 + Mode 解析/日志；Single 顺序跑通≈今日；**尚不改 Proxy 热路径** |
-| S01 | 四家族 Enqueue + Apply*_RT；删 GT 热 Sync；队列+Flush |
+| S01 | 四家族 Enqueue；Transform/Color **具名小包** 或 Recreate；Sky Set/Disable；禁全家桶 Snapshot；队列+Flush |
 | S02 | ViewIntent 代际；N−1 可测 |
 | S03 | List Recording + Immediate；Pass 调用约定不变 |
 | S04 | Multi OS 线程；有界阻塞；Wait 区段 |

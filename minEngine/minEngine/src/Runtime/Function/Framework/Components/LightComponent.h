@@ -47,6 +47,9 @@ namespace minEngine
         virtual LightSceneProxy* CreateSceneProxy() = 0;
         LightSceneProxy* GetSceneProxy() const { return m_LightSceneProxy; }
 
+        /** Drop the GT link before Recreate Create; RT still owns the old proxy until Remove_RT. */
+        void DetachSceneProxy() { m_LightSceneProxy = nullptr; }
+
     protected:
         void ApplyActivationToSystems() override;
         void RemoveActivationFromSystems() override;

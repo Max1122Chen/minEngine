@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `CORE-F45`（子 Design · Render）
 - **Parent:** [综述](./CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md)（Mode / Decisions 权威）
-- **Status:** `Review`（待维护者 ACK；随综述 Ready）
+- **Status:** `Review`（待 Game 子文 ACK；禁按 Snapshot 实现）
 - **Last updated:** `2026-10-24`
 - **Slices:** S01 apply / S02 世代 / S03 录制端 / S04 线程；配合 [RHI](./CORE-F45_RHI_THREAD_DESIGN.md) · [Game Proxy 推送](./CORE-F45_GAME_THREAD_DESIGN.md)
 - **UE：** Enqueue 消费侧；`AddPrimitiveCommand` / `UpdateTransformCommand` / `FAddLightCommand` 等**按家族** RT apply
@@ -92,26 +92,26 @@ Profile Frame.Render.WaitRHI   // Multi 背压
 
 **不采用** 中央万能 `variant` 当扩展轴（新家族会逼改公共类型）。若调试需要，允许旁路「带 tag 的包装」但不作为产品扩展模型。
 
-### 四家族 Apply 职责（与今日 `RenderScene.cpp` 对齐）
+### 四家族 Apply 职责（权威 = [Game 子文](./CORE-F45_GAME_THREAD_DESIGN.md) · 严格对齐 UE）
 
-| 家族 | Game 入口（保留） | RT apply（新/内化） | 热写内容来源 |
-|------|-------------------|---------------------|--------------|
-| Primitive | `UpdatePrimitive` / `RemovePrimitive` | Add：挂 `m_Primitive*`；UpdateFast：transform/castShadow/enabled…；Remove：摘列表+retire | 今日 `SyncSceneProxy` 字段迁到 RT |
-| Light | `UpdateLight` / `RemoveLight` | Add：按 LightType 挂 Dir/Point/Spot 列表；UpdateFast：position/color/intensity/锥角/衰减/enabled…；Remove | 今日 `UpdateLight` else 分支赋值迁到 RT |
-| SkyBox | `UpdateSkyBox` / `RemoveSkyBox` | Add/替换 `m_SkyBoxProxy`；UpdateFast：朝向/贴图句柄等；Remove | 今日 `UpdateSkyBox` 路径 |
-| Widget | `UpdateWidget` / `RemoveWidget` | Add：挂 `m_WidgetSceneProxies`；UpdateFast：布局/材质等；Remove | 今日 `UpdateWidget` 路径 |
+| 家族 | Game | RT Apply | 热写来源 |
+|------|------|----------|----------|
+| Primitive | Add / **UpdateTransform(小包)** / Recreate / Remove | 挂表；写 transform 小字段；摘表 | Create 仅 GT；**禁** Sync-scratch / 全家桶 Snapshot |
+| Light | Add / **UpdateTransform(小包)** / **UpdateColor(小包)** / Recreate / Remove | 挂表；写对应小字段 | 同左；**禁** `LightUpdateSnapshot` 全家桶 |
+| SkyBox | Set(proxy*) / Disable / 属性→**Recreate** | 设/清当前 Sky | 对齐 `SetSkyLight`/`DisableSkyLight` |
+| Widget | Add / Remove / 变更→**Recreate**（MVP） | 挂/摘表 | 暂无布局全家桶 Snapshot |
 
-- Proxy **对象**由 Game `CreateSceneProxy`；RT **登记所有权**进 `m_*Owners`（与今日 emplace 一致），不在 RT 再 Create（除非未来 Recreate 约定改到 RT）。
-- GPU 资源：`CreateRenderThreadResources` 类工作经 List/RHI（S01 Single 可暂同步创建）。
-- Recreate：Game 先 Enqueue Remove，再 Create+Enqueue Add（见 Game 子文）。
+- Proxy **对象** GT `CreateSceneProxy`；RT **只登记** owners/列表（及初值 SetTransform 若随 Add 小包）。
+- **禁止** RT 调 `SyncSceneProxy`；**禁止** CreateEmpty / CopyHotStateFrom / 家族全家桶 Snapshot。
+- Recreate = Enqueue Remove → GT Create → Enqueue Add。
 
-### 与今日路径映射（Primitive 示例；Light/Sky/Widget 同构）
+### 与今日路径映射
 
-| 今日 | 新 |
-|------|-----|
-| null → Create + push | GT Create + Enqueue Add_RT |
-| `SyncSceneProxy` / Light else 赋值 | Enqueue UpdateFast_RT（家族小快照） |
-| `Remove*` 擦向量 | Enqueue Remove_RT + retire |
+| 今日 | 新（UE） |
+|------|----------|
+| Create + 当场 push/Sync | GT Create + Enqueue **Add(proxy*)** |
+| 每次 Sync / Light 整段赋值 | **具名小包** UpdateTransform/UpdateColor，或 **Recreate** |
+| Remove* | Enqueue Remove |
 
 ## Cull / Sort / Batch（CS4）
 
@@ -194,3 +194,4 @@ Remove apply
 | 2026-10-24 | 拆出；加厚世代/工序 |
 | 2026-10-24 | **对齐 Game 纠偏：** 四家族 Apply*_RT；撤回巨石 payload |
 | 2026-10-24 | Mode A：锁命令载体 A；工序与综述一致；待 ACK |
+| 2026-10-24 | 随 Game 加厚：禁 Snapshot；Light Transform+Color；Sky 指针；待 ACK |

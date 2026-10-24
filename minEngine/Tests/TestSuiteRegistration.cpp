@@ -1350,6 +1350,28 @@ namespace minEngine
             }
         };
 
+        struct RenderCommandPipeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "render-command-pipe",
+                    "RenderCommandPipe Enqueue / ViewIntent",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'render-command-pipe'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "render-command-pipe",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MaterialCompileCacheTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1446,6 +1468,7 @@ namespace minEngine
         using GameplayFixedTickSuite = TypedTestSuite<GameplayFixedTickTestSuiteTraits>;
         using TaskSystemSuite = TypedTestSuite<TaskSystemTestSuiteTraits>;
         using FrameThreadingSuite = TypedTestSuite<FrameThreadingTestSuiteTraits>;
+        using RenderCommandPipeSuite = TypedTestSuite<RenderCommandPipeTestSuiteTraits>;
         using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -1531,6 +1554,7 @@ namespace minEngine
             registry.Register(GameplayFixedTickSuite::Get());
             registry.Register(TaskSystemSuite::Get());
             registry.Register(FrameThreadingSuite::Get());
+            registry.Register(RenderCommandPipeSuite::Get());
             registry.Register(MaterialCompileCacheSuite::Get());
             s_Registered = true;
 

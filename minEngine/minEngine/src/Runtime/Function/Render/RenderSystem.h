@@ -31,7 +31,11 @@ namespace minEngine
         /** Swapchain/backbuffer present (neutral frame boundary). */
         void PresentFrame();
 
+        /** Game-role ViewIntent submit (queued by logic frame). */
         void SubmitSceneDraw(const SceneDrawDesc& desc);
+
+        /** Render-role: replace the draw list taken from ViewIntent for this frame. */
+        void ReplacePendingDraws(std::vector<SceneDrawDesc> draws);
 
         void SetPresentPassEnabled(bool enabled);
 

@@ -3,6 +3,7 @@
 #include "Runtime/Core/CLI/CommandLineResult.h"
 #include "Runtime/Core/Object/MEObject.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
+#include "Runtime/Core/Threading/RenderCommandPipe.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Function/Framework/Subsystems/Subsystem.h"
 #include "Runtime/Function/Framework/Subsystems/SubsystemCollection.h"
@@ -137,8 +138,12 @@ namespace minEngine
         /** Frame role identity / mode; null until Initialize. */
         FrameThreading* GetFrameThreading() const { return m_FrameThreading.get(); }
 
+        /** Game→Render command / ViewIntent pipe; null until Initialize. */
+        RenderCommandPipe* GetRenderCommandPipe() const { return m_RenderCommandPipe.get(); }
+
     private:
         void InitializeFrameThreading(std::optional<FrameThreadMode> commandLineOverride);
+        void InitializeRenderCommandPipe();
         std::shared_ptr<GameInstance> CreateGameInstanceOfResolvedClass(
             const std::string& objectName,
             Scene* primaryScene,
@@ -181,6 +186,7 @@ namespace minEngine
         std::unique_ptr<GameplayFixedTickClock> m_GameplayFixedTickClock;
         std::unique_ptr<TaskSystem> m_TaskSystem;
         std::unique_ptr<FrameThreading> m_FrameThreading;
+        std::unique_ptr<RenderCommandPipe> m_RenderCommandPipe;
     };
 }
 

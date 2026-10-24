@@ -42,6 +42,7 @@ namespace minEngine
         proxy->m_DiffuseFactor = GetDiffuseFactor();
         proxy->m_SpecularFactor = GetSpecularFactor();
         proxy->m_CastsShadow = CastShadow();
+        proxy->m_Enabled = IsActiveAndVisible();
         proxy->m_AttenuationRadius = GetAttenuationRadius();
         proxy->m_AttenuationFalloff = GetAttenuationFalloff();
         m_LightSceneProxy = proxy;

@@ -21,7 +21,7 @@ namespace minEngine
             if (m_CastShadow != bInCastShadow)
             {
                 m_CastShadow = bInCastShadow;
-                MarkRenderStateDirty();
+                MarkRenderTransformDirty();
             }
         }
 
@@ -33,7 +33,16 @@ namespace minEngine
         virtual PrimitiveSceneProxy* CreateSceneProxy() = 0;
         PrimitiveSceneProxy* GetSceneProxy() const { return m_SceneProxy; }
 
-        /** Push game-thread state into the render mirror. RenderScene does not downcast. */
+        /** Drop the GT link before Recreate Create; RT still owns the old proxy until Remove_RT. */
+        void DetachSceneProxy() { m_SceneProxy = nullptr; }
+
+        /**
+         * UE-style gate: true → Remove+Create+Add; false → Transform small-packet update.
+         * Default: any render-state dirty this frame requires recreate.
+         */
+        virtual bool ShouldRecreateSceneProxy() const { return m_bRenderStateDirty; }
+
+        /** Fill a newly created proxy on the game thread (Add/Recreate only — not UpdateTransform). */
         virtual void SyncSceneProxy(PrimitiveSceneProxy& proxy);
 
     protected:

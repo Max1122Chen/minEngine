@@ -33,7 +33,11 @@ namespace minEngine
 
     void PrimitiveComponent::DoEndOfFrameUpdate()
     {
-        if (!m_bRenderStateDirty || !IsActive())
+        if (!IsActive())
+        {
+            return;
+        }
+        if (!m_bRenderStateDirty && !m_bRenderTransformDirty)
         {
             return;
         }
@@ -44,8 +48,21 @@ namespace minEngine
             return;
         }
 
-        renderScene->UpdatePrimitive(this);
+        if (GetSceneProxy() == nullptr)
+        {
+            renderScene->AddPrimitive(this);
+        }
+        else if (m_bRenderStateDirty || ShouldRecreateSceneProxy())
+        {
+            renderScene->RecreatePrimitive(this);
+        }
+        else if (m_bRenderTransformDirty)
+        {
+            renderScene->UpdatePrimitiveTransform(this);
+        }
+
         m_bRenderStateDirty = false;
+        m_bRenderTransformDirty = false;
     }
 
     void PrimitiveComponent::ApplyActivationToSystems()
@@ -74,6 +91,7 @@ namespace minEngine
 
         m_SceneProxy = nullptr;
         m_bRenderStateDirty = false;
+        m_bRenderTransformDirty = false;
     }
 
     void PrimitiveComponent::SyncSceneProxy(PrimitiveSceneProxy& proxy)

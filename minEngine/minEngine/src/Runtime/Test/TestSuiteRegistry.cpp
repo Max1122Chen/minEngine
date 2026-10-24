@@ -63,6 +63,7 @@ namespace minEngine
             "texture-sampler",
             "task-system",
             "frame-threading",
+            "render-command-pipe",
         };
 
         std::vector<ITestSuite*> ordered;

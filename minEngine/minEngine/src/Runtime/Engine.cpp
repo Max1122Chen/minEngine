@@ -27,6 +27,7 @@
 #include "Runtime/Function/Framework/Time/GameplayFixedTickClock.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
+#include "Runtime/Core/Threading/RenderCommandPipe.h"
 
 #include <vector>
 
@@ -114,6 +115,12 @@ namespace minEngine
         m_FrameThreading->Initialize(*resolved);
     }
 
+    void Engine::InitializeRenderCommandPipe()
+    {
+        m_RenderCommandPipe = std::make_unique<RenderCommandPipe>();
+        m_RenderCommandPipe->Initialize();
+    }
+
     void Engine::Initialize(const CommandLineResult& commandLine)
     {
         ME_ASSERT(s_Instance == nullptr, "Engine is already initialized");
@@ -124,6 +131,7 @@ namespace minEngine
 
         LogSystem::Get().Initialize();
         InitializeFrameThreading(commandLine.FrameThreads);
+        InitializeRenderCommandPipe();
         BeginEngineProfileStartup();
         {
             ME_PROFILE_SCOPE("Engine.Initialize");
@@ -157,6 +165,7 @@ namespace minEngine
 
         LogSystem::Get().Initialize();
         InitializeFrameThreading(std::nullopt);
+        InitializeRenderCommandPipe();
         BeginEngineProfileStartup();
         {
             ME_PROFILE_SCOPE("Engine.Initialize");
@@ -230,9 +239,43 @@ namespace minEngine
         {
             FrameThreading::Get().AssertIsFrameThread(FrameThreadKind::Render, "TickRendererFrame");
         }
+
+        uint64_t logicFrame = 0;
+        if (RenderCommandPipe::HasInstance())
+        {
+            RenderCommandPipe& pipe = RenderCommandPipe::Get();
+            logicFrame = pipe.GetLogicFrameIndex();
+            const uint64_t published = pipe.GetPublishedWorldGen();
+            if (logicFrame > 0)
+            {
+                const bool worldReady =
+                    published != UINT64_MAX && published >= (logicFrame - 1);
+                ME_ASSERT(worldReady, "RenderRole expected publishedWorldGen >= N-1 before draw");
+            }
+
+            {
+                ME_PROFILE_SCOPE("Frame.Render.View");
+                std::vector<SceneDrawDesc> intents;
+                pipe.TakeViewIntents(logicFrame, intents);
+                if (m_RenderSystem)
+                {
+                    m_RenderSystem->ReplacePendingDraws(std::move(intents));
+                }
+            }
+        }
+
         {
             ME_PROFILE_SCOPE("Frame.Render.Record");
             RendererTick(deltaTime);
+        }
+
+        if (RenderCommandPipe::HasInstance())
+        {
+            ME_PROFILE_SCOPE("Frame.Render.Apply");
+            RenderCommandPipe& pipe = RenderCommandPipe::Get();
+            pipe.FlushApplyForFrame(logicFrame);
+            pipe.SetPublishedWorldGen(logicFrame);
+            pipe.AdvanceLogicFrame();
         }
 
         // Retired scenes may have been referenced by draws submitted before retirement; the
@@ -618,6 +661,12 @@ namespace minEngine
             m_GameplayTagManager->Shutdown();
             GameplayTagManager::SetInstance(nullptr);
             m_GameplayTagManager.reset();
+        }
+
+        if (m_RenderCommandPipe)
+        {
+            m_RenderCommandPipe->Shutdown();
+            m_RenderCommandPipe.reset();
         }
 
         if (m_FrameThreading)

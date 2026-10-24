@@ -1,5 +1,6 @@
 #include "WidgetComponent.h"
 
+#include "Runtime/Function/Framework/Components/CanvasComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/RenderScene.h"
@@ -212,7 +213,7 @@ namespace minEngine
 
     void WidgetComponent::DoEndOfFrameUpdate()
     {
-        if (!m_bRenderStateDirty || !IsActive())
+        if ((!m_bRenderStateDirty && !m_bRenderTransformDirty) || !IsActive())
         {
             return;
         }
@@ -220,10 +221,19 @@ namespace minEngine
         RenderScene* renderScene = GetOwningRenderScene();
         if (renderScene)
         {
-            renderScene->UpdateWidget(this);
+            if (GetSceneProxy() == nullptr)
+            {
+                renderScene->AddWidget(this);
+            }
+            else
+            {
+                // MVP: layout / material / mesh changes recreate (no Widget snapshot packet).
+                renderScene->RecreateWidget(this);
+            }
         }
 
         m_bRenderStateDirty = false;
+        m_bRenderTransformDirty = false;
     }
 
     void WidgetComponent::ApplyActivationToSystems()
@@ -331,7 +341,10 @@ namespace minEngine
         }
         proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
 
-        proxy.m_bVisible = proxy.m_MaterialProxy != nullptr
+        CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(GetOwner());
+        const bool canvasOk = canvas != nullptr && canvas->IsActive();
+        proxy.m_bVisible = canvasOk
+            && proxy.m_MaterialProxy != nullptr
             && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
             && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
             && proxy.m_SizePx.y > 0.0f;

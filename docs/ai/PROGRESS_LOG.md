@@ -1,3 +1,15 @@
+## 2026-10-24 — CORE-F45 S01/S02（显式 Proxy 推送 + ViewIntent）
+
+- **Scope:** ACK 后按 UE 显式 API 重写 Game→Render 推送；ViewIntent + 先画后 Apply
+- **Completed:**
+  - `RenderCommandPipe`：Enqueue / FlushApply / ViewIntent / publishedWorldGen
+  - `RenderScene`：Add / UpdateTransform / UpdateColor(Light) / Recreate / Remove；删除全家桶 Snapshot
+  - Dirty：`MarkRenderTransformDirty` / `MarkRenderColorDirty` / `MarkRenderStateDirty`；EOF 分流
+  - Engine RenderRole：Take ViewIntent → Record → FlushApply(N) → publishedWorldGen=N → Advance
+  - suite `render-command-pipe`（smoke）
+- **Verification:** `minEngineTests.exe test render-command-pipe`；`test frame-threading`；`test smoke` exit 0 @ `minEngine-core`（cwd=`minEngine/bin`）
+- **Next:** Multi OS 线程 / RHI List（按 Render/RHI 子 Design）
+
 ## 2026-10-24 — CORE-F45 S00 落地（身份 + Mode）
 
 - **Scope:** `FrameThreading` 角色身份 / `FrameThreadMode`；CLI + Engine 接入；**不改 Proxy 热路径**
