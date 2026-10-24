@@ -1,3 +1,16 @@
+## 2026-10-24 — CORE-F45 S03（RHICommandList Immediate / Recording）
+
+- **Scope:** List 状态机；Single 默认 Immediate；Recording 可测；Pass 调用约定不变
+- **Completed:**
+  - RHICommandList：BeginRecording / FinishRecording / Replay / Reset；SetImmediateOverride
+  - Immediate：命令仍直调 RHICmd*；Begin/Finish/Replay no-op
+  - Recording：入队 std::function，Replay 回放；Create* 仍同步
+  - Forward/Manual：主路径 Begin→Passes→Finish→Replay（Single 行为≈今日）
+  - suite 
+hi-command-list（smoke）
+- **Verification:** minEngineTests.exe test rhi-command-list；	est smoke exit 0 @ minEngine-core（cwd=minEngine/bin）
+- **Next:** S04 Multi OS 线程 + Finished-List 池 / Wait 区段
+
 ## 2026-10-24 — CORE-F45 S01/S02（显式 Proxy 推送 + ViewIntent）
 
 - **Scope:** ACK 后按 UE 显式 API 重写 Game→Render 推送；ViewIntent + 先画后 Apply

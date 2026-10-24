@@ -64,6 +64,7 @@ namespace minEngine
             "task-system",
             "frame-threading",
             "render-command-pipe",
+            "rhi-command-list",
         };
 
         std::vector<ITestSuite*> ordered;

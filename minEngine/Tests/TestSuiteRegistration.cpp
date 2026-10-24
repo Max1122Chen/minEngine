@@ -71,6 +71,7 @@
 #include "Suites/SpriteAuthoringTest.h"
 #include "Suites/MaterialCompileCacheTest.h"
 #include "Suites/TaskSystemTest.h"
+#include "Suites/RHICommandListTest.h"
 
 namespace minEngine
 {
@@ -1372,6 +1373,28 @@ namespace minEngine
             }
         };
 
+        struct RHICommandListTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "rhi-command-list",
+                    "RHICommandList Immediate / Recording",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'rhi-command-list'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "rhi-command-list",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MaterialCompileCacheTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1469,6 +1492,7 @@ namespace minEngine
         using TaskSystemSuite = TypedTestSuite<TaskSystemTestSuiteTraits>;
         using FrameThreadingSuite = TypedTestSuite<FrameThreadingTestSuiteTraits>;
         using RenderCommandPipeSuite = TypedTestSuite<RenderCommandPipeTestSuiteTraits>;
+        using RHICommandListSuite = TypedTestSuite<RHICommandListTestSuiteTraits>;
         using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
 
         void RegisterAllTestSuites()
@@ -1555,6 +1579,7 @@ namespace minEngine
             registry.Register(TaskSystemSuite::Get());
             registry.Register(FrameThreadingSuite::Get());
             registry.Register(RenderCommandPipeSuite::Get());
+            registry.Register(RHICommandListSuite::Get());
             registry.Register(MaterialCompileCacheSuite::Get());
             s_Registered = true;
 

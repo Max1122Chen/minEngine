@@ -3,7 +3,7 @@
 ## Meta
 - **ID:** `CORE-F45`（子 Design · RHI）
 - **Parent:** [综述](./CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md)
-- **Status:** `Review`（待维护者 ACK；随综述 Ready）
+- **Status:** `In Progress`（S03 Immediate/Recording 落地中）
 - **Last updated:** `2026-10-24`
 - **Slices:** S03 List 录制化 / S04 回放端 / S05 亲和；录制时机见 [Render](./CORE-F45_RENDER_THREAD_DESIGN.md)
 - **UE：** `FRHICommandList` Recording + `DispatchToRHIThread`；Bypass / Immediate
@@ -160,12 +160,12 @@ RHI:    dequeue → Replay → pool.free(list)
 
 ## 验收
 
-- [ ] Single Immediate：Pass 零改调用约定，smoke 绿
+- [x] Single Immediate：Pass 零改调用约定，smoke 绿
 - [ ] Multi Recording：Finish 前无 Present；Replay 仅 RHI 身份
 - [ ] 错线程 Present / Replay 断言
 - [ ] S05：Multi 下 Game tid 无 GL draw
 - [ ] Profiler：`Frame.RHI.*` 两 Mode 可见
-- [ ] 无第二套 Pass 命令 API
+- [x] 无第二套 Pass 命令 API
 
 ## 失败
 
@@ -185,4 +185,5 @@ RHI:    dequeue → Replay → pool.free(list)
 |------|--------|
 | 2026-10-24 | 拆出；List 录制化澄清 |
 | 2026-10-24 | 加厚：状态机、MVP Op、Immediate/Recording、亲和、池 |
+| 2026-10-24 | **S03：** Immediate/Recording 状态机 + suite；Forward/Manual Begin/Finish/Replay |
 | 2026-10-24 | Mode A：锁 Present@RHIRole、池深度=3、D15 Immediate/Recording；待 ACK |

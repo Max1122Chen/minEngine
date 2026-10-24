@@ -346,6 +346,7 @@ namespace minEngine
         }
 
         RHICommandList cmdList(rhi);
+        cmdList.BeginRecording();
         UpdatePerFrameUBO(ctx);
 
         if (const bool texturesRecreated = EnsureManualTextures(*rhi, width, height); texturesRecreated)
@@ -416,6 +417,9 @@ namespace minEngine
 
         sceneTarget->PublishGraphColorTexture(m_ManualSceneColor);
         sceneTarget->PublishGraphDepthTexture(m_ManualSceneDepth);
+
+        cmdList.FinishRecording();
+        cmdList.Replay();
 
         ++m_FrameIndex;
     }

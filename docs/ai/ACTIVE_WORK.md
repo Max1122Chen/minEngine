@@ -15,7 +15,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00–S02 Done · Multi/RHI 后置） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
+| 0 | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00–S03 Done · 下一 S04 Multi） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（自 feat/render） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
@@ -40,7 +40,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** 验收本批 Game S01/S02 后提交；下一切片按 Render/RHI Design（Multi OS 线程 / List）。主树 `master` 稳供 minCraft。
+**下一动作：** 推进 S04（Multi OS 线程 + List 池 / Wait）。主树 `master` 稳供 minCraft。
 
 **已记录目标（多轨，不是线性 TODO）：**
 

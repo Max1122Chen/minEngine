@@ -4,7 +4,7 @@
 - **ID:** `CORE-F45`
 - **Type:** `Feature`（真 refactor：帧所有权与命令边界）
 - **Complexity:** `L3`
-- **Status:** `In Progress`（**S00 Done**；S01 Design **Review 待 ACK** — UE 对齐加厚后再实现）
+- **Status:** `In Progress`（**S00–S03 Done**；下一 S04 Multi OS）
 - **Owner:** project maintainer
 - **Last updated:** `2026-10-24`
 - **Doc role:** **综述** — 跨线程契约、`FrameThreadMode`、切片总序、验收。角色细节见子 Design。
@@ -14,7 +14,7 @@
   - [CORE-F38](./CORE-F38_TASK_SYSTEM_DESIGN.md) · [CORE-F22 Profiler](./CORE-F22_PROFILER_HARNESS_DESIGN.md)
   - UE：`D:/Dev/GitRepo/UnrealEngine`（只读）
 - **Branch / worktree:** `feat/core` @ `D:/Dev/GitRepo/minEngine-core`
-- **Ready for implementation?** S00 已落地；**S01 待 Game 子文 ACK**（UE 对齐加厚）后再开工
+- **Ready for implementation?** yes（S00–S02 已落地；S03 开工）
 
 ## TL;DR
 
@@ -150,9 +150,9 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 | Slice | Done when |
 |-------|-----------|
 | **S00** | ✅ 身份 + Mode 解析/日志；Single 顺序跑通≈今日；**尚不改 Proxy 热路径** |
-| S01 | 四家族 Enqueue；Transform/Color **具名小包** 或 Recreate；Sky Set/Disable；禁全家桶 Snapshot；队列+Flush |
-| S02 | ViewIntent 代际；N−1 可测 |
-| S03 | List Recording + Immediate；Pass 调用约定不变 |
+| **S01** | ✅ 四家族 Enqueue；Transform/Color 具名小包或 Recreate；禁全家桶 Snapshot |
+| **S02** | ✅ ViewIntent 代际；N−1 |
+| **S03** | ✅ List Recording + Immediate；Pass 调用约定不变 |
 | S04 | Multi OS 线程；有界阻塞；Wait 区段 |
 | S05 | GL/Vulkan 亲和；Present 仅 RHI |
 | S06 | 清旧直调清单；文档；ImGui 小决策；可选 Multi 烟测 |
@@ -197,6 +197,7 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 
 | Date | Change |
 |------|--------|
+| 2026-10-24 | **S01/S02 Done：** 显式 Proxy 推送 + ViewIntent/先画后 Apply |
 | 2026-10-24 | **S00 Done：** `FrameThreading` + CLI + Engine assert/scope + suite `frame-threading` |
 | 2026-10-24 | Status → In Progress；S00 开工 |
 | 2026-10-24 | Draft→Review；拆分；List 录制；Mode；Proxy 家族纠偏 |

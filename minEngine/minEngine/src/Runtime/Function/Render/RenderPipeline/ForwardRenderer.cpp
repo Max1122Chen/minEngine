@@ -657,6 +657,7 @@ namespace minEngine
         m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
 
         RHICommandList cmdList(rhi);
+        cmdList.BeginRecording();
 
         UpdatePerFrameUBO(ctx);
 
@@ -731,6 +732,9 @@ namespace minEngine
         m_ScreenUIPass.m_ViewportHeight = sceneTarget->GetHeight();
 
         EnqueueFrameRenderGraph(cmdList, sceneTarget);
+
+        cmdList.FinishRecording();
+        cmdList.Replay();
 
         ++m_FrameIndex;
     }
