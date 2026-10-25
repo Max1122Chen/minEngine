@@ -11,6 +11,7 @@
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/UI/UISystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Pointer/PointerPolicyService.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Shell/IEditorContext.h"
@@ -265,12 +266,9 @@ namespace minEngine
         m_State = PlayState::Editing;
         ApplyInspectingSceneForPlayState();
 
-        if (WindowSystem::HasInstance())
+        if (PointerPolicyService::HasInstance())
         {
-            WindowCursorClipRect clearRect;
-            clearRect.bEnabled = false;
-            WindowSystem::Get().SetCursorClipRect(clearRect);
-            WindowSystem::Get().SetCursorVisible(true);
+            PointerPolicyService::Get().ClearAllRequestsAndApplyFree();
         }
 
         if (InputSystem::HasInstance())

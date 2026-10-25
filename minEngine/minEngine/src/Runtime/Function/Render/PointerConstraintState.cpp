@@ -133,7 +133,7 @@ namespace minEngine
 
     void PointerConstraintState::SetCursorVisibleRequest(bool visible)
     {
-        m_bCursorVisibleRequest = visible;
+        m_CursorModeRequest = visible ? EWindowCursorMode::Normal : EWindowCursorMode::Disabled;
         if (m_bWindowActive)
         {
             ApplyCurrentRequest();
@@ -143,6 +143,22 @@ namespace minEngine
     void PointerConstraintState::SetClipRectRequest(const WindowCursorClipRect& rect)
     {
         m_ClipRequest = rect;
+        // Legacy pairing: clip on implies relative capture (Captured-style). Prefer SetPointerWindowCommandRequest.
+        m_bRelativeCaptureRequest = rect.bEnabled;
+        if (m_bWindowActive)
+        {
+            ApplyCurrentRequest();
+        }
+    }
+
+    void PointerConstraintState::SetPointerWindowCommandRequest(
+        EWindowCursorMode mode,
+        const WindowCursorClipRect& clip,
+        bool bRelativeCapture)
+    {
+        m_CursorModeRequest = mode;
+        m_ClipRequest = clip;
+        m_bRelativeCaptureRequest = bRelativeCapture;
         if (m_bWindowActive)
         {
             ApplyCurrentRequest();
@@ -191,7 +207,8 @@ namespace minEngine
     {
         RevokeAll();
         m_ClipRequest = WindowCursorClipRect{};
-        m_bCursorVisibleRequest = true;
+        m_CursorModeRequest = EWindowCursorMode::Normal;
+        m_bRelativeCaptureRequest = false;
     }
 
     PointerConstraintDiagnostics PointerConstraintState::GetDiagnostics() const
@@ -212,7 +229,7 @@ namespace minEngine
             return;
         }
 
-        m_Sink.ApplyCursorMode(m_bCursorVisibleRequest ? EWindowCursorMode::Normal : EWindowCursorMode::Disabled);
+        m_Sink.ApplyCursorMode(m_CursorModeRequest);
 
         WindowCursorClipRect applied = m_ClipRequest;
         if (applied.bEnabled)
@@ -234,7 +251,7 @@ namespace minEngine
         }
 
         m_Sink.ApplyOsClip(applied);
-        m_Sink.ApplyRelativeCapture(applied.bEnabled);
+        m_Sink.ApplyRelativeCapture(m_bRelativeCaptureRequest);
     }
 
     void PointerConstraintState::RevokeAll()

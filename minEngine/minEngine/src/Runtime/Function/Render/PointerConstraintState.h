@@ -81,6 +81,11 @@ namespace minEngine
 
         void SetCursorVisibleRequest(bool visible);
         void SetClipRectRequest(const WindowCursorClipRect& rect);
+        /** Full command from PointerPolicyService (mode, clip, relative capture independent). */
+        void SetPointerWindowCommandRequest(
+            EWindowCursorMode mode,
+            const WindowCursorClipRect& clip,
+            bool bRelativeCapture);
 
         /** Focus entry, shared by the platform callback and the tests. */
         void OnWindowFocusChanged(bool focused);
@@ -99,7 +104,8 @@ namespace minEngine
 
         ICursorConstraintSink& m_Sink;
         WindowCursorClipRect m_ClipRequest;
-        bool m_bCursorVisibleRequest = true;
+        EWindowCursorMode m_CursorModeRequest = EWindowCursorMode::Normal;
+        bool m_bRelativeCaptureRequest = false;
         bool m_bWindowActive = false;
         uint32_t m_FocusRevokeCount = 0;
         uint32_t m_WatchdogRevokeCount = 0;

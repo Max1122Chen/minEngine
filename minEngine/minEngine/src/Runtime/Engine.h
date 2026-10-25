@@ -32,6 +32,8 @@ namespace minEngine
     class PhysicsSystem;
     class AudioSystem;
     class UISystem;
+    class PointerPolicyService;
+    class WindowSystemPointerModeSink;
     class FileDialogService;
     class LuaScriptSystem;
     class GameplayTagManager;
@@ -188,6 +190,8 @@ namespace minEngine
         std::shared_ptr<PhysicsSystem> m_PhysicsSystem;
         std::shared_ptr<AudioSystem> m_AudioSystem;
         std::shared_ptr<UISystem> m_UISystem;
+        std::unique_ptr<PointerPolicyService> m_PointerPolicyService;
+        std::unique_ptr<WindowSystemPointerModeSink> m_PointerModeSink;
         std::shared_ptr<FileDialogService> m_FileDialogService;
         std::shared_ptr<LuaScriptSystem> m_LuaScriptSystem;
         std::shared_ptr<GameplayTagManager> m_GameplayTagManager;

@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-25（CORE-F46 S03 Done · Feature Done）
+Last updated: 2026-10-25（CORE-F42 S02/S03/S05 竖切落地）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,10 +11,11 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `feat/core`）：** `CORE-F46` **Done**（TaskSystem 统一门面；S00–S03）。`CORE-F45` S00–S03 Done；S04 已吸收进 F46。已合并 `feat/render`：`RND-F26` Done。下一焦点待主人点选。
+**Primary（本工作树 `feat/core`）：** `CORE-F42` **In Progress**（S01 + S02/S03/S05 竖切；S04 Shift+F1 / S06 UI 自动 Confined / 位置采样余量）。`CORE-F46` **Done**。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
+| 0 | CORE-F42 | 指针/光标策略服务 | **In Progress**（S01–S03/S05 Done；S04/S06 余） | [Design](./Platform/Core/CORE-F42_POINTER_POLICY_DESIGN.md) · [S01](./Platform/Core/CORE-F42_S01_FOCUS_SCOPED_POINTER_IMPLEMENTATION.md) · [S02–S05](./Platform/Core/CORE-F42_S02_S05_POINTER_POLICY_SERVICE_IMPLEMENTATION.md) · `test pointer-policy` |
 | — | CORE-F46 | TaskSystem 统一门面（角色线程 + ParallelFor + 小 DAG） | **Done**（S00–S03） | [Design](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) |
 | — | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Done**（S00–S03；S04 吸收进 F46） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（自 feat/render） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
@@ -41,7 +42,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** 主人验收后合入 `master`（稳供 minCraft）；或点选下一 Primary。Sprite SPIR-V 红字仍为既有问题。
+**下一动作：** minCraft 改 `ApplyPointerMode` → `Pointer::ShowUi()`；可选 S04 Shift+F1；合入 `master` 稳供消费方。
 
 **Editor Multi：** ImGui 拆 Platform（Game/GLFW）与 Renderer（graphics）；`wait=true` 交接 `ImDrawData`。`--frame-threads multi` 可跑（OpenGL combined）。
 

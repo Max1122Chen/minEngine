@@ -38,6 +38,10 @@ namespace minEngine
         virtual void PollEvents() const override;
         virtual void SetCursorVisible(bool visible) override;
         virtual void SetCursorClipRect(const WindowCursorClipRect& rect) override;
+        virtual void ApplyPointerWindowCommand(
+            EWindowCursorMode mode,
+            const WindowCursorClipRect& clip,
+            bool bRelativeCapture) override;
         virtual Vector2 ConsumeRelativeMouseDelta() override;
         virtual WindowCursorConstraintState GetCursorConstraintState() const override;
 

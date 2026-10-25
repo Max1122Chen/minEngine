@@ -436,7 +436,7 @@ namespace minEngine
         }
         m_Appearance.SetImGuiBackend(&m_ImGuiBackend);
 
-        WindowSystem::Get().SetCursorVisible(true);
+        // PointerPolicyService owns cursor mode; empty stack resolves to Free on first BeginFrame.
 
         m_ViewportRegistry.SetContext(this);
         m_MaterialEditor = std::make_unique<MaterialEditor>();

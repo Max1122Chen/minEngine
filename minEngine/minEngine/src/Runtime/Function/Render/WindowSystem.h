@@ -70,6 +70,14 @@ namespace minEngine
         /** Confine OS cursor to a screen-space rect; bEnabled=false clears. Win32 ClipCursor; other platforms may no-op or degrade. */
         virtual void SetCursorClipRect(const WindowCursorClipRect& rect) = 0;
         /**
+         * Full pointer apply (mode × clip × relative). Preferred entry for PointerPolicyService;
+         * SetCursorVisible / SetCursorClipRect remain for legacy callers and map onto this path.
+         */
+        virtual void ApplyPointerWindowCommand(
+            EWindowCursorMode mode,
+            const WindowCursorClipRect& clip,
+            bool bRelativeCapture) = 0;
+        /**
          * Relative mouse motion accumulated since last consume (e.g. Win32 Raw Input while clipped).
          * Zero when unsupported or idle. Used so look intent continues at ClipCursor edges.
          */

@@ -28,6 +28,7 @@
 #include "Render/RenderScene.h"
 
 #include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Pointer/PointerPolicyService.h"
 #include "Runtime/Function/UI/UISystem.h"
 
 #include "imgui.h"
@@ -392,41 +393,55 @@ namespace minEngine
 
     void SceneEditingViewportClient::ApplyPointerPolicy(ViewportPointerMode mode)
     {
-        if (!WindowSystem::HasInstance())
+        m_PointerMode = mode;
+
+        if (!PointerPolicyService::HasInstance())
         {
-            m_PointerMode = mode;
             return;
         }
 
-        WindowSystem& window = WindowSystem::Get();
-        const bool wantHideAndClip =
-            mode == ViewportPointerMode::EditNavigate || mode == ViewportPointerMode::PieCaptured;
+        PointerPolicyService& policy = PointerPolicyService::Get();
+        PointerClipSpec clipSpec;
+        const WindowCursorClipRect clipRect = MakeViewportImageClipRect();
+        clipSpec.bEnabled = clipRect.bEnabled;
+        clipSpec.Rect = clipRect;
 
-        if (wantHideAndClip)
+        if (mode == ViewportPointerMode::EditNavigate)
         {
+            m_PlayCaptureRequest.Release();
             SetImGuiCursorDriveEnabled(false);
-            window.SetCursorVisible(false);
-            WindowCursorClipRect clipRect = MakeViewportImageClipRect();
-            if (!clipRect.bEnabled)
+            if (m_NavigateRequest.IsValid())
             {
-                clipRect.bEnabled = false;
-                window.SetCursorClipRect(clipRect);
+                policy.UpdateClip(m_NavigateRequest, clipSpec);
             }
             else
             {
-                window.SetCursorClipRect(clipRect);
+                m_NavigateRequest =
+                    policy.Request(EPointerTier::Editor, EPointerMode::Captured, clipSpec);
             }
-        }
-        else
-        {
-            WindowCursorClipRect clearRect;
-            clearRect.bEnabled = false;
-            window.SetCursorClipRect(clearRect);
-            window.SetCursorVisible(true);
-            SetImGuiCursorDriveEnabled(true);
+            return;
         }
 
-        m_PointerMode = mode;
+        if (mode == ViewportPointerMode::PieCaptured)
+        {
+            m_NavigateRequest.Release();
+            SetImGuiCursorDriveEnabled(false);
+            if (m_PlayCaptureRequest.IsValid())
+            {
+                policy.UpdateClip(m_PlayCaptureRequest, clipSpec);
+            }
+            else
+            {
+                // Game tier: inventory/UI can Request(UI, Free/Confined) above this.
+                m_PlayCaptureRequest =
+                    policy.Request(EPointerTier::Game, EPointerMode::Captured, clipSpec);
+            }
+            return;
+        }
+
+        m_NavigateRequest.Release();
+        m_PlayCaptureRequest.Release();
+        SetImGuiCursorDriveEnabled(true);
     }
 
     void SceneEditingViewportClient::SyncObservedScene()

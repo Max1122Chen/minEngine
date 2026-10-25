@@ -1,5 +1,9 @@
 #include "PointerPolicyTest.h"
 
+#include "Runtime/Function/Pointer/IPointerModeSink.h"
+#include "Runtime/Function/Pointer/Pointer.h"
+#include "Runtime/Function/Pointer/PointerPolicyService.h"
+#include "Runtime/Function/Pointer/PointerPolicyTypes.h"
 #include "Runtime/Function/Render/PointerConstraintState.h"
 
 #include "doctest.h"
@@ -314,5 +318,149 @@ namespace minEngine
         CHECK(state.GetDiagnostics().EmptyIntersectionCount == 1);
         CHECK(sink.LastAppliedClip.bEnabled == false);
         CHECK(sink.ReadState().bClipActive == false);
+    }
+
+    namespace
+    {
+        class RecordingPointerModeSink : public IPointerModeSink
+        {
+        public:
+            void Apply(const PointerWindowCommand& command) override
+            {
+                ++ApplyCount;
+                Last = command;
+            }
+
+            PointerWindowCommand Last{};
+            int ApplyCount = 0;
+        };
+
+        struct PointerPolicyServiceScope
+        {
+            PointerPolicyServiceScope()
+            {
+                PointerPolicyService::SetInstance(&Service);
+                Service.SetSink(&Sink);
+                Service.Initialize();
+            }
+
+            ~PointerPolicyServiceScope()
+            {
+                Service.Shutdown();
+                PointerPolicyService::SetInstance(nullptr);
+            }
+
+            RecordingPointerModeSink Sink;
+            PointerPolicyService Service;
+        };
+    }
+
+    TEST_CASE("pointer-policy - map mode captured vs confined")
+    {
+        PointerClipSpec clip;
+        clip.bEnabled = true;
+        clip.Rect = MakeRect(10, 10, 100, 100);
+
+        const PointerWindowCommand captured = MapModeToWindowCommand(EPointerMode::Captured, true, clip);
+        CHECK(captured.CursorMode == EWindowCursorMode::Disabled);
+        CHECK(captured.bClip == true);
+        CHECK(captured.bRelativeCapture == true);
+
+        const PointerWindowCommand confined = MapModeToWindowCommand(EPointerMode::Confined, true, clip);
+        CHECK(confined.CursorMode == EWindowCursorMode::Normal);
+        CHECK(confined.bClip == true);
+        CHECK(confined.bRelativeCapture == false);
+
+        const PointerWindowCommand inactive =
+            MapModeToWindowCommand(EPointerMode::Captured, false, clip);
+        CHECK(inactive.CursorMode == EWindowCursorMode::Normal);
+        CHECK(inactive.bClip == false);
+        CHECK(inactive.bRelativeCapture == false);
+    }
+
+    TEST_CASE("pointer-policy - resolve prefers higher tier")
+    {
+        PointerPolicyServiceScope scope;
+        PointerModeRequest game =
+            scope.Service.Request(EPointerTier::Game, EPointerMode::Captured);
+        PointerModeRequest ui = scope.Service.Request(EPointerTier::UI, EPointerMode::Confined);
+
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Confined);
+        CHECK(scope.Service.GetResolvedState().Tier == EPointerTier::UI);
+        CHECK(scope.Service.GetResolvedState().StackDepth == 2);
+        CHECK(scope.Sink.Last.CursorMode == EWindowCursorMode::Normal);
+
+        ui.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Captured);
+        CHECK(scope.Sink.Last.CursorMode == EWindowCursorMode::Disabled);
+
+        game.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Free);
+    }
+
+    TEST_CASE("pointer-policy - refcount coalesces")
+    {
+        PointerPolicyServiceScope scope;
+        PointerModeRequest a = scope.Service.Request(EPointerTier::Game, EPointerMode::Captured);
+        PointerModeRequest b = scope.Service.Request(EPointerTier::Game, EPointerMode::Captured);
+        CHECK(scope.Service.GetResolvedState().StackDepth == 1);
+
+        a.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Captured);
+
+        b.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Free);
+    }
+
+    TEST_CASE("pointer-policy - out-of-order release is inert")
+    {
+        PointerPolicyServiceScope scope;
+        PointerModeRequest editor =
+            scope.Service.Request(EPointerTier::Editor, EPointerMode::Captured);
+        PointerModeRequest game =
+            scope.Service.Request(EPointerTier::Game, EPointerMode::Hidden);
+
+        editor.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Hidden);
+        CHECK(scope.Service.GetResolvedState().Tier == EPointerTier::Game);
+
+        game.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Free);
+    }
+
+    TEST_CASE("pointer-policy - ui show beats game captured")
+    {
+        PointerPolicyServiceScope scope;
+        PointerModeRequest capture =
+            scope.Service.Request(EPointerTier::Game, EPointerMode::Captured);
+        CHECK(scope.Service.IsPointerCaptured());
+
+        PointerModeRequest menu = Pointer::ShowUi();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Free);
+        CHECK(scope.Service.IsPointerVisible());
+        CHECK(scope.Sink.Last.CursorMode == EWindowCursorMode::Normal);
+
+        menu.Release();
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Captured);
+
+        capture.Release();
+    }
+
+    TEST_CASE("pointer-policy - focus suspends resolved mode")
+    {
+        PointerPolicyServiceScope scope;
+        PointerModeRequest capture =
+            scope.Service.Request(EPointerTier::Game, EPointerMode::Captured);
+        scope.Service.OnWindowFocusLost();
+        CHECK(scope.Service.GetResolvedState().bSuspendedByFocus == true);
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Free);
+        CHECK(scope.Sink.Last.CursorMode == EWindowCursorMode::Normal);
+
+        scope.Service.OnWindowFocusGained();
+        CHECK(scope.Service.GetResolvedState().bSuspendedByFocus == false);
+        CHECK(scope.Service.GetResolvedMode() == EPointerMode::Captured);
+        CHECK(scope.Sink.Last.CursorMode == EWindowCursorMode::Disabled);
+
+        capture.Release();
     }
 }

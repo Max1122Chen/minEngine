@@ -19,6 +19,8 @@
 #include "Runtime/Function/Physics/PhysicsSystem.h"
 #include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Function/UI/UISystem.h"
+#include "Runtime/Function/Pointer/PointerPolicyService.h"
+#include "Runtime/Function/Pointer/WindowSystemPointerModeSink.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Function/Scripting/LuaScriptSystem.h"
 #include "Runtime/Function/Debug/DebugDrawService.h"
@@ -658,6 +660,28 @@ namespace minEngine
         m_UISystem = std::make_shared<UISystem>();
         UISystem::SetInstance(m_UISystem.get());
         m_UISystem->Initialize();
+
+        m_PointerPolicyService = std::make_unique<PointerPolicyService>();
+        PointerPolicyService::SetInstance(m_PointerPolicyService.get());
+        m_PointerModeSink = std::make_unique<WindowSystemPointerModeSink>(*m_WindowSystem);
+        m_PointerPolicyService->SetSink(m_PointerModeSink.get());
+        m_PointerPolicyService->Initialize();
+        m_WindowSystem->RegisterOnWindowFocusCallback(
+            [](bool focused)
+            {
+                if (!PointerPolicyService::HasInstance())
+                {
+                    return;
+                }
+                if (focused)
+                {
+                    PointerPolicyService::Get().OnWindowFocusGained();
+                }
+                else
+                {
+                    PointerPolicyService::Get().OnWindowFocusLost();
+                }
+            });
     }
 
     void Engine::ShutdownSystems()
@@ -741,6 +765,14 @@ namespace minEngine
             m_RenderSystem->Shutdown();
             RenderSystem::SetInstance(nullptr);
             m_RenderSystem.reset();
+        }
+
+        if (m_PointerPolicyService)
+        {
+            m_PointerPolicyService->Shutdown();
+            PointerPolicyService::SetInstance(nullptr);
+            m_PointerPolicyService.reset();
+            m_PointerModeSink.reset();
         }
 
         if (m_WindowSystem)
@@ -955,6 +987,10 @@ namespace minEngine
         if (m_PhysicsSystem)
         {
             m_PhysicsSystem->SimulateActiveScene(deltaTime);
+        }
+        if (PointerPolicyService::HasInstance())
+        {
+            PointerPolicyService::Get().BeginFrame();
         }
         if (m_UISystem)
         {

@@ -320,6 +320,14 @@ namespace minEngine
         m_PointerConstraint.SetClipRectRequest(rect);
     }
 
+    void GLFWWindowSystem::ApplyPointerWindowCommand(
+        EWindowCursorMode mode,
+        const WindowCursorClipRect& clip,
+        bool bRelativeCapture)
+    {
+        m_PointerConstraint.SetPointerWindowCommandRequest(mode, clip, bRelativeCapture);
+    }
+
     WindowCursorConstraintState GLFWWindowSystem::GetCursorConstraintState() const
     {
         WindowCursorConstraintState state;

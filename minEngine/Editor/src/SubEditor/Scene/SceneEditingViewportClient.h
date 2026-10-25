@@ -3,10 +3,10 @@
 
 
 #include "Viewport/EditorViewportClient.h"
+#include "Runtime/Function/Pointer/PointerModeRequest.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 
 #include <limits>
-
 #include <vector>
 
 
@@ -166,6 +166,10 @@ namespace minEngine
         bool m_bPlayPointerCaptured = true;
         ViewportPointerMode m_PointerMode = ViewportPointerMode::Off;
         bool m_bImGuiCursorDriveSuppressed = false;
+        /** Game-tier Captured while PIE look is locked (UI tier can still overlay ShowUi/Confined). */
+        PointerModeRequest m_PlayCaptureRequest;
+        /** Editor-tier Captured while RMB-navigate in Edit. */
+        PointerModeRequest m_NavigateRequest;
 
         bool m_CameraStateInitialized = false;
 

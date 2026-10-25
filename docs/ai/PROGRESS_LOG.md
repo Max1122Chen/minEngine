@@ -1,3 +1,15 @@
+## 2026-10-25 — CORE-F42 S02/S03/S05：PointerPolicyService + Editor 迁移 + 游戏 facade
+
+- **Scope:** 指针策略服务竖切（开背包可显标）；S04 Shift+F1 / S06 / 位置采样后置
+- **Completed:**
+  - `PointerPolicyService` + `MapModeToWindowCommand` + `IPointerModeSink` + RAII `PointerModeRequest`
+  - Engine 接线；`WindowSystem::ApplyPointerWindowCommand`；SEVC/PlaySession/Editor 迁出直调
+  - PIE Captured 挂 **Game** tier（UI `ShowUi` 可盖住）；`Pointer::*` facade
+  - suite 增 6 例（tier / refcount / UI 盖 Captured / focus suspend / map）
+- **Verification:** `minEngineTests.exe test pointer-policy` 11 PASS / 105 asserts；`Editor` 已链
+- **Deviation:** PIE Captured 用 Game 非 Play（否则 UI 压不过 Play）；位置采样未接
+- **Next:** minCraft `ApplyPointerMode` → `Pointer::ShowUi()`；可选 S04；合 master
+
 ## 2026-10-25 — CORE-F46 S03：backpressure / Profile / Multi smoke 收口
 
 - **Scope:** S03 Done；Feature Done；顺带修 Wait→Drain 竞态
