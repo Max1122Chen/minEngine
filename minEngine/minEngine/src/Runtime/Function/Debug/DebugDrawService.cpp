@@ -128,27 +128,27 @@ namespace minEngine
         return !m_VerticesDepthTested.empty() || !m_VerticesAlwaysVisible.empty();
     }
 
-    void DebugDrawService::EnqueueLine(DebugLineCommand command)
+    void DebugDrawService::EnqueueLine(const DebugLineCommand& command)
     {
         m_Lines.push_back(command);
     }
 
-    void DebugDrawService::EnqueuePoint(DebugPointCommand command)
+    void DebugDrawService::EnqueuePoint(const DebugPointCommand& command)
     {
         m_Points.push_back(command);
     }
 
-    void DebugDrawService::EnqueueBox(DebugBoxCommand command)
+    void DebugDrawService::EnqueueBox(const DebugBoxCommand& command)
     {
         m_Boxes.push_back(command);
     }
 
-    void DebugDrawService::EnqueueSphere(DebugSphereCommand command)
+    void DebugDrawService::EnqueueSphere(const DebugSphereCommand& command)
     {
         m_Spheres.push_back(command);
     }
 
-    void DebugDrawService::EnqueueCapsule(DebugCapsuleCommand command)
+    void DebugDrawService::EnqueueCapsule(const DebugCapsuleCommand& command)
     {
         m_Capsules.push_back(command);
     }
