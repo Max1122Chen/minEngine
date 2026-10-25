@@ -53,8 +53,21 @@ namespace minEngine
 
         void Bake();
         void InvalidateBake();
+        /**
+         * Bind a caller-owned texture to a logical resource for the active ViewKey.
+         * Call after Bake (or before; validation always runs in SetupAttachments).
+         * SetupAttachments will install this texture instead of creating the physical slot.
+         */
+        bool RegisterExternalTexture(
+            const std::string& logicalName,
+            const RHITextureRef& texture,
+            std::string* outError = nullptr);
+        void UnregisterExternalTexture(const std::string& logicalName);
+        /** Clear all external bindings for the active ViewKey. */
+        void ClearExternalTextures();
+
         /** Returns true when any physical texture was (re)created this call. */
-        bool SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull);
+        bool SetupAttachments(RHI& rhi);
         void EnqueueRenderPasses(RHICommandList& cmdList);
 
         RHITexture* GetPhysicalTexture(const RDGTextureResource& resource);
@@ -82,6 +95,10 @@ namespace minEngine
         {
             RDGViewKey Key{};
             std::vector<std::shared_ptr<RHITexture>> Textures;
+            /** Logical resource name → caller-owned texture for this view. */
+            std::unordered_map<std::string, RHITextureRef> Externals;
+            /** Physical indices currently filled from Externals (skip graph create). */
+            std::unordered_set<uint32_t> ExternalPhysicalIndices;
         };
 
         void ValidatePasses() const;
@@ -93,6 +110,9 @@ namespace minEngine
         void AllocatePhysicalForTexture(RDGTextureResource* texture);
         RDGResourceDimensions ResolveDimensions(const RDGTextureResource& resource) const;
         RHITextureCreateDesc MakeCreateDesc(const RDGResourceDimensions& dims) const;
+        bool MatchesExternalDesc(const RHITexture& texture, const RDGResourceDimensions& dims) const;
+        ViewPhysicalCache* TryGetActiveViewCache();
+        const ViewPhysicalCache* TryGetActiveViewCache() const;
 
         ViewPhysicalCache& FindOrCreateViewCache(const RDGViewKey& key);
         void BindPhysicalTexturesForActiveView();

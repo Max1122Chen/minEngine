@@ -42,6 +42,7 @@ namespace minEngine
         virtual ~Texture2D() = default;
 
         RHITexture* GetRHITexture() const { return m_RHITexture.get(); }
+        const RHITextureRef& GetRHITextureShared() const { return m_RHITexture; }
         uint32_t GetWidth() const { return m_Width; }
         uint32_t GetHeight() const { return m_Height; }
         uint32_t GetChannels() const { return m_Channels; }
@@ -75,13 +76,15 @@ namespace minEngine
         uint32_t m_Channels {0};
         RHISamplerDesc m_PreferredSamplerDesc{};
 
+    protected:
+        /** Recomputes the cached desc from the author fields. */
+        void RebuildPreferredSamplerDesc();
+
     private:
         /** Single sink for the derived cache: takes the desc as given and keeps the
             author fields in step with it. Derived classes cannot reach it either, so
             nothing outside this class can leave the fields and the desc disagreeing. */
         void SetPreferredSamplerDesc(const RHISamplerDesc& desc);
-        /** Recomputes the cached desc from the author fields. */
-        void RebuildPreferredSamplerDesc();
     };
 
     class TextureCubeLoader;

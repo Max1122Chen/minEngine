@@ -24,11 +24,153 @@ namespace minEngine
         m_PhysicalDims.clear();
         m_BoundPhysicalTextures = nullptr;
         m_ActiveViewKey = {};
-        // keep per-view physical caches across topology rebuilds.
+        // keep per-view physical caches across topology rebuilds; drop external bindings.
+        for (ViewPhysicalCache& cache : m_ViewPhysicalCaches)
+        {
+            cache.Externals.clear();
+            cache.ExternalPhysicalIndices.clear();
+        }
         m_SwapchainPhysicalIndex = RDGResource::kUnused;
         m_IsBaked = false;
         m_ImplSetupDone = false;
         m_FrameContext = {};
+    }
+
+    RenderGraph::ViewPhysicalCache* RenderGraph::TryGetActiveViewCache()
+    {
+        if (!m_ActiveViewKey.IsValid())
+        {
+            return nullptr;
+        }
+        return &FindOrCreateViewCache(m_ActiveViewKey);
+    }
+
+    const RenderGraph::ViewPhysicalCache* RenderGraph::TryGetActiveViewCache() const
+    {
+        if (!m_ActiveViewKey.IsValid())
+        {
+            return nullptr;
+        }
+        for (const ViewPhysicalCache& cache : m_ViewPhysicalCaches)
+        {
+            if (cache.Key == m_ActiveViewKey)
+            {
+                return &cache;
+            }
+        }
+        return nullptr;
+    }
+
+    bool RenderGraph::RegisterExternalTexture(
+        const std::string& logicalName,
+        const RHITextureRef& texture,
+        std::string* outError)
+    {
+        auto setError = [&](const char* message)
+        {
+            if (outError != nullptr)
+            {
+                *outError = message;
+            }
+        };
+
+        if (logicalName.empty())
+        {
+            setError("logical name is empty");
+            return false;
+        }
+        if (!texture)
+        {
+            setError("texture is null");
+            return false;
+        }
+        ViewPhysicalCache* cache = TryGetActiveViewCache();
+        if (cache == nullptr)
+        {
+            setError("no active ViewKey");
+            return false;
+        }
+
+        if (m_IsBaked)
+        {
+            RDGTextureResource* resource = FindTextureResource(logicalName);
+            if (resource == nullptr || resource->GetPhysicalIndex() == RDGResource::kUnused)
+            {
+                setError("logical texture is not part of the current Bake");
+                return false;
+            }
+            const uint32_t physicalIndex = resource->GetPhysicalIndex();
+            if (physicalIndex >= m_PhysicalDims.size()
+                || !MatchesExternalDesc(*texture, m_PhysicalDims[physicalIndex]))
+            {
+                setError("external texture does not match baked dimensions or usage");
+                return false;
+            }
+        }
+
+        cache->Externals[logicalName] = texture;
+        return true;
+    }
+
+    void RenderGraph::UnregisterExternalTexture(const std::string& logicalName)
+    {
+        ViewPhysicalCache* cache = TryGetActiveViewCache();
+        if (cache == nullptr || logicalName.empty())
+        {
+            return;
+        }
+        cache->Externals.erase(logicalName);
+
+        // Drop the installed physical slot so the next SetupAttachments creates a graph-owned RT
+        // instead of reusing the caller's texture by matching size/format.
+        if (!m_IsBaked || m_BoundPhysicalTextures == nullptr)
+        {
+            return;
+        }
+        RDGTextureResource* resource = FindTextureResource(logicalName);
+        if (resource == nullptr || resource->GetPhysicalIndex() == RDGResource::kUnused)
+        {
+            return;
+        }
+        const uint32_t physicalIndex = resource->GetPhysicalIndex();
+        std::vector<std::shared_ptr<RHITexture>>& physicalTextures = *m_BoundPhysicalTextures;
+        if (physicalIndex < physicalTextures.size())
+        {
+            physicalTextures[physicalIndex].reset();
+        }
+        cache->ExternalPhysicalIndices.erase(physicalIndex);
+    }
+
+    void RenderGraph::ClearExternalTextures()
+    {
+        ViewPhysicalCache* cache = TryGetActiveViewCache();
+        if (cache == nullptr)
+        {
+            return;
+        }
+        if (m_IsBaked && m_BoundPhysicalTextures != nullptr)
+        {
+            std::vector<std::shared_ptr<RHITexture>>& physicalTextures = *m_BoundPhysicalTextures;
+            for (uint32_t physicalIndex : cache->ExternalPhysicalIndices)
+            {
+                if (physicalIndex < physicalTextures.size())
+                {
+                    physicalTextures[physicalIndex].reset();
+                }
+            }
+        }
+        cache->Externals.clear();
+        cache->ExternalPhysicalIndices.clear();
+    }
+
+    bool RenderGraph::MatchesExternalDesc(const RHITexture& texture, const RDGResourceDimensions& dims) const
+    {
+        const RHITextureCreateDesc& desc = texture.GetDesc();
+        const RHITextureCreateDesc wantDesc = MakeCreateDesc(dims);
+        return desc.Width == dims.Width && desc.Height == dims.Height && desc.Format == dims.Format
+            && desc.DepthOrArrayLayers == dims.Layers
+            && (desc.Flags & wantDesc.Flags) == wantDesc.Flags
+            && desc.Dimension == dims.Dimension;
     }
 
     void RenderGraph::SetActiveViewKey(uint64_t viewId, const SceneRenderTarget* renderTarget)
@@ -494,7 +636,7 @@ namespace minEngine
         return desc;
     }
 
-    bool RenderGraph::SetupAttachments(RHI& rhi, RHITexture* swapchainOrNull)
+    bool RenderGraph::SetupAttachments(RHI& rhi)
     {
         if (!m_IsBaked)
         {
@@ -516,20 +658,79 @@ namespace minEngine
             physicalTextures.assign(m_PhysicalDims.size(), nullptr);
         }
 
+        ViewPhysicalCache* cache = TryGetActiveViewCache();
+        std::unordered_set<uint32_t> previouslyExternal;
+        std::unordered_map<uint32_t, RHITextureRef> externalByPhysical;
+        if (cache != nullptr)
+        {
+            previouslyExternal = cache->ExternalPhysicalIndices;
+            cache->ExternalPhysicalIndices.clear();
+            for (const auto& [logicalName, texture] : cache->Externals)
+            {
+                RDGTextureResource* resource = FindTextureResource(logicalName);
+                if (resource == nullptr || resource->GetPhysicalIndex() == RDGResource::kUnused)
+                {
+                    throw std::runtime_error(
+                        "RenderGraph::SetupAttachments: external '" + logicalName
+                        + "' is not part of the current Bake.");
+                }
+                const uint32_t physicalIndex = resource->GetPhysicalIndex();
+                if (physicalIndex >= m_PhysicalDims.size())
+                {
+                    throw std::runtime_error(
+                        "RenderGraph::SetupAttachments: external '" + logicalName
+                        + "' has invalid physical index.");
+                }
+                if (!MatchesExternalDesc(*texture, m_PhysicalDims[physicalIndex]))
+                {
+                    ME_LOG(
+                        LogRender,
+                        Error,
+                        "RenderGraph::SetupAttachments: external '{}' does not match baked slot '{}'.",
+                        logicalName,
+                        m_PhysicalDims[physicalIndex].DebugName);
+                    throw std::runtime_error(
+                        "RenderGraph::SetupAttachments: external texture mismatch for '" + logicalName
+                        + "'.");
+                }
+                const auto existing = externalByPhysical.find(physicalIndex);
+                if (existing != externalByPhysical.end() && existing->second != texture)
+                {
+                    throw std::runtime_error(
+                        "RenderGraph::SetupAttachments: conflicting externals for the same physical slot.");
+                }
+                externalByPhysical[physicalIndex] = texture;
+            }
+        }
+
         bool anyRecreated = false;
         for (uint32_t physicalIndex = 0; physicalIndex < m_PhysicalDims.size(); ++physicalIndex)
         {
-            if (swapchainOrNull != nullptr && physicalIndex == m_SwapchainPhysicalIndex)
-            {
-                // Non-owning view of external swapchain/backbuffer when provided.
-                // Store as shared_ptr aliasing no-op deleter? Prefer keep separate path:
-                // The tests allocate every physical texture, including the backbuffer source.
-                (void)swapchainOrNull;
-            }
-
             const RDGResourceDimensions& dims = m_PhysicalDims[physicalIndex];
             std::shared_ptr<RHITexture>& slot = physicalTextures[physicalIndex];
             const RHITextureCreateDesc wantDesc = MakeCreateDesc(dims);
+
+            const auto externalIt = externalByPhysical.find(physicalIndex);
+            if (externalIt != externalByPhysical.end())
+            {
+                if (slot != externalIt->second)
+                {
+                    slot = externalIt->second;
+                    anyRecreated = true;
+                }
+                if (cache != nullptr)
+                {
+                    cache->ExternalPhysicalIndices.insert(physicalIndex);
+                }
+                continue;
+            }
+
+            // A slot that was external last frame must not be reused as graph-owned after unbind.
+            if (previouslyExternal.find(physicalIndex) != previouslyExternal.end())
+            {
+                slot.reset();
+            }
+
             if (slot
                 && slot->GetDesc().Width == dims.Width
                 && slot->GetDesc().Height == dims.Height

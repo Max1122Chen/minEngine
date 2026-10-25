@@ -45,6 +45,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <filesystem>
 #include <algorithm>
+#include <stdexcept>
+#include <string>
 
 namespace
 {
@@ -370,7 +372,7 @@ namespace minEngine
         m_SceneBindings.InvalidateShadowTextureBindings();
     }
 
-    void ForwardRenderer::SetupFrameRenderGraph(
+    bool ForwardRenderer::SetupFrameRenderGraph(
         RHICommandList& cmdList,
         const SceneDrawDesc& desc,
         SceneRenderContext& ctx)
@@ -378,20 +380,20 @@ namespace minEngine
         SceneRenderTarget* sceneTarget = desc.RenderTarget;
         if (sceneTarget == nullptr)
         {
-            return;
+            return false;
         }
 
         RHI* rhi = RenderSystem::Get().GetRHI();
         if (rhi == nullptr)
         {
-            return;
+            return false;
         }
 
         const uint32_t width = sceneTarget->GetWidth();
         const uint32_t height = sceneTarget->GetHeight();
         if (width == 0 || height == 0)
         {
-            return;
+            return false;
         }
 
         const bool enablePostProcess = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnablePostProcess);
@@ -421,7 +423,7 @@ namespace minEngine
 
         AssignShadowGraphPassCommands(ctx);
 
-        // Granite-aligned �?re-run setup_dependencies + pass order every frame.
+        // Granite-aligned: re-run setup_dependencies + pass order every frame.
         const bool enableSky = HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableSkyBox);
         m_BasePass.SetClearSceneTargets(!enableSky);
 
@@ -433,10 +435,40 @@ namespace minEngine
         m_FrameRenderGraph.SetFrameContext(frameContext);
 
         m_FrameRenderGraph.Bake();
-        if (m_FrameRenderGraph.SetupAttachments(*rhi, nullptr))
+        if (desc.ExternalSceneColor)
         {
-            m_SceneBindings.InvalidateShadowTextureBindings();
+            std::string externalError;
+            if (!m_FrameRenderGraph.RegisterExternalTexture(
+                    kRDGSceneColor, desc.ExternalSceneColor, &externalError))
+            {
+                ME_LOG(
+                    LogRender,
+                    Error,
+                    "ForwardRenderer: RegisterExternalTexture(SceneColor) failed: {}",
+                    externalError);
+                m_FrameRenderGraph.UnregisterExternalTexture(kRDGSceneColor);
+                return false;
+            }
         }
+        else
+        {
+            m_FrameRenderGraph.UnregisterExternalTexture(kRDGSceneColor);
+        }
+
+        try
+        {
+            if (m_FrameRenderGraph.SetupAttachments(*rhi))
+            {
+                m_SceneBindings.InvalidateShadowTextureBindings();
+            }
+        }
+        catch (const std::exception& ex)
+        {
+            ME_LOG(LogRender, Error, "ForwardRenderer: SetupAttachments failed: {}", ex.what());
+            m_FrameRenderGraph.UnregisterExternalTexture(kRDGSceneColor);
+            return false;
+        }
+        return true;
     }
 
     void ForwardRenderer::BindGraphShadowTextures(SceneRenderContext& ctx)
@@ -675,7 +707,10 @@ namespace minEngine
         UpdatePerFrameUBO(ctx);
 
         // allocate graph shadow maps before Set1 samples them.
-        SetupFrameRenderGraph(cmdList, desc, ctx);
+        if (!SetupFrameRenderGraph(cmdList, desc, ctx))
+        {
+            return;
+        }
         BindGraphShadowTextures(ctx);
 
         RenderGraphFrameContext frameContext = m_FrameRenderGraph.GetFrameContext();

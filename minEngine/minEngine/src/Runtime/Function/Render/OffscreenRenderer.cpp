@@ -1,9 +1,11 @@
 #include "OffscreenRenderer.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/SceneViewport.h"
 #include "Runtime/Function/Render/SceneRenderTarget.h"
+#include "Runtime/Function/Render/Texture2DRenderTarget.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -16,6 +18,7 @@ namespace minEngine
           m_Width(other.m_Width),
           m_Height(other.m_Height),
           m_DrawDesc(other.m_DrawDesc),
+          m_ColorTarget(std::move(other.m_ColorTarget)),
           m_Initialized(other.m_Initialized)
     {
         other.m_Viewport.reset();
@@ -33,6 +36,7 @@ namespace minEngine
         m_Width = other.m_Width;
         m_Height = other.m_Height;
         m_DrawDesc = other.m_DrawDesc;
+        m_ColorTarget = std::move(other.m_ColorTarget);
         m_Initialized = other.m_Initialized;
         other.m_Viewport.reset();
         other.m_Initialized = false;
@@ -82,9 +86,22 @@ namespace minEngine
             m_Viewport->Shutdown();
             m_Viewport.reset();
         }
+        m_ColorTarget.reset();
+        m_DrawDesc.ExternalSceneColor.reset();
         m_Width = 0;
         m_Height = 0;
         m_Initialized = false;
+    }
+
+    void OffscreenRenderer::SetColorTarget(const std::shared_ptr<Texture2DRenderTarget>& target)
+    {
+        m_ColorTarget = target;
+    }
+
+    void OffscreenRenderer::ClearColorTarget()
+    {
+        m_ColorTarget.reset();
+        m_DrawDesc.ExternalSceneColor.reset();
     }
 
     void OffscreenRenderer::SyncViewportDesc()
@@ -146,6 +163,33 @@ namespace minEngine
             return kEmpty;
         }
 
+        if (m_ColorTarget)
+        {
+            if (m_ColorTarget->GetWidth() != m_Width || m_ColorTarget->GetHeight() != m_Height)
+            {
+                ME_LOG(
+                    LogRender,
+                    Error,
+                    "OffscreenRenderer::RenderOnce: color target size {}x{} != offscreen {}x{}.",
+                    m_ColorTarget->GetWidth(),
+                    m_ColorTarget->GetHeight(),
+                    m_Width,
+                    m_Height);
+                m_DrawDesc.ExternalSceneColor.reset();
+                return kEmpty;
+            }
+            m_DrawDesc.ExternalSceneColor = m_ColorTarget->GetRHITextureShared();
+            if (!m_DrawDesc.ExternalSceneColor)
+            {
+                ME_LOG(LogRender, Error, "OffscreenRenderer::RenderOnce: color target has no GPU texture.");
+                return kEmpty;
+            }
+        }
+        else
+        {
+            m_DrawDesc.ExternalSceneColor.reset();
+        }
+
         // Sync camera aspect to the offscreen buffer.
         if (m_Width > 0 && m_Height > 0)
         {
@@ -162,6 +206,10 @@ namespace minEngine
     const RHITextureRef& OffscreenRenderer::GetColorTexture() const
     {
         static const RHITextureRef kEmpty;
+        if (m_ColorTarget && m_ColorTarget->GetRHITextureShared())
+        {
+            return m_ColorTarget->GetRHITextureShared();
+        }
         return m_Viewport ? m_Viewport->GetColorTexture() : kEmpty;
     }
 
