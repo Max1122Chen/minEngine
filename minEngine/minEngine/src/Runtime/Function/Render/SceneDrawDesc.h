@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
+#include "Runtime/Function/Render/RHI/RHITexture.h"
 
 namespace minEngine
 {
@@ -46,5 +47,11 @@ namespace minEngine
         float ClearColor[4] = {0.18f, 0.32f, 0.48f, 1.0f};
         /** Clear depth applied to the scene depth target. */
         float DepthClear = 1.0f;
+
+        /**
+         * Optional caller-owned SceneColor. When set, ForwardRenderer registers it as an RDG
+         * external for this draw (zero-copy render-into). Empty = graph allocates SceneColor.
+         */
+        RHITextureRef ExternalSceneColor;
     };
 }

@@ -1,3 +1,24 @@
+## 2026-10-25 — RND-F27 / RND-F28 实现（RegisterExternal + Texture2DRenderTarget）
+
+- **Scope:** F27 S01：`RegisterExternalTexture` / Unregister / Clear；`SetupAttachments(RHI&)`；Unregister 后强制重建 graph-owned 槽。F28 S01–S02：`Texture2DRenderTarget`（`NewObject`）+ `MakeTexture2DRenderTargetDesc`；`SceneDrawDesc.ExternalSceneColor`；Forward Register；Offscreen `SetColorTarget`；`CreateFromRGBA8`/`CreateSolidRGBA` → `NewObject`；`GetRHITextureShared`
+- **Verification:** `minEngineTests.exe test render-graph` — 11 passed / 59 assert（工作树；minCraft extra suite 因 ABI 未链入，用 ExtraTestStub 链接）
+- **Completed:** Design/Registry/ACTIVE_WORK → Done；S02 Depth、F28 S03/S04 可选未做
+- **Next:** commit；minCraft 消费块图标 bake
+
+## 2026-10-25 — RND-F27 / RND-F28 Design Review + 中文稿
+
+- **Scope:** Mode A 设计评审两篇；全文改中文；锁定：F27 失败不得静默 create、R5 收窄为图+单测；F28 `RenderOnce` 保持 `RHITextureRef&`（Thumbnail）、SceneDrawDesc.ExternalSceneColor、make_shared、`GetRHITextureShared`
+- **Verdict:** 均为 `Ready with deferred items`；F28 渲入编码仍等 F27 S01
+- **Completed:** Design Status → Review；Registry/ACTIVE_WORK 同步
+- **Next:** 主人确认 → Planned；开 F27 S01（已完成，见上条）
+
+## 2026-10-25 — RND-F27 / RND-F28 Design Draft（Offscreen → Texture2DRenderTarget）
+
+- **Scope:** 登记并起草两篇 Design（`feat/render`）：`RND-F27` RDG `RegisterExternal`；`RND-F28` `Texture2DRenderTarget` + Offscreen SetColorTarget（依赖 F27）
+- **Note:** F26 已占用 → External=F27、RT=F28
+- **Completed:** Draft + 登记（随后已 Review + 中文）
+- **Next:** （见上条）
+
 ## 2026-10-22 — BUG-EDITOR-009：scene.set_property 空串 string 崩溃
 
 - **Scope:** `WritePropertyValue` 去掉对未构造 raw buffer 的 `GetProperty`/`SetProperty`；对齐 Graph 域 blob + `CommitObjectPropertyBlobs`；新增 suite `scene-property-string`（smoke）

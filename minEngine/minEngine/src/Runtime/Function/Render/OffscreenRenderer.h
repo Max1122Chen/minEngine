@@ -13,14 +13,14 @@ namespace minEngine
     class SceneViewport;
     class SceneRenderTarget;
     class RHI;
+    class Texture2DRenderTarget;
 
     /**
      * One-stop offscreen renderer: owns a SceneViewport (RT + camera + view id),
      * assembles the SceneDrawDesc, and submits to the active renderer.
      *
-     * The caller supplies a RenderScene (arbitrary scene, e.g. the render scene of a
-     * PreviewScene or a game scene). The same offscreen path the Content Browser
-     * thumbnails will share once unified.
+     * Optional SetColorTarget binds a caller-owned Texture2DRenderTarget as SceneColor
+     * (RDG external) so each bake keeps an independent durable texture.
      */
     class MINENGINE_API OffscreenRenderer
     {
@@ -38,7 +38,7 @@ namespace minEngine
         /** Release GPU resources. Safe to call multiple times. */
         void Shutdown();
 
-        /** Scene to render (RenderScene from a PreviewScene or game scene). */
+        /** Scene to render (RenderScene from a PreviewScene or a game scene). */
         void SetScene(RenderScene* scene) { m_DrawDesc.Scene = scene; }
         RenderScene* GetScene() const { return m_DrawDesc.Scene; }
 
@@ -64,8 +64,17 @@ namespace minEngine
         const SceneDrawDesc& GetDrawDesc() const { return m_DrawDesc; }
 
         /**
-         * Render one frame synchronously to the offscreen target.
-         * Returns the color texture (shared handle). Empty on failure.
+         * Optional durable color target. When set, RenderOnce writes into this texture via
+         * RDG RegisterExternal (SceneColor). Size must match Initialize width/height.
+         */
+        void SetColorTarget(const std::shared_ptr<Texture2DRenderTarget>& target);
+        void ClearColorTarget();
+        const std::shared_ptr<Texture2DRenderTarget>& GetColorTarget() const { return m_ColorTarget; }
+
+        /**
+         * Render one frame synchronously.
+         * Returns the color RHI texture (target's GPU resource when SetColorTarget is used,
+         * otherwise the graph-published SceneColor). Empty on failure.
          */
         const RHITextureRef& RenderOnce();
 
@@ -84,6 +93,7 @@ namespace minEngine
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
         SceneDrawDesc m_DrawDesc{};
+        std::shared_ptr<Texture2DRenderTarget> m_ColorTarget;
         bool m_Initialized = false;
     };
 }

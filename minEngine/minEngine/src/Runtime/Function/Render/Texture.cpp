@@ -2,6 +2,7 @@
 #include "EngineRHITextureUtils.h"
 #include "RHI/RHI.h"
 #include "RHI/RHITexture.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 
 namespace minEngine
 {
@@ -38,7 +39,7 @@ namespace minEngine
     std::shared_ptr<Texture2D> Texture2D::CreateSolidRGBA(RHI& rhi, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     {
         const unsigned char pixel[] = { r, g, b, a };
-        std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
+        std::shared_ptr<Texture2D> texture = NewObject<Texture2D>("SolidRGBA");
         texture->m_Width = 1;
         texture->m_Height = 1;
         texture->m_Channels = 4;
@@ -55,7 +56,7 @@ namespace minEngine
             return nullptr;
         }
 
-        std::shared_ptr<Texture2D> texture = std::make_shared<Texture2D>();
+        std::shared_ptr<Texture2D> texture = NewObject<Texture2D>("FromRGBA8");
         texture->m_Width = width;
         texture->m_Height = height;
         texture->m_Channels = 4;

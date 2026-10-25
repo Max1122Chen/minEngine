@@ -6,7 +6,13 @@
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 #include "Render/OpenGL/OpenGLRHI.h"
 #include "Render/RHI/RHICommandList.h"
+#include "Render/RHI/RHITexture.h"
+#include "Render/EngineRHITextureUtils.h"
 #include "Render/RenderPipeline/RenderPasses/GraphClearPass.h"
+#include "Runtime/Function/Render/Texture2DRenderTarget.h"
+#include "Runtime/Core/Object/ObjectManager.h"
+#include "Access/ObjectManagerTestAccess.h"
+#include "EngineTestFixture.h"
 #include "doctest.h"
 
 #include <GLFW/glfw3.h>
@@ -355,7 +361,7 @@ namespace minEngine
         graph.SetBackbufferDimensions(64, 64);
         graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
 
         RDGTextureResource& backbuffer = graph.GetTextureResource(kRDGBackbuffer);
         CHECK(backbuffer.GetPhysicalIndex() != RDGResource::kUnused);
@@ -387,7 +393,7 @@ namespace minEngine
         graph.SetBackbufferDimensions(32, 32);
         graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
 
         RHICommandList cmdList(&rhi);
         graph.EnqueueRenderPasses(cmdList);
@@ -447,7 +453,7 @@ namespace minEngine
         graph.SetBackbufferDimensions(32, 32);
         graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
 
         const std::vector<uint32_t>& stack = graph.GetPassStack();
         REQUIRE(stack.size() == 2);
@@ -478,7 +484,7 @@ namespace minEngine
         graph.SetBackbufferDimensions(8, 8);
         graph.SetActiveViewKey(1, nullptr);
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
 
         RHICommandList cmdList(&rhi);
         graph.EnqueueRenderPasses(cmdList);
@@ -524,13 +530,13 @@ namespace minEngine
 
         graph.SetActiveViewKey(10, nullptr);
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
         RHITexture* textureA = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
         REQUIRE(textureA != nullptr);
 
         graph.SetActiveViewKey(11, nullptr);
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
         RHITexture* textureB = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
         REQUIRE(textureB != nullptr);
 
@@ -568,7 +574,7 @@ namespace minEngine
         graph.SetFrameContext(ctx);
 
         graph.Bake();
-        graph.SetupAttachments(rhi, nullptr);
+        graph.SetupAttachments(rhi);
         RHICommandList cmdList(&rhi);
         graph.EnqueueRenderPasses(cmdList);
 
@@ -594,5 +600,100 @@ namespace minEngine
             }
         }
         CHECK(allTransparent);
+    }
+
+    TEST_CASE("render-graph: RegisterExternalTexture installs caller SceneColor")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        BakeProbePass probe;
+        RenderPass& pass = graph.AddPass("Probe");
+        pass.SetImplementation(&probe);
+
+        graph.SetBackbufferSource(kRDGBackbuffer);
+        graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
+        graph.Bake();
+
+        RHITextureRef external = rhi.RHICreateTexture2D(
+            MakeTexture2DRenderTargetDesc(64, 64, TextureFormat::RGBA8), nullptr);
+        REQUIRE(external != nullptr);
+
+        std::string error;
+        REQUIRE(graph.RegisterExternalTexture(kRDGBackbuffer, external, &error));
+        CHECK(error.empty());
+        graph.SetupAttachments(rhi);
+
+        RHITexture* physical = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
+        REQUIRE(physical != nullptr);
+        CHECK(physical == external.get());
+
+        graph.UnregisterExternalTexture(kRDGBackbuffer);
+        graph.SetupAttachments(rhi);
+        RHITexture* recreated = graph.GetPhysicalTexture(graph.GetTextureResource(kRDGBackbuffer));
+        REQUIRE(recreated != nullptr);
+        CHECK(recreated != external.get());
+    }
+
+    TEST_CASE("render-graph: RegisterExternalTexture rejects size mismatch")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        BakeProbePass probe;
+        RenderPass& pass = graph.AddPass("Probe");
+        pass.SetImplementation(&probe);
+
+        graph.SetBackbufferSource(kRDGBackbuffer);
+        graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
+        graph.Bake();
+
+        RHITextureRef wrongSize = rhi.RHICreateTexture2D(
+            MakeTexture2DRenderTargetDesc(32, 32, TextureFormat::RGBA8), nullptr);
+        REQUIRE(wrongSize != nullptr);
+
+        std::string error;
+        CHECK_FALSE(graph.RegisterExternalTexture(kRDGBackbuffer, wrongSize, &error));
+        CHECK_FALSE(error.empty());
+    }
+
+    TEST_CASE("render-graph: Texture2DRenderTarget Create is a Texture2D with RT GPU")
+    {
+        EngineReflectionFixture reflection;
+        REQUIRE(reflection.IsReflectionReady());
+
+        ObjectManager objectManager;
+        Testing::TestAccess<ObjectManager>::SetInstance(&objectManager);
+        ObjectManager::Initialize();
+
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        std::shared_ptr<Texture2DRenderTarget> target =
+            Texture2DRenderTarget::Create(rhi, 16, 16, TextureFormat::RGBA8);
+        REQUIRE(target != nullptr);
+        CHECK(target->GetWidth() == 16);
+        CHECK(target->GetHeight() == 16);
+        REQUIRE(target->GetRHITextureShared() != nullptr);
+
+        std::shared_ptr<Texture2D> asTexture2D = target;
+        REQUIRE(asTexture2D != nullptr);
+        CHECK(asTexture2D->GetRHITexture() == target->GetRHITexture());
+
+        const RHITextureCreateDesc& desc = target->GetRHITextureShared()->GetDesc();
+        CHECK((desc.Flags & RHITextureCreateFlags::RenderTarget) != RHITextureCreateFlags::None);
+        CHECK((desc.Flags & RHITextureCreateFlags::ShaderResource) != RHITextureCreateFlags::None);
+
+        target.reset();
+        asTexture2D.reset();
+        ObjectManager::Shutdown();
+        Testing::TestAccess<ObjectManager>::SetInstance(nullptr);
     }
 }

@@ -96,6 +96,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F24` | 程序化网格顶点语义属性（Color → CustomN · Material 消费） | **In Progress** | — | [Design](./Render/RND-F24_MESH_VERTEX_ATTRIBUTES_DESIGN.md) · S01–S03 **Done** · [S03](./Render/RND-F24_S03_VERTEX_CUSTOM_DESIGN.md) · S04 Pending · `material-ir` |
 | `RND-F25` | Render-to-Texture · OffscreenRenderer · Clear Color API | **Implemented** (awaiting review) | — | [Design](./Render/RND-F25_RENDER_TO_TEXTURE_DESIGN.md) · S01-S05 Done · OffscreenRenderer + thumbnail unified |
 | `RND-F26` | View-Aware Mesh Collect（Proxy 子 mesh / Section 剔除钩子） | **Done** | — | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) · L2 · `feat/render` · `test frustum` 8/8 · minCraft Chunk 已跟进 |
+| `RND-F27` | RDG RegisterExternal（外部物理纹理绑定 · SceneColor） | **Done** | — | [Design](./Render/RND-F27_RDG_REGISTER_EXTERNAL_DESIGN.md) · L2 · `feat/render` · S01；S02 Depth/alias 可选 |
+| `RND-F28` | Texture2DRenderTarget 子类 + Offscreen SetColorTarget/RenderInto | **Done** | — | [Design](./Render/RND-F28_TEXTURE2D_RENDER_TARGET_DESIGN.md) · L2 · 依赖 F27 · S01–S02；S03/S04 可选 |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
@@ -217,7 +219,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `ASSET` | **F11** | F01–F03/F05–F08 Done；**F04** In Progress；**F09** Deferred（async DataAsset · 等 F38）；**F10** In Progress（多态）；Async Lifetime 愿景见 Capability Roadmap |
 | `ED` | **F24** | F12–**F21 Done**（F22 Cancelled）；**F23 Done**；**F11** In Progress；F10 占位 |
 | `MCP` | **F05** | F01–**F04 Done** |
-| `RND` | **F27** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F24 In Progress；F25 Implemented；**F26 Draft**；F12 Deferred |
+| `RND` | **F29** | F18–F20 **Done**；F21 Deferred；**F22/F23 Done**；F24 In Progress；F25 Implemented；**F26 Done**；**F27/F28 Draft**（External → Texture2DRenderTarget）；F12 Deferred |
 | `LAUN` | F02 | F01 Done |
 | `AUD` | F02 | F01 Done |
 | `ANIM` | **F06** | F01–F02 Done；F03 closeout；F04 Review；F05 Planned |

@@ -197,7 +197,8 @@ namespace minEngine
         static size_t GetFixedShadowGraphPassIndex(const ShadowDrawCommand& command);
         static ShadowGraphPermanentOutput MakePermanentShadowOutput(size_t passIndex);
         void EnsurePostBufferTexture(RHI* rhi, uint32_t width, uint32_t height);
-        void SetupFrameRenderGraph(
+        /** Returns false when external SceneColor registration or SetupAttachments fails. */
+        bool SetupFrameRenderGraph(
             RHICommandList& cmdList,
             const SceneDrawDesc& desc,
             SceneRenderContext& ctx);

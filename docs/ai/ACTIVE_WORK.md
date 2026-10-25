@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-24（feat/render：RND-F26 引擎 Done；minCraft 已跟进）
+Last updated: 2026-10-25（feat/render：RND-F27/F28 Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,13 +11,15 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `feat/render`）：** `RND-F26` **Done**（引擎 + minCraft Chunk 细剔）；待 commit。主仓 Primary 仍可以是 `ASSET-F10`。
+**Primary（本工作树 `feat/render`）：** `RND-F27` / `RND-F28` **Done**（S01–S02；待 commit）。可选尾巴：F27 S02 Depth/alias、F28 S03 双目标冒烟。主仓 Primary 仍可以是 `ASSET-F10`。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（S01–S02 + consumer） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
+| — | RND-F27 | RDG RegisterExternal（SceneColor 外部物理绑定） | **Done**（S01；S02 可选） | [Design](./Render/RND-F27_RDG_REGISTER_EXTERNAL_DESIGN.md) |
+| — | RND-F28 | Texture2DRenderTarget + Offscreen SetColorTarget | **Done**（S01–S02；S03/S04 可选） | [Design](./Render/RND-F28_TEXTURE2D_RENDER_TARGET_DESIGN.md) |
+| — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（S01–S02 + consumer） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F10 | DataAsset 多态 Load/Create（meta.RuntimeClassName） | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
-| 1 | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
+| — | CORE-F38 | TaskSystem · TaskFlow + 合成证明（**无** Asset 异步） | **Draft** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) |
 | — | BUILD-F03 刀2 | 烧 `.def`→`explicit`（标宏 + codegen `MODULE_API`） | **Done**（批0–5 + 默认 `explicit`） | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · 附录 C |
 | — | GP-F03 | GameplayTag 名身份修订（去 Tag 上 Manager* + hash） | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |
 | — | CORE-F39 | 值类型 Codec 注册 | **Cancelled** | 由 GP-F03 取代；勿开工 |
@@ -38,7 +40,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作（`feat/render`）：** 审批后 commit RND-F26；可选手验 minCraft 低头 UBO。  
+**下一动作（`feat/render`）：** 提交 F27/F28；minCraft 接 `Texture2DRenderTarget` + `SetColorTarget` 做块图标 bake。  
 **主仓旁路：** ASSET-F10；`RND-F21` 仍 Deferred。
 
 **已记录目标（多轨，不是线性 TODO）：**

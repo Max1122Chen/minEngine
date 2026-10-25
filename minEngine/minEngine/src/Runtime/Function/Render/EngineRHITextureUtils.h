@@ -41,6 +41,13 @@ namespace minEngine
         return desc;
     }
 
+    inline RHITextureCreateDesc MakeTexture2DRenderTargetDesc(uint32_t width, uint32_t height, TextureFormat format)
+    {
+        RHITextureCreateDesc desc = MakeTexture2DBindingDesc(width, height, format);
+        desc.Flags = RHITextureCreateFlags::RenderTarget | RHITextureCreateFlags::ShaderResource;
+        return desc;
+    }
+
     inline RHITextureCreateDesc MakeTextureCubeBindingDesc(uint32_t size, TextureFormat format, uint32_t numMips = 1)
     {
         RHITextureCreateDesc desc;
