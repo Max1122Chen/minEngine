@@ -1,7 +1,9 @@
 #include "Runtime/Function/Pointer/PointerPolicyService.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Render/WindowSystem.h"
+#include "Runtime/Function/UI/UISystem.h"
 
 #include <algorithm>
 
@@ -246,6 +248,29 @@ namespace minEngine
         ResolveAndApply();
     }
 
+    bool PointerPolicyService::IsReleaseRequestedThisFrame() const
+    {
+        if (!InputSystem::HasInstance())
+        {
+            return false;
+        }
+
+        const bool bShiftHeld = InputSystem::KeyDown(InputKeys::Key_LeftShift)
+            || InputSystem::KeyDown(InputKeys::Key_RightShift)
+            || InputSystem::KeyDown(InputKeys::Key_Shift);
+        if (bShiftHeld && InputSystem::KeyPressed(InputKeys::Key_F1))
+        {
+            return true;
+        }
+
+        if (m_Settings.bKeepLeftAltAlias && InputSystem::KeyPressed(InputKeys::Key_LeftAlt))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     void PointerPolicyService::BeginFrame()
     {
         if (WindowSystem::HasInstance())
@@ -266,6 +291,32 @@ namespace minEngine
         if (bDirty || bSuspendedByFocus)
         {
             ResolveAndApply();
+        }
+
+        // Position sample once per frame (before UI PollPointer). ReferencePx uses last UI sample when available.
+        ++m_Position.FrameStamp;
+        m_Position.RelativeDelta = Vector2(0.0f, 0.0f);
+        m_Position.bAbsoluteValid = false;
+        m_Position.bReferenceValid = false;
+        if (InputSystem::HasInstance())
+        {
+            m_Position.WindowPx = InputSystem::GetMousePosition();
+            const EPointerMode mode = GetResolvedMode();
+            m_Position.bAbsoluteValid = !bSuspendedByFocus && mode != EPointerMode::Captured;
+            if (UISystem::HasInstance())
+            {
+                const ScreenUIPointerViewportContext& ctx = UISystem::Get().GetPointerViewportContext();
+                if (ctx.bValid)
+                {
+                    m_Position.ViewportPointPx = m_Position.WindowPx - ctx.ImageMin;
+                }
+                const ScreenUIPointerViewportSample& uiSample = UISystem::Get().GetPointerPosition();
+                if (uiSample.bValid)
+                {
+                    m_Position.ReferencePx = uiSample.ReferencePx;
+                    m_Position.bReferenceValid = m_Position.bAbsoluteValid;
+                }
+            }
         }
     }
 

@@ -19,7 +19,8 @@
 | **S02** | **Done** | `PointerPolicyService`、`MapModeToWindowCommand`、`IPointerModeSink`、Recording sink 单测 |
 | **S03** | **Done** | `SEVC` / `Editor` / `PlayInEditorSession` 迁出直调；空栈 → Free |
 | S04 | **Deferred** | Shift+F1 改绑仍用 LeftAlt；提示文案已预告 |
-| **S05** | **Done（facade）** | `Pointer::Show/Hide/Capture/Confine*/ShowUi/ConfineUiTo`；位置采样契约未接线（仍空 `GetPosition`） |
+| **S04** | **Done** | Shift+F1 主释放；`bKeepLeftAltAlias` 默认开；视口提示已改 |
+| **S05** | **Done（facade + 轻量位置）** | `Pointer::*`；`BeginFrame` 填 Window/Viewport；ReferencePx 复用上一帧 `UISystem::GetPointerPosition` |
 | S06 | **Deferred** | UI 自动 Confined；消费方自行 `ShowUi`/`ConfineUiTo` |
 
 ## 3. 与 Design 的有意偏差
@@ -28,7 +29,7 @@
 |----|--------|------|------|
 | PIE Captured tier | Play (80) | **Game (40)** | Play > UI 时背包 `ShowUi` 无法盖住 PIE；挂 Game 后 UI Confined/Free 可叠加（对齐「容器叠在游戏 Captured 上」） |
 | `ViewportPointerMode` | 删除 (D-9) | **暂留**为 SEVC 内部 desired 枚举 | 行为已走 Request；删枚举可跟 S04 一并收 |
-| 位置契约 | BeginFrame 采样 | **未接** | 不挡开背包；`GetPointerPosition` 仍可用 |
+| 位置 ReferencePx | 同帧 PollPointer 前 | **复用上一帧 UI 样本** | 严格同帧需把采样挪到 PollPointer 之后；产品路径仍可用 `UISystem::GetPointerPosition` |
 
 ## 4. 消费方迁移（minCraft）
 

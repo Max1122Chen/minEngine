@@ -181,7 +181,7 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `GP-F02` | GameplayEventSystem（Scene 作用域 Component；无 Payload） | **Done** | — | [Design](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_DESIGN.md) · [Impl](./Gameplay/GP-F02_GAMEPLAY_EVENT_SYSTEM_IMPLEMENTATION.md) · 依赖 GP-F01 · `test gameplay-events` |
 | `GP-F03` | GameplayTag → ME_STRUCT + TagName（可序列化；名身份对齐 UE） | **Done** | — | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · 2026-10-22 修订：名 `==`/hash、去 Tag 上 Manager* · `test gameplay-tags` / `gameplay-events` |
 | `MAT-F08` | UI/Sprite 材质编译缓存与 program/instance 共享（消除每 widget 一份材质实例的编译风暴） | **In Progress** | — | [Design](./Render/Material/MAT-F08_MATERIAL_COMPILE_CACHE_DESIGN.md) · [Impl](./Render/Material/MAT-F08_MATERIAL_COMPILE_CACHE_IMPLEMENTATION.md) · `test material-compile-cache` · 消费方反馈 `ENGINE_FEEDBACK_PROMPT_SPRITE_MATERIAL_COMPILE_CACHE.md` |
-| `CORE-F42` | 指针/光标策略服务（单一拥有者 + 优先级栈 + 引用计数请求 + 游戏面 API + PIE 生命周期） | **In Progress**（S01–S03/S05 Done；S04/S06 + 位置采样余） | — | [Design](./Platform/Core/CORE-F42_POINTER_POLICY_DESIGN.md) · [S01](./Platform/Core/CORE-F42_S01_FOCUS_SCOPED_POINTER_IMPLEMENTATION.md) · [S02–S05](./Platform/Core/CORE-F42_S02_S05_POINTER_POLICY_SERVICE_IMPLEMENTATION.md) · `test pointer-policy` |
+| `CORE-F42` | 指针/光标策略服务（单一拥有者 + 优先级栈 + 引用计数请求 + 游戏面 API + PIE 生命周期） | **In Progress**（S01–S05 Done；S06 UI Confined 余） | — | [Design](./Platform/Core/CORE-F42_POINTER_POLICY_DESIGN.md) · [S01](./Platform/Core/CORE-F42_S01_FOCUS_SCOPED_POINTER_IMPLEMENTATION.md) · [S02–S05](./Platform/Core/CORE-F42_S02_S05_POINTER_POLICY_SERVICE_IMPLEMENTATION.md) · `test pointer-policy` |
 
 ---
 

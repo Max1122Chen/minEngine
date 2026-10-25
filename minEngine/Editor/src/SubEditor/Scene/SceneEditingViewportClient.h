@@ -118,6 +118,8 @@ namespace minEngine
         void HandlePlayPointerCaptureInput();
         void SyncPointerModeFromPlayTransition();
         void ApplyPointerPolicy(ViewportPointerMode mode);
+        /** Shift+F1 (primary) or LeftAlt alias when enabled — release PIE look capture. */
+        static bool WantsReleasePlayPointerCapture();
         void SetImGuiCursorDriveEnabled(bool enabled);
         WindowCursorClipRect MakeViewportImageClipRect() const;
 

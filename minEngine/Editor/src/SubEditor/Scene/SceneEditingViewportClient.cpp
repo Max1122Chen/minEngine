@@ -358,6 +358,17 @@ namespace minEngine
         m_bPlayModeActiveLastFrame = playing;
     }
 
+    bool SceneEditingViewportClient::WantsReleasePlayPointerCapture()
+    {
+        if (PointerPolicyService::HasInstance())
+        {
+            return PointerPolicyService::Get().IsReleaseRequestedThisFrame();
+        }
+
+        // Headless / pre-service fallback: LeftAlt only.
+        return InputSystem::HasInstance() && InputSystem::KeyPressed(InputKeys::Key_LeftAlt);
+    }
+
     void SceneEditingViewportClient::HandlePlayPointerCaptureInput()
     {
         if (!InputSystem::HasInstance())
@@ -375,7 +386,7 @@ namespace minEngine
 
         if (m_bPlayPointerCaptured)
         {
-            if (!wantTextInput && InputSystem::KeyPressed(InputKeys::Key_LeftAlt))
+            if (!wantTextInput && WantsReleasePlayPointerCapture())
             {
                 m_bPlayPointerCaptured = false;
                 InputSystem::Get().SetEditorGameplayCaptureActive(false);

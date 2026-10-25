@@ -49,6 +49,15 @@ namespace minEngine
         /** Drop every stacked request and apply Free (Stop / Shutdown). */
         void ClearAllRequestsAndApplyFree();
 
+        PointerPolicySettings& GetSettings() { return m_Settings; }
+        const PointerPolicySettings& GetSettings() const { return m_Settings; }
+
+        /**
+         * True when the host should release PIE look capture this frame:
+         * Shift+F1 (primary), or LeftAlt when bKeepLeftAltAlias.
+         */
+        bool IsReleaseRequestedThisFrame() const;
+
         uint32_t GetOutOfOrderReleaseWarnCount() const { return m_OutOfOrderReleaseWarnCount; }
 
     private:
@@ -85,6 +94,7 @@ namespace minEngine
         bool bHasLastApplied = false;
         PointerPositionSample m_Position{};
         PointerAppliedConstraint m_LastAppliedConstraint{};
+        PointerPolicySettings m_Settings{};
         uint32_t m_OutOfOrderReleaseWarnCount = 0;
         bool bInitialized = false;
     };

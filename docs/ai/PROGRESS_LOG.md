@@ -1,3 +1,13 @@
+## 2026-10-25 — CORE-F42 S04：Shift+F1 释放 + 轻量位置采样
+
+- **Scope:** S04 键位；BeginFrame 位置窗口/视口采样
+- **Completed:**
+  - `IsReleaseRequestedThisFrame`：Shift+F1 主路径；`bKeepLeftAltAlias` 默认开
+  - SEVC / 视口提示改绑；`PointerPolicySettings` 挂服务
+  - `BeginFrame` 填 WindowPx / ViewportPointPx；ReferencePx 复用上一帧 UI 样本
+- **Verification:** `test pointer-policy` + `gameplay-input-gate`；Editor 已链
+- **Next:** S06 或合 master + minCraft `ShowUi`
+
 ## 2026-10-25 — CORE-F42 S02/S03/S05：PointerPolicyService + Editor 迁移 + 游戏 facade
 
 - **Scope:** 指针策略服务竖切（开背包可显标）；S04 Shift+F1 / S06 / 位置采样后置

@@ -37,7 +37,7 @@ namespace minEngine
             if (sceneClient.IsPlayPointerCaptured())
             {
                 ImGui::TextColored(ImVec4(0.55f, 0.9f, 0.55f, 1.0f),
-                    "| Captured  Esc=Stop  Shift+F1=Release (Alt alias)");
+                    "| Captured  Esc=Stop  Shift+F1=Release  (LeftAlt alias)");
             }
             else
             {

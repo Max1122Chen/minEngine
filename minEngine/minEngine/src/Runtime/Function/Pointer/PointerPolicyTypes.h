@@ -69,6 +69,13 @@ namespace minEngine
         uint64_t FrameStamp = 0;
     };
 
+    /** Editor / host settings for pointer policy (not serialized this slice). */
+    struct PointerPolicySettings
+    {
+        /** Primary release chord: Left/Right Shift held + F1 pressed. */
+        bool bKeepLeftAltAlias = true;
+    };
+
     /** Pure mapping: mode + focus → window command. Independent of GLFW. */
     MINENGINE_API PointerWindowCommand MapModeToWindowCommand(
         EPointerMode mode,
