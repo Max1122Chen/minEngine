@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-10-16（TD-033 RHI typed handle）
+Last updated: 2026-10-24（TD-034 Jolt AVX 旗标泄漏收口）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -41,6 +41,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-031 | GO `activeInHierarchy` 随父 Active 传播未做 | CORE-F08 / CORE-F06 | **Medium** | **Deferred** | [CORE-F08 Design](./Platform/Core/CORE-F08_GAMEOBJECT_HIERARCHY_DESIGN.md) §3.5 | 2026-09-04：父子层级 MVP 不做 Inactive 传播；日后与 CORE-F06 对齐再开切片。 |
 | TD-032 | Console Output draw path：每帧全量 Snapshot + 每行 FormatTimestamp | ED / CORE-F17 | **Medium** | **Done** | [ED-TD032 Design](./Editor/ED-TD032_CONSOLE_DRAW_PATH_PERF_DESIGN.md) · `ED-F09` S03 · [BUG-EDITOR-003](./bugs/BUG-EDITOR-003.md) | **2026-09-13 Done：** `displayTime` + generation/`CopyInto` + 环形仓 + `Push(const&)` + Output `ImGuiListClipper`；P5 通道过滤按维护者决定本期不做。`logging-channels` 19/19。 |
 | TD-033 | RHI 抽象指针擦除：长期应用 typed handle / 后端内不擦除 | RND / RHI | **Low** | Open | [CORE-F37-S02 Design](./Render/CORE-F37_RHI_STATIC_DOWNCAST_DESIGN.md) · Survey C1 | S02 用纯 static_cast 去 RTTI 认亲；真消除擦除另开 Feature，不排期。 |
+| TD-034 | AVX 旗标从 Jolt 泄漏到每个 first-party TU（对齐栈写 → 冷启动 ~50% 崩溃） | BUILD / CORE | **High** | **Done** | [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md) · `minEngine/minEngine/CMakeLists.txt` | 上游 submodule `Third-Party/Jolt` 把 ISA 旗标作为 `PUBLIC` 编译选项导出，链接 Jolt 就等于给所有自有 TU 打开 AVX；`-O0` 下 MinGW-GCC 用 32 字节对齐向量指令复制大聚合，Win64 只保证 16 字节栈对齐 → 半对齐帧上 #GP。**2026-10-24 已修：** 在自有 `minEngine/CMakeLists.txt` 里擦除 Jolt 的 `INTERFACE_COMPILE_OPTIONS`（`-mavx*`/`-mf16c`/`-mfma`，后两者隐含 `-mavx`）并回补 `INTERFACE -msse4.2`；`libminEngine.dll` 的 `vmovdqa %ymmN,(%rbp)` 由 19 处降到 0，first-party ymm 栈写清零。`-mpreferred-stack-boundary=5` 仍被本 MinGW 拒绝，不能作为替代方案。 |
 
 ---
 

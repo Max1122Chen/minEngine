@@ -3922,6 +3922,27 @@ It is not a full changelog. It focuses on architecture moves, rendering mileston
 - Next step:
   ED-F01-S01: copy `imgui_impl_vulkan` + CMake; then S02 ImGui empty frame.
 
+## 2026-10-24 — BUG-EDITOR-002 根因闭合：AVX 对齐栈写（不是内存踩踏）
+
+- **Scope:** `DebugDrawService::Enqueue*` 参数按值 → `const&`；`EditorCrashDiagnostics` 三处缺陷（真实崩溃时刻 / 运行期模块基址 / `0x0x` 双前缀）
+- **Root cause:** `DebugDraw::Box` 中按值传参的栈拷贝被编译成 `vmovdqa %ymm0,-0xC0(%rbp)`；Win64 ABI 只保证 16B 栈对齐 → 半对齐帧上 #GP，Windows 报 `0xC0000005 / info0=0 / info1=0xFFFFFFFFFFFFFFFF`（哨兵值，非真实地址）。对象与 guard 自始至终完好，"内存被 0xFF 涂写"的旧结论被推翻
+- **Verification:** 修前 13 次冷启动 8 崩；修后 11 次 0 崩（其中 6 次 `rbp%32==16`，旧必崩条件）。独立程序复现异常签名与编译器 codegen
+- **Record:** [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md) → Fixed（本树验证，未提交）；探针开关/日志/证据程序一并留档
+- **Next:** 合入前删除临时探针（`MEDBG_PROBE`=0）；可选 Jolt `PUBLIC -mavx2` → `PRIVATE` 做系统性收口
+
+## 2026-10-24 — BUG-EDITOR-002 收口：摘掉 Jolt 泄漏的 AVX + 全量冷启动回归
+
+- **Cleanup:** 删除 `DebugDrawProbe.h` 与 `DebugDrawService.cpp` 的探针块、`DebugDraw.cpp` 的探针钩子、`ForwardRenderer.cpp` 的三个 checkpoint；这三个源文件现在只剩修复 diff。探针日志 `minEngine/bin/dbgdraw_probe.log` 不进版本库。
+- **Landing point:** 收口改动落在 **自有** `minEngine/minEngine/CMakeLists.txt`（`add_subdirectory(Jolt)` 之后擦除 `INTERFACE_COMPILE_OPTIONS` 里的 `-mavx*`/`-mf16c`/`-mfma`，回补 `INTERFACE -msse4.2`），而不是上游 submodule `Third-Party/Jolt`：该 submodule 指向上游仓库，本地改动无法提交。
+- **为什么只撤 `-mavx2` 不够：** GCC 的 `-mf16c`/`-mfma` 隐含 `-mavx`。只把 `-mavx2` 改 PRIVATE 后 DLL 里 `vmovdqa %ymmN,(%rbp)` 仍是 19 处（全部 fmt 符号）；用同样旗标编译 40 行 fmt 程序正好复现这 19 处，去掉旗标则为 0。
+- **踩过的坑：** 把 `-mf16c`/`-mfma`/`-mbmi`/`-mlzcnt` 一并撤掉会编译失败：`Jolt/Math/Vec4.inl:20:18: error: '__builtin_ia32_blendps' needs isa option -msse4.1`（`Mat44.inl` 的 `__builtin_ia32_insertps128` 同因）—— Jolt 头的 intrinsic 受 PUBLIC 特性宏控制，所以必须回补 SSE 基线。
+- **Codegen evidence (objdump, `libminEngine.dll`):** 收口前 `vmovdqa %ymmN,(%rbp)`=19、任意 ymm 栈写=1933、ymm 总数=4450；收口后 =**0** / 175 / 794，且 175 处符号全部是 `JPH::*`（Jolt 自身仍按 AVX2 构建），first-party=0；`libMaximumEditor.dll` 完全没有 ymm。
+- **Build:** `cmake --build minEngine/build --target Editor -- -j 20`，ExitCode=0，约 4 分钟；first-party 目标旗标变为 `-mbmi -mpopcnt -mlzcnt -mfpmath=sse -msse4.2`，Jolt 目标仍是 `-mavx2 …`。
+- **Switch:** `SceneEditingViewportClient` 的 `EnableDebugDraw` 永久恢复，注释改为说明「两种 RHI 用同一组 draw flags」。
+- **Regression（`EnableDebugDraw` 打开，90s/次）:** OpenGL 20 次 = 18 存活 + 2 次正常退出（外部关窗），补充批次 21-25 全存活 → 25 次启动 **0 次 `0xC0000005`**；Vulkan 10 次 = 7 存活 + 3 次正常退出，补充批次 11-13 全存活 → 13 次启动 **0 次 `0xC0000005`**。`minEngine/bin/ed_crash.log` 在整批期间没有新增记录。
+- **作废批次:** `s2gl`（被并行会话按进程名清理时互相杀，`exit=-1` / 存活 0.3-38.6s / 当次无日志）与 `s2gl2`（旧落点二进制）不采用；压测脚本已改为只 Kill 自己 `Start-Process` 返回的进程。
+- **Docs:** [BUG-EDITOR-002](./bugs/BUG-EDITOR-002.md) 增「验收数据」；`TECH_DEBT` TD-034 → Done。
+
 ## 2026-10-24 — RND-F26 S01/S02 落地（feat/render）
 
 - API: `MeshCollectContext`（Purpose + Frustum* + `AllowsWorldBounds`）；`GetMeshBatches(collector, context)`。

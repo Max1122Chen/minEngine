@@ -18,11 +18,13 @@ namespace minEngine
         uint32_t GetVertexCount(EDebugDepthMode mode) const;
         bool HasAnyGeometry() const;
 
-        void EnqueueLine(DebugLineCommand command);
-        void EnqueuePoint(DebugPointCommand command);
-        void EnqueueBox(DebugBoxCommand command);
-        void EnqueueSphere(DebugSphereCommand command);
-        void EnqueueCapsule(DebugCapsuleCommand command);
+        // The command structs are several dozen bytes wide; taking them by reference keeps
+        // the per-frame enqueue path free of by-value argument copies.
+        void EnqueueLine(const DebugLineCommand& command);
+        void EnqueuePoint(const DebugPointCommand& command);
+        void EnqueueBox(const DebugBoxCommand& command);
+        void EnqueueSphere(const DebugSphereCommand& command);
+        void EnqueueCapsule(const DebugCapsuleCommand& command);
 
     private:
         std::vector<DebugLineCommand> m_Lines;

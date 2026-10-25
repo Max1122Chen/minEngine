@@ -189,11 +189,12 @@ namespace minEngine
 
 
 
-        // Vulkan Editor matches OpenGL draw flags (shadows + post + sky).
-        // Workaround: omit EnableDebugDraw until EnqueueBox cold-start AV is fixed.
+        // The editor viewport enables the same draw-flag set under both RHIs, so a
+        // scene looks the same whichever backend is selected: shadows, post process,
+        // sky box, and the physics collider debug queue.
         const SceneDrawFlags flags =
             SceneDrawFlags::EnableShadows | SceneDrawFlags::EnablePostProcess |
-            SceneDrawFlags::EnableSkyBox;
+            SceneDrawFlags::EnableSkyBox | SceneDrawFlags::EnableDebugDraw;
 
         const SceneDrawDesc desc = GetSceneViewport().BuildDrawDesc(flags);
         if (!desc.Scene || !desc.Camera || !desc.RenderTarget)

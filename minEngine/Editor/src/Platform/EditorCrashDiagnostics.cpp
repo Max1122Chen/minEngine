@@ -9,6 +9,7 @@
 #include <windows.h>
 
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -62,6 +63,42 @@ namespace minEngine
             out << path.filename().string() << "+0x" << std::hex << std::uppercase << (addr - base) << std::dec;
         }
 
+        void WriteRuntimeModuleBases(std::ostream& out)
+        {
+            struct ModuleEntry
+            {
+                const char* Label;
+                const char* ModuleName;
+            };
+
+            const ModuleEntry entries[] = {
+                {"MaximumEditor.exe", nullptr},
+                {"libMaximumEditor.dll", "libMaximumEditor.dll"},
+                {"libminEngine.dll", "libminEngine.dll"},
+            };
+
+            // A crash record is only symbolisable against the binaries that were loaded,
+            // so the load bases are recorded instead of relying on a fixed image base.
+            out << "RuntimeModuleBases:\n";
+            for (const ModuleEntry& entry : entries)
+            {
+                const HMODULE module = entry.ModuleName == nullptr
+                    ? GetModuleHandleA(nullptr)
+                    : GetModuleHandleA(entry.ModuleName);
+                out << "  " << entry.Label << " base=";
+                if (module == nullptr)
+                {
+                    out << "<not loaded>";
+                }
+                else
+                {
+                    out << "0x" << std::hex << std::uppercase
+                        << reinterpret_cast<std::uintptr_t>(module) << std::dec;
+                }
+                out << '\n';
+            }
+        }
+
         void WriteStackTrace(std::ostream& out, CONTEXT* context)
         {
             void* frames[64]{};
@@ -112,7 +149,23 @@ namespace minEngine
                 return EXCEPTION_CONTINUE_SEARCH;
             }
 
-            log << "\n=== Editor crash " << __DATE__ << ' ' << __TIME__ << " ===\n";
+            SYSTEMTIME crashedAt{};
+            GetLocalTime(&crashedAt);
+            char timestamp[64]{};
+            std::snprintf(
+                timestamp,
+                sizeof(timestamp),
+                "%04u-%02u-%02u %02u:%02u:%02u.%03u",
+                crashedAt.wYear,
+                crashedAt.wMonth,
+                crashedAt.wDay,
+                crashedAt.wHour,
+                crashedAt.wMinute,
+                crashedAt.wSecond,
+                crashedAt.wMilliseconds);
+
+            log << "\n=== Editor crash " << timestamp << " ===\n";
+            WriteRuntimeModuleBases(log);
             log << "ExceptionCode=0x" << std::hex << std::uppercase << code << std::dec << '\n';
             log << "ExceptionAddress=0x" << std::hex << std::uppercase
                 << reinterpret_cast<std::uintptr_t>(exceptionPointers->ExceptionRecord->ExceptionAddress)
@@ -129,8 +182,8 @@ namespace minEngine
             WriteStackTrace(log, exceptionPointers->ContextRecord);
             log.flush();
 
-            ME_LOG(LogEditor, Error, 
-                "Unhandled exception 0x{:08X} at 0x{:p}. See '{}'.",
+            ME_LOG(LogEditor, Error,
+                "Unhandled exception 0x{:08X} at {:p}. See '{}'.",
                 code,
                 exceptionPointers->ExceptionRecord->ExceptionAddress,
                 logPath.string());

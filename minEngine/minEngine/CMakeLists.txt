@@ -120,6 +120,22 @@ if(EXISTS ${JOLT_DIR}/Build/CMakeLists.txt)
     set(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
     set(PROFILER_IN_DEBUG_AND_RELEASE OFF CACHE BOOL "" FORCE)
     add_subdirectory(${JOLT_DIR}/Build ${CMAKE_BINARY_DIR}/third-party/jolt EXCLUDE_FROM_ALL)
+
+    # Jolt is an upstream submodule we do not patch, and it exports its instruction-set
+    # options as INTERFACE options, so linking it silently compiles every one of our own
+    # translation units with AVX. At -O0 GCC then copies large by-value aggregates with a
+    # 32-byte aligned vector store, which faults whenever the frame is 16-byte aligned -
+    # the only alignment the Win64 ABI guarantees. Scrub the wide-vector options here: the
+    # Jolt library still builds itself with AVX2, our own code stays on the SSE baseline.
+    get_target_property(_jolt_interface_options Jolt INTERFACE_COMPILE_OPTIONS)
+    if(_jolt_interface_options)
+        list(FILTER _jolt_interface_options EXCLUDE REGEX "^-m(avx|avx2|avx512[a-z]*|f16c|fma)")
+        set_target_properties(Jolt PROPERTIES INTERFACE_COMPILE_OPTIONS "${_jolt_interface_options}")
+    endif()
+    # Jolt headers reach into SSE4.x intrinsics behind their PUBLIC feature macros, so the
+    # SSE baseline has to come back explicitly; SSE4.2 does not imply AVX.
+    target_compile_options(Jolt INTERFACE -msse4.2)
+
     target_link_libraries(${ENGINE_NAME} PRIVATE Jolt)
 else()
     message(FATAL_ERROR "Jolt Physics not found. Initialize submodule: git submodule update --init minEngine/minEngine/Third-Party/Jolt")
