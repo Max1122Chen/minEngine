@@ -1,6 +1,8 @@
 #include "TaskSystemTest.h"
 
+#include "Runtime/Core/Tasks/TaskFlowBuilder.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 
 #include "doctest.h"
 
@@ -15,6 +17,10 @@
 #include <utility>
 #include <vector>
 
+using minEngine::FrameThreadKind;
+using minEngine::FrameThreading;
+using minEngine::FrameThreadMode;
+using minEngine::TaskFlowBuilder;
 using minEngine::TaskHandle;
 using minEngine::TaskSystem;
 
@@ -265,6 +271,187 @@ TEST_CASE("task-system: non-game-thread submit rejected [smoke]")
     worker.join();
     CHECK_FALSE(remoteHandle.IsValid());
     tasks.Shutdown();
+}
+
+TEST_CASE("task-system: parallel for join on game [smoke]")
+{
+    TaskSystem tasks;
+    tasks.Init(4);
+
+    constexpr int32_t kCount = 64;
+    std::vector<int> values(static_cast<size_t>(kCount), 0);
+    tasks.ParallelFor(kCount, [&](int32_t i) {
+        values[static_cast<size_t>(i)] = i + 1;
+    });
+
+    for (int32_t i = 0; i < kCount; ++i)
+    {
+        CHECK(values[static_cast<size_t>(i)] == i + 1);
+    }
+    tasks.Shutdown();
+}
+
+TEST_CASE("task-system: parallel for on render thread [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::atomic<int> sum{0};
+    std::thread render([&]() {
+        frameThreads.BindCurrentThread(FrameThreadKind::Render);
+        tasks.ParallelFor(32, [&](int32_t i) {
+            sum.fetch_add(i, std::memory_order_relaxed);
+        });
+    });
+    render.join();
+
+    CHECK(sum.load(std::memory_order_relaxed) == (31 * 32) / 2);
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: parallel for rejects foreign thread [smoke]")
+{
+    TaskSystem tasks;
+    tasks.Init(1);
+
+    std::atomic<bool> ran{false};
+    std::thread foreign([&]() {
+        tasks.ParallelFor(4, [&](int32_t) {
+            ran.store(true, std::memory_order_relaxed);
+        });
+    });
+    foreign.join();
+    CHECK_FALSE(ran.load(std::memory_order_relaxed));
+    tasks.Shutdown();
+}
+
+TEST_CASE("task-system: run and wait [smoke]")
+{
+    TaskSystem tasks;
+    tasks.Init(2);
+    std::atomic<int> value{0};
+    tasks.RunAndWait([&]() { value.store(7, std::memory_order_relaxed); });
+    CHECK(value.load(std::memory_order_relaxed) == 7);
+    tasks.Shutdown();
+}
+
+TEST_CASE("task-system: submit flow diamond [smoke]")
+{
+    TaskSystem tasks;
+    tasks.Init(4);
+
+    std::atomic<int> stage{0};
+    std::vector<int> order;
+    std::mutex orderMutex;
+
+    TaskFlowBuilder flow;
+    const uint32_t load = flow.AddNode([&]() {
+        stage.store(1, std::memory_order_relaxed);
+        std::lock_guard<std::mutex> lock(orderMutex);
+        order.push_back(0);
+    });
+    const uint32_t left = flow.AddNode([&]() {
+        CHECK(stage.load(std::memory_order_relaxed) >= 1);
+        std::lock_guard<std::mutex> lock(orderMutex);
+        order.push_back(1);
+    });
+    const uint32_t right = flow.AddNode([&]() {
+        CHECK(stage.load(std::memory_order_relaxed) >= 1);
+        std::lock_guard<std::mutex> lock(orderMutex);
+        order.push_back(2);
+    });
+    const uint32_t merge = flow.AddNode([&]() {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        order.push_back(3);
+    });
+    flow.Precede(load, {left, right});
+    flow.Precede(left, merge);
+    flow.Precede(right, merge);
+
+    const TaskHandle handle = tasks.SubmitFlow(std::move(flow));
+    CHECK(handle.IsValid());
+    tasks.Wait(handle);
+    CHECK(order.size() == 4);
+    CHECK(order.front() == 0);
+    CHECK(order.back() == 3);
+    tasks.Shutdown();
+}
+
+TEST_CASE("task-system: submit flow cycle rejected [smoke]")
+{
+    TaskSystem tasks;
+    tasks.Init(1);
+
+    TaskFlowBuilder flow;
+    const uint32_t a = flow.AddNode([]() {});
+    const uint32_t b = flow.AddNode([]() {});
+    flow.Precede(a, b);
+    flow.Precede(b, a);
+
+    const TaskHandle handle = tasks.SubmitFlow(std::move(flow));
+    CHECK_FALSE(handle.IsValid());
+    tasks.Shutdown();
+}
+
+TEST_CASE("task-system: frame roles combined wait [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::atomic<int> order{0};
+    std::atomic<int> renderStep{0};
+    std::atomic<int> rhiStep{0};
+
+    tasks.StartFrameRoles(
+        [&](float) {
+            renderStep.store(order.fetch_add(1, std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+        },
+        [&]() {
+            rhiStep.store(order.fetch_add(1, std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+        },
+        /*combineGraphicsThreads=*/true);
+
+    CHECK(tasks.AreFrameRolesRunning());
+    tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/true);
+    CHECK(renderStep.load(std::memory_order_relaxed) == 1);
+    CHECK(rhiStep.load(std::memory_order_relaxed) == 2);
+
+    tasks.StopFrameRoles();
+    CHECK_FALSE(tasks.AreFrameRolesRunning());
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: frame roles split wait [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::atomic<int> renderCount{0};
+    std::atomic<int> rhiCount{0};
+
+    tasks.StartFrameRoles(
+        [&](float) { renderCount.fetch_add(1, std::memory_order_relaxed); },
+        [&]() { rhiCount.fetch_add(1, std::memory_order_relaxed); },
+        /*combineGraphicsThreads=*/false);
+
+    tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/true);
+    CHECK(renderCount.load(std::memory_order_relaxed) == 1);
+    CHECK(rhiCount.load(std::memory_order_relaxed) == 1);
+
+    tasks.StopFrameRoles();
+    tasks.Shutdown();
+    frameThreads.Shutdown();
 }
 
 TEST_CASE("task-system: worker one vs n wall clock [full]")

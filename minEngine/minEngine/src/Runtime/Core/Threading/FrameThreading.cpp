@@ -96,16 +96,14 @@ namespace minEngine
             m_ThreadIds[i] = {};
         }
 
-        // Even Multi still runs one OS thread for all roles until dedicated workers exist.
-        BindCurrentThreadAsAllRoles();
-
         if (m_Mode == FrameThreadMode::Multi)
         {
-            ME_LOG(
-                LogCore,
-                Warn,
-                "FrameThreadMode=Multi requested; OS Render/RHI threads are not spawned until a later "
-                "slice. Running Single topology (one OS thread, three roles) for now.");
+            // Render/RHI tids are claimed by TaskSystem::StartFrameRoles.
+            BindCurrentThread(FrameThreadKind::Game);
+        }
+        else
+        {
+            BindCurrentThreadAsAllRoles();
         }
 
         LogStartupIdentity();

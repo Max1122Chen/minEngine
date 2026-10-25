@@ -279,6 +279,24 @@ namespace minEngine
         glfwSwapBuffers(m_Window);
     }
 
+    void GLFWWindowSystem::MakeGraphicsContextCurrent()
+    {
+        if (!m_HasOpenGLContext || m_Window == nullptr)
+        {
+            return;
+        }
+        glfwMakeContextCurrent(m_Window);
+    }
+
+    void GLFWWindowSystem::ClearGraphicsContextCurrent()
+    {
+        if (!m_HasOpenGLContext)
+        {
+            return;
+        }
+        glfwMakeContextCurrent(nullptr);
+    }
+
     // Poll events
     void GLFWWindowSystem::PollEvents() const
     {

@@ -145,9 +145,11 @@ namespace minEngine
 
         if (PrimitiveSceneProxy* oldProxy = primitiveComponent->GetSceneProxy())
         {
-            oldProxy->m_PrimitiveComponent = nullptr;
+            // Do not clear oldProxy->m_PrimitiveComponent here. Draw may still run before
+            // FlushApply, and the main collector skips proxies with a null component link.
             primitiveComponent->DetachSceneProxy();
             EnqueueRenderCommand([this, oldProxy]() {
+                oldProxy->m_PrimitiveComponent = nullptr;
                 ApplyRemovePrimitiveProxy_RT(oldProxy);
             });
         }

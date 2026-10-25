@@ -59,6 +59,12 @@ namespace minEngine
         virtual void Clear() = 0;
 
         virtual void SwapBuffers() = 0;
+        /**
+         * Bind / clear the thread-local graphics context (OpenGL). No-op for Vulkan / headless.
+         * Multi frame roles use these when migrating context onto the graphics thread.
+         */
+        virtual void MakeGraphicsContextCurrent() {}
+        virtual void ClearGraphicsContextCurrent() {}
         virtual void PollEvents() const = 0;
         virtual void SetCursorVisible(bool visible) = 0;
         /** Confine OS cursor to a screen-space rect; bEnabled=false clears. Win32 ClipCursor; other platforms may no-op or degrade. */

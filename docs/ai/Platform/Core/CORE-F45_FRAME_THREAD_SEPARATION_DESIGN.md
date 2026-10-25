@@ -4,17 +4,17 @@
 - **ID:** `CORE-F45`
 - **Type:** `Feature`（真 refactor：帧所有权与命令边界）
 - **Complexity:** `L3`
-- **Status:** `In Progress`（**S00–S03 Done**；下一 S04 Multi OS）
+- **Status:** `In Progress`（**S00–S03 Done**；**S04 暂停** — Multi OS 调度并入 [CORE-F46](./CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) 统一门面）
 - **Owner:** project maintainer
 - **Last updated:** `2026-10-24`
 - **Doc role:** **综述** — 跨线程契约、`FrameThreadMode`、切片总序、验收。角色细节见子 Design。
 - **Related:**
   - [Survey](./CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md)（Reference）
   - [Game](./CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./CORE-F45_RHI_THREAD_DESIGN.md)
-  - [CORE-F38](./CORE-F38_TASK_SYSTEM_DESIGN.md) · [CORE-F22 Profiler](./CORE-F22_PROFILER_HARNESS_DESIGN.md)
+  - [CORE-F38](./CORE-F38_TASK_SYSTEM_DESIGN.md) · [CORE-F46](./CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md)（TaskSystem 门面；吸收 S04 spike）· [CORE-F22 Profiler](./CORE-F22_PROFILER_HARNESS_DESIGN.md)
   - UE：`D:/Dev/GitRepo/UnrealEngine`（只读）
 - **Branch / worktree:** `feat/core` @ `D:/Dev/GitRepo/minEngine-core`
-- **Ready for implementation?** yes（S00–S02 已落地；S03 开工）
+- **Ready for implementation?** S00–S03 已落地；**S04+ 待 F46 Design Review 后按吸收路径实现**
 
 ## TL;DR
 
@@ -153,8 +153,8 @@ RHIRole:    Replay（Multi / 非 Immediate）→ Present
 | **S01** | ✅ 四家族 Enqueue；Transform/Color 具名小包或 Recreate；禁全家桶 Snapshot |
 | **S02** | ✅ ViewIntent 代际；N−1 |
 | **S03** | ✅ List Recording + Immediate；Pass 调用约定不变 |
-| S04 | Multi OS 线程；有界阻塞；Wait 区段 |
-| S05 | GL/Vulkan 亲和；Present 仅 RHI |
+| S04 | Multi OS 线程；有界阻塞；Wait 区段 — **暂停**：`FrameThreadScheduler` 为 spike；机制吸收进 [CORE-F46](./CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md)，不再并列长期公共调度器 |
+| S05 | GL/Vulkan 亲和；Present 仅 RHI（跟角色线程；门面落地后继续） |
 | S06 | 清旧直调清单；文档；ImGui 小决策；可选 Multi 烟测 |
 
 ## Verification

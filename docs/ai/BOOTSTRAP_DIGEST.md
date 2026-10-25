@@ -1,10 +1,10 @@
 # Bootstrap Digest (read in under 2 min)
 
-Last updated: 2026-10-16  
+Last updated: 2026-10-24  
 Purpose: **one-page** context for humans and AI when starting or recovering a session. Details live in linked docs.  
 **Doc trust:** `.cursor/rules/docs-trust-tiers.mdc` -- do not treat old roadmaps as backlog; use [ACTIVE_WORK.md](./ACTIVE_WORK.md).
 
-**Snapshot:** Workflow **`learning-mentor`**. **Primary：** `CORE-F45` 帧线程分离 **Survey Draft**。F38/F44/F09 Done；`ASSET-F11` 低优挂号。详见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。
+**Snapshot:** Workflow **`learning-mentor`**. **Primary：** `CORE-F46` TaskSystem 统一门面 **In Progress**（S02 Done）。`CORE-F45` S00–S03 Done、S04 已吸收进 F46。详见 [ACTIVE_WORK.md](./ACTIVE_WORK.md)。
 
 ---
 

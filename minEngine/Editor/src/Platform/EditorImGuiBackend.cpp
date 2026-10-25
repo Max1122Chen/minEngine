@@ -198,7 +198,17 @@ namespace minEngine
     }
 #endif
 
-    void EditorImGuiBackend::NewFrame()
+    void EditorImGuiBackend::PlatformNewFrame()
+    {
+        if (!m_Initialized)
+        {
+            return;
+        }
+
+        ImGui_ImplGlfw_NewFrame();
+    }
+
+    void EditorImGuiBackend::RendererNewFrame()
     {
         if (!m_Initialized)
         {
@@ -209,17 +219,23 @@ namespace minEngine
         if (m_Api == RendererApi::Vulkan && m_VulkanBackendInitialized)
         {
             ImGui_ImplVulkan_NewFrame();
+            return;
         }
-        else if (m_Api == RendererApi::OpenGL)
 #endif
+        if (m_Api == RendererApi::OpenGL)
         {
             ImGui_ImplOpenGL3_NewFrame();
         }
-
-        ImGui_ImplGlfw_NewFrame();
     }
 
-    void EditorImGuiBackend::RenderDrawData(RHI* rhi)
+    void EditorImGuiBackend::NewFrame()
+    {
+        // Single-thread order matches historical ImGui samples: renderer then platform.
+        RendererNewFrame();
+        PlatformNewFrame();
+    }
+
+    void EditorImGuiBackend::BuildDrawData()
     {
         if (!m_Initialized)
         {
@@ -227,6 +243,15 @@ namespace minEngine
         }
 
         ImGui::Render();
+    }
+
+    void EditorImGuiBackend::SubmitDrawData(RHI* rhi)
+    {
+        if (!m_Initialized)
+        {
+            return;
+        }
+
         ImDrawData* drawData = ImGui::GetDrawData();
         if (drawData == nullptr)
         {
@@ -257,6 +282,12 @@ namespace minEngine
 #endif
 
         ImGui_ImplOpenGL3_RenderDrawData(drawData);
+    }
+
+    void EditorImGuiBackend::RenderDrawData(RHI* rhi)
+    {
+        BuildDrawData();
+        SubmitDrawData(rhi);
     }
 
 #if defined(MINENGINE_HAS_VULKAN)

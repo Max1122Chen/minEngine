@@ -20,8 +20,11 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHICommandListPool.h"
 #include "Runtime/Function/Render/Vulkan/VulkanRHI.h"
 #include "Runtime/Function/Render/WindowSystem.h"
 #include "Runtime/Platform/FileDialog/FileDialogService.h"
@@ -623,6 +626,52 @@ namespace minEngine
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
         bool fontAtlasGpuMarked = false;
 
+        const bool multiFrame =
+            m_Engine->GetFrameThreading() && m_Engine->GetFrameThreading()->IsMulti();
+        if (multiFrame)
+        {
+            // Font atlas GPU invalidate + ImGui renderer device objects need the context
+            // while it is still on Game (StartMultiFrameRoles clears it next).
+            if (m_PendingInitialFontAtlasRebuild)
+            {
+                m_Appearance.RebuildUiFontAtlas();
+                m_PendingInitialFontAtlasRebuild = false;
+            }
+            m_ImGuiBackend.RendererNewFrame();
+
+            // Window thread: GLFW + ImGui CPU. Graphics role: renderer NewFrame, scene,
+            // ImGui GPU submit, Present. wait=true keeps ImDrawData valid across the handoff.
+            m_Engine->StartMultiFrameRoles(
+                [this, rhi, &fontAtlasGpuMarked](float deltaTime) {
+                    m_ImGuiBackend.RendererNewFrame();
+                    m_Engine->TickRendererFrame(deltaTime);
+                    m_ImGuiBackend.SubmitDrawData(rhi);
+                    if (!fontAtlasGpuMarked)
+                    {
+                        m_Appearance.MarkFontAtlasGpuInitialized();
+                        fontAtlasGpuMarked = true;
+                    }
+                },
+                []() {
+                    if (RenderSystem::HasInstance())
+                    {
+                        if (RHICommandListPool::HasInstance())
+                        {
+                            while (RHICommandList* list = RHICommandListPool::Get().TryTakeFinished())
+                            {
+                                list->Replay();
+                                RHICommandListPool::Get().Release(list);
+                            }
+                        }
+                        RenderSystem::Get().PresentFrame();
+                    }
+                    else if (WindowSystem::HasInstance())
+                    {
+                        WindowSystem::Get().SwapBuffers();
+                    }
+                });
+        }
+
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
         {
             const float deltaTime = m_Engine->CalculateDeltaTime();
@@ -637,6 +686,29 @@ namespace minEngine
             }
 
             UpdateWindowTitle();
+
+            if (m_Engine->AreMultiFrameRolesRunning())
+            {
+                m_ImGuiBackend.PlatformNewFrame();
+                ImGui::NewFrame();
+
+                m_EditorGUIManager.Tick(deltaTime);
+                m_ProjectAssetWatcher.Tick(deltaTime);
+                m_InputHub.ProcessInput(*this);
+
+                if (m_AutomationHost)
+                {
+                    m_AutomationHost->Tick(*this);
+                }
+
+                SceneManager::Get().SendAllEndOfFrameUpdates();
+                m_ImGuiBackend.BuildDrawData();
+
+                TaskSystem* tasks = m_Engine->GetTaskSystem();
+                ME_ASSERT(tasks != nullptr, "Multi Editor requires TaskSystem");
+                tasks->SubmitRenderFrameTask(deltaTime, /*waitForCompletion=*/true);
+                continue;
+            }
 
             if (m_PendingInitialFontAtlasRebuild)
             {
@@ -674,6 +746,11 @@ namespace minEngine
             {
                 windowSystem.SwapBuffers();
             }
+        }
+
+        if (multiFrame)
+        {
+            m_Engine->StopMultiFrameRoles();
         }
     }
 

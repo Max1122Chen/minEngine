@@ -1,6 +1,7 @@
 #include "RHICommandList.h"
 
 #include "Runtime/Core/Assert/Assert.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 
 namespace minEngine
@@ -16,7 +17,9 @@ namespace minEngine
         {
             return m_ImmediateOverride != 0;
         }
-        if (FrameThreading::HasInstance() && FrameThreading::Get().IsMulti())
+        // Multi Recording is active only after TaskSystem frame roles are running.
+        if (FrameThreading::HasInstance() && FrameThreading::Get().IsMulti()
+            && TaskSystem::HasInstance() && TaskSystem::Get().AreFrameRolesRunning())
         {
             return false;
         }

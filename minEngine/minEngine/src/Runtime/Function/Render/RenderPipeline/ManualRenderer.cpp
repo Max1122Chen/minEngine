@@ -9,6 +9,7 @@
 #include "Render/RenderSystem.h"
 #include "Render/RHI/RHI.h"
 #include "Render/RHI/RHICommandList.h"
+#include "Render/RHI/RHICommandListPool.h"
 #include "Render/SceneDrawDesc.h"
 #include "Render/SceneRenderTarget.h"
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
@@ -345,7 +346,19 @@ namespace minEngine
             ClearUnusedShadowViewProjSlots(ctx);
         }
 
-        RHICommandList cmdList(rhi);
+        RHICommandList stackList(rhi);
+        const bool immediate = stackList.IsImmediate();
+        RHICommandList* cmdListPtr = &stackList;
+        if (!immediate)
+        {
+            ME_ASSERT(RHICommandListPool::HasInstance(), "Multi Recording requires RHICommandListPool");
+            cmdListPtr = RHICommandListPool::Get().Acquire();
+            if (cmdListPtr == nullptr)
+            {
+                return;
+            }
+        }
+        RHICommandList& cmdList = *cmdListPtr;
         cmdList.BeginRecording();
         UpdatePerFrameUBO(ctx);
 
@@ -419,7 +432,14 @@ namespace minEngine
         sceneTarget->PublishGraphDepthTexture(m_ManualSceneDepth);
 
         cmdList.FinishRecording();
-        cmdList.Replay();
+        if (immediate)
+        {
+            cmdList.Replay();
+        }
+        else
+        {
+            RHICommandListPool::Get().SubmitFinished(cmdListPtr);
+        }
 
         ++m_FrameIndex;
     }

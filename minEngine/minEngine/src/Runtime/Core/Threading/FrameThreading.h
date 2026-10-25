@@ -26,7 +26,7 @@ namespace minEngine
     /**
      * Frame-role identity and FrameThreadMode.
      * Single: one OS thread owns Game/Render/RHI kinds.
-     * Multi: mode is stored now; dedicated Render/RHI OS threads land in a later slice.
+     * Multi: OS Render/RHI (or combined graphics) threads are owned by TaskSystem.
      */
     class MINENGINE_API FrameThreading
     {

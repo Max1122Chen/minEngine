@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Core/CLI/CommandLineResult.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Threading/RenderCommandPipe.h"
 #include "Runtime/EngineConfig.h"
@@ -11,6 +12,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -36,8 +38,8 @@ namespace minEngine
     class GameInstance;
     class Scene;
     class GameplayFixedTickClock;
-    class TaskSystem;
     class FrameThreading;
+    class RHICommandListPool;
 
     ME_CLASS()
     class MINENGINE_API Engine : public MEObject
@@ -141,9 +143,21 @@ namespace minEngine
         /** Game→Render command / ViewIntent pipe; null until Initialize. */
         RenderCommandPipe* GetRenderCommandPipe() const { return m_RenderCommandPipe.get(); }
 
+        /**
+         * Multi only: start TaskSystem frame roles + command-list pool.
+         * renderOverride / rhiOverride optional (Editor supplies ImGui+Present).
+         * Default: TickRendererFrame + pool Replay/Present.
+         */
+        void StartMultiFrameRoles(
+            TaskSystem::RenderFrameTaskFn renderOverride = {},
+            TaskSystem::RHIFrameTaskFn rhiOverride = {});
+        void StopMultiFrameRoles();
+        bool AreMultiFrameRolesRunning() const;
+
     private:
         void InitializeFrameThreading(std::optional<FrameThreadMode> commandLineOverride);
         void InitializeRenderCommandPipe();
+        void TickRHIFrameDefault();
         std::shared_ptr<GameInstance> CreateGameInstanceOfResolvedClass(
             const std::string& objectName,
             Scene* primaryScene,
@@ -187,6 +201,7 @@ namespace minEngine
         std::unique_ptr<TaskSystem> m_TaskSystem;
         std::unique_ptr<FrameThreading> m_FrameThreading;
         std::unique_ptr<RenderCommandPipe> m_RenderCommandPipe;
+        std::unique_ptr<RHICommandListPool> m_RHICommandListPool;
     };
 }
 

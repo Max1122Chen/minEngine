@@ -28,6 +28,7 @@
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Threading/RenderCommandPipe.h"
+#include "Runtime/Function/Render/RHI/RHICommandListPool.h"
 
 #include <vector>
 
@@ -200,22 +201,122 @@ namespace minEngine
         s_Instance = nullptr;
     }
 
+    void Engine::TickRHIFrameDefault()
+    {
+        if (RHICommandListPool::HasInstance())
+        {
+            while (RHICommandList* list = RHICommandListPool::Get().TryTakeFinished())
+            {
+                list->Replay();
+                RHICommandListPool::Get().Release(list);
+            }
+        }
+        if (m_RenderSystem)
+        {
+            m_RenderSystem->PresentFrame();
+        }
+        else if (WindowSystem::HasInstance())
+        {
+            WindowSystem::Get().SwapBuffers();
+        }
+    }
+
+    void Engine::StartMultiFrameRoles(
+        TaskSystem::RenderFrameTaskFn renderOverride,
+        TaskSystem::RHIFrameTaskFn rhiOverride)
+    {
+        if (!m_FrameThreading || !m_FrameThreading->IsMulti())
+        {
+            return;
+        }
+        if (!m_TaskSystem || !m_TaskSystem->IsRunning())
+        {
+            ME_LOG(LogCore, Error, "StartMultiFrameRoles: TaskSystem not running.");
+            return;
+        }
+        if (m_TaskSystem->AreFrameRolesRunning())
+        {
+            return;
+        }
+        if (!m_RenderSystem || m_RenderSystem->GetRHI() == nullptr)
+        {
+            ME_LOG(LogCore, Error, "StartMultiFrameRoles: RenderSystem/RHI required.");
+            return;
+        }
+
+        m_RHICommandListPool = std::make_unique<RHICommandListPool>();
+        m_RHICommandListPool->Initialize(m_RenderSystem->GetRHI());
+
+        TaskSystem::RenderFrameTaskFn renderTask = renderOverride
+            ? std::move(renderOverride)
+            : TaskSystem::RenderFrameTaskFn([this](float dt) { TickRendererFrame(dt); });
+        TaskSystem::RHIFrameTaskFn rhiTask = rhiOverride
+            ? std::move(rhiOverride)
+            : TaskSystem::RHIFrameTaskFn([this]() { TickRHIFrameDefault(); });
+
+        const bool combineGraphics = RHIBackendSelection::IsOpenGL();
+        m_TaskSystem->StartFrameRoles(std::move(renderTask), std::move(rhiTask), combineGraphics);
+    }
+
+    void Engine::StopMultiFrameRoles()
+    {
+        if (m_TaskSystem && m_TaskSystem->AreFrameRolesRunning())
+        {
+            m_TaskSystem->StopFrameRoles();
+        }
+        if (m_RHICommandListPool)
+        {
+            m_RHICommandListPool->RequestShutdown();
+            m_RHICommandListPool->Shutdown();
+            m_RHICommandListPool.reset();
+        }
+    }
+
+    bool Engine::AreMultiFrameRolesRunning() const
+    {
+        return m_TaskSystem && m_TaskSystem->AreFrameRolesRunning();
+    }
+
     void Engine::Run()
     {
+        if (m_FrameThreading && m_FrameThreading->IsMulti())
+        {
+            StartMultiFrameRoles();
+        }
+
         WindowSystem& windowSystem = WindowSystem::Get();
         while (!windowSystem.ShouldClose())
         {
             const float deltaTime = CalculateDeltaTime();
-            TickOneFrame(deltaTime);
-            if (m_RenderSystem)
+            if (AreMultiFrameRolesRunning())
             {
-                m_RenderSystem->PresentFrame();
+                Profile::BeginFrame();
+                {
+                    ME_PROFILE_SCOPE("Engine.Frame");
+                    PollEvents();
+                    {
+                        ME_PROFILE_SCOPE("Frame.Game.Logical");
+                        TickLogicalFrame(deltaTime);
+                    }
+                    m_TaskSystem->SubmitRenderFrameTask(deltaTime, /*waitForCompletion=*/false);
+                }
+                Profile::EndFrame();
             }
             else
             {
-                windowSystem.SwapBuffers();
+                TickOneFrame(deltaTime);
+                if (m_RenderSystem)
+                {
+                    m_RenderSystem->PresentFrame();
+                }
+                else
+                {
+                    windowSystem.SwapBuffers();
+                }
             }
         }
+
+        StopMultiFrameRoles();
     }
 
     void Engine::PollEvents()
@@ -569,6 +670,8 @@ namespace minEngine
         {
             m_AssetManager->FlushAsyncLoadsForShutdown();
         }
+
+        StopMultiFrameRoles();
 
         if (m_TaskSystem)
         {

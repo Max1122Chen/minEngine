@@ -1,6 +1,6 @@
 # Feature Registry
 
-Last updated: 2026-10-24（CORE-F45 S00–S03 Done · 下一 S04 Multi）
+Last updated: 2026-10-24（CORE-F46 S02 Done；F45 S04 已吸收）
 Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or conflicting Feature IDs between you and AI.
 
 **Rules (mandatory for new work):**
@@ -70,7 +70,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `CORE-F40` | Input Key Catalog（键盘/鼠侧键补全 · 合成修饰键 · canonical Gamepad） | **Done** | — | [Design](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_DESIGN.md) · [Impl](./Platform/Core/CORE-F40_INPUT_KEY_CATALOG_IMPLEMENTATION.md) · `test input-key-catalog` · 软解锁 [UI-F08](./Platform/UI/UI-F08_SCREENUI_WIDGET_POINTER_INTERACTION_DESIGN.md) |
 | `CORE-F41` | 会话日志文件 + Automation 读环 + Console 单条复制 | **Review** | — | [Design](./Platform/Core/CORE-F41_SESSION_LOG_FILE_AND_READBACK_DESIGN.md) · L2 · `test logging-channels` · Console 手工待点验 |
 | `CORE-F44` | Serializer File→Json / Json→Object+Resolve 分段（`FromFile` 组合复用） | **Done** | — | [Design](./Platform/Serialization/CORE-F44_SERIALIZER_FILE_JSON_OBJECT_SPLIT_DESIGN.md) · L1 · 解锁 [ASSET-F09](./Asset/ASSET-F09_ASYNC_DATAASSET_LOAD_DESIGN.md) · `serialization-archive` |
-| `CORE-F45` | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00–S03 Done · 下一 S04 Multi） | — | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
+| `CORE-F45` | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00–S03 Done；**S04 暂停** → 吸收进 F46 门面） | — | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) · 调度门面 → [CORE-F46](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) |
+| `CORE-F46` | TaskSystem 统一门面（Named 帧角色 + ParallelFor + 小 DAG；吸收 F45 S04 spike） | **In Progress**（S00–S02 Done；S03 Pending） | — | [Design](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) · L2 · 演进 F38；**无** Named 泵 / 跨角色图 · suite `task-system` · Engine/Editor `--frame-threads=multi` |
 | `BUILD-F03` | 符号契约盘点与 rollout（刀1 出表 · 刀2 标宏烧 `.def`→`explicit`） | **Done**（刀1 + 刀2 批0–5 + 默认 `explicit`；刀3/F04 边界已大部） | — | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · [刀1 Impl](./Platform/ProductBuild/BUILD-F03_KNIFE1_AND_REMOVAL_GUARD_IMPLEMENTATION.md) |
 | `BUILD-F04` | 编辑器模块边界：引擎 DLL + 编辑器 DLL + imgui 迁出 | **In Progress**（S01–S05 大部落地；余量不挡 F03 刀2） | — | [Design](./Platform/ProductBuild/BUILD-F04_EDITOR_MODULE_BOUNDARY_DESIGN.md) · [S01–S03](./Platform/ProductBuild/BUILD-F04_S01_S03_EDITOR_DLL_IMPLEMENTATION.md) · [S04](./Platform/ProductBuild/BUILD-F04_S04_IMGUI_RELOCATION_IMPLEMENTATION.md) |
 | `BUILD-F02` | 显式导出：`MINENGINE_API` + `auto→whitelist→explicit`（去序号炸弹） | **Done**（S00–S02 + S04–S06；默认 `explicit`，经 F03 刀2） | — | [Design](./Platform/ProductBuild/BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md) · [Impl S01](./Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMPLEMENTATION.md) |

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EngineAPI.h"
+#include "TaskFlowBuilder.h"
 #include "TaskHandle.h"
 
 #include <cstdint>
@@ -11,22 +12,27 @@
 namespace minEngine
 {
     /**
-     * Thin TaskFlow wrapper: Submit CPU work on workers, DrainCompletions on the game thread.
+     * Execution facade: TaskFlow workers + Multi frame-role OS threads.
      *
-     * Usage contract (engine and game modules):
-     * - Game thread = the thread that called Init (normally the logical/frame thread).
-     * - Workers may only run pure CPU / local data work. Do not call NewObject, ObjectManager,
-     *   AssetManager, Scene, RHI, Lua, ImGui, or Submit/Wait/Drain/Shutdown from a worker.
-     * - onComplete runs only on the game thread via DrainCompletions (Engine drains once per
-     *   logical tick after Input, before Fixed). Product code should not Drain ad hoc.
-     * - Wait covers the worker function only; it does not mean onComplete has run.
-     * - This pool is not a substitute for game/render/RHI frame-thread separation.
+     * - Submit / DrainCompletions: Game thread only; onComplete optional.
+     * - Wait: blocks until worker CPU (or flow sink) finishes; NOT until onComplete.
+     * - ParallelFor / RunAndWait: Game or Render orchestrator; join; no Drain.
+     * - SubmitFlow: small worker DAG; same Wait / optional onComplete as Submit.
+     * - Frame roles (Multi): dedicated Render/RHI threads (OpenGL may combine into one
+     *   graphics thread that owns the GL context).
+     * Workers: pure CPU only — no RHI, NewObject, AssetManager writes, Scene authority,
+     *          Lua, ImGui, or TaskSystem control-plane re-entry.
      */
     class MINENGINE_API TaskSystem
     {
     public:
         using WorkFn = std::function<void()>;
         using CompletionFn = std::function<void(bool bSucceeded)>;
+        using ParallelBodyFn = std::function<void(int32_t index)>;
+        using RenderFrameTaskFn = std::function<void(float deltaTime)>;
+        using RHIFrameTaskFn = std::function<void()>;
+
+        static constexpr size_t kMaxPendingRenderFrames = 3;
 
         TaskSystem();
         ~TaskSystem();
@@ -40,28 +46,55 @@ namespace minEngine
         static bool HasInstance();
         static void SetInstance(TaskSystem* instance);
 
-        /**
-         * Start the worker pool. Records the calling thread as the game thread.
-         * workerCount <= 0 uses max(1, hardware_concurrency - 1).
-         */
+        /** Start the worker pool. Records the calling thread as the game thread. */
         void Init(int workerCount = 0);
 
-        /** Game-thread only. Wait for accepted work, drain remaining completions, destroy pool. */
+        /** Game-thread only. Stops frame roles, drains work, destroys pool. */
         void Shutdown();
 
         /** Game-thread only. Rejected off the game thread (invalid handle). */
         TaskHandle Submit(WorkFn work);
         TaskHandle Submit(WorkFn work, CompletionFn onComplete);
 
-        /** Block until the work function finishes (not until onComplete runs). */
+        /** Block until the work / flow finishes (not until onComplete runs). */
         void Wait(TaskHandle handle);
 
         /** Game-thread only. Dispatch completions already queued at call start. */
         void DrainCompletions();
 
+        /**
+         * Fan-out body(i) for i in [0, count). Returns when all finished.
+         * Allowed on Game or Render (FrameThreading Render bind). No completion queue.
+         */
+        void ParallelFor(int32_t count, ParallelBodyFn body);
+
+        /** Run one unit on the pool and join. Game or Render. */
+        void RunAndWait(WorkFn work);
+
+        /** Game-thread only. One-shot worker DAG; optional onComplete via Drain. */
+        TaskHandle SubmitFlow(TaskFlowBuilder&& builder);
+        TaskHandle SubmitFlow(TaskFlowBuilder&& builder, CompletionFn onComplete);
+
+        /**
+         * Multi only. Starts Render/RHI role threads (or one combined graphics thread).
+         * combineGraphicsThreads: true for OpenGL (single context owner); false for Vulkan.
+         */
+        void StartFrameRoles(
+            RenderFrameTaskFn renderTask,
+            RHIFrameTaskFn rhiTask,
+            bool combineGraphicsThreads);
+
+        void StopFrameRoles();
+
+        /** Game posts a render frame. Blocks if queue full. Optional wait until RHI completes. */
+        void SubmitRenderFrameTask(float deltaTime, bool waitForCompletion);
+
+        void WaitForRenderQueueSpace();
+
         bool IsRunning() const;
         int GetWorkerCount() const;
         std::thread::id GetGameThreadId() const;
+        bool AreFrameRolesRunning() const;
 
     private:
         struct Impl;

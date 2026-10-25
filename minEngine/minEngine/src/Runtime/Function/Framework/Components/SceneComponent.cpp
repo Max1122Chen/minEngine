@@ -146,7 +146,9 @@ namespace minEngine
         }
 
         m_Transform = inTransform;
-        MarkRenderStateDirty();
+        // Simulation only moves the pose — use the transform fast path. StateDirty would
+        // Recreate the proxy and, with Draw-before-FlushApply, blank the mesh for a frame.
+        MarkRenderTransformDirty();
         for (SceneComponent* child : m_AttachChildren)
         {
             if (child != nullptr)

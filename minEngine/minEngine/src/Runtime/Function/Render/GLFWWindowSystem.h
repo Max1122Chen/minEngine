@@ -33,6 +33,8 @@ namespace minEngine
         virtual void Clear() override;
 
         virtual void SwapBuffers() override;
+        virtual void MakeGraphicsContextCurrent() override;
+        virtual void ClearGraphicsContextCurrent() override;
         virtual void PollEvents() const override;
         virtual void SetCursorVisible(bool visible) override;
         virtual void SetCursorClipRect(const WindowCursorClipRect& rect) override;

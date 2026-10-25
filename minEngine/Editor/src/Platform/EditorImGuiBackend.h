@@ -24,8 +24,32 @@ namespace minEngine
         bool InitializeVulkanRenderer(VulkanRHI& vulkanRhi);
 #endif
 
+        /**
+         * GLFW / input NewFrame — call on the window (Game) thread only.
+         * Safe without a current GL/Vulkan context.
+         */
+        void PlatformNewFrame();
+
+        /**
+         * Renderer backend NewFrame (OpenGL3 / Vulkan device objects).
+         * Call on the thread that owns the graphics context / queue.
+         */
+        void RendererNewFrame();
+
+        /** PlatformNewFrame then RendererNewFrame (Single-thread Editor loop). */
         void NewFrame();
+
+        /**
+         * ImGui::Render() if draw data is not built yet, then GPU submit.
+         * Single-thread convenience; Multi: call BuildDrawData on Game, SubmitDrawData on graphics.
+         */
         void RenderDrawData(RHI* rhi);
+
+        /** CPU: finalize the ImGui frame into ImDrawData (window thread). */
+        void BuildDrawData();
+
+        /** GPU: upload textures + render ImDrawData (graphics-context thread). */
+        void SubmitDrawData(RHI* rhi);
 
         void NotifyFontAtlasRebuilt();
         void InvalidateViewportTextures();

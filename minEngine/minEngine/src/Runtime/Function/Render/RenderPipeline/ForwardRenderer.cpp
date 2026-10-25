@@ -24,6 +24,7 @@
 #include "Render/EngineSceneBindingSets.h"
 #include "Render/RHI/RHIBuffers.h"
 #include "Render/RHI/RHICommandList.h"
+#include "Render/RHI/RHICommandListPool.h"
 #include "Render/EngineShaderUtils.h"
 #include "Render/RenderGraph/RenderGraph.h"
 #include "Render/RenderGraph/RDGTypes.h"
@@ -656,7 +657,19 @@ namespace minEngine
 
         m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
 
-        RHICommandList cmdList(rhi);
+        RHICommandList stackList(rhi);
+        const bool immediate = stackList.IsImmediate();
+        RHICommandList* cmdListPtr = &stackList;
+        if (!immediate)
+        {
+            ME_ASSERT(RHICommandListPool::HasInstance(), "Multi Recording requires RHICommandListPool");
+            cmdListPtr = RHICommandListPool::Get().Acquire();
+            if (cmdListPtr == nullptr)
+            {
+                return;
+            }
+        }
+        RHICommandList& cmdList = *cmdListPtr;
         cmdList.BeginRecording();
 
         UpdatePerFrameUBO(ctx);
@@ -734,7 +747,14 @@ namespace minEngine
         EnqueueFrameRenderGraph(cmdList, sceneTarget);
 
         cmdList.FinishRecording();
-        cmdList.Replay();
+        if (immediate)
+        {
+            cmdList.Replay();
+        }
+        else
+        {
+            RHICommandListPool::Get().SubmitFinished(cmdListPtr);
+        }
 
         ++m_FrameIndex;
     }

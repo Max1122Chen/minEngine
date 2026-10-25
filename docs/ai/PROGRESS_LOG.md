@@ -1,3 +1,65 @@
+## 2026-10-24 — CORE-F46 S02：帧角色进 TaskSystem + Engine/Editor Multi
+
+- **Scope:** 吸收 FrameThreadScheduler；StartFrameRoles / SubmitRenderFrameTask；OpenGL combine；接线 Engine/Editor
+- **Completed:**
+  - TaskSystem：Render/RHI（或 combined graphics）OS 线程；有界队列；waitForCompletion
+  - 删除公共 FrameThreadScheduler；RHICommandListPool 保留给 Recording Replay
+  - Engine::StartMultiFrameRoles / Run Multi（异步 Submit）；Editor Multi（ImGui+Present 在 graphics 角色，wait=true）
+  - GLFW MakeGraphicsContextCurrent / Clear；suite 增 combined/split frame-role 用例
+- **Verification:** `minEngineTests.exe test task-system` 17 PASS；`MaximumEditor.exe --project MyMEProject --frame-threads multi` 短跑成功（日志：combined graphics frame role started）
+- **Next:** S03 Profile/backpressure 收口；主人验收后准备 commit
+
+## 2026-10-25 — BUG-PHYS-005：物理回写 StateDirty 导致拖 Cube 闪没
+
+- **Scope:** 登记并修复 Editor 拖 Dynamic+Simulate Cube 网格频闪
+- **Completed:**
+  - 登记 [BUG-PHYS-005](./bugs/BUG-PHYS-005.md)
+  - `SetTransformFromSimulation` → `MarkRenderTransformDirty`
+  - `RecreatePrimitive`：Flush 前不再掏空旧 Proxy 的 `m_PrimitiveComponent`
+- **Verification:** Editor 已重建；待主人 `--frame-threads multi` 拖 Cube 目视
+- **Next:** 主人验收后勾回归项
+
+## 2026-10-25 — Editor Multi：ImGui Platform/Renderer 分线程
+
+- **Scope:** Editor 支持 `--frame-threads multi`；避免 GLFW 进 graphics 死锁
+- **Completed:**
+  - `EditorImGuiBackend`：`PlatformNewFrame` / `RendererNewFrame` / `BuildDrawData` / `SubmitDrawData`
+  - Game：GLFW + UI CPU + `BuildDrawData`；graphics：`RendererNewFrame` + `TickRendererFrame` + `SubmitDrawData` + Present；`wait=true`
+  - 启动前在 Game 上做 font atlas + 一次 `RendererNewFrame`（上下文移交前）
+- **Verification:** `MaximumEditor --frame-threads multi` Responding=True；日志 `combined graphics frame role started`
+- **Next:** S03；可选 wait=false 重叠（需更严 ImDrawData 生命周期）
+
+## 2026-10-24 — CORE-F46 S01/S01b：ParallelFor + SubmitFlow
+
+- **Scope:** Design v3 Job→Task + 自审 Ready；实现扇出与小图
+- **Completed:**
+  - Design：`SubmitRenderFrameTask` / `RenderFrameTask` 命名；Status In Progress；自审 Ready
+  - `ParallelFor` / `RunAndWait`（Game|Render）；`TaskFlowBuilder` + `SubmitFlow`（环拒绝；菱形）
+  - suite `task-system` 15 cases PASS（含 Render ParallelFor / cycle / diamond）
+  - 顺手：`ManualRenderer` 补 `RHICommandListPool.h`（S04 spike 编译缺口）
+- **Verification:** `minEngineTests.exe test task-system` exit 0 @ minEngine-core bin
+- **Next:** S02 吸收帧角色（`StartFrameRoles` / `SubmitRenderFrameTask`；去公共 Scheduler）
+
+## 2026-10-24 — CORE-F46 Draft v2：API / 数据结构 / 小图
+
+- **Scope:** 据讨论修订 Design：Join vs Drain、小 DAG、代码示意
+- **Completed:**
+  - [Design v2](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md)：`TaskFlowBuilder`/`SubmitFlow`；`ParallelFor`；帧角色 API；用法 A–E
+  - 锁定 D8/D9：RHI Create≠Task 回调；Render 剔除=Join
+  - Non-Goal：Named 泵与跨角色节点（小公共 DAG **做**）
+- **Verification:** docs only
+- **Next:** 主人审阅 v2 → Design Review → S01 ParallelFor
+
+## 2026-10-24 — CORE-F46 Draft：TaskSystem 统一门面
+
+- **Scope:** 登记执行模型演进；统一门面 + Named 帧角色线程 + Worker ParallelFor；调整 F45 S04 优先级
+- **Completed:**
+  - 登记 `CORE-F46`；[Design Draft](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md)
+  - 锁定：Render/RHI 仍为常驻有名 OS 线程；不仿完整 TaskGraph；`FrameThreadScheduler` = spike 待吸收
+  - F45 Meta / ACTIVE_WORK：S04 暂停，Primary → F46 审阅
+- **Verification:** docs only
+- **Next:** 主人审阅 F46；Design Review 后再实现（建议 S01 ParallelFor → S02 吸收帧角色）
+
 ## 2026-10-24 — CORE-F45 S03（RHICommandList Immediate / Recording）
 
 - **Scope:** List 状态机；Single 默认 Immediate；Recording 可测；Pass 调用约定不变
