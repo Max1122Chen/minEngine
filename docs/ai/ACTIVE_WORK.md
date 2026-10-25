@@ -11,7 +11,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `feat/core`）：** `CORE-F42` **Done**（S01–S06）。下一动作：合入 `master`；minCraft `ApplyPointerMode` → `Pointer::ShowUi()`（需 `ENGINE_ROOT` 指向含 F42 的引擎树）。`CORE-F46` **Done**。
+**Primary（本工作树 `feat/core`）：** `CORE-F42` **Done**（S01–S06）。下一动作：合入 `master`；minCraft 重建时 `ENGINE_ROOT=D:/Dev/GitRepo/minEngine-core`（或合入后的 master）。消费方 `ShowUi` 已改（`minCraft` / `minCraft-ui`）。`CORE-F46` **Done**。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
@@ -42,7 +42,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** 合入 `master`；minCraft（及 `-ui`）改 `ApplyPointerMode` → `Pointer::ShowUi()` 并重建链到含 F42 的引擎。
+**下一动作：** 合入 `master`；minCraft 用含 F42 的 `ENGINE_ROOT` 重配/重建后手验开背包可见鼠标。
 
 **Editor Multi：** ImGui 拆 Platform（Game/GLFW）与 Renderer（graphics）；`wait=true` 交接 `ImDrawData`。`--frame-threads multi` 可跑（OpenGL combined）。
 
