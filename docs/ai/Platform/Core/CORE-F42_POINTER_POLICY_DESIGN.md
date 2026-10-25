@@ -4,9 +4,9 @@
 - **ID:** `CORE-F42`
 - **Type:** Feature
 - **Complexity:** `L2`
-- **Status:** `Approved`（设计已批准；实现未启动。**S01（focus 作用域约束）为 P0 首切片**）
+- **Status:** `Done`（S01–S06 落地；引擎不自动 Confined，容器拥有者 RAII `Pointer::ShowUi` / `ConfineUiTo`）
 - **Owner:** project maintainer
-- **Last updated:** 2026-10-20（R2 修订：+P7 系统级约束泄漏、focus 作用域约束前置、释放键 LeftAlt → Shift+F1）
+- **Last updated:** 2026-10-25（实现收口；S06 O7 绿 + 消费方迁移说明）
 - **Related:**
   - 任务书原文：`minCraft-ui/docs/ai/INFRA/ENGINE_SESSION_PROMPT_UI_UV_AND_CURSOR_POLICY.md`（工作项 B，§4）
   - [ED-F23](../../Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md)（**现有** per-viewport 指针策略，Done；本 Feature 把它收进引擎级拥有者，并**改绑释放键**）
@@ -735,7 +735,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\Dev\GitRepo\minEngine\scr
 | `S03` | 窗口映射接线 + 编辑器三处迁移（删直调） | `EditNavigate/PieCaptured/PieReleased` 行为等价；grep 断言无直调 |
 | `S04` | PIE 状态机 + **Shift+F1 改绑** + 崩溃归零 | `pie captured then shift-f1 release` / `pie stop returns free` / `stop and shutdown clear clip` 三用例绿 + 手工点验 3–6 |
 | `S05` | 游戏面 facade + 位置契约 + `editor.get_pointer_policy` | O4/O6 绿；独立 Game 可捕获 |
-| `S06` | UI 容器集成（UI tier `Confined`）+ 文档与提示文案收口 | O7 绿；帮助文案已改 Shift+F1 |
+| `S06` | UI 容器集成（UI tier `Confined`/`ShowUi`）+ 文档与提示文案收口 | **Done** — O7 绿；Shift+F1 文案已改；引擎不自动请求，消费方 RAII |
 
 ### §S01 独立验收（不依赖新 API 面）
 

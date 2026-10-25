@@ -1,3 +1,12 @@
+## 2026-10-25 — CORE-F42 S06：UI 集成收口 · Feature Done
+
+- **Scope:** S06；不引入 UISystem 自动 Confined（硬边界）
+- **Completed:**
+  - 验收：容器拥有者 RAII `Pointer::ShowUi` / `ConfineUiTo`；视口提示已是 Shift+F1
+  - O7：`test screen-ui-pointer` + `gameplay-input-gate` 全绿；`pointer-policy` 11/105 绿
+  - Design / Registry / ACTIVE_WORK → **Done**
+- **Next:** 合入 `master`；minCraft `ApplyPointerMode` → `ShowUi()`（`ENGINE_ROOT` 需含 F42）
+
 ## 2026-10-25 — CORE-F42 S04：Shift+F1 释放 + 轻量位置采样
 
 - **Scope:** S04 键位；BeginFrame 位置窗口/视口采样

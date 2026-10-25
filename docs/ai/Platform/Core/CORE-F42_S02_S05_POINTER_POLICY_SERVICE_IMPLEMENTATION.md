@@ -2,10 +2,10 @@
 
 | 项 | 值 |
 |----|----|
-| 切片 | `S02` 服务骨架 · `S03` 编辑器迁移 · `S05` 游戏面 facade（本波合并竖切） |
-| 设计输入 | `CORE-F42_POINTER_POLICY_DESIGN.md`（Approved） |
+| 切片 | `S02` 服务骨架 · `S03` 编辑器迁移 · `S04` 键位 · `S05` 游戏面 · `S06` UI 集成收口 |
+| 设计输入 | `CORE-F42_POINTER_POLICY_DESIGN.md`（Approved → Done） |
 | 落地日期 | 2026-10-25 |
-| 验收 | `test pointer-policy` **11** cases / **105** asserts 全绿；`Editor` 目标可链 |
+| 验收 | `test pointer-policy` **11** / **105**；`screen-ui-pointer` + `gameplay-input-gate`（O7）全绿；`Editor` 可链 |
 
 ## 1. 一句话
 
@@ -21,7 +21,7 @@
 | S04 | **Deferred** | Shift+F1 改绑仍用 LeftAlt；提示文案已预告 |
 | **S04** | **Done** | Shift+F1 主释放；`bKeepLeftAltAlias` 默认开；视口提示已改 |
 | **S05** | **Done（facade + 轻量位置）** | `Pointer::*`；`BeginFrame` 填 Window/Viewport；ReferencePx 复用上一帧 `UISystem::GetPointerPosition` |
-| S06 | **Deferred** | UI 自动 Confined；消费方自行 `ShowUi`/`ConfineUiTo` |
+| **S06** | **Done** | 不自动 Confined（硬边界：容器拥有者 RAII `ShowUi`/`ConfineUiTo`）；O7 回归绿；Shift+F1 文案已改 |
 
 ## 3. 与 Design 的有意偏差
 
