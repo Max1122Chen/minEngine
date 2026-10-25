@@ -4,9 +4,9 @@
 - **ID:** `CORE-F45`
 - **Type:** `Feature`（真 refactor：帧所有权与命令边界）
 - **Complexity:** `L3`
-- **Status:** `In Progress`（**S00–S03 Done**；**S04 暂停** — Multi OS 调度并入 [CORE-F46](./CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) 统一门面）
+- **Status:** `Done`（**S00–S03**；**S04** 吸收进 [CORE-F46](./CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md)）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-24`
+- **Last updated:** `2026-10-25`
 - **Doc role:** **综述** — 跨线程契约、`FrameThreadMode`、切片总序、验收。角色细节见子 Design。
 - **Related:**
   - [Survey](./CORE-F45_FRAME_THREAD_SEPARATION_SURVEY.md)（Reference）

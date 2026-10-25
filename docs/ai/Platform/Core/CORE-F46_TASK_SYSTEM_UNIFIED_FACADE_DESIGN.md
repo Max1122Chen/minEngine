@@ -4,9 +4,9 @@
 - **ID:** `CORE-F46`
 - **Type:** `Feature`（演进 / 真整合；吸收 F45 S04 spike）
 - **Complexity:** `L2`
-- **Status:** `In Progress`（S02 Done；S03 余量）
+- **Status:** `Done`（S00–S03）
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-24`（S02：帧角色吸收 + Engine/Editor Multi 接线）
+- **Last updated:** `2026-10-25`（S03：backpressure/Profile 收口 + Multi smoke）
 - **Related:**
   - [CORE-F38](./CORE-F38_TASK_SYSTEM_DESIGN.md) · [CORE-F45](./CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md)
   - [ACTIVE_WORK](../../ACTIVE_WORK.md) · [FEATURE_REGISTRY](../../FEATURE_REGISTRY.md)
@@ -162,7 +162,7 @@ Render cull = ParallelFor Join；不是 onComplete 回 Render。
 | S01 | ParallelFor / RunAndWait + tests | **Done** |
 | S01b | TaskFlowBuilder + SubmitFlow + diamond/cycle tests | **Done** |
 | S02 | StartFrameRoles / SubmitRenderFrameTask；吸 Scheduler；Engine/Editor Multi | **Done** |
-| S03 | backpressure / Profile 收口；更完整 Multi smoke | Pending |
+| S03 | backpressure / Profile 收口；更完整 Multi smoke | **Done** |
 
 ## Design Review（自审 · Mode A · 2026-10-24）
 
@@ -203,3 +203,4 @@ OQ1 平铺 API · OQ2 ParallelFor 记错继续 · OQ3 小 count 阈值实现定 
 | 2026-10-24 | v2 小图 + 代码示意 |
 | 2026-10-24 | v3 Job→Task；自审 Ready；UTF-8 重写；开工 |
 | 2026-10-24 | S02：帧角色进 TaskSystem；删公共 Scheduler；Engine/Editor Multi；OpenGL combine；suite 17 PASS |
+| 2026-10-25 | S03：统一 WaitForRenderQueueSpace；Frame.* Profile；async / backpressure Multi smoke；Status → Done |

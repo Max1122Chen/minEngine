@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-24（Primary → CORE-F46 S02 Done；S03 余量）
+Last updated: 2026-10-25（CORE-F46 S03 Done · Feature Done）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -11,12 +11,12 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 
 ## 当前焦点
 
-**Primary（本工作树 `feat/core`）：** `CORE-F46` **In Progress**（TaskSystem 统一门面）。S00–S02 Done（含 Engine/Editor Multi 接线）；S03 Profile/smoke 收口。`CORE-F45` S00–S03 Done；S04 已吸收进 F46（无并列公共 Scheduler）。已合并 `feat/render`：`RND-F26` Done。
+**Primary（本工作树 `feat/core`）：** `CORE-F46` **Done**（TaskSystem 统一门面；S00–S03）。`CORE-F45` S00–S03 Done；S04 已吸收进 F46。已合并 `feat/render`：`RND-F26` Done。下一焦点待主人点选。
 
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
-| 0 | CORE-F46 | TaskSystem 统一门面（角色线程 + ParallelFor + 小 DAG） | **In Progress**（S02 Done · 下一 S03） | [Design](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) |
-| — | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **In Progress**（S00–S03 Done；S04 暂停 → F46） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
+| — | CORE-F46 | TaskSystem 统一门面（角色线程 + ParallelFor + 小 DAG） | **Done**（S00–S03） | [Design](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) |
+| — | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Done**（S00–S03；S04 吸收进 F46） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done**（自 feat/render） | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
@@ -41,18 +41,18 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | ED-F23 | Viewport Pointer Capture | **Done** | [Design](./Editor/ED-F23_VIEWPORT_POINTER_CAPTURE_DESIGN.md) |
 | — | CORE-F31 | GO/Component BeginPlay · EndPlay | **Done** | [Design](./Platform/Core/CORE-F31_BEGIN_END_PLAY_LIFECYCLE_DESIGN.md) |
 
-**下一动作：** CORE-F46 **S03** — backpressure/Profile 收口与更完整 Multi smoke；或主人验收后合入。主树 `master` 稳供 minCraft。
+**下一动作：** 主人验收后合入 `master`（稳供 minCraft）；或点选下一 Primary。Sprite SPIR-V 红字仍为既有问题。
 
-**Editor Multi（本会话）：** ImGui 拆 Platform（Game/GLFW）与 Renderer（graphics）；`wait=true` 交接 `ImDrawData`。`--frame-threads multi` 已可跑（OpenGL combined）。Sprite SPIR-V 红字仍为既有问题。
+**Editor Multi：** ImGui 拆 Platform（Game/GLFW）与 Renderer（graphics）；`wait=true` 交接 `ImDrawData`。`--frame-threads multi` 可跑（OpenGL combined）。
 
 **已记录目标（多轨，不是线性 TODO）：**
 
 | 轨 | 意图 | 状态 |
 |----|------|------|
 | 构建 · 导出契约 | 刀2：标注烧 `.def`→`explicit`；反射 `MODULE_API`；单例/常量表单份 | **BUILD-F03 刀2 Done**（默认 `explicit`）；F02/刀1/F04 大部已落地 |
-| 多线程 · TaskSystem | F38 MVP Done；**统一门面 + ParallelFor + 帧角色** | **CORE-F46 S02 Done** |
+| 多线程 · TaskSystem | F38 MVP Done；**统一门面 + ParallelFor + 帧角色** | **CORE-F46 Done**（S00–S03） |
 | 多线程 · 资产异步 | DataAsset + F44 | **Done**；F11 通用化 Draft 低优 |
-| 多线程 · 帧线程 | Game / Render / RHI + Single/Multi | **CORE-F45 S00–S03 Done；S04 已吸收进 F46** |
+| 多线程 · 帧线程 | Game / Render / RHI + Single/Multi | **CORE-F45 Done**（S04 吸收进 F46） |
 | 光照 | Atmosphere | 后置 |
 | 模块边界 | Plugin / Package | 后置 |
 

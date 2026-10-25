@@ -454,6 +454,100 @@ TEST_CASE("task-system: frame roles split wait [smoke]")
     frameThreads.Shutdown();
 }
 
+TEST_CASE("task-system: frame roles async multi-frame [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    constexpr int kFrames = 8;
+    std::atomic<int> renderCount{0};
+    std::atomic<int> rhiCount{0};
+
+    tasks.StartFrameRoles(
+        [&](float) { renderCount.fetch_add(1, std::memory_order_relaxed); },
+        [&]() { rhiCount.fetch_add(1, std::memory_order_relaxed); },
+        /*combineGraphicsThreads=*/true);
+
+    for (int i = 0; i < kFrames; ++i)
+    {
+        tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/false);
+    }
+    // Drain pending work by waiting on a sentinel frame.
+    tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/true);
+
+    CHECK(renderCount.load(std::memory_order_relaxed) == kFrames + 1);
+    CHECK(rhiCount.load(std::memory_order_relaxed) == kFrames + 1);
+
+    tasks.StopFrameRoles();
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: frame roles backpressure [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::mutex permitMutex;
+    std::condition_variable permitCv;
+    std::atomic<int> permits{0};
+    std::atomic<int> rendered{0};
+
+    tasks.StartFrameRoles(
+        [&](float) {
+            std::unique_lock<std::mutex> lock(permitMutex);
+            permitCv.wait(lock, [&]() { return permits.load(std::memory_order_relaxed) > 0; });
+            permits.fetch_sub(1, std::memory_order_relaxed);
+            rendered.fetch_add(1, std::memory_order_relaxed);
+        },
+        [&]() {},
+        /*combineGraphicsThreads=*/true);
+
+    // Fill: 1 in-flight (blocked on permit) + kMaxPending queued.
+    constexpr int kFillCount = static_cast<int>(TaskSystem::kMaxPendingRenderFrames) + 1;
+    for (int i = 0; i < kFillCount; ++i)
+    {
+        tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/false);
+    }
+
+    std::atomic<bool> extraDone{false};
+    std::thread extraSubmit([&]() {
+        tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/false);
+        extraDone.store(true, std::memory_order_release);
+    });
+
+    // Extra submit should block while the queue is full and render is gated.
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
+    CHECK_FALSE(extraDone.load(std::memory_order_acquire));
+
+    {
+        std::lock_guard<std::mutex> lock(permitMutex);
+        permits.store(kFillCount + 1, std::memory_order_relaxed);
+    }
+    permitCv.notify_all();
+
+    extraSubmit.join();
+    CHECK(extraDone.load(std::memory_order_acquire));
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (rendered.load(std::memory_order_relaxed) < kFillCount + 1
+        && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    CHECK(rendered.load(std::memory_order_relaxed) == kFillCount + 1);
+
+    tasks.StopFrameRoles();
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
 TEST_CASE("task-system: worker one vs n wall clock [full]")
 {
     if (SkipPerfExperiment())

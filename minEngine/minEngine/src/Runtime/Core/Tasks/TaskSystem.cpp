@@ -173,13 +173,14 @@ namespace minEngine
 
         void FinishRecord(const std::shared_ptr<TaskRecord>& record, bool bSucceeded)
         {
+            // Publish before signaling Wait so Drain after Wait always sees the event.
+            record->bSucceeded = bSucceeded;
+            PublishCompletion(record);
             {
                 std::lock_guard<std::mutex> lock(record->Mutex);
-                record->bSucceeded = bSucceeded;
                 record->bWorkFinished = true;
             }
             record->Cv.notify_all();
-            PublishCompletion(record);
         }
 
         TaskHandle SubmitInternal(WorkFn work, CompletionFn onComplete)
@@ -347,6 +348,16 @@ namespace minEngine
             FrameCompleteCv.notify_all();
         }
 
+        /** Caller must hold RenderMutex. */
+        void WaitForRenderQueueSpaceLocked(std::unique_lock<std::mutex>& lock)
+        {
+            while (RenderTasks.size() >= TaskSystem::kMaxPendingRenderFrames && !bFrameRolesStop)
+            {
+                ME_PROFILE_SCOPE("Frame.Game.WaitRenderQueue");
+                RenderCv.wait(lock);
+            }
+        }
+
         void RunRHIFrameTask(const RHIFrameTask& task)
         {
             if (RHITaskFn)
@@ -387,8 +398,10 @@ namespace minEngine
                 }
                 RenderCv.notify_all();
 
+                ME_PROFILE_SCOPE("Frame.Graphics.Tick");
                 if (RenderTaskFn)
                 {
+                    ME_PROFILE_SCOPE("Frame.Render.Tick");
                     RenderTaskFn(task.DeltaTime);
                 }
                 RunRHIFrameTask(RHIFrameTask{task.Sequence, task.WaitForCompletion});
@@ -424,6 +437,7 @@ namespace minEngine
 
                 if (RenderTaskFn)
                 {
+                    ME_PROFILE_SCOPE("Frame.Render.Tick");
                     RenderTaskFn(task.DeltaTime);
                 }
 
@@ -829,11 +843,7 @@ namespace minEngine
             return;
         }
         std::unique_lock<std::mutex> lock(impl.RenderMutex);
-        while (impl.RenderTasks.size() >= kMaxPendingRenderFrames && !impl.bFrameRolesStop)
-        {
-            ME_PROFILE_SCOPE("Frame.Game.WaitRenderQueue");
-            impl.RenderCv.wait(lock);
-        }
+        impl.WaitForRenderQueueSpaceLocked(lock);
     }
 
     void TaskSystem::SubmitRenderFrameTask(float deltaTime, bool waitForCompletion)
@@ -841,14 +851,12 @@ namespace minEngine
         Impl& impl = *m_Impl;
         ME_ASSERT(impl.bFrameRolesRunning, "SubmitRenderFrameTask before StartFrameRoles");
 
+        ME_PROFILE_SCOPE("Frame.Game.SubmitRenderFrame");
+
         uint64_t sequence = 0;
         {
             std::unique_lock<std::mutex> lock(impl.RenderMutex);
-            while (impl.RenderTasks.size() >= kMaxPendingRenderFrames && !impl.bFrameRolesStop)
-            {
-                ME_PROFILE_SCOPE("Frame.Game.WaitRenderQueue");
-                impl.RenderCv.wait(lock);
-            }
+            impl.WaitForRenderQueueSpaceLocked(lock);
             if (impl.bFrameRolesStop)
             {
                 return;
@@ -863,6 +871,7 @@ namespace minEngine
             return;
         }
 
+        ME_PROFILE_SCOPE("Frame.Game.WaitFrameComplete");
         std::unique_lock<std::mutex> lock(impl.FrameCompleteMutex);
         impl.FrameCompleteCv.wait(lock, [&]() {
             return impl.bFrameRolesStop || impl.CompletedFrameSequence >= sequence;

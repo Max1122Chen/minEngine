@@ -1,3 +1,15 @@
+## 2026-10-25 — CORE-F46 S03：backpressure / Profile / Multi smoke 收口
+
+- **Scope:** S03 Done；Feature Done；顺带修 Wait→Drain 竞态
+- **Completed:**
+  - `WaitForRenderQueueSpaceLocked` 统一背压等待；`SubmitRenderFrameTask` / `WaitForRenderQueueSpace` 共用
+  - Profile：`Frame.Game.SubmitRenderFrame` / `WaitRenderQueue` / `WaitFrameComplete`；`Frame.Graphics|Render.Tick`；`Frame.RHI.Replay`
+  - suite：async multi-frame + backpressure（队列满时 Game 阻塞）
+  - `FinishRecord`：先 PublishCompletion 再唤醒 Wait（避免 Drain 漏回调）
+  - docs：Design/Registry/ACTIVE_WORK/BOOTSTRAP；F45 标 Done（S04 已吸收）
+- **Verification:** `minEngineTests.exe test task-system` 19 PASS（`MINENGINE_SKIP_TASK_PERF=1`）@ minEngine-core bin
+- **Next:** 主人验收后合入 master；点选下一 Primary
+
 ## 2026-10-24 — CORE-F46 S02：帧角色进 TaskSystem + Engine/Editor Multi
 
 - **Scope:** 吸收 FrameThreadScheduler；StartFrameRoles / SubmitRenderFrameTask；OpenGL combine；接线 Engine/Editor

@@ -86,9 +86,13 @@ namespace minEngine
 
         void StopFrameRoles();
 
-        /** Game posts a render frame. Blocks if queue full. Optional wait until RHI completes. */
+        /**
+         * Game posts a render frame. Blocks while the pending-render queue is full
+         * (kMaxPendingRenderFrames). Optional wait until that frame's RHI completes.
+         */
         void SubmitRenderFrameTask(float deltaTime, bool waitForCompletion);
 
+        /** Game: block until the pending-render queue has a free slot (or roles stop). */
         void WaitForRenderQueueSpace();
 
         bool IsRunning() const;
