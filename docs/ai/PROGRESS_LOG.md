@@ -100,6 +100,25 @@
 - **Verification:** `minEngineTests` / `Editor` 构建通过；`test smoke` exit 0；`material-proxy-data` 7/125、`scene-proxy-lifetime` 5/79、`scene-retirement` 5/162、`scene-proxy-render-read` 3/59、`sprite-translucency` 2/7、`screen-ui-text` 1/2、`material-ir` 5/79 全绿；导出 2998 → 2997（只少 `GetDeferredObjectReleaseQueue`，无新增）
 - **Next:** P2 代理删除两段式（落地后可删 `RenderScene` 两槽 keep-alive 与 `MeshDrawCommand` 里的裸代理指针）
 
+## 2026-10-29 — CORE-F47 遗留审查与收口（四路只读审查 → 11 个修复切片）
+
+- **背景：** 帧线程三条硬约束落地后做了一次全局审查（Core 服务 / 渲染侧 / 编辑器与 PIE / 帧线程基础设施），判据七条：越界调 GPU、录制期立即操作、渲染侧解引用游戏对象、无同步共享状态、"单线程/单帧在飞"的隐式假设、关停顺序、缺断言计数。报告见 [FRAME_THREAD_LEFTOVER_AUDIT](./Platform/Core/FRAME_THREAD_LEFTOVER_AUDIT.md)。
+- **交叉印证（两路独立命中）：** `SceneDrawDesc::GameplayScene` 渲染线程解引用游戏 Scene、环境贴图烘焙在录制窗口内、`CollectOrphanedSceneProxies` 游戏线程改渲染容器、断言只有硬陷一档。
+- **已修（每片先写红灯、用旧代码验证失败）：**
+  1. 崩溃处理器两段式（once 门闩、独立栈帮手线程、故障现场零锁零分配、栈溢出可写 dump）。
+  2. 环境贴图烘焙移出录制窗口 + `EnvMapCapture` 显式录制 + 失败退避（BUG-RENDER-017）。
+  3. `SceneDrawDesc` 切断游戏 `Scene*`，调试几何改为 POD 快照经命令通道交棒。
+  4. 断言分级：`ME_ENSURE` 记录+计数+继续，`ME_ASSERT` 记录+硬陷（release 退化为记录）。
+  5. 帧角色身份：每角色一个原子 tid（默认值即"无人持有"），作用域真正恢复、嵌套正确、抢占被拒并计数。
+  6. 管道发布顺序（先标签后 drain 目标）+ ViewIntent 同族修复 + 关停丢弃会计（BUG-RENDER-018）。
+  7. 音频剪辑生命周期：voice 持强引用、后端接收所有权、采样指针经受校验的租约（BUG-AUDIO-001）。
+  8. Light/Widget/SkyBox 代理身份只由渲染角色写，删除命令按标记匹配。
+  9. ImGui 纹理绑定走延迟创建/销毁，字体图集重建改为请求由图形角色执行。
+  10. 孤儿代理清扫命令化 + "帧在飞时游戏角色写渲染侧状态"变成可查询计数（TD-046 记引擎侧未接）。
+  11. 核心服务入口、命令列表立即执行、日志锁粒度的越界可见性（新增 TD-047/048/049）。
+- **验证：** 构建（minEngineTests / Editor）、`test smoke` exit 0（34 套件）、导出门禁 growth 在预算内（3014 / 3500），每片附红灯证据。
+- **删除/简化：** `PhysicsDebugDraw::SubmitScene`、`GameplayScene` 字段、`s_TrackedPins` 裸指针表、管道内联直通分支、`ScopedFrameThreadKind` 空析构。
+
 ## 2026-10-27 — CORE-F47 帧线程契约：按 UE 对齐重做（P-1 / P4a / P4b / P3a / P3b / P2 / P1）
 
 - **起因：** 多线程升级后连续出现三类真实崩溃（包围盒回指已销毁组件、材质渲染代理悬垂、驱动内空指针），复盘结论是"缺三条硬约束，不是缺三个机制"。
