@@ -43,6 +43,14 @@ set(SPRITE_AUTHORING_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Asset/AssetEditorServices.cpp
 )
 
+# The editor's ImGui texture layer is driven directly by its suite: registering a texture, the
+# release boundary and the font atlas request are all observable from the counters it keeps, and the
+# translation unit names no renderer backend - the backend installs the three device calls at
+# runtime, which is what lets the suite substitute a probe for them.
+set(EDITOR_IMGUI_TEXTURE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Platform/EditorRHIImGuiTexture.cpp
+)
+
 # BUG-EDITOR-006: overlapped named-pipe interrupt (Editor source linked into tests).
 set(AUTOMATION_PIPE_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Automation/AutomationPipeServer.cpp
@@ -97,6 +105,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
     ${SPRITE_AUTHORING_EDITOR_SOURCES}
     ${AUTOMATION_PIPE_EDITOR_SOURCES}
+    ${EDITOR_IMGUI_TEXTURE_SOURCES}
     ${SCENE_PROPERTY_CODEC_EDITOR_SOURCES}
     ${MINENGINE_CRASH_DIAGNOSTICS_SOURCES}
     ${_MINENGINE_EXTRA_TEST_SOURCES}

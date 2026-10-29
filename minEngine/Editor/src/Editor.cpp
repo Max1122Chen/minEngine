@@ -636,17 +636,17 @@ namespace minEngine
             m_Engine->GetFrameThreading() && m_Engine->GetFrameThreading()->IsMulti();
         if (multiFrame)
         {
-            // Font atlas GPU invalidate + ImGui renderer device objects need the context
-            // while it is still on Game (StartMultiFrameRoles clears it next).
+            // Building the atlas is CPU work and stays here; the device objects behind it are
+            // rebuilt by the graphics role, inside SubmitDrawData, on the frame that asks for it.
             if (m_PendingInitialFontAtlasRebuild)
             {
                 m_Appearance.RebuildUiFontAtlas();
                 m_PendingInitialFontAtlasRebuild = false;
             }
-            m_ImGuiBackend.RendererNewFrame();
 
-            // Window thread: GLFW + ImGui CPU. Graphics role: renderer NewFrame, scene,
-            // ImGui GPU submit, Present. wait=true keeps ImDrawData valid across the handoff.
+            // Window thread: GLFW + ImGui CPU. Graphics role: renderer NewFrame (its device objects
+            // are created and recreated there, never here), scene, ImGui GPU submit, Present.
+            // wait=true keeps ImDrawData valid across the handoff.
             const bool bFrameRolesStarted = m_Engine->TryStartMultiFrameRoles(
                 [this, rhi, &fontAtlasGpuMarked](float deltaTime) {
                     m_ImGuiBackend.RendererNewFrame();

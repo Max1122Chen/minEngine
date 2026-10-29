@@ -384,7 +384,7 @@ namespace minEngine
 
     void EditorAppearance::MarkFontAtlasGpuInitialized()
     {
-        m_FontAtlasGpuInitialized = true;
+        m_FontAtlasGpuInitialized.store(true, std::memory_order_release);
     }
 
     void EditorAppearance::RebuildUiFontAtlas()
@@ -402,8 +402,10 @@ namespace minEngine
 
         ImGuiIO& io = ImGui::GetIO();
 
-        if (m_FontAtlasGpuInitialized && m_ImGuiBackend != nullptr)
+        if (m_FontAtlasGpuInitialized.load(std::memory_order_acquire) && m_ImGuiBackend != nullptr)
         {
+            // Asks the graphics role to rebuild the device objects; nothing device-side happens on
+            // this thread.
             m_ImGuiBackend->NotifyFontAtlasRebuilt();
         }
 

@@ -7,6 +7,7 @@
 #include "UI/Appearance/EditorThemeColorRole.h"
 
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <memory>
 #include <vector>
@@ -70,7 +71,11 @@ namespace minEngine
         std::vector<std::shared_ptr<Font>> m_PinnedFontsForAtlas;
         EditorImGuiBackend* m_ImGuiBackend = nullptr;
         bool m_UiFontBackendReady = false;
-        bool m_FontAtlasGpuInitialized = false;
+        /**
+         * Written by the graphics role once the atlas has reached the GPU, read by the UI thread
+         * when it decides whether a rebuild has device objects to invalidate.
+         */
+        std::atomic<bool> m_FontAtlasGpuInitialized{ false };
 
         void FinalizeFontAtlasBuild();
     };

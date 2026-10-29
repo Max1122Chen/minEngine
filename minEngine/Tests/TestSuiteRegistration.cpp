@@ -75,6 +75,7 @@
 #include "Suites/RHICommandListTest.h"
 #include "Suites/RHIDeferredCreateTest.h"
 #include "Suites/RHIDeferredDestroyTest.h"
+#include "Suites/EditorImGuiTextureTest.h"
 #include "Suites/SceneProxyResourceLifetimeTest.h"
 #include "Suites/SceneProxyIdentityTest.h"
 #include "Suites/MaterialRenderProxyDataTest.h"
@@ -1550,6 +1551,28 @@ namespace minEngine
             }
         };
 
+        struct EditorImGuiTextureTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "editor-imgui-texture",
+                    "Editor ImGui Texture Registration On The Graphics Role",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'editor-imgui-texture'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "editor-imgui-texture",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct RHIDeferredDestroyTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1776,6 +1799,7 @@ namespace minEngine
         using RHICommandListSuite = TypedTestSuite<RHICommandListTestSuiteTraits>;
         using RHIDeferredCreateSuite = TypedTestSuite<RHIDeferredCreateTestSuiteTraits>;
         using RHIDeferredDestroySuite = TypedTestSuite<RHIDeferredDestroyTestSuiteTraits>;
+        using EditorImGuiTextureSuite = TypedTestSuite<EditorImGuiTextureTestSuiteTraits>;
         using SceneProxyResourceLifetimeSuite = TypedTestSuite<SceneProxyResourceLifetimeTestSuiteTraits>;
         using SceneProxyRenderReadSuite = TypedTestSuite<SceneProxyRenderReadTestSuiteTraits>;
         using SceneProxyIdentitySuite = TypedTestSuite<SceneProxyIdentityTestSuiteTraits>;
@@ -1875,6 +1899,7 @@ namespace minEngine
             registry.Register(RHICommandListSuite::Get());
             registry.Register(RHIDeferredCreateSuite::Get());
             registry.Register(RHIDeferredDestroySuite::Get());
+            registry.Register(EditorImGuiTextureSuite::Get());
             registry.Register(SceneProxyResourceLifetimeSuite::Get());
             registry.Register(SceneProxyRenderReadSuite::Get());
         registry.Register(SceneProxyIdentitySuite::Get());

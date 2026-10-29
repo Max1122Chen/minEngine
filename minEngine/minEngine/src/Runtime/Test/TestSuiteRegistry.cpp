@@ -72,6 +72,7 @@ namespace minEngine
             "scene-proxy-lifetime",
             "scene-proxy-render-read",
             "scene-proxy-identity",
+            "editor-imgui-texture",
             "scene-debug-draw-snapshot",
         };
 

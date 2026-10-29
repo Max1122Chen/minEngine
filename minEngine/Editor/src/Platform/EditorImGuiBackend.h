@@ -66,6 +66,15 @@ namespace minEngine
         void RenderVulkanDrawData(VulkanRHI& vulkanRhi);
 #endif
 
+        /** Hand the device-touching texture calls of the current API to the texture registry. */
+        void InstallBackendOps();
+
+        /**
+         * Destroy and then recreate the renderer device objects. Graphics role only: it destroys
+         * the descriptor pool the registered viewport textures live in.
+         */
+        void RebuildImGuiDeviceObjects(RHI* rhi);
+
         RendererApi m_Api = RendererApi::OpenGL;
         bool m_Initialized = false;
 #if defined(MINENGINE_HAS_VULKAN)
