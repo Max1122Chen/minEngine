@@ -1,3 +1,13 @@
+## 2026-10-29 — 着色器延迟创建被消费者读成"加载失败"（两条真实错误）
+
+- **现象（真实日志，Multi 拓扑）：** `DebugDrawPass: failed to load DebugDraw shader.` / `SkyBoxPass: failed to load background SPIR-V shader.` 各一条 Error，天空盒与 debug 绘制整条被禁用，但程序在下一个帧首其实建成了。
+- **根因：** 两个 pass 在 `Initialize`（非图形角色）里把"当刻 `IsValid()`"当加载失败判据。延迟创建通道下"已排队未实体化"的句柄 `IsValid() == false`，正常状态因此被判成终态失败并关掉整条 pass。
+- **修法：** `RHIDeferredCreate.h` 补三态查询 `GetDeferredUse()` 与每帧决策 `RHIDeferredConsumerGate`（首次跳过报一次、每 120 帧提醒一次、终态失败只报一次）。`Initialize` 只把"根本没有句柄"（读文件 / 编译失败）当加载失败；`Prepare` 用 gate 判此刻能否命名对象，未就绪当帧跳过（不关 pass），`HasNativeCreateFailed()` 时 Error 一次并让 pass 永远关闭。`SkyBoxPass::IsReady()` 收紧成"这次绘制要用的对象此刻都在"，排队中的程序不再被当成可绘制。
+- **同类审计：** `EnvMapCapture` 三处同步捕获同样三分解（无句柄 / 驱动拒绝 / 尚未创建）——一次录制 + 回读的捕获不能等帧首，报"需在图形角色创建后重跑"而不是"加载失败"；Vulkan 无延迟创建通道（`ScheduleNativeCreate` 未使用）、材质与精灵侧早已三分解、OpenGL 后端内联创建处的 `IsValid()` 本就是终态判据，均无需改。
+- **测试：** `rhi-deferred-create` 新增 3 例（排队 = Pending 且不报错、帧首 drain 后 = Usable 并恢复绘制、驱动拒绝 = Unusable 且只报一次）。红灯复现：把 `GetDeferredUse` 换回旧判据（未就绪即 Unusable）重编译，首例即 `CHECK( decision.Use == RHIDeferredUse::Pending )` 失败（`values: CHECK( 2 == 1 )`）。
+- **Verification:** `minEngineTests` / `Editor` 构建 exit 0；`rhi-deferred-create` 18 例 / 154 断言（新增 3 例 / 31 断言）、`screen-ui-per-frame-ubo` 2/17、`material-proxy-data` 8/149、`scene-proxy-lifetime` 11/177、`scene-proxy-render-read` 3/59、`scene-retirement` 10/243 全绿；`test smoke` exit 0（23 套件）；导出 2998 → 2998（增量 0，无符号消失）。
+- **残留：** pass 侧的接线（`Prepare` 里那次 gate 调用）只有编译 + smoke 覆盖，判据本身由单测钉住；真实编辑器 Multi PIE 手工验收未执行；帧首 drain 被拒 / 停摆时的跳过与提醒只有在真实停滞下才会出现，未做人为注入演练。
+
 ## 2026-10-28 — 屏幕空间 per-frame 块独立（多视口 PIE 世界消失的修复）
 
 - **根因：** `ForwardRenderer` 只有一个 per-frame UBO，ScreenUI pass 在**录制期**把像素正交写进去；Multi 整帧先录制后 replay，早先录下的 3D draw 到 replay 时读到正交矩阵 → 世界消失（Single 恰好不受影响，因为 UI 写在 3D 已 replay 之后）。

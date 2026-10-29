@@ -5,6 +5,7 @@
 #include "Render/RenderGraph/IRenderPass.h"
 #include "Render/RenderGraph/RDGTypes.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
 #include "Runtime/Function/Render/RHI/RHITextureViewCache.h"
 
 #include <filesystem>
@@ -36,10 +37,8 @@ namespace minEngine
 
         void Execute(RHICommandList& cmdList, const RenderCamera& camera, const SkyBoxSceneProxy& skyBox);
 
-        bool IsReady() const
-        {
-            return m_SkyShader != nullptr && m_CubeVertexBuffer != nullptr && m_SkyPipelineState != nullptr;
-        }
+        /** Every object the draw names exists now. A queued program answers false here. */
+        bool IsReady() const;
 
         void SetupDependencies(RenderPass& self, RenderGraph& graph) override;
         void Prepare(RenderGraph& graph) override;
@@ -61,6 +60,8 @@ namespace minEngine
         std::shared_ptr<RHIShaderResourceView> m_EnvironmentSRV;
         std::shared_ptr<RHIShaderBindingSet> m_SkyShaderBindingSet;
         RHIBufferRef m_SkyFrameUniformBuffer;
+
+        RHIDeferredConsumerGate m_ResourceGate;
 
         bool m_ShouldEnterPass = false;
         bool m_ShouldRender = false;

@@ -52,15 +52,20 @@ namespace minEngine
             return;
         }
 
+        m_ResourceGate.Reset();
         m_Shader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             *rhi,
             EngineShaderUtils::EngineShaderPath("DebugDraw.vert"),
             EngineShaderUtils::EngineShaderPath("DebugDraw.frag"));
-        if (m_Shader == nullptr || !m_Shader->IsValid())
+        if (m_Shader == nullptr)
         {
+            // The sources could not be read or compiled, so there is no program handle: the shader
+            // compiler has already logged what it read or refused.
             ME_LOG(LogRender, Error, "DebugDrawPass: failed to load DebugDraw shader.");
             return;
         }
+        // A handle without a program is the ordinary state off the graphics role: the program is
+        // created at the next frame start. Whether it was refused is asked when it is used.
 
         RHICommandList cmdList(rhi);
 
@@ -138,6 +143,51 @@ namespace minEngine
 
         if (!m_IsReady || pipeline == nullptr)
         {
+            return;
+        }
+
+        // A queued program is a frame to skip, not a reason to switch the pass off; a refused one
+        // is reported once and ends the pass for good.
+        const RHIDeferredConsumerGate::Decision resources = m_ResourceGate.Query({
+            m_Shader.get(),
+            m_VertexBuffer.get(),
+            m_PipelineState.get(),
+            m_BindingSetLayout.get(),
+            m_VertexLayout.get(),
+        });
+        if (resources.Use != RHIDeferredUse::Usable)
+        {
+            if (resources.bReport)
+            {
+                if (resources.Use == RHIDeferredUse::Unusable)
+                {
+                    if (m_Shader != nullptr && m_Shader->HasNativeCreateFailed())
+                    {
+                        ME_LOG(
+                            LogRender,
+                            Error,
+                            "DebugDrawPass: the driver refused the DebugDraw program, so the pass "
+                            "stays off: {}",
+                            m_Shader->GetCompileLog());
+                    }
+                    else
+                    {
+                        ME_LOG(
+                            LogRender,
+                            Error,
+                            "DebugDrawPass: a GPU object the debug draw names will never be created, "
+                            "so the pass stays off.");
+                    }
+                }
+                else
+                {
+                    ME_LOG(
+                        LogRender,
+                        Warn,
+                        "DebugDrawPass: the debug draw's GPU objects are not created yet; skipping "
+                        "this frame and resuming once the graphics role has created them.");
+                }
+            }
             return;
         }
 

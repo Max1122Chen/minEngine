@@ -86,15 +86,20 @@ namespace minEngine
 
         const std::filesystem::path shaderDirectory =
             engineDefaultAssetsRoot / "Shaders" / "EnvMap";
+        m_ResourceGate.Reset();
         m_SkyShader = EngineShaderUtils::CreateShaderFromSpirvFiles(
             rhi,
             shaderDirectory / "background.vert",
             shaderDirectory / "background.frag");
-        if (!m_SkyShader || !m_SkyShader->IsValid())
+        if (!m_SkyShader)
         {
+            // Reading or compiling the sources failed, so no program handle exists at all: the
+            // shader compiler has already logged what it read or refused.
             ME_LOG(LogRender, Error, "SkyBoxPass: failed to load background SPIR-V shader.");
             return;
         }
+        // A handle without a program is the ordinary state off the graphics role: the program is
+        // created at the next frame start. Whether it was refused is asked when it is used.
 
         RHICommandList cmdList(&rhi);
 
@@ -142,8 +147,21 @@ namespace minEngine
         m_SkyPipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
     }
 
+    bool SkyBoxPass::IsReady() const
+    {
+        // Asked by whoever wants to drive the sky draw: every object it names has to exist now.
+        // A program the driver refused stays in that list for good, a queued one only until the
+        // graphics role has created it.
+        return GetDeferredUse(m_SkyShader.get()) == RHIDeferredUse::Usable
+            && GetDeferredUse(m_CubeVertexBuffer.get()) == RHIDeferredUse::Usable
+            && GetDeferredUse(m_CubeVertexLayout.get()) == RHIDeferredUse::Usable
+            && GetDeferredUse(m_SkyFrameUniformBuffer.get()) == RHIDeferredUse::Usable
+            && GetDeferredUse(m_SkyPipelineState.get()) == RHIDeferredUse::Usable;
+    }
+
     void SkyBoxPass::Shutdown()
     {
+        m_ResourceGate.Reset();
         m_SkyShader.reset();
         m_CubeVertexBuffer.reset();
         m_CubeVertexLayout.reset();
@@ -213,7 +231,53 @@ namespace minEngine
         // Flag on: always enter BuildRenderPass to clear SceneColor (BasePass skips clear).
         m_ShouldEnterPass = true;
 
-        if (!IsReady() || context.SceneContext == nullptr || context.SceneContext->Camera == nullptr
+        // Every object the draw names has to exist before the frame records; a program that is
+        // only queued is a frame to skip, not a reason to switch the pass off. The frame-start
+        // drain runs before this, so a skip here means the drain did not happen or was refused.
+        const RHIDeferredConsumerGate::Decision resources = m_ResourceGate.Query({
+            m_SkyShader.get(),
+            m_CubeVertexBuffer.get(),
+            m_CubeVertexLayout.get(),
+            m_SkyFrameUniformBuffer.get(),
+            m_SkyPipelineState.get(),
+        });
+        if (resources.Use != RHIDeferredUse::Usable)
+        {
+            if (resources.bReport)
+            {
+                if (resources.Use == RHIDeferredUse::Unusable)
+                {
+                    if (m_SkyShader != nullptr && m_SkyShader->HasNativeCreateFailed())
+                    {
+                        ME_LOG(
+                            LogRender,
+                            Error,
+                            "SkyBoxPass: the driver refused the background program, so the sky "
+                            "draw stays off: {}",
+                            m_SkyShader->GetCompileLog());
+                    }
+                    else
+                    {
+                        ME_LOG(
+                            LogRender,
+                            Error,
+                            "SkyBoxPass: a GPU object the sky draw names will never be created, so "
+                            "the sky draw stays off.");
+                    }
+                }
+                else
+                {
+                    ME_LOG(
+                        LogRender,
+                        Warn,
+                        "SkyBoxPass: the sky draw's GPU objects are not created yet; skipping this "
+                        "frame and resuming once the graphics role has created them.");
+                }
+            }
+            return;
+        }
+
+        if (context.SceneContext == nullptr || context.SceneContext->Camera == nullptr
             || context.SceneContext->Scene == nullptr)
         {
             return;
@@ -221,11 +285,6 @@ namespace minEngine
 
         SkyBoxSceneProxy* skyBoxProxy = context.SceneContext->Scene->GetSkyBoxProxy();
         if (skyBoxProxy == nullptr || !skyBoxProxy->m_Enabled || skyBoxProxy->m_SkyBoxComponent == nullptr)
-        {
-            return;
-        }
-
-        if (!m_SkyShader || !m_CubeVertexBuffer || !m_SkyPipelineState || !m_SkyFrameUniformBuffer)
         {
             return;
         }

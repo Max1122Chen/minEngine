@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <initializer_list>
 #include <iterator>
 #include <mutex>
 #include <utility>
@@ -111,6 +112,113 @@ namespace minEngine
          * the failure and stays silent.
          */
         virtual bool HasNativeCreateFailed() const { return false; }
+    };
+
+    /**
+     * What a consumer can do with a handle this frame.
+     *
+     * "No native object yet" and "no native object ever" are the same zero inside the handle and
+     * opposite instructions to a consumer: the first is a frame to skip, the second is a failure
+     * to report. Reading liveness off IsValid() collapses the two and turns an ordinary queued
+     * create into a load failure, which is why the answer is named here instead.
+     */
+    enum class RHIDeferredUse : uint8_t
+    {
+        /** The native object exists: name it in this frame. */
+        Usable,
+        /** Queued for the graphics role. Not an error: skip the frames that cannot name it. */
+        Pending,
+        /** There is no native object and none is coming: report once and stop trying. */
+        Unusable,
+    };
+
+    /** The answer for one handle. A null handle is Unusable - there is nothing to wait for. */
+    inline RHIDeferredUse GetDeferredUse(const RHIDeferredCreateTarget* target)
+    {
+        if (target == nullptr || target->HasNativeCreateFailed())
+        {
+            return RHIDeferredUse::Unusable;
+        }
+        return target->IsReady() ? RHIDeferredUse::Usable : RHIDeferredUse::Pending;
+    }
+
+    /**
+     * A consumer's decision for one frame, taken over every handle that frame would name.
+     *
+     * The two rules it keeps are the two a per-frame caller gets wrong on its own: a queued handle
+     * is the ordinary state right after a create off the graphics role, so the frame that skips it
+     * must not report a failure; and a failure must not be repeated on every frame that follows.
+     * The first skip reports, one skip per kSkipReportInterval frames keeps a long stall visible,
+     * and a refusal reports exactly once.
+     */
+    class RHIDeferredConsumerGate
+    {
+    public:
+        struct Decision
+        {
+            RHIDeferredUse Use = RHIDeferredUse::Pending;
+            /** This call is the one that reports: the first skip, a stall reminder, or the refusal. */
+            bool bReport = false;
+        };
+
+        /** Frames a consumer may skip in silence between two stall reminders. */
+        static constexpr uint32_t kSkipReportInterval = 120;
+
+        /** Ask for one frame, naming every handle that frame would use. */
+        Decision Query(std::initializer_list<const RHIDeferredCreateTarget*> targets)
+        {
+            RHIDeferredUse combined = RHIDeferredUse::Usable;
+            for (const RHIDeferredCreateTarget* target : targets)
+            {
+                const RHIDeferredUse use = GetDeferredUse(target);
+                if (use == RHIDeferredUse::Unusable)
+                {
+                    combined = RHIDeferredUse::Unusable;
+                    break;
+                }
+                if (use == RHIDeferredUse::Pending)
+                {
+                    combined = RHIDeferredUse::Pending;
+                }
+            }
+            return Record(combined);
+        }
+
+        /** Forget what the previous handles reported, for when the caller replaces them. */
+        void Reset()
+        {
+            m_SkippedFrames = 0;
+            m_bFailureReported = false;
+        }
+
+        /** Frames skipped in a row because the handles were still queued. */
+        uint32_t GetSkippedFrames() const { return m_SkippedFrames; }
+
+    private:
+        Decision Record(RHIDeferredUse use)
+        {
+            Decision decision;
+            decision.Use = use;
+            switch (use)
+            {
+            case RHIDeferredUse::Usable:
+                m_SkippedFrames = 0;
+                break;
+            case RHIDeferredUse::Unusable:
+                decision.bReport = !m_bFailureReported;
+                m_bFailureReported = true;
+                break;
+            case RHIDeferredUse::Pending:
+                ++m_SkippedFrames;
+                decision.bReport =
+                    m_SkippedFrames == 1 || (m_SkippedFrames % kSkipReportInterval) == 0;
+                break;
+            }
+            return decision;
+        }
+
+        uint32_t m_SkippedFrames = 0;
+        bool m_bFailureReported = false;
     };
 
     /**

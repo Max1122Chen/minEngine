@@ -165,6 +165,8 @@ P4 的创建侧先落地，销毁侧（批次尾部判据、删除 `RHINativeRes
 | 调用方拿不到即时日志 | `RHICreateShader` 在未实体化时把 `outCompileLog` 填成明确的"已排队、日志稍后在句柄上可读"，而不是空串（空串读起来像成功）；`Material::GetShaderCompileLog()` 改为每次读取都从句柄刷新，所以稍后再问拿到的是驱动原文。 |
 | 滞留告警 | 与删除队列同风格：最久等待超过 `SetStallWarnIntervalMs`（默认 2000ms）按间隔限频 Warn，计数 `GetStallWarnCount()`、`GetOldestPendingAgeMs()`。 |
 | 帧序保证 | drain 在录制之前，因此**游戏 tick 内投递的对象在该帧录制前一定已实体化**——"未实体化"窗口对录制路径不可见，只对同一 tick 内的游戏侧消费者可见。唯一会把它latch住的消费者是屏幕 UI 代理的 `m_bVisible`（填充时算一次、不再重算），故改为判"编译完成"；真正的绘制守卫（`SceneMeshDrawUtils` 的 `IsCompiledForDraw()`）仍是严格判据。 |
+| 消费者判据（绘制侧） | "未实体化"不是"加载失败"：`RHIDeferredCreate.h` 补三态查询 `GetDeferredUse()` 与每帧决策 `RHIDeferredConsumerGate`（首次跳过报一次、每 `kSkipReportInterval` 帧提醒一次、终态失败只报一次）。`SkyBoxPass` / `DebugDrawPass` 的 `Initialize` 只把"根本没有句柄"当加载失败；`Prepare` 用 gate 判此刻能否命名对象，未就绪则当帧跳过（不关 pass），`HasNativeCreateFailed()` 时 Error 一次并让 pass 永远关闭。`SkyBoxPass::IsReady()` 同步收紧成"这次绘制要用的对象此刻都在"，排队中的程序不再被当成可绘制。 |
+| 同步捕获侧 | `EnvMapCapture` 的三处着色器判据同样三分解：无句柄 = 加载失败；`HasNativeCreateFailed()` = 驱动拒绝（带原文）；`!IsReady()` = 程序尚未创建——一次录制 + 回读的捕获不能等帧首，因此报"程序还没创建、需在图形角色创建后重跑"，而不是把它读成加载失败。 |
 | 未纳入 | 着色器编译缓存（`EngineShaderUtils` 的程序缓存）按句柄缓存，已排队句柄同样命中；`RHIPipelineLayout` 在两个 OpenGL/Vulkan 后端的工厂里都未改（OpenGL 无原生对象，Vulkan 保持立即创建）；shader resource view 仍是纯 CPU 描述。 |
 
 ### P1 实现说明（应用时刻前移）

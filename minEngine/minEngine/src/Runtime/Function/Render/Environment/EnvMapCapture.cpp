@@ -303,9 +303,24 @@ namespace minEngine
             shaderDirectory / "equirect_to_cubemap.vert",
             shaderDirectory / "equirect_to_cubemap.frag",
             outError);
-        if (!captureShader || !captureShader->IsValid())
+        if (!captureShader)
         {
             return reportError("failed to load equirect_to_cubemap SPIR-V shader.");
+        }
+        if (captureShader->HasNativeCreateFailed())
+        {
+            return reportError(
+                "the driver refused the equirect_to_cubemap SPIR-V shader: " + captureShader->GetCompileLog());
+        }
+        if (!captureShader->IsReady())
+        {
+            // The capture records its draws and reads the result back in one call, so it cannot
+            // wait for a program the graphics role has not created yet. Off the graphics role the
+            // handle is complete while the program is only queued: that is a capture to retry
+            // later, not a shader that failed to load.
+            return reportError(
+                "the equirect_to_cubemap program is not created yet; the capture has to run after the "
+                "graphics role has created it.");
         }
 
         const uint32_t environmentMipCount =
@@ -412,9 +427,24 @@ namespace minEngine
             shaderDirectory / "irradiance_convolution.vert",
             shaderDirectory / "irradiance_convolution.frag",
             outError);
-        if (!irradianceShader || !irradianceShader->IsValid())
+        if (!irradianceShader)
         {
-            return reportError("failed to load irradiance convolution SPIR-V shader.");
+            return reportError("failed to load irradiance_convolution SPIR-V shader.");
+        }
+        if (irradianceShader->HasNativeCreateFailed())
+        {
+            return reportError(
+                "the driver refused the irradiance_convolution SPIR-V shader: " + irradianceShader->GetCompileLog());
+        }
+        if (!irradianceShader->IsReady())
+        {
+            // The capture records its draws and reads the result back in one call, so it cannot
+            // wait for a program the graphics role has not created yet. Off the graphics role the
+            // handle is complete while the program is only queued: that is a capture to retry
+            // later, not a shader that failed to load.
+            return reportError(
+                "the irradiance_convolution program is not created yet; the capture has to run after the "
+                "graphics role has created it.");
         }
 
         RHITextureRef irradianceCube =
@@ -529,9 +559,24 @@ namespace minEngine
             shaderDirectory / "prefilter.vert",
             shaderDirectory / "prefilter.frag",
             outError);
-        if (!prefilterShader || !prefilterShader->IsValid())
+        if (!prefilterShader)
         {
             return reportError("failed to load prefilter SPIR-V shader.");
+        }
+        if (prefilterShader->HasNativeCreateFailed())
+        {
+            return reportError(
+                "the driver refused the prefilter SPIR-V shader: " + prefilterShader->GetCompileLog());
+        }
+        if (!prefilterShader->IsReady())
+        {
+            // The capture records its draws and reads the result back in one call, so it cannot
+            // wait for a program the graphics role has not created yet. Off the graphics role the
+            // handle is complete while the program is only queued: that is a capture to retry
+            // later, not a shader that failed to load.
+            return reportError(
+                "the prefilter program is not created yet; the capture has to run after the "
+                "graphics role has created it.");
         }
 
         const uint32_t maxMipLevel = kMaterialPBRMaxReflectionLod;

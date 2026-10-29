@@ -29,6 +29,8 @@ using minEngine::FrameThreadMode;
 using minEngine::FrameThreading;
 using minEngine::RHIBuffer;
 using minEngine::RHIBufferCreateDesc;
+using minEngine::RHIDeferredConsumerGate;
+using minEngine::RHIDeferredUse;
 using minEngine::RHIGraphicsPSODesc;
 using minEngine::RHIGraphicsPipelineState;
 using minEngine::RHIPipelineLayout;
@@ -1081,6 +1083,122 @@ TEST_CASE("rhi-deferred-create: a queue that never reaches a frame start warns a
     CHECK(rhi.GetDeferredCreateQueue().GetStallWarnCount() >= 1);
     CHECK(rhi.GetDeferredCreateQueue().GetOldestPendingAgeMs() >= 5);
     CHECK(rhi.GetDeferredCreateQueue().GetPendingCount() == 2);
+
+    threading.Shutdown();
+}
+
+TEST_CASE("rhi-deferred-create: a consumer reads a queued program as pending, not as failed [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    const std::shared_ptr<NativeCreateLog> log = std::make_shared<NativeCreateLog>();
+    HeadlessRHI rhi(log);
+
+    // What a render pass holds right after it created its program off the graphics role: a
+    // complete handle whose program the graphics role has not created yet.
+    const std::shared_ptr<ProbeShader> shader = rhi.CreateProbeShader();
+    REQUIRE(shader != nullptr);
+    REQUIRE(!shader->IsValid());
+
+    RHIDeferredConsumerGate gate;
+    const RHIDeferredConsumerGate::Decision decision = gate.Query({ shader.get() });
+
+    // Queued is the state before anything has run, so the frame that sees it skips. It must not be
+    // read as a shader that failed to load: nothing failed, and nothing has an answer yet.
+    CHECK(decision.Use == RHIDeferredUse::Pending);
+    CHECK(decision.Use != RHIDeferredUse::Unusable);
+    CHECK(decision.bReport);
+    CHECK(!shader->HasNativeCreateFailed());
+    CHECK(shader->GetCompileLog().empty());
+    CHECK(gate.GetSkippedFrames() == 1);
+
+    // Further frames in the same state keep skipping and stay quiet - one line per transition, not
+    // one line per frame.
+    const RHIDeferredConsumerGate::Decision again = gate.Query({ shader.get() });
+    CHECK(again.Use == RHIDeferredUse::Pending);
+    CHECK(!again.bReport);
+    CHECK(gate.GetSkippedFrames() == 2);
+
+    // A stall long enough to be a bug instead of a hitch says so once per report interval: the
+    // last frame of the interval is the reminder.
+    bool bRemindedAtInterval = false;
+    for (uint32_t skipped = 2; skipped < RHIDeferredConsumerGate::kSkipReportInterval; ++skipped)
+    {
+        bRemindedAtInterval = gate.Query({ shader.get() }).bReport;
+    }
+    CHECK(bRemindedAtInterval);
+    CHECK(gate.GetSkippedFrames() == RHIDeferredConsumerGate::kSkipReportInterval);
+
+    threading.Shutdown();
+}
+
+TEST_CASE("rhi-deferred-create: a consumer draws again once the drain created the program [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    const std::shared_ptr<NativeCreateLog> log = std::make_shared<NativeCreateLog>();
+    HeadlessRHI rhi(log);
+
+    const std::shared_ptr<ProbeShader> shader = rhi.CreateProbeShader();
+    REQUIRE(shader != nullptr);
+
+    RHIDeferredConsumerGate gate;
+    REQUIRE(gate.Query({ shader.get() }).Use == RHIDeferredUse::Pending);
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        CHECK(rhi.RHIDrainDeferredCreates() == 1);
+    }
+
+    const RHIDeferredConsumerGate::Decision decision = gate.Query({ shader.get() });
+    CHECK(decision.Use == RHIDeferredUse::Usable);
+    // Nothing to report: the pass simply draws again, so the skip counter is back to zero.
+    CHECK(!decision.bReport);
+    CHECK(gate.GetSkippedFrames() == 0);
+    CHECK(shader->IsReady());
+    CHECK(rhi.GetDeferredCreateQueue().GetCreatedCount() == 1);
+
+    threading.Shutdown();
+}
+
+TEST_CASE("rhi-deferred-create: a program the driver refuses still ends the pass, reported once [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    const std::shared_ptr<NativeCreateLog> log = std::make_shared<NativeCreateLog>();
+    HeadlessRHI rhi(log);
+
+    const std::shared_ptr<ProbeShader> shader = rhi.CreateProbeShader();
+    REQUIRE(shader != nullptr);
+    // The injected failure: this driver refuses the program the way a real one refuses bytecode it
+    // cannot specialize.
+    shader->SetShouldFail(true);
+
+    RHIDeferredConsumerGate gate;
+    REQUIRE(gate.Query({ shader.get() }).Use == RHIDeferredUse::Pending);
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        CHECK(rhi.RHIDrainDeferredCreates() == 0);
+    }
+    REQUIRE(shader->HasNativeCreateFailed());
+
+    const RHIDeferredConsumerGate::Decision failed = gate.Query({ shader.get() });
+    // Telling a refusal apart from a queue is the point: here the consumer does give up, and this
+    // is the one frame that reports it.
+    CHECK(failed.Use == RHIDeferredUse::Unusable);
+    CHECK(failed.bReport);
+
+    const RHIDeferredConsumerGate::Decision after = gate.Query({ shader.get() });
+    CHECK(after.Use == RHIDeferredUse::Unusable);
+    CHECK(!after.bReport);
+    CHECK(!shader->GetCompileLog().empty());
+
+    // A handle the consumer never got is the same answer, for the same reason: nothing to wait for.
+    CHECK(minEngine::GetDeferredUse(nullptr) == RHIDeferredUse::Unusable);
 
     threading.Shutdown();
 }

@@ -5,6 +5,7 @@
 #include "Render/RenderGraph/RDGTypes.h"
 #include "RenderPassBase.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 
 #include <memory>
@@ -46,6 +47,7 @@ namespace minEngine
         std::shared_ptr<RHIShaderBindingSetLayout> m_BindingSetLayout;
         std::shared_ptr<RHIPipelineLayout> m_PipelineLayout;
         RHIShaderBindingSetRef m_ShaderBindingSet;
+        RHIDeferredConsumerGate m_ResourceGate;
 
         uint32_t m_VertexBufferCapacityBytes = 0;
         uint32_t m_DrawVertexCount = 0;
