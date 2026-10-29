@@ -2,12 +2,30 @@
 
 #include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Core/Threading/ThreadIdentity.h"
 
 #include <cstdlib>
 #include <cctype>
 
 namespace minEngine
 {
+    namespace
+    {
+        /**
+         * What a contract violation reports as the caller's role. Installed while an instance
+         * exists, so a report raised on any thread names the role that thread held - the fact a
+         * reader needs first, because the same call is correct on one role and a defect on another.
+         */
+        const char* CurrentFrameThreadRole()
+        {
+            if (!FrameThreading::HasInstance())
+            {
+                return "unbound (FrameThreading not initialized)";
+            }
+            return FrameThreadRoleName(FrameThreading::Get(), std::this_thread::get_id());
+        }
+    }
+
     FrameThreading* FrameThreading::s_Instance = nullptr;
 
     bool FrameThreading::HasInstance()
@@ -106,6 +124,7 @@ namespace minEngine
             BindCurrentThreadAsAllRoles();
         }
 
+        SetContractRoleResolver(&CurrentFrameThreadRole);
         LogStartupIdentity();
     }
 
@@ -123,11 +142,17 @@ namespace minEngine
             m_ThreadIds[i] = {};
         }
         s_Instance = nullptr;
+        // Nothing owns a frame role any more: a report from here on must say so rather than name a
+        // role left over from a destroyed instance.
+        SetContractRoleResolver(nullptr);
     }
 
     void FrameThreading::BindCurrentThread(FrameThreadKind kind)
     {
-        ME_ASSERT(m_Initialized, "FrameThreading::BindCurrentThread before Initialize");
+        // Binding into an instance that never initialised records a violation and continues: the
+        // binding stays inert (every IsInFrameThread answers no), which is the same answer the
+        // caller already gets from an unbound role.
+        ME_ENSURE(m_Initialized, "FrameThreading::BindCurrentThread before Initialize");
         const size_t index = static_cast<size_t>(kind);
         m_ThreadIds[index] = std::this_thread::get_id();
         m_ThreadBound[index] = true;
@@ -161,14 +186,15 @@ namespace minEngine
             return;
         }
 
-        const char* label = context != nullptr ? context : "(unspecified)";
-        ME_LOG(
-            LogCore,
-            Error,
-            "AssertIsFrameThread({}) failed at {}",
+        // A role mismatch is recoverable: every role-gated path already answers "not this thread"
+        // for a mismatched caller (the render pipe queues the work instead of running it inline), so
+        // the frame stays correct and the violation only has to be counted and named.
+        ME_ENSURE(
+            false,
+            "expected the %s frame role, caller is %s (context: %s)",
             KindToString(kind),
-            label);
-        ME_ASSERT(false, "Frame thread identity mismatch");
+            FrameThreadRoleName(*this, std::this_thread::get_id()),
+            context != nullptr ? context : "(unspecified)");
     }
 
     std::thread::id FrameThreading::GetThreadId(FrameThreadKind kind) const

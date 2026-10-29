@@ -1,5 +1,7 @@
 set(MINENGINE_TESTS_NAME minEngineTests)
 set(MINENGINE_CRASH_PROBE_NAME minEngineCrashProbe)
+set(MINENGINE_CONTRACT_PROBE_NAME minEngineContractProbe)
+set(MINENGINE_CONTRACT_PROBE_NAME minEngineContractProbe)
 
 file(GLOB TEST_SUITE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Suites/*.cpp
@@ -61,6 +63,11 @@ set(MINENGINE_CRASH_DIAGNOSTICS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Platform/EditorCrashDiagnostics.cpp
 )
 
+# A fatal assert ends the process it fires in, and a report path that re-entered the log mutex would
+# hang it, so neither can be observed from the suite's own process. The probe runs one contract check
+# on request under both grades and appends what it did to a trace the suite reads.
+set(MINENGINE_CONTRACT_PROBE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Fixtures/ContractProbe)
+
 # TEST-F05: optional external / extra suite sources (off by default).
 set(_MINENGINE_EXTRA_TEST_SOURCES "${MINENGINE_EXTRA_TEST_SOURCES}")
 if(NOT "${MINENGINE_EXTRA_TEST_DIR}" STREQUAL "")
@@ -109,6 +116,21 @@ target_include_directories(${MINENGINE_CRASH_PROBE_NAME} PRIVATE
 )
 target_link_libraries(${MINENGINE_CRASH_PROBE_NAME} PRIVATE ${ENGINE_NAME})
 add_dependencies(${MINENGINE_CRASH_PROBE_NAME} ${ENGINE_NAME})
+
+# Built before the tests so the suite always finds its probe next to minEngineTests.exe.
+add_executable(${MINENGINE_CONTRACT_PROBE_NAME}
+    ${MINENGINE_CONTRACT_PROBE_DIR}/main.cpp
+    ${MINENGINE_CONTRACT_PROBE_DIR}/ReleaseGradeProbe.cpp
+)
+set_target_properties(${MINENGINE_CONTRACT_PROBE_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+)
+target_include_directories(${MINENGINE_CONTRACT_PROBE_NAME} PRIVATE
+    ${MINENGINE_CONTRACT_PROBE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src
+)
+target_link_libraries(${MINENGINE_CONTRACT_PROBE_NAME} PRIVATE ${ENGINE_NAME})
+add_dependencies(${MINENGINE_CONTRACT_PROBE_NAME} ${ENGINE_NAME})
 
 set_target_properties(${MINENGINE_TESTS_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
@@ -175,3 +197,4 @@ endif()
 
 add_dependencies(${MINENGINE_TESTS_NAME} ${ENGINE_NAME})
 add_dependencies(${MINENGINE_TESTS_NAME} ${MINENGINE_CRASH_PROBE_NAME})
+add_dependencies(${MINENGINE_TESTS_NAME} ${MINENGINE_CONTRACT_PROBE_NAME})

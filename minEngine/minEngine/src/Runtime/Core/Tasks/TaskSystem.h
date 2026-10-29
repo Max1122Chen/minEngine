@@ -13,10 +13,14 @@
 namespace minEngine
 {
     /**
-     * Frame-role events that mean work was lost: render commands and view intents a role discarded,
-     * a command that threw while being applied, and frames the roles failed or threw away at
-     * shutdown. Sampled once per frame by the caller so one bad frame produces one log line instead
-     * of one line per lost item.
+     * Frame-role events that mean work was lost or a contract was broken: render commands and view
+     * intents a role discarded, a command that threw while being applied, frames the roles failed or
+     * threw away at shutdown, and contract violations the frame recorded. Sampled once per frame by
+     * the caller so one bad frame produces one log line instead of one line per lost item.
+     *
+     * ContractViolations carries the process-wide total of ME_ENSURE/ME_ASSERT failures, not a
+     * per-frame count: a violated thread contract is a fact about the run, and a reader who sees the
+     * number move in the frame summary knows to look for the reports that named the site.
      */
     struct FrameWorkLossCounters
     {
@@ -25,6 +29,7 @@ namespace minEngine
         uint64_t ApplyFailures = 0;
         uint64_t FailedFrames = 0;
         uint64_t DroppedFrames = 0;
+        uint64_t ContractViolations = 0;
 
         bool operator==(const FrameWorkLossCounters& other) const
         {
@@ -32,7 +37,8 @@ namespace minEngine
                 && DroppedViewIntents == other.DroppedViewIntents
                 && ApplyFailures == other.ApplyFailures
                 && FailedFrames == other.FailedFrames
-                && DroppedFrames == other.DroppedFrames;
+                && DroppedFrames == other.DroppedFrames
+                && ContractViolations == other.ContractViolations;
         }
 
         bool operator!=(const FrameWorkLossCounters& other) const { return !(*this == other); }
@@ -65,6 +71,9 @@ namespace minEngine
         const uint64_t droppedFrameDelta = (current.DroppedFrames > previous.DroppedFrames)
             ? current.DroppedFrames - previous.DroppedFrames
             : 0u;
+        const uint64_t contractDelta = (current.ContractViolations > previous.ContractViolations)
+            ? current.ContractViolations - previous.ContractViolations
+            : 0u;
 
         std::string line;
         const auto append = [&line](uint64_t delta, const char* label) {
@@ -86,6 +95,7 @@ namespace minEngine
         append(applyFailureDelta, "render command(s) failed to apply");
         append(failedFrameDelta, "frame(s) failed");
         append(droppedFrameDelta, "queued frame(s) discarded");
+        append(contractDelta, "contract violation(s) recorded");
 
         if (line.empty())
         {

@@ -71,6 +71,7 @@
 #include "Suites/SpriteAuthoringTest.h"
 #include "Suites/MaterialCompileCacheTest.h"
 #include "Suites/TaskSystemTest.h"
+#include "Suites/ContractViolationsTest.h"
 #include "Suites/RHICommandListTest.h"
 #include "Suites/RHIDeferredCreateTest.h"
 #include "Suites/RHIDeferredDestroyTest.h"
@@ -1379,6 +1380,28 @@ namespace minEngine
             }
         };
 
+        struct ContractViolationsTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "contract-violations",
+                    "Contract checks (record-and-continue vs trap)",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'contract-violations'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "contract-violations",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct RenderCommandPipeTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1725,6 +1748,7 @@ namespace minEngine
         using TaskSystemSuite = TypedTestSuite<TaskSystemTestSuiteTraits>;
         using FrameThreadingSuite = TypedTestSuite<FrameThreadingTestSuiteTraits>;
         using CrashDiagnosticsSuite = TypedTestSuite<CrashDiagnosticsTestSuiteTraits>;
+        using ContractViolationsSuite = TypedTestSuite<ContractViolationsTestSuiteTraits>;
         using RenderCommandPipeSuite = TypedTestSuite<RenderCommandPipeTestSuiteTraits>;
         using RHICommandListSuite = TypedTestSuite<RHICommandListTestSuiteTraits>;
         using RHIDeferredCreateSuite = TypedTestSuite<RHIDeferredCreateTestSuiteTraits>;
@@ -1822,6 +1846,7 @@ namespace minEngine
             registry.Register(TaskSystemSuite::Get());
             registry.Register(FrameThreadingSuite::Get());
             registry.Register(CrashDiagnosticsSuite::Get());
+            registry.Register(ContractViolationsSuite::Get());
             registry.Register(RenderCommandPipeSuite::Get());
             registry.Register(RHICommandListSuite::Get());
             registry.Register(RHIDeferredCreateSuite::Get());

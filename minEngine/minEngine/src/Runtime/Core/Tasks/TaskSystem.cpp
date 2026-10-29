@@ -1112,7 +1112,10 @@ namespace minEngine
     void TaskSystem::SubmitRenderFrameTask(float deltaTime, bool waitForCompletion)
     {
         Impl& impl = *m_Impl;
-        ME_ASSERT(impl.bFrameRolesRunning, "SubmitRenderFrameTask before StartFrameRoles");
+        // Submitting before the roles started is recorded and continues: the frame is refused below
+        // by the same "not accepting" path that rejects a submission during shutdown, so the game
+        // role loses a frame instead of the process losing its life.
+        ME_ENSURE(impl.bFrameRolesRunning, "SubmitRenderFrameTask before StartFrameRoles");
 
         ME_PROFILE_SCOPE("Frame.Game.SubmitRenderFrame");
 

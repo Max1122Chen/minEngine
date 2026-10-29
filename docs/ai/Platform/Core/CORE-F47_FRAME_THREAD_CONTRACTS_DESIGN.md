@@ -6,7 +6,7 @@
 - **Complexity:** L2
 - **Status:** Planned
 - **Owner:** project maintainer
-- **Last updated:** 2026-10-27
+- **Last updated:** 2026-10-29
 - **Revision:** v2 — 依据对 UE 源码的实测调查重写。v1 提出的三层补丁式机制（延迟释放队列 / present 边界销毁 / 资源所有权基类）被判定为"在源头之后打补丁"，目标改为对齐 UE 的三条硬约束。
 - **Related:** [Feature Registry](../FEATURE_REGISTRY.md) · [CORE-F45](./CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [CORE-F46](./CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) · [System Review](./FRAME_THREADING_SYSTEM_REVIEW.md) · [BUG-RENDER-016](../bugs/BUG-RENDER-016.md)
 
@@ -245,6 +245,66 @@ P3b 把最后一段游戏对象所有权移出渲染侧，`DeferredObjectRelease
 | 删除清单 | `Core/Object/DeferredObjectRelease.{h,cpp}`、`MaterialRenderProxyHandle.h`、`deferred-release` 测试套件；`Engine::CompleteFrameReleases` 与 `SceneManager::Shutdown` 只保留退役场景那一半。 |
 | 导出 | 新句柄类型与虚函数全部内联实现，导出计数 2998 → 2997，只少 `GetDeferredObjectReleaseQueue`，无新增。 |
 | 交给 P2 | `RenderScene` 两槽 keep-alive 曾在此保留，续命的是 draw command 里的裸代理指针；P2 落地后移除命令不再就地析构代理，两槽已随 P2 删除（见上节）。 |
+
+## 断言分级（record-and-continue / trap）
+
+本设计的每条线程契约（H1/H2/H3、角色归属、录制窗口）此前只能靠人读代码守。原因在断言本身：`ME_ASSERT` 只有一档——`fprintf(stderr)` + `__debugbreak()`，恒定启用。后果有三个，都在真实运行里发生过：角色线程上触发（`AssertIsFrameThread` 不匹配）时没有异常处理器就 `std::terminate` 整个进程；调试器里 continue 之后代码带着被违反的前提继续跑；无论哪种，都不留下任何计数或日志。
+
+### 两档语义（最终定义）
+
+| 宏 | 失败时做什么 | 构建行为 |
+|---|---|---|
+| `ME_ENSURE(cond, fmt, ...)` | 计数 +1，写一条记录（文件:行、线程 id、帧角色、作者消息），标准错误镜像一行，然后**继续** | 恒开，任何构建 |
+| `ME_ASSERT(cond, fmt, ...)` | 同样的记录，然后**硬陷**（`__debugbreak` / `__builtin_trap`，调试器 resume 后 `abort`，不允许带病继续） | debug；`NDEBUG` 或 `ME_CONTRACT_ASSERT_FATAL=0`（或 `ME_ASSERT_ENABLED=0`）退化为 `ME_ENSURE`，记录里保留 `ME_ASSERT` 字样 |
+
+- 消息是 printf 风格格式串（现场都是字面量；字面量里的百分号要写两个）。
+- 计数分四路：继续数、硬陷数、限频压掉的数、暂存区满而没能成记录的数。合计即“契约违反次数”。
+- 每次报告的 thread id 与 role 由**触发的那个线程**给出：角色解析器（`FrameThreading` 安装的函数指针）存在共享状态块里，所以引擎模块报出的记录也能说清角色；没有实例时报 `unbound`。
+
+### 与日志系统的关系（落地方式与理由）
+
+报告路径**不调用** `LogSystem::Emit`。`Emit` 在持有自己的互斥量时逐 sink 回调，而契约违反恰恰经常发生在“这个线程已经握着某把锁”的时候——包括日志锁本身（sink 里触发的违反）。因此报告路径只做四件不取锁的事：一处 interlocked 计数、一次定长记录写入预分配的进程级暂存区（64 槽、环形领取、槽满只加未投递计数）、一行 `_write(2, ...)` 直写标准错误描述符（绕过 `FILE*` 的锁）、一次线程局部重入闸（报告里再触发只计数不递归）。
+
+成日志由 `DrainContractViolations()`（`Runtime/Core/Assert/AssertLog.h`）完成，调用点选在帧边界（`Engine::ReportFrameWorkLoss`）——那里确定没有日志锁在手上。硬陷分支不 drain：那会在最不该等锁的时刻等锁；行已经在 stderr 上，崩溃记录由崩溃处理器负责。
+
+暂存区是**每进程一份**：`Local\minEngine-contract-state-<pid>` 的页文件区，同进程内引擎 DLL 与可执行文件映射到同一页（否则 DLL 报的数、测试读的数会各算一份），不同进程之间不共享（页文件区按名字是会话级的，所以 pid 必须进名字）。映射失败时退回模块私有块，计数仍然对，只是不跨模块。除计数外这里不新增任何导出（导出 3003 不变）。
+
+### 限频
+
+每站点维护 8 个预算槽，键是（消息, 角色）：同一违反的**前 4 次**全量记录，**第 5 次**写一行“本站点预算用尽，之后只计数不记录”，此后只有计数上升。这是“每帧都违反”不把日志淹掉的唯一办法，同时不制造“日志安静了 = 修好了”的假象：累计数仍在涨，并出现在每帧汇总里。stderr 镜像与预算同步（不额外刷屏）。
+
+### 角色判断的一致性（结论）
+
+角色不匹配（`FrameThreading::AssertIsFrameThread`）改成 `ME_ENSURE`，理由：这个检查的语义就是“你是不是这个角色”，答错时所有角色门禁本来就把调用者当成“不在该线程”——渲染命令改走入队而不是就地执行，帧依然正确；继续执行只是让这一帧按错误角色的路径走，下一次调用会再次报出来。硬陷留给“继续会动内存/资源”的站点（空指针解引用、身份表被覆盖、两段式删除的不变量）。
+
+### 迁移清单（`ME_ASSERT` 到 `ME_ENSURE`）
+
+| 站点 | 理由 |
+|---|---|
+| `FrameThreading::AssertIsFrameThread` | 角色不匹配是契约违反，不是内存错误；所有角色门禁对错误角色都已有安全答案（见上） |
+| `FrameThreading::BindCurrentThread`（Initialize 之前） | 绑定落在一个未初始化实例上完全无效，所有 `IsInFrameThread` 都答否——继续等于“没绑定”，正是调用方已经得到的答案 |
+| `TaskSystem::SubmitRenderFrameTask`（StartFrameRoles 之前） | 继续执行时该帧会走已有的“不接收”拒绝路径（记录 Warning、结算在飞槽位、返回），游戏角色丢一帧而不是进程死掉 |
+| `Engine::InitializeFrameThreading`（mode 非法） | 已记录 Error 并 return；继续就是按默认单线程拓扑启动，帧角色本就没有别的选择 |
+| `Engine::TickRendererFrame`（发布世代与已绘帧不一致） | 错的是这一帧的画面内容，不是内存：管道已经拒绝了未提交世界的命令，继续并计数即可 |
+| `Engine::FinializeReflection`（反射 finalize 有错） | 每条错误已单独记录；反射不解算仍可用，编辑器不该因此停摆 |
+
+保持硬陷（继续会破坏内存/资源）：`FrameThreading::Get` / `TaskSystem::Get` 无实例（随后解引用空指针）、`FrameThreading::Initialize` 重复初始化（身份表被覆盖，旧实例的 Shutdown 会清掉新实例）、`StartFrameRoles` 的前置（状态机未起、任务为空、非 Multi、已在运行——继续会以空 body 起线程或覆盖运行中的函数对象）、`Engine` 重复初始化、GameInstance 类缺失或 `NewObject` 返回空后立刻解引用、`RenderScene` 两段式删除的不变量（继续会 free 仍在绘制列表里的代理）。
+
+### 每帧汇总
+
+`FrameWorkLossCounters` 增加 `ContractViolations`（进程级累计），`Engine::ReportFrameWorkLoss` 每帧先 drain 出成日志再取一次计数；`DescribeFrameWorkLossDelta` 输出 “N contract violation(s) recorded”，没违反的帧仍然静默。
+
+### 遗留风险
+
+| 风险 | 现状 |
+|---|---|
+| 暂存区与计数用映射内存承载，未构造（纯整数 POD） | 以后给 `ContractState` 加非平凡成员必须同步改映射路径 |
+| 角色解析器是引擎 DLL 里的函数指针，存在共享块里 | 引擎 DLL 在本仓库内永不卸载；将来若支持插件热卸载，需要先清掉该指针 |
+| 会话内同名 section 仍可被别的进程按名字打开 | 名字带 pid，攻击面等同“知道对方 pid”，记录在案不做额外处理 |
+| 限频后同一（消息, 角色）只有 4+1 条 | 计数与每帧汇总仍可见；需要逐条排查时把该站点改成独立诊断 |
+| 只有 `DrainContractViolations()` 被调用时记录才成日志 | 目前唯一调用点是帧边界；不跑帧的宿主（测试、工具）需要自己调 |
+| `ME_ASSERT` 的 release 分级由 `NDEBUG` 决定 | 契约构建是 Debug，release 语义用 `ME_CONTRACT_ASSERT_FATAL=0` 的单编译单元模拟（同一分支），并有用例守着 |
+| 132 处 `ME_ASSERT` 只迁移了上面 6 处 | 其余站点“继续是否安全”需要逐个判断，属后续切片 |
 
 ## Risks
 

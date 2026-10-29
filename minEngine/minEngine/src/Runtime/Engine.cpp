@@ -1,6 +1,7 @@
 #include "Engine.h"
 
 
+#include "Runtime/Core/Assert/AssertLog.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -113,7 +114,9 @@ namespace minEngine
                 LogCore,
                 Error,
                 "Invalid MINENGINE_FRAME_THREADS / --frame-threads value. Expected single|multi.");
-            ME_ASSERT(false, "Invalid FrameThreadMode configuration");
+            // Startup continues with the default topology: a wrong mode string is a configuration
+            // defect, and the frame roles it would have built are the default ones anyway.
+            ME_ENSURE(false, "Invalid FrameThreadMode configuration");
             return;
         }
 
@@ -321,6 +324,10 @@ namespace minEngine
          */
         void ReportFrameWorkLoss(const TaskSystem& tasks)
         {
+            // The frame boundary owns the one moment with no log lock held, so it is where the
+            // violations recorded since the previous frame become log records.
+            DrainContractViolations();
+
             FrameWorkLossCounters current;
             if (RenderCommandPipe::HasInstance())
             {
@@ -331,6 +338,7 @@ namespace minEngine
             }
             current.FailedFrames = tasks.GetFailedFrameCount();
             current.DroppedFrames = tasks.GetDroppedQueuedFrameCount();
+            current.ContractViolations = GetContractViolationCounters().Total();
 
             const std::string line = DescribeFrameWorkLossDelta(s_LastFrameWorkLoss, current);
             s_LastFrameWorkLoss = current;
@@ -466,7 +474,10 @@ namespace minEngine
             if (!pipe.CheckPublishedGenerationForDrawnFrame(&generationDiagnostic))
             {
                 ME_LOG(LogCore, Error, "{}", generationDiagnostic);
-                ME_ASSERT(false, generationDiagnostic.c_str());
+                // The frame is wrong, not the memory: the pipe already refused the commands for a
+                // world the game role never committed, so the run continues and the violation is
+                // counted.
+                ME_ENSURE(false, "%s", generationDiagnostic.c_str());
             }
 
             {
@@ -578,7 +589,9 @@ namespace minEngine
             {
                 ME_LOG(LogCore, Error, error);
             }
-            ME_ASSERT(false, "Reflection System finalization failed. See previous errors for details.");
+            // Each error is logged above; reflection stays usable without its finalize pass, so this
+            // is a recorded violation rather than a reason to stop a running editor.
+            ME_ENSURE(false, "Reflection System finalization failed. See previous errors for details.");
         }
         else
         {
