@@ -11,7 +11,7 @@ namespace minEngine
      * Turns MeshBatches into MeshDrawCommands for one pass.
      * Acceptance policy lives on the subclass, not in a central pass-kind switch.
      */
-    class MeshPassProcessor
+    class MINENGINE_API MeshPassProcessor
     {
     public:
         virtual ~MeshPassProcessor() = default;
@@ -24,7 +24,7 @@ namespace minEngine
         static MeshDrawCommand MakeDrawCommand(const MeshBatch& batch);
     };
 
-    class OpaqueMeshPassProcessor : public MeshPassProcessor
+    class MINENGINE_API OpaqueMeshPassProcessor : public MeshPassProcessor
     {
     public:
         explicit OpaqueMeshPassProcessor(std::vector<MeshDrawCommand>& outCommands);
@@ -35,7 +35,7 @@ namespace minEngine
         std::vector<MeshDrawCommand>& m_OutCommands;
     };
 
-    class TranslucentMeshPassProcessor : public MeshPassProcessor
+    class MINENGINE_API TranslucentMeshPassProcessor : public MeshPassProcessor
     {
     public:
         explicit TranslucentMeshPassProcessor(std::vector<MeshDrawCommand>& outCommands);
@@ -46,7 +46,7 @@ namespace minEngine
         std::vector<MeshDrawCommand>& m_OutCommands;
     };
 
-    class ShadowDepthMeshPassProcessor : public MeshPassProcessor
+    class MINENGINE_API ShadowDepthMeshPassProcessor : public MeshPassProcessor
     {
     public:
         explicit ShadowDepthMeshPassProcessor(std::vector<MeshDrawCommand>& outCommands);

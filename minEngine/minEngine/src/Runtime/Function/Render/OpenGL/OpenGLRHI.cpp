@@ -10,15 +10,104 @@
 #include "Render/RHI/RHIResourceTransition.h"
 #include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIRenderPass.h"
+#include "Runtime/Core/Threading/ThreadIdentity.h"
 
 #include "glad/glad.h"
 
 #include <algorithm>
+#include <atomic>
+#include <string>
+#include <utility>
 
 namespace minEngine
 {
     namespace
     {
+        /**
+         * A draw names native objects, and a buffer whose GL name is 0 was never created: its creating
+         * thread held no context, so the driver knows nothing about it. Binding such a name names no
+         * data, and the driver answers the resulting draw by faulting rather than by raising an error.
+         * Refusing the draw keeps that state away from the driver and reports it once per kind.
+         */
+        /**
+         * Names the caller and its thread. Which thread drew is half the answer; the other half is
+         * which thread created the nameless buffer, and that was reported once at creation with the
+         * object pointer that appears here.
+         */
+        std::string DescribeDrawingThreadAndSite()
+        {
+            const ThreadIdentity identity = CaptureCurrentThreadIdentity();
+            char header[256]{};
+            std::snprintf(
+                header,
+                sizeof(header),
+                " thread=%u role=%s",
+                static_cast<unsigned>(identity.LogThreadId),
+                identity.RoleName);
+
+            std::string text(header);
+            void* frames[kDiagnosticFrameCount]{};
+            const std::size_t frameCount = CaptureDiagnosticFrames(frames, kDiagnosticFrameCount);
+            // The first frames are this helper and the reporting function; the caller is the site.
+            for (std::size_t frameIndex = 2; frameIndex < frameCount; ++frameIndex)
+            {
+                char location[320]{};
+                FormatAddressForLog(location, sizeof(location), frames[frameIndex]);
+                text += "\n    #" + std::to_string(frameIndex - 2) + " " + location;
+            }
+            return text;
+        }
+
+        void ReportDrawWithoutNativeBuffer(const char* kind, uint32_t count, const void* object)
+        {
+            static std::atomic<uint32_t> s_refusedDraws{ 0 };
+            const uint32_t refused = s_refusedDraws.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (refused == 1 || refused % 100 == 0)
+            {
+                ME_LOG(
+                    LogRHI,
+                    Error,
+                    "OpenGL draw skipped: the bound {} ({:p}) has no native name, so the draw would "
+                    "name no data ({} requested). Such a buffer was created on a thread that held no "
+                    "graphics context; the creation site was reported with its thread and call stack, "
+                    "and the pointer here identifies that object. Drawing thread and call site:{} "
+                    "{} draw(s) refused so far.",
+                    kind,
+                    object,
+                    count,
+                    DescribeDrawingThreadAndSite(),
+                    refused);
+            }
+        }
+
+        /**
+         * A shader binding that names a resource whose native object does not exist yet.
+         *
+         * GL raises nothing for this: the binding simply leaves the unit pointing at whatever it
+         * was pointing at before, so the draw samples the wrong image or reads a uniform block
+         * that was never bound. The handle reports IsReady() false, and a resource created off the
+         * graphics role is ready from the next render frame on, so the only way to land here is a
+         * draw that used a handle between its creation and that frame start. It is reported
+         * instead of being left to look like a rendering bug.
+         */
+        void ReportBindingWithoutNativeObject(const char* kind, const void* object)
+        {
+            static std::atomic<uint32_t> s_reported{ 0 };
+            const uint32_t reported = s_reported.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (reported == 1 || reported % 100 == 0)
+            {
+                ME_LOG(
+                    LogRHI,
+                    Warn,
+                    "OpenGL shader binding names a {} ({:p}) with no native object: the binding is "
+                    "skipped and the draw keeps whatever that unit held. {} such binding(s) so far.{}",
+                    kind,
+                    object,
+                    reported,
+                    DescribeDrawingThreadAndSite());
+            }
+        }
+
         GLenum ToGLDepthFunc(RHIDepthCompareFunc compare)
         {
             switch (compare)
@@ -78,6 +167,9 @@ namespace minEngine
 
     void OpenGLRHI::Shutdown()
     {
+        // Waiting for another submit is a liveness rule, not a teardown rule: everything still
+        // queued goes now, while the context this backend was drawing with may still be current.
+        RHIDrainAllDeferredDestroys();
         m_DefaultLinearSampler.reset();
         m_SamplerCache.clear();
         m_WindowSystem = nullptr;
@@ -106,6 +198,13 @@ namespace minEngine
         {
             m_WindowSystem->SwapBuffers();
         }
+
+        // This backend hands every command to the driver as it is issued, so the frame is with the
+        // platform by the time SwapBuffers returns (and by now when there is no window). That - not
+        // an elapsed frame count - is what makes the handles retired before it deletable. It also
+        // runs on whichever thread owns the drawing context: the combined graphics thread in Multi,
+        // the only frame thread in Single.
+        RHISubmitBatchCommitted();
     }
 
     
@@ -137,7 +236,12 @@ namespace minEngine
 
     std::shared_ptr<RHITexture> OpenGLRHI::RHICreateTexture2D(const RHITextureCreateDesc& desc, const void* initialData)
     {
-        return std::make_shared<OpenGLRHITexture>(desc, initialData);
+        // Off the graphics role the pixels are copied out of the caller's memory now and the
+        // driver object is created at the start of the next render frame. On it, nothing changes.
+        auto texture = RHIGraphicsRole::IsCurrent()
+            ? std::make_shared<OpenGLRHITexture>(desc, initialData)
+            : std::make_shared<OpenGLRHITexture>(desc, initialData, DeferredNativeCreate{});
+        return ScheduleNativeCreate(std::move(texture), "openGL texture");
     }
 
     std::shared_ptr<RHIShaderResourceView> OpenGLRHI::RHICreateShaderResourceView(const RHITextureSRVDesc& desc)
@@ -151,23 +255,58 @@ namespace minEngine
 
     std::shared_ptr<RHIBuffer> OpenGLRHI::RHICreateBuffer(const RHIBufferCreateDesc& desc, const void* initialData)
     {
-        return std::make_shared<OpenGLRHIBuffer>(desc, initialData);
+        auto buffer = RHIGraphicsRole::IsCurrent()
+            ? std::make_shared<OpenGLRHIBuffer>(desc, initialData)
+            : std::make_shared<OpenGLRHIBuffer>(desc, initialData, DeferredNativeCreate{});
+        return ScheduleNativeCreate(std::move(buffer), "openGL buffer");
+    }
+
+    namespace
+    {
+        /**
+         * What a caller that could not see the driver gets to read. The program exists as a handle
+         * only; its log is filled in by the graphics role, so an empty string here does not mean
+         * "compiled fine" but "nothing has run yet".
+         */
+        const char* const kProgramQueuedLog =
+            "Shader program queued for the graphics role; the driver log becomes readable on the "
+            "handle once it has been created there.";
+
+        void PublishCompileLog(const OpenGLRHIShader& shader, std::string* outCompileLog)
+        {
+            if (outCompileLog == nullptr)
+            {
+                return;
+            }
+
+            *outCompileLog = shader.GetCompileLog();
+            if (outCompileLog->empty() && !shader.IsReady() && !shader.HasNativeCreateFailed())
+            {
+                *outCompileLog = kProgramQueuedLog;
+            }
+        }
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
         const RHIShaderCreateDesc& desc,
         std::string* outCompileLog)
     {
-        auto shader = std::make_shared<OpenGLRHIShader>(desc);
-        if (outCompileLog)
-        {
-            *outCompileLog = shader->GetCompileLog();
-        }
-        if (!shader->IsValid())
+        // Off the graphics role the bytecode is copied and both stages are specialized at the
+        // start of the next render frame; on it, nothing changes and the result is final here.
+        const bool bOnGraphicsRole = RHIGraphicsRole::IsCurrent();
+        auto shader = bOnGraphicsRole
+            ? std::make_shared<OpenGLRHIShader>(desc)
+            : std::make_shared<OpenGLRHIShader>(desc, DeferredNativeCreate{});
+        PublishCompileLog(*shader, outCompileLog);
+
+        // A program that failed where it could be created is still a failure: no handle is handed
+        // out for it. A queued one is a handle whose program does not exist yet.
+        if (bOnGraphicsRole && !shader->IsValid())
         {
             return nullptr;
         }
-        return shader;
+
+        return ScheduleNativeCreate(std::move(shader), "openGL shader program");
     }
 
     std::shared_ptr<RHIShader> OpenGLRHI::RHICreateShader(
@@ -175,16 +314,18 @@ namespace minEngine
         const std::string& fragmentSource,
         std::string* outCompileLog)
     {
-        auto shader = std::make_shared<OpenGLRHIShader>(vertexSource, fragmentSource);
-        if (outCompileLog)
-        {
-            *outCompileLog = shader->GetCompileLog();
-        }
-        if (!shader->IsValid())
+        const bool bOnGraphicsRole = RHIGraphicsRole::IsCurrent();
+        auto shader = bOnGraphicsRole
+            ? std::make_shared<OpenGLRHIShader>(vertexSource, fragmentSource)
+            : std::make_shared<OpenGLRHIShader>(vertexSource, fragmentSource, DeferredNativeCreate{});
+        PublishCompileLog(*shader, outCompileLog);
+
+        if (bOnGraphicsRole && !shader->IsValid())
         {
             return nullptr;
         }
-        return shader;
+
+        return ScheduleNativeCreate(std::move(shader), "openGL shader program");
     }
 
     std::shared_ptr<RHIGraphicsPipelineState> OpenGLRHI::RHICreateGraphicsPipelineState(const RHIGraphicsPSODesc& desc)
@@ -193,12 +334,19 @@ namespace minEngine
         {
             ME_LOG(LogRHI, Warn, "RHICreateGraphicsPipelineState: PipelineLayout is null");
         }
-        return std::make_shared<RHIGraphicsPSOStateFallback>(desc);
+        // This backend binds the pipeline piece by piece, so the value is a description and owns
+        // no driver object: it is ready where it is built and never enters the create queue.
+        return ScheduleNativeCreate(
+            std::make_shared<RHIGraphicsPSOStateFallback>(desc),
+            "openGL pipeline state");
     }
 
     std::shared_ptr<RHIShaderBindingSetLayout> OpenGLRHI::RHICreateShaderBindingSetLayout(const std::vector<RHIShaderBindingSetLayoutEntry>& entries)
     {
-        return std::make_shared<OpenGLRHIShaderBindingSetLayout>(entries);
+        // A table, not a driver object: ready at once, so the channel passes it straight through.
+        return ScheduleNativeCreate(
+            std::make_shared<OpenGLRHIShaderBindingSetLayout>(entries),
+            "openGL shader binding set layout");
     }
 
     std::shared_ptr<RHIPipelineLayout> OpenGLRHI::RHICreatePipelineLayout(
@@ -211,13 +359,18 @@ namespace minEngine
         RHIShaderBindingSetLayout* layout,
         const std::vector<RHIShaderBinding>& resources)
     {
-        return std::make_shared<OpenGLRHIShaderBindingSet>(layout, resources);
+        return ScheduleNativeCreate(
+            std::make_shared<OpenGLRHIShaderBindingSet>(layout, resources),
+            "openGL shader binding set");
     }
 
     std::shared_ptr<RHIVertexInputLayout> OpenGLRHI::RHICreateVertexInputLayout(
         std::initializer_list<RHIVertexElement> elements)
     {
-        return std::make_shared<OpenGLRHIVertexInputLayout>(elements);
+        auto layout = RHIGraphicsRole::IsCurrent()
+            ? std::make_shared<OpenGLRHIVertexInputLayout>(elements)
+            : std::make_shared<OpenGLRHIVertexInputLayout>(elements, DeferredNativeCreate{});
+        return ScheduleNativeCreate(std::move(layout), "openGL vertex input layout");
     }
 
     void OpenGLRHI::ApplyGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState)
@@ -356,6 +509,7 @@ namespace minEngine
                 GLuint texId = GetOpenGLTextureId(srvDesc.Texture);
                 if (texId == 0)
                 {
+                    ReportBindingWithoutNativeObject("texture", srvDesc.Texture);
                     continue;
                 }
 
@@ -390,6 +544,11 @@ namespace minEngine
                 auto* ubo = static_cast<OpenGLRHIBuffer*>(resource.Buffer);
                 if (ubo)
                 {
+                    if (ubo->GetBufferId() == 0)
+                    {
+                        ReportBindingWithoutNativeObject("uniform buffer", ubo);
+                        continue;
+                    }
                     if (resource.BufferRange != 0)
                     {
                         glBindBufferRange(
@@ -674,6 +833,12 @@ namespace minEngine
     void OpenGLRHI::RHICmdDrawIndexed(uint32_t indexCount, uint32_t firstIndex, int32_t vertexOffset)
     {
         EnsureOpenGLFunctionTableLoaded();
+        if (m_BoundIndexBuffer == nullptr || m_BoundIndexBuffer->GetBufferId() == 0)
+        {
+            ReportDrawWithoutNativeBuffer("index buffer", indexCount, m_BoundIndexBuffer);
+            return;
+        }
+
         const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
         const void* indices = reinterpret_cast<const void*>(static_cast<uintptr_t>(firstIndex * sizeof(uint32_t)));
         glDrawElements(primitiveType, static_cast<GLsizei>(indexCount), GL_UNSIGNED_INT, indices);
@@ -683,6 +848,12 @@ namespace minEngine
     void OpenGLRHI::RHICmdDraw(uint32_t vertexCount, uint32_t firstVertex)
     {
         EnsureOpenGLFunctionTableLoaded();
+        if (m_BoundVertexBuffer != nullptr && m_BoundVertexBuffer->GetBufferId() == 0)
+        {
+            ReportDrawWithoutNativeBuffer("vertex buffer", vertexCount, m_BoundVertexBuffer);
+            return;
+        }
+
         const GLenum primitiveType = GetBoundPrimitiveType(m_BoundPipeline);
         glDrawArrays(primitiveType, static_cast<GLint>(firstVertex), static_cast<GLsizei>(vertexCount));
     }
@@ -717,7 +888,13 @@ namespace minEngine
             return existing->second;
         }
 
-        RHISamplerRef sampler = std::make_shared<OpenGLRHISampler>(desc);
+        // The cache holds the handle, not the driver object: a sampler asked for on the game role
+        // and the one the graphics role later creates are the same entry, so a texture bound by
+        // both sides names one sampler.
+        RHISamplerRef sampler = RHIGraphicsRole::IsCurrent()
+            ? std::make_shared<OpenGLRHISampler>(desc)
+            : std::make_shared<OpenGLRHISampler>(desc, DeferredNativeCreate{});
+        sampler = ScheduleNativeCreate(std::move(sampler), "openGL sampler");
         m_SamplerCache.emplace(desc, sampler);
         return sampler;
     }

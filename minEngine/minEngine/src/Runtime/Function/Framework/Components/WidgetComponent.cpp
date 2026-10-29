@@ -12,6 +12,76 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        /**
+         * Nearest canvas above a node, scanned in place.
+         *
+         * Same answer as CanvasComponent::FindOwningCanvas, but without building a component list:
+         * the widget reconciles its canvas snapshot from inside the layout pass, which runs for
+         * every widget on every tick, so this path must not allocate.
+         */
+        CanvasComponent* FindOwningCanvasInPlace(GameObject* node)
+        {
+            for (GameObject* current = node; current != nullptr; current = current->GetParent())
+            {
+                for (const std::shared_ptr<Component>& component : current->GetAllComponents())
+                {
+                    if (!component || component->GetClass() == nullptr ||
+                        !component->IsA(CanvasComponent::StaticClass()))
+                    {
+                        continue;
+                    }
+
+                    return static_cast<CanvasComponent*>(component.get());
+                }
+            }
+
+            return nullptr;
+        }
+
+        /** Canvas state a widget drew under when its proxy was last filled. */
+        struct CanvasSnapshot
+        {
+            bool bHasActiveCanvas = false;
+            EUICanvasScaleMode ScaleMode = EUICanvasScaleMode::Letterbox;
+            Vector2 ReferenceResolution{ 0.0f, 0.0f };
+            int32_t SortOrder = 0;
+        };
+
+        CanvasSnapshot CaptureCanvasSnapshot(GameObject* owner)
+        {
+            CanvasSnapshot snapshot;
+            const CanvasComponent* canvas = FindOwningCanvasInPlace(owner);
+            snapshot.bHasActiveCanvas = canvas != nullptr && canvas->IsActive();
+            if (canvas != nullptr)
+            {
+                snapshot.ScaleMode = canvas->GetScaleMode();
+                snapshot.ReferenceResolution = canvas->GetReferenceResolution();
+                snapshot.SortOrder = canvas->GetSortOrder();
+            }
+            return snapshot;
+        }
+
+        /** Whether the canvas context moved away from what the proxy published. */
+        bool CanvasSnapshotDiffers(const WidgetSceneProxy& proxy, const CanvasSnapshot& canvas)
+        {
+            if (proxy.m_bHasActiveCanvas != canvas.bHasActiveCanvas)
+            {
+                return true;
+            }
+
+            if (!canvas.bHasActiveCanvas)
+            {
+                return false;
+            }
+
+            return proxy.m_CanvasScaleMode != canvas.ScaleMode ||
+                proxy.m_CanvasReferenceResolution != canvas.ReferenceResolution ||
+                proxy.m_CanvasSortOrder != canvas.SortOrder;
+        }
+    }
+
     WidgetComponent::WidgetComponent()
     {
         m_ComputedRect.TopLeft = Vector2(0.0f, 0.0f);
@@ -205,7 +275,15 @@ namespace minEngine
     {
         const bool changed = m_ComputedRect.TopLeft != rect.TopLeft || m_ComputedRect.Size != rect.Size;
         m_ComputedRect = rect;
-        if (changed)
+
+        // The canvas a widget sits under decides how its reference pixels reach the viewport, and
+        // a canvas cannot observe that a widget read it: switching its scale mode or reference
+        // resolution would otherwise leave the proxy drawing the mapping it was filled with.
+        // Layout reaches every widget under an active canvas on each tick, so the comparison rides
+        // along here instead of adding a per-frame walk of its own.
+        const WidgetSceneProxy* proxy = GetSceneProxy();
+        if (changed ||
+            (proxy != nullptr && CanvasSnapshotDiffers(*proxy, CaptureCanvasSnapshot(GetOwner()))))
         {
             MarkRenderStateDirty();
         }
@@ -270,7 +348,10 @@ namespace minEngine
             return;
         }
 
-        if (m_RuntimeMaterial && m_RuntimeMaterial->IsCompiledForDraw())
+        // A compile whose program is still created by the graphics role is finished: asking for
+        // the drawable state here would replace a material that is about to be drawable with a new
+        // equivalent one on every fill.
+        if (m_RuntimeMaterial && m_RuntimeMaterial->HasCompiledProgram())
         {
             return;
         }
@@ -283,6 +364,12 @@ namespace minEngine
         proxy.m_WidgetComponent = this;
         proxy.m_StableOrder = m_StableOrder;
 
+        const CanvasSnapshot canvas = CaptureCanvasSnapshot(GetOwner());
+        proxy.m_bHasActiveCanvas = canvas.bHasActiveCanvas;
+        proxy.m_CanvasScaleMode = canvas.ScaleMode;
+        proxy.m_CanvasReferenceResolution = canvas.ReferenceResolution;
+        proxy.m_CanvasSortOrder = canvas.SortOrder;
+
         // Reference-space rect; Letterbox applied in BuildScreenUIQueue.
         proxy.m_TopLeftPx = m_ComputedRect.TopLeft;
         proxy.m_SizePx = m_ComputedRect.Size;
@@ -290,10 +377,8 @@ namespace minEngine
         proxy.m_Color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
         proxy.m_UVRect = Vector4(0.0f, 0.0f, 1.0f, 1.0f);
         proxy.m_Texture = nullptr;
-        proxy.m_MaterialProxy = nullptr;
-        proxy.m_VertexBuffer = nullptr;
-        proxy.m_IndexBuffer = nullptr;
-        proxy.m_VertexInputLayout = nullptr;
+        proxy.ClearMeshResources();
+        proxy.SetMaterialSource(nullptr);
         proxy.m_bLocalPixelMesh = false;
         proxy.m_bVisible = false;
 
@@ -316,9 +401,14 @@ namespace minEngine
 
         if (drawData.bLocalPixelMesh)
         {
-            proxy.m_VertexBuffer = drawData.VertexBuffer;
-            proxy.m_IndexBuffer = drawData.IndexBuffer;
-            proxy.m_VertexInputLayout = drawData.VertexInputLayout;
+            // The graphic hands the geometry over as owning handles: a text relayout replaces its
+            // own buffers, while this proxy may still be waiting on the render thread to draw them.
+            proxy.SetMeshResources(
+                drawData.VertexBuffer,
+                drawData.VertexInputLayout,
+                drawData.IndexBuffer,
+                drawData.IndexCount,
+                drawData.VertexCount);
         }
         else
         {
@@ -329,9 +419,12 @@ namespace minEngine
             }
 
             SpriteQuadMesh& quad = SpriteQuadMesh::Get();
-            proxy.m_VertexBuffer = quad.GetVertexBuffer();
-            proxy.m_IndexBuffer = quad.GetIndexBuffer();
-            proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
+            proxy.SetMeshResources(
+                quad.GetVertexBufferRef(),
+                quad.GetVertexInputLayout(),
+                quad.GetIndexBufferRef(),
+                SpriteQuadMesh::IndexCount,
+                SpriteQuadMesh::VertexCount);
         }
 
         EnsureRuntimeMaterial();
@@ -339,13 +432,14 @@ namespace minEngine
         {
             graphic->ApplyMaterialParameters(*m_RuntimeMaterial);
         }
-        proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
+        proxy.SetMaterialSource(m_RuntimeMaterial);
 
-        CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(GetOwner());
-        const bool canvasOk = canvas != nullptr && canvas->IsActive();
-        proxy.m_bVisible = canvasOk
-            && proxy.m_MaterialProxy != nullptr
-            && proxy.m_MaterialProxy->IsCompiledForDraw() && proxy.m_VertexBuffer != nullptr
+        // Compiled, not necessarily created yet: this flag is latched until something else marks
+        // the widget dirty, so it must not capture a program that the graphics role creates at the
+        // next frame start - which is before the frame this proxy is drawn in records.
+        proxy.m_bVisible = canvas.bHasActiveCanvas
+            && proxy.GetMaterialProxy() != nullptr
+            && proxy.GetMaterialProxy()->HasCompiledProgram() && proxy.m_VertexBuffer != nullptr
             && proxy.m_VertexInputLayout != nullptr && proxy.m_SizePx.x > 0.0f
             && proxy.m_SizePx.y > 0.0f;
     }

@@ -36,6 +36,11 @@ namespace minEngine
         RHIBuffer* GetVertexBuffer() const { return m_VertexBuffer.get(); }
         RHIBuffer* GetIndexBuffer() const { return m_IndexBuffer.get(); }
         RHIVertexInputLayout* GetVertexInputLayout() const { return m_VertexInputLayout.get(); }
+
+        /** Strong handles for callers that must outlive this singleton's own bookkeeping. */
+        const RHIBufferRef& GetVertexBufferRef() const { return m_VertexBuffer; }
+        const RHIBufferRef& GetIndexBufferRef() const { return m_IndexBuffer; }
+        const RHIVertexInputLayoutRef& GetVertexInputLayoutRef() const { return m_VertexInputLayout; }
         bool IsReady() const
         {
             return m_VertexBuffer != nullptr && m_IndexBuffer != nullptr && m_VertexInputLayout != nullptr;

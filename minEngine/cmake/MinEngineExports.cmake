@@ -21,8 +21,13 @@ set_property(CACHE MINENGINE_EXPORT_MODE PROPERTY STRINGS auto whitelist explici
 set(MINENGINE_EXPORTS_DEF "${MINENGINE_CMAKE_DIR}/minEngine_exports.def" CACHE FILEPATH
     "Export whitelist (.def) used when MINENGINE_EXPORT_MODE=whitelist")
 
-set(MINENGINE_EXPORT_BUDGET "3000" CACHE STRING
-    "Fail the build when the engine DLL exports more PE entries than this")
+# The budget is an ACCIDENT ceiling, not a decision input: it fails the link only when a whole
+# family leaks into the export table (a template-instantiation cascade, a link option falling
+# back to --export-all-symbols). It is deliberately loose; normal growth is governed by the
+# committed export snapshot and the incremental gate in scripts/verify.ps1, which reports the
+# delta of one change instead of a distance to a round number.
+set(MINENGINE_EXPORT_BUDGET "3500" CACHE STRING
+    "Fail the build when the engine DLL exports more PE entries than this (accident ceiling)")
 set(MINENGINE_EXPORT_MIN_HEADROOM "60000" CACHE STRING
     "Fail the build when 65535-maxNamedOrdinal drops below this")
 

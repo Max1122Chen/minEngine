@@ -1,5 +1,6 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
 
 #include <cstdint>
 #include <memory>
@@ -81,6 +82,33 @@ namespace minEngine
         return mipCount;
     }
 
+    /** Bytes one texel of this format occupies in CPU memory; 0 for TextureFormat::None. */
+    inline uint32_t GetTextureFormatByteSize(TextureFormat format)
+    {
+        switch (format)
+        {
+        case TextureFormat::RED:
+            return 1;
+        case TextureFormat::RGB8:
+            return 3;
+        case TextureFormat::RGBA8:
+            return 4;
+        case TextureFormat::RGB16F:
+            return 6;
+        case TextureFormat::RGBA16F:
+            return 8;
+        case TextureFormat::DEPTH16:
+            return 2;
+        case TextureFormat::DEPTH24:
+            return 3;
+        case TextureFormat::DEPTH32:
+        case TextureFormat::DEPTH24STENCIL8:
+            return 4;
+        default:
+            return 0;
+        }
+    }
+
     struct RHITextureCreateDesc
     {
         RHITextureDimension Dimension = RHITextureDimension::Texture2D;
@@ -92,7 +120,12 @@ namespace minEngine
         uint32_t NumMips = 1;
     };
 
-    class RHITexture
+    /**
+     * A texture handle. Like a buffer, the native object behind it may be created after this call
+     * returns: a texture asked for off the graphics role gets its description and a CPU copy of
+     * the initial pixels now, and the driver object at the start of the next render frame.
+     */
+    class RHITexture : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHITexture() = default;

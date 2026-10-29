@@ -36,6 +36,10 @@ namespace minEngine
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;
         RHIBuffer* m_IndexBuffer = nullptr;
 
+        /** Draw ranges copied from the mesh metadata via MeshBatch. */
+        uint32_t m_IndexCount = 0;
+        uint32_t m_VertexCount = 0;
+
         MaterialRenderProxy* m_MaterialProxy = nullptr;
 
         Matrix4 m_ModelMatrix;

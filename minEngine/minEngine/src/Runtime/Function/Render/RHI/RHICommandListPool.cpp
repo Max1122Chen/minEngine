@@ -70,6 +70,55 @@ namespace minEngine
         m_FinishedCv.notify_all();
     }
 
+    RHICommandListPool::Lease RHICommandListPool::AcquireLease()
+    {
+        return Lease(this, Acquire());
+    }
+
+    RHICommandListPool::Lease::~Lease()
+    {
+        Recycle();
+    }
+
+    RHICommandListPool::Lease::Lease(Lease&& other) noexcept
+        : m_Pool(other.m_Pool)
+        , m_List(other.m_List)
+    {
+        other.m_Pool = nullptr;
+        other.m_List = nullptr;
+    }
+
+    RHICommandListPool::Lease& RHICommandListPool::Lease::operator=(Lease&& other) noexcept
+    {
+        if (this != &other)
+        {
+            Recycle();
+            m_Pool = other.m_Pool;
+            m_List = other.m_List;
+            other.m_Pool = nullptr;
+            other.m_List = nullptr;
+        }
+        return *this;
+    }
+
+    void RHICommandListPool::Lease::SubmitFinished()
+    {
+        if (m_List != nullptr && m_Pool != nullptr)
+        {
+            m_Pool->SubmitFinished(m_List);
+        }
+        m_List = nullptr;
+    }
+
+    void RHICommandListPool::Lease::Recycle()
+    {
+        if (m_List != nullptr && m_Pool != nullptr)
+        {
+            m_Pool->Release(m_List);
+        }
+        m_List = nullptr;
+    }
+
     RHICommandList* RHICommandListPool::Acquire()
     {
         ME_ASSERT(m_Initialized, "RHICommandListPool::Acquire before Initialize");

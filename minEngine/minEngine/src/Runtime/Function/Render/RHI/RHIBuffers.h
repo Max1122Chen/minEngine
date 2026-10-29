@@ -1,5 +1,7 @@
 #pragma once
 #include "Core.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredDestroy.h"
 #include "Runtime/Function/Render/RHI/VertexAttributeSemantics.h"
 
 #include <cstdint>
@@ -123,7 +125,14 @@ namespace minEngine
         uint32_t ElementCount = 0;
     };
 
-    class RHIBuffer
+    /**
+     * CPU-side description of a vertex/index/uniform buffer. The native object behind it is
+     * destroyed by the RHI role, not by whoever dropped the last reference: the destructor posts
+     * the handle to the live device's queue through PostNativeDestroy. RHIDeferredCreateTarget
+     * owns the other end of the same contract: the native object may be created by the graphics
+     * role after this handle exists.
+     */
+    class RHIBuffer : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHIBuffer() = default;
@@ -134,7 +143,8 @@ namespace minEngine
 
     using RHIBufferRef = std::shared_ptr<RHIBuffer>;
 
-    class RHIVertexInputLayout
+    /** Same hand-off as RHIBuffer: an OpenGL layout owns a vertex array object. */
+    class RHIVertexInputLayout : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHIVertexInputLayout() = default;

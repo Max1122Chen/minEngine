@@ -51,7 +51,16 @@ namespace minEngine
 
     public:
         Material();
-        virtual ~Material() = default;
+        ~Material() override
+        {
+            // A scene proxy can still hold the render object, so it has to be told that the tables
+            // it publishes from are about to be freed: it keeps drawing from its last snapshot
+            // instead of publishing from a freed owner.
+            if (m_RenderProxy)
+            {
+                m_RenderProxy->DetachFromOwner();
+            }
+        }
 
         bool Compile();
         /** Compiles a skinned VS variant; requires a successful rigid Compile() first (reuses material bindings). */
@@ -72,9 +81,17 @@ namespace minEngine
 
         Material* GetBaseMaterial() const override { return const_cast<Material*>(this); }
         MaterialRenderProxy* GetRenderProxy() const override { return m_RenderProxy.get(); }
+        MaterialRenderProxyRef GetRenderProxyRef() const override { return m_RenderProxy; }
         std::shared_ptr<Material> ResolveParentMaterial(
             const std::shared_ptr<MaterialInterface>& self) const override;
 
+        /**
+         * True only when the program exists and can be bound right now.
+         *
+         * A compile that ran on this thread while the program itself is created by the graphics
+         * role is finished but not drawable yet, and answers false here: the shader handle says
+         * so through IsReady(), so nothing has to guess from a zero program name.
+         */
         bool IsCompiledForDraw() const override
         {
             return m_GPUShader != nullptr && m_GPUShader->IsValid() && !m_ParameterLayout.Parameters.empty();
@@ -85,6 +102,32 @@ namespace minEngine
             return IsCompiledForDraw() && m_GPUShaderSkinned != nullptr && m_GPUShaderSkinned->IsValid();
         }
 
+        /**
+         * The compile finished: a program handle and a parameter layout exist.
+         *
+         * Different from IsCompiledForDraw() by exactly the deferred window - a program queued for
+         * the graphics role is compiled, but naming it in a draw would name nothing. Callers that
+         * hand the program on rather than draw with it (deriving a runtime sibling, creating the
+         * factory instance) ask this one.
+         */
+        bool HasCompiledProgram() const
+        {
+            return m_GPUShader != nullptr && !m_ParameterLayout.Parameters.empty();
+        }
+
+        /** The program is queued for the graphics role: compiled, not created, not failed. */
+        bool IsProgramPendingMaterialization() const
+        {
+            return m_GPUShader != nullptr && !m_GPUShader->IsReady()
+                && !m_GPUShader->HasNativeCreateFailed();
+        }
+
+        /** The program was handed to the graphics role and its creation failed there. */
+        bool HasProgramCreateFailed() const
+        {
+            return m_GPUShader != nullptr && m_GPUShader->HasNativeCreateFailed();
+        }
+
         RHIShader* GetGPUShader() const { return m_GPUShader.get(); }
         RHIShader* GetGPUShaderSkinned() const { return m_GPUShaderSkinned.get(); }
         uint32_t GetCompileGeneration() const { return m_CompileGeneration; }
@@ -92,7 +135,22 @@ namespace minEngine
         {
             return m_MaterialShaderBindingSetLayout.get();
         }
-        const std::string& GetShaderCompileLog() const { return m_ShaderCompileLog; }
+        /**
+         * Why the program is not there, as far as the program itself knows.
+         *
+         * Read through the handle rather than the copy taken at compile time: a queued program has
+         * no message yet, and the one the driver produced lands on the handle when the graphics
+         * role creates it. A caller that asks later therefore sees the failure instead of the
+         * "queued" placeholder it was given during the compile.
+         */
+        const std::string& GetShaderCompileLog() const
+        {
+            if (m_GPUShader != nullptr && !m_GPUShader->GetCompileLog().empty())
+            {
+                m_ShaderCompileLog = m_GPUShader->GetCompileLog();
+            }
+            return m_ShaderCompileLog;
+        }
 
         MaterialEdGraph& GetGraph();
         const MaterialEdGraph& GetGraph() const;
@@ -126,8 +184,18 @@ namespace minEngine
         RHIShaderRef m_GPUShaderSkinned;
         RHIShaderBindingSetLayoutRef m_MaterialShaderBindingSetLayout;
         uint32_t m_CompileGeneration = 0;
-        std::string m_ShaderCompileLog;
-        std::unique_ptr<MaterialRenderProxy> m_RenderProxy;
+        /** Written by the compile and refreshed from the program handle whenever it is read later. */
+        mutable std::string m_ShaderCompileLog;
+
+        /**
+         * Built once and kept for this material's whole lifetime.
+         *
+         * Compiles and parameter changes rebuild this proxy's GPU binding state in place, never the
+         * proxy object, so a reference held across a recompile still draws the current state. The
+         * reference is shared: this material keeps one, and every scene proxy that draws with it
+         * keeps another, so the proxy - and the snapshot it published - outlives this material.
+         */
+        MaterialRenderProxyRef m_RenderProxy;
 
         bool CommitCompileResult(const MaterialCompileResult& result, const MaterialCompileContext& ctx);
 

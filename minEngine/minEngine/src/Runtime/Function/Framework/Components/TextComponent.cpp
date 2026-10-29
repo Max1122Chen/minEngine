@@ -135,10 +135,17 @@ namespace minEngine
             return false;
         }
 
+        // One glyph quad is four vertices and two triangles; the mesh builder emits exactly that
+        // per quad, so the totals follow from the quad count without re-reading the buffers.
+        constexpr uint32_t kVerticesPerQuad = 4u;
+        constexpr uint32_t kIndicesPerQuad = 6u;
+
         outData.bLocalPixelMesh = true;
-        outData.VertexBuffer = m_VertexBuffer.get();
-        outData.IndexBuffer = m_IndexBuffer.get();
+        outData.VertexBuffer = m_VertexBuffer;
+        outData.IndexBuffer = m_IndexBuffer;
         outData.VertexInputLayout = m_VertexInputLayout;
+        outData.IndexCount = m_QuadCount * kIndicesPerQuad;
+        outData.VertexCount = m_QuadCount * kVerticesPerQuad;
         outData.Texture = m_AtlasTexture.get();
         outData.Color = m_Color.ToVector4();
         // Glyph quads carry their own atlas coordinates, so the draw covers the whole texture.

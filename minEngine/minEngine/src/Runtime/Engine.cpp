@@ -1,5 +1,6 @@
 #include "Engine.h"
 
+
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -11,6 +12,8 @@
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Function/Render/GLFWWindowSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
+#include "Runtime/Function/Render/MaterialRenderProxy.h"
+#include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Function/Render/SceneRendererKind.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
@@ -122,6 +125,7 @@ namespace minEngine
     {
         m_RenderCommandPipe = std::make_unique<RenderCommandPipe>();
         m_RenderCommandPipe->Initialize();
+        m_GameLogicFrameIndex = 0;
     }
 
     void Engine::Initialize(const CommandLineResult& commandLine)
@@ -223,27 +227,28 @@ namespace minEngine
         }
     }
 
-    void Engine::StartMultiFrameRoles(
+    bool Engine::TryStartMultiFrameRoles(
         TaskSystem::RenderFrameTaskFn renderOverride,
         TaskSystem::RHIFrameTaskFn rhiOverride)
     {
         if (!m_FrameThreading || !m_FrameThreading->IsMulti())
         {
-            return;
+            // Single topology: the game thread owns every role, so there is nothing to start.
+            return true;
         }
         if (!m_TaskSystem || !m_TaskSystem->IsRunning())
         {
-            ME_LOG(LogCore, Error, "StartMultiFrameRoles: TaskSystem not running.");
-            return;
+            ME_LOG(LogCore, Error, "StartMultiFrameRoles: TaskSystem is not running; frame roles cannot start.");
+            return false;
         }
         if (m_TaskSystem->AreFrameRolesRunning())
         {
-            return;
+            return true;
         }
         if (!m_RenderSystem || m_RenderSystem->GetRHI() == nullptr)
         {
-            ME_LOG(LogCore, Error, "StartMultiFrameRoles: RenderSystem/RHI required.");
-            return;
+            ME_LOG(LogCore, Error, "StartMultiFrameRoles: RenderSystem/RHI is required; frame roles cannot start.");
+            return false;
         }
 
         m_RHICommandListPool = std::make_unique<RHICommandListPool>();
@@ -258,6 +263,20 @@ namespace minEngine
 
         const bool combineGraphics = RHIBackendSelection::IsOpenGL();
         m_TaskSystem->StartFrameRoles(std::move(renderTask), std::move(rhiTask), combineGraphics);
+
+        if (!m_TaskSystem->AreFrameRolesRunning())
+        {
+            ME_LOG(LogCore, Error, "StartMultiFrameRoles: frame roles did not start; the engine stays on the game thread.");
+            return false;
+        }
+        return true;
+    }
+
+    void Engine::StartMultiFrameRoles(
+        TaskSystem::RenderFrameTaskFn renderOverride,
+        TaskSystem::RHIFrameTaskFn rhiOverride)
+    {
+        (void)TryStartMultiFrameRoles(std::move(renderOverride), std::move(rhiOverride));
     }
 
     void Engine::StopMultiFrameRoles()
@@ -279,11 +298,62 @@ namespace minEngine
         return m_TaskSystem && m_TaskSystem->AreFrameRolesRunning();
     }
 
+    namespace
+    {
+        /**
+         * True when a retired Scene is waiting for a frame boundary.
+         * Asking before the submission is what keeps a normal frame asynchronous: only a frame that
+         * has something to release waits for its own completion, because only that frame is the
+         * point after which the retired Scene can no longer be referenced.
+         */
+        bool HasFrameReleasesPending(const SceneManager* sceneManager)
+        {
+            return sceneManager != nullptr && sceneManager->HasRetiredScenes();
+        }
+
+        /** Baseline for the work-loss summary. Written by the game role, which is its only caller. */
+        FrameWorkLossCounters s_LastFrameWorkLoss;
+
+        /**
+         * At most one line per frame saying what the frame roles lost since the previous frame, so a
+         * frame that dropped N commands shows up in the log as N instead of as N lines - or, as it
+         * used to be, as nothing at all. A frame that lost nothing logs nothing.
+         */
+        void ReportFrameWorkLoss(const TaskSystem& tasks)
+        {
+            FrameWorkLossCounters current;
+            if (RenderCommandPipe::HasInstance())
+            {
+                const RenderCommandPipe::Counters pipe = RenderCommandPipe::Get().GetCounters();
+                current.DroppedCommands = pipe.DroppedStaleCommands + pipe.DroppedFullCommands;
+                current.DroppedViewIntents = pipe.DroppedStaleViewIntents + pipe.DroppedFullViewIntents;
+                current.ApplyFailures = pipe.FlushFailureCount;
+            }
+            current.FailedFrames = tasks.GetFailedFrameCount();
+            current.DroppedFrames = tasks.GetDroppedQueuedFrameCount();
+
+            const std::string line = DescribeFrameWorkLossDelta(s_LastFrameWorkLoss, current);
+            s_LastFrameWorkLoss = current;
+            if (!line.empty())
+            {
+                ME_LOG(LogCore, Warn, "{}", line);
+            }
+        }
+    }
+
     void Engine::Run()
     {
-        if (m_FrameThreading && m_FrameThreading->IsMulti())
+        if (m_FrameThreading && m_FrameThreading->IsMulti() && !TryStartMultiFrameRoles())
         {
-            StartMultiFrameRoles();
+            // Falling back to TickOneFrame here used to look harmless and then asserted in the
+            // renderer: in Multi the game thread does not own the Render role, so drawing on it is
+            // a contract violation, not a slower mode.
+            ME_LOG(
+                LogCore,
+                Error,
+                "Engine::Run: Multi frame roles could not start; refusing to run. The single-thread "
+                "fallback is not available in the Multi topology.");
+            return;
         }
 
         WindowSystem& windowSystem = WindowSystem::Get();
@@ -300,21 +370,23 @@ namespace minEngine
                         ME_PROFILE_SCOPE("Frame.Game.Logical");
                         TickLogicalFrame(deltaTime);
                     }
-                    m_TaskSystem->SubmitRenderFrameTask(deltaTime, /*waitForCompletion=*/false);
+                    // The frame submitted here is the first one that can no longer reference what
+                    // the game role just released, so its completion is the release gate. Waiting
+                    // for it costs a stall only on the frames that actually retired or handed
+                    // something over.
+                    const bool bReleasesPending = HasFrameReleasesPending(m_SceneManager.get());
+                    m_TaskSystem->SubmitRenderFrameTask(deltaTime, bReleasesPending);
+                    if (bReleasesPending)
+                    {
+                        CompleteFrameReleases();
+                    }
+                    ReportFrameWorkLoss(*m_TaskSystem);
                 }
                 Profile::EndFrame();
             }
             else
             {
                 TickOneFrame(deltaTime);
-                if (m_RenderSystem)
-                {
-                    m_RenderSystem->PresentFrame();
-                }
-                else
-                {
-                    windowSystem.SwapBuffers();
-                }
             }
         }
 
@@ -333,6 +405,25 @@ namespace minEngine
             FrameThreading::Get().AssertIsFrameThread(FrameThreadKind::Game, "TickLogicalFrame");
         }
         LogicalTick(deltaTime);
+
+        // End of the game tick, before the frame is handed to the render role: material parameter
+        // writes were staged during the tick, and this is the one point where they are published.
+        // A snapshot taken here is what the next recorded frame draws with, so the delay between a
+        // Set* call and its pixels is at most one tick - and every write inside a tick coalesces.
+        MaterialRenderProxyPublisher::PublishPendingGameData();
+
+        if (RenderCommandPipe::HasInstance())
+        {
+            // The game role owns the logical frame number. The tick that just finished has now
+            // enqueued every command of that frame, so the game publishes it as the render role's
+            // drain target together with the world generation it committed; the next tick tags its
+            // commands with the following frame. Single topology walks the same path - both roles
+            // share the thread but only this call moves the frame on.
+            RenderCommandPipe& pipe = RenderCommandPipe::Get();
+            pipe.SetPublishedWorldGen(m_GameLogicFrameIndex);
+            pipe.PublishGameFrame(m_GameLogicFrameIndex, m_GameLogicFrameIndex + 1);
+            ++m_GameLogicFrameIndex;
+        }
     }
 
     void Engine::TickRendererFrame(float deltaTime)
@@ -343,23 +434,63 @@ namespace minEngine
             FrameThreading::Get().AssertIsFrameThread(FrameThreadKind::Render, "TickRendererFrame");
         }
 
-        uint64_t logicFrame = 0;
+        // Frame start, before this frame records anything: create the GPU objects that were asked
+        // for from a thread that cannot drive the graphics API. This is the only moment that has
+        // both the graphics context and the guarantee that nothing has named those objects yet,
+        // so a resource created during the previous game tick is fully usable from this frame on.
+        if (m_RenderSystem != nullptr)
+        {
+            if (RHI* rhi = m_RenderSystem->GetRHI())
+            {
+                ME_PROFILE_SCOPE("Frame.Render.CreateResources");
+                rhi->RHIDrainDeferredCreates();
+            }
+        }
+
+        // The render role never advances either frame number: it reads the drain target the game
+        // role published and records its own progress while draining. A dedicated render role with
+        // its own frame counter used to be the owner here, which made the generation check below
+        // compare a value with itself.
+        uint64_t completedFrame = UINT64_MAX;
         if (RenderCommandPipe::HasInstance())
         {
             RenderCommandPipe& pipe = RenderCommandPipe::Get();
-            logicFrame = pipe.GetLogicFrameIndex();
-            const uint64_t published = pipe.GetPublishedWorldGen();
-            if (logicFrame > 0)
+            completedFrame = pipe.GetCompletedGameFrame();
+
+            // Two independent sources: the generation the game role published, and the frame this
+            // pipe drained for the render role. A failure means the render role has drawn a world
+            // the game role never committed. It is read before the drain below on purpose: the
+            // drain is what moves the drawn frame, so afterwards the two numbers would only be
+            // compared against each other for this frame.
+            std::string generationDiagnostic;
+            if (!pipe.CheckPublishedGenerationForDrawnFrame(&generationDiagnostic))
             {
-                const bool worldReady =
-                    published != UINT64_MAX && published >= (logicFrame - 1);
-                ME_ASSERT(worldReady, "RenderRole expected publishedWorldGen >= N-1 before draw");
+                ME_LOG(LogCore, Error, "{}", generationDiagnostic);
+                ME_ASSERT(false, generationDiagnostic.c_str());
             }
 
             {
+                // The frame's scene changes are applied before anything is recorded, so what this
+                // frame draws is the state the game role handed over - not the state of one frame
+                // ago. Everything at or below the completed game frame is applied in order: a
+                // command that reached the queue late still lands in this drain instead of being
+                // parked until it stalls the producer.
+                ME_PROFILE_SCOPE("Frame.Render.Apply");
+                const bool bAllCommandsApplied = pipe.FlushApplyForFrameChecked(completedFrame);
+                if (!bAllCommandsApplied && m_TaskSystem)
+                {
+                    // The isolated command failure already logged which command threw; the frame is
+                    // settled as not completed so the game side sees a frame it cannot trust instead
+                    // of a frame that merely "finished".
+                    m_TaskSystem->MarkCurrentFrameIncomplete("render command flush");
+                }
+            }
+
+            if (completedFrame != UINT64_MAX)
+            {
                 ME_PROFILE_SCOPE("Frame.Render.View");
                 std::vector<SceneDrawDesc> intents;
-                pipe.TakeViewIntents(logicFrame, intents);
+                pipe.TakeViewIntents(completedFrame, intents);
                 if (m_RenderSystem)
                 {
                     m_RenderSystem->ReplacePendingDraws(std::move(intents));
@@ -372,17 +503,32 @@ namespace minEngine
             RendererTick(deltaTime);
         }
 
-        if (RenderCommandPipe::HasInstance())
+        // Frame end, after the last draw command of this frame has been recorded: the proxies the
+        // drain above parked are destroyed here. Recording is the step that reads a scene proxy -
+        // a recorded command carries GPU handles copied out of it, so once the last one is out, no
+        // later step of this frame can name the proxy again, and the game role can only tag new
+        // commands for a later frame. What a parked proxy held - its GPU buffers and its material
+        // render object - is released here; the native objects behind them are retired through the
+        // RHI queue and die at the tail of the batch that carries this frame's draws, which is the
+        // submission point of those draws and not this one. A frame that draws nothing reaches this
+        // point too: it hangs off the frame, not off a queue that happened to be non-empty.
+        RenderScene::FlushPendingProxyDeletes();
+
+        // No Scene release happens here: this function only records the frame. The RHI work that
+        // actually consumes the recording (Replay/Present) has not run yet, so a Scene retired for
+        // this frame may still be referenced by everything queued behind it. The gate is
+        // CompleteFrameReleases on the game role, once that work is finished.
+    }
+
+    void Engine::CompleteFrameReleases()
+    {
+        if (FrameThreading::HasInstance())
         {
-            ME_PROFILE_SCOPE("Frame.Render.Apply");
-            RenderCommandPipe& pipe = RenderCommandPipe::Get();
-            pipe.FlushApplyForFrame(logicFrame);
-            pipe.SetPublishedWorldGen(logicFrame);
-            pipe.AdvanceLogicFrame();
+            FrameThreading::Get().AssertIsFrameThread(FrameThreadKind::Game, "CompleteFrameReleases");
         }
 
-        // Retired scenes may have been referenced by draws submitted before retirement; the
-        // renderer consumed them just now, so this is the first safe point to destroy them.
+        // A retired Scene is exactly the thing the frame that just finished could still reference,
+        // so this is the earliest point after which destroying it is safe.
         if (m_SceneManager)
         {
             m_SceneManager->FlushRetiredScenes();
@@ -400,8 +546,23 @@ namespace minEngine
                 TickLogicalFrame(deltaTime);
             }
             {
-                // Single mode: Render + RHI roles share this OS thread and this tick.
+                // Single mode: Render + RHI roles share this OS thread and this tick, so the frame's
+                // recording and its present both finish inside this call.
+                ME_PROFILE_SCOPE("Frame.Render.Record");
                 TickRendererFrame(deltaTime);
+            }
+            if (m_RenderSystem)
+            {
+                m_RenderSystem->PresentFrame();
+            }
+            else if (WindowSystem::HasInstance())
+            {
+                WindowSystem::Get().SwapBuffers();
+            }
+            CompleteFrameReleases();
+            if (m_TaskSystem)
+            {
+                ReportFrameWorkLoss(*m_TaskSystem);
             }
         }
         Profile::EndFrame();
@@ -686,6 +847,11 @@ namespace minEngine
 
     void Engine::ShutdownSystems()
     {
+        // Stop the role threads first: StopMultiFrameRoles refuses new submissions, drains what is
+        // already queued and joins. Tearing down the subsystems and the world before that leaves
+        // Render/RHI ticking objects that are being destroyed underneath them.
+        StopMultiFrameRoles();
+
         DestroyAllPIEGameInstances();
         DestroyGameInstance();
         DeinitializeEngineSubsystems();
@@ -694,8 +860,6 @@ namespace minEngine
         {
             m_AssetManager->FlushAsyncLoadsForShutdown();
         }
-
-        StopMultiFrameRoles();
 
         if (m_TaskSystem)
         {
@@ -760,13 +924,6 @@ namespace minEngine
             m_InputSystem.reset();
         }
 
-        if (m_RenderSystem)
-        {
-            m_RenderSystem->Shutdown();
-            RenderSystem::SetInstance(nullptr);
-            m_RenderSystem.reset();
-        }
-
         if (m_PointerPolicyService)
         {
             m_PointerPolicyService->Shutdown();
@@ -775,13 +932,11 @@ namespace minEngine
             m_PointerModeSink.reset();
         }
 
-        if (m_WindowSystem)
-        {
-            m_WindowSystem->Shutdown();
-            WindowSystem::SetInstance(nullptr);
-            m_WindowSystem.reset();
-        }
-
+        // The asset and object strands go before the device does: releasing a Material, a Texture2D
+        // or any other object with a render proxy hands its native handles to the RHI's deferred
+        // destroy queue, and a handle queued after the backend shut down has nobody left to destroy
+        // it. Everything that still holds a GPU handle is released above this line, so the render
+        // system can drain the queue and only then take the device down.
         if (m_AssetManager)
         {
             m_AssetManager->Shutdown();
@@ -796,6 +951,20 @@ namespace minEngine
             m_GameplayTagManager->Shutdown();
             GameplayTagManager::SetInstance(nullptr);
             m_GameplayTagManager.reset();
+        }
+
+        if (m_RenderSystem)
+        {
+            m_RenderSystem->Shutdown();
+            RenderSystem::SetInstance(nullptr);
+            m_RenderSystem.reset();
+        }
+
+        if (m_WindowSystem)
+        {
+            m_WindowSystem->Shutdown();
+            WindowSystem::SetInstance(nullptr);
+            m_WindowSystem.reset();
         }
 
         if (m_RenderCommandPipe)

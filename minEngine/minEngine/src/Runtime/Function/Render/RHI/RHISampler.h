@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
 
 #include <cstdint>
 #include <memory>
@@ -83,7 +84,13 @@ namespace minEngine
         return desc;
     }
 
-    class RHISampler
+    /**
+     * Sampling state, shared by every texture that asks for the same description.
+     *
+     * A sampler is a driver object on the APIs that have one, so it takes the same hand-off as
+     * the rest: created where the graphics context is current, and reported not ready until then.
+     */
+    class RHISampler : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHISampler() = default;

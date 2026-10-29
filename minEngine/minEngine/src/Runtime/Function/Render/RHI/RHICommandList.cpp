@@ -212,31 +212,34 @@ namespace minEngine
 
     void RHICommandList::SubmitDrawBuffers(const MeshDrawPacket& packet)
     {
+        // The draw ranges are the ones the producer recorded in the packet. They are deliberately
+        // not read back from the GPU objects: a packet borrows its buffers for one frame, so asking
+        // a borrowed object for its size is exactly the dereference a lifetime contract must make
+        // impossible. A packet with no range has nothing to draw, and drawing it anyway would
+        // submit an unbounded draw.
         if (packet.IndexBuffer)
         {
+            if (packet.IndexCount == 0)
+            {
+                return;
+            }
+
             if (packet.VertexBuffer)
             {
                 SetVertexBuffer(packet.VertexBuffer);
             }
             SetIndexBuffer(packet.IndexBuffer);
-
-            const uint32_t indexCount = packet.IndexCount != 0
-                ? packet.IndexCount
-                : packet.IndexBuffer->GetDesc().ElementCount;
-            DrawIndexed(indexCount, packet.FirstIndex, packet.VertexOffset);
+            DrawIndexed(packet.IndexCount, packet.FirstIndex, packet.VertexOffset);
             return;
         }
 
-        if (!packet.VertexBuffer)
+        if (packet.VertexBuffer == nullptr || packet.VertexCount == 0)
         {
             return;
         }
 
         SetVertexBuffer(packet.VertexBuffer);
-        const uint32_t vertexCount = packet.VertexCount != 0
-            ? packet.VertexCount
-            : packet.VertexBuffer->GetDesc().ElementCount;
-        Draw(vertexCount, packet.FirstVertex);
+        Draw(packet.VertexCount, packet.FirstVertex);
     }
 
     void RHICommandList::SubmitMeshDrawPacket(const MeshDrawPacket& packet)

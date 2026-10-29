@@ -10,6 +10,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <sstream>
 #include <thread>
 #include <unordered_map>
@@ -24,12 +25,13 @@ namespace minEngine::Profile
             std::vector<ProfileEvent> Events;
             ProfileThreadId ThreadId = 0;
             uint64_t OsThreadId = 0;
-            bool Registered = false;
+            uint64_t Epoch = 0;
             uint8_t ScopeDepth = 0;
             ProfilePhaseId CurrentPhase = kInvalidPhaseId;
             ProfileFrameIndex CurrentFrame = kInvalidFrameIndex;
             uint64_t LocalDropped = 0;
             uint64_t LocalRecorded = 0;
+            uint32_t LocalMaxDepth = 0;
 
             void ClearEvents()
             {
@@ -39,74 +41,216 @@ namespace minEngine::Profile
 
         struct ProfileSystemState
         {
-            bool Initialized = false;
+            std::atomic<bool> Initialized{false};
             std::atomic<bool> Enabled{false};
+            std::atomic<bool> Recording{false};
             bool AutoEngineSession = true;
             ProfileNameRegistry Names;
             std::unique_ptr<ProfileSession> Active;
             std::unique_ptr<ProfileSession> LastCompleted;
-            ProfileSessionId NextSessionId = 1;
-            ProfilePhaseId NextPhaseId = 1;
-            ProfileThreadId NextThreadId = 1;
-            ProfileFrameIndex NextFrameIndex = 0;
-            std::mutex BufferMutex;
-            // MVP: single process buffer (engine/tests are main-thread). Multi-thread TLS map later.
-            ProfileThreadBuffer MainBuffer;
+            std::atomic<ProfileSessionId> NextSessionId{1};
+            std::atomic<ProfilePhaseId> NextPhaseId{1};
+            std::atomic<ProfileThreadId> NextThreadId{1};
+            std::atomic<ProfileFrameIndex> NextFrameIndex{0};
+            std::atomic<uint64_t> RecordedForCap{0};
             std::atomic<uint64_t> NoopHits{0};
             std::atomic<uint64_t> DroppedEvents{0};
+
+            // Recording calls hold this shared for their whole duration; session transitions and
+            // buffer collection hold it exclusively. Collection therefore always observes
+            // "recording has stopped", while threads still recording into other buffers are never
+            // blocked by the drain and never see a half-built session.
+            std::shared_mutex SessionLock;
+            // Session-owned records (threads, phases, frames, events, stats) are merged from
+            // several recording threads, so they are written under this mutex while the session
+            // lock is only held shared.
+            std::mutex SessionDataMutex;
+            // Guards the registry of per-thread buffers, which threads join and leave while
+            // recording.
+            std::mutex RegistryMutex;
+            std::vector<std::shared_ptr<ProfileThreadBuffer>> Buffers;
+            std::atomic<uint64_t> Epoch{1};
         };
 
         ProfileSystemState& GetState()
         {
-            static ProfileSystemState s_State;
-            return s_State;
+            // Intentionally never destroyed: a thread-exit drain or a late recording call can
+            // still reach the state while the process tears down, and a destroyed singleton would
+            // hand those callers released storage.
+            static ProfileSystemState* s_State = new ProfileSystemState();
+            return *s_State;
         }
 
+        void NoteNoop(ProfileSystemState& state)
+        {
+            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        // Unlocked fast path: one atomic load lets every instrumented call site bail out while the
+        // profiler is off or no session is recording.
+        bool IsRecordingRequested(ProfileSystemState& state)
+        {
+            return state.Initialized.load(std::memory_order_acquire) &&
+                   state.Enabled.load(std::memory_order_relaxed) &&
+                   state.Recording.load(std::memory_order_acquire);
+        }
+
+        // Requires SessionLock held (shared or exclusive).
+        bool IsRecordingLocked(ProfileSystemState& state)
+        {
+            return state.Active != nullptr && state.Active->State == ProfileSessionState::Recording;
+        }
+
+        // Requires SessionDataMutex held, or SessionLock held exclusively.
+        void FlushBufferIntoSession(ProfileSession& session, ProfileThreadBuffer& buffer)
+        {
+            if (!buffer.Events.empty())
+            {
+                session.Events.insert(session.Events.end(), buffer.Events.begin(), buffer.Events.end());
+                buffer.ClearEvents();
+            }
+
+            session.Stats.EventsRecorded += buffer.LocalRecorded;
+            session.Stats.EventsDropped += buffer.LocalDropped;
+            if (buffer.LocalMaxDepth > session.Stats.MaxScopeDepth)
+            {
+                session.Stats.MaxScopeDepth = buffer.LocalMaxDepth;
+            }
+
+            buffer.LocalRecorded = 0;
+            buffer.LocalDropped = 0;
+            buffer.LocalMaxDepth = 0;
+        }
+
+        void EraseBufferRegistration(ProfileSystemState& state, const ProfileThreadBuffer* buffer)
+        {
+            std::lock_guard<std::mutex> registryLock(state.RegistryMutex);
+            const auto end = state.Buffers.end();
+            const auto it = std::find_if(
+                state.Buffers.begin(),
+                end,
+                [buffer](const std::shared_ptr<ProfileThreadBuffer>& entry)
+                {
+                    return entry.get() == buffer;
+                });
+            if (it != end)
+            {
+                state.Buffers.erase(it);
+            }
+        }
+
+        void ClearBufferRegistry(ProfileSystemState& state)
+        {
+            std::lock_guard<std::mutex> registryLock(state.RegistryMutex);
+            state.Buffers.clear();
+        }
+
+        std::shared_ptr<ProfileThreadBuffer> CreateRegisteredBuffer(
+            ProfileSystemState& state,
+            uint64_t epoch)
+        {
+            auto buffer = std::make_shared<ProfileThreadBuffer>();
+            buffer->Epoch = epoch;
+            buffer->ThreadId = state.NextThreadId.fetch_add(1, std::memory_order_relaxed);
+            buffer->OsThreadId = static_cast<uint64_t>(
+                std::hash<std::thread::id>{}(std::this_thread::get_id()));
+
+            {
+                std::lock_guard<std::mutex> registryLock(state.RegistryMutex);
+                state.Buffers.push_back(buffer);
+            }
+
+            {
+                std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+                if (IsRecordingLocked(state) &&
+                    buffer->Epoch == state.Epoch.load(std::memory_order_relaxed))
+                {
+                    ProfileThreadInfo info;
+                    info.Id = buffer->ThreadId;
+                    info.OsThreadId = buffer->OsThreadId;
+                    if (state.Active->Desc.CaptureThreadNames)
+                    {
+                        std::ostringstream oss;
+                        oss << "Thread-" << buffer->ThreadId;
+                        info.Name = oss.str();
+                    }
+                    state.Active->Threads.push_back(std::move(info));
+                }
+            }
+
+            return buffer;
+        }
+
+        // Runs on the owning thread when its thread-local buffer is released. The registry holds
+        // strong references, so a buffer whose thread died without this drain running is still
+        // alive and still collected; it is released later, when the registry is cleared.
+        void DetachThreadBuffer(
+            ProfileSystemState& state,
+            const std::shared_ptr<ProfileThreadBuffer>& buffer)
+        {
+            if (buffer == nullptr)
+            {
+                return;
+            }
+
+            // Drain before the storage dies, so a thread that recorded events and then exited does
+            // not lose them.
+            std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+            EraseBufferRegistration(state, buffer.get());
+
+            std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+            if (IsRecordingLocked(state) &&
+                buffer->Epoch == state.Epoch.load(std::memory_order_relaxed))
+            {
+                FlushBufferIntoSession(*state.Active, *buffer);
+            }
+        }
+
+        struct ThreadBufferSlot
+        {
+            std::shared_ptr<ProfileThreadBuffer> Buffer;
+
+            ThreadBufferSlot() = default;
+            ThreadBufferSlot(const ThreadBufferSlot&) = delete;
+            ThreadBufferSlot& operator=(const ThreadBufferSlot&) = delete;
+
+            ~ThreadBufferSlot()
+            {
+                DetachThreadBuffer(GetState(), Buffer);
+                Buffer.reset();
+            }
+        };
+
+        ThreadBufferSlot& GetThreadSlot()
+        {
+            static thread_local ThreadBufferSlot s_Slot;
+            return s_Slot;
+        }
+
+        // Requires SessionLock held: registering a buffer adds it to the current session.
         ProfileThreadBuffer& GetThreadBuffer(ProfileSystemState& state)
         {
-            return state.MainBuffer;
-        }
-
-        void RegisterBufferIfNeeded(ProfileSystemState& state, ProfileThreadBuffer& buffer)
-        {
-            if (buffer.Registered)
+            ThreadBufferSlot& slot = GetThreadSlot();
+            const uint64_t epoch = state.Epoch.load(std::memory_order_acquire);
+            if (slot.Buffer != nullptr && slot.Buffer->Epoch == epoch)
             {
-                return;
+                return *slot.Buffer;
             }
 
-            std::lock_guard<std::mutex> lock(state.BufferMutex);
-            if (buffer.Registered)
+            if (slot.Buffer != nullptr)
             {
-                return;
+                // The session that owned this buffer is over: its events were collected when that
+                // session stopped, and the registry belongs to the new session.
+                EraseBufferRegistration(state, slot.Buffer.get());
+                slot.Buffer.reset();
             }
 
-            buffer.ThreadId = state.NextThreadId++;
-            buffer.OsThreadId = static_cast<uint64_t>(
-                std::hash<std::thread::id>{}(std::this_thread::get_id()));
-            buffer.Registered = true;
-
-            if (state.Active)
-            {
-                ProfileThreadInfo info;
-                info.Id = buffer.ThreadId;
-                info.OsThreadId = buffer.OsThreadId;
-                if (state.Active->Desc.CaptureThreadNames)
-                {
-                    std::ostringstream oss;
-                    oss << "Thread-" << buffer.ThreadId;
-                    info.Name = oss.str();
-                }
-                state.Active->Threads.push_back(std::move(info));
-            }
+            slot.Buffer = CreateRegisteredBuffer(state, epoch);
+            return *slot.Buffer;
         }
 
-        bool CanRecord(ProfileSystemState& state)
-        {
-            return state.Initialized && state.Enabled.load(std::memory_order_relaxed) &&
-                   state.Active != nullptr &&
-                   state.Active->State == ProfileSessionState::Recording;
-        }
-
+        // Requires SessionLock held and IsRecordingLocked(state).
+        //
         // Take by const-ref: MinGW/GCC may emit vmovdqa for by-value ProfileEvent (~32 bytes),
         // but Win64 only guarantees 16-byte stack alignment (segfault from dtor call paths).
         void PushEvent(
@@ -114,17 +258,10 @@ namespace minEngine::Profile
             ProfileThreadBuffer& buffer,
             const ProfileEvent& event)
         {
-            RegisterBufferIfNeeded(state, buffer);
-
-            if (state.Active->Stats.EventsRecorded >= state.Active->Desc.MaxEventCount)
+            ProfileSession* session = state.Active.get();
+            if (session == nullptr ||
+                state.RecordedForCap.load(std::memory_order_relaxed) >= session->Desc.MaxEventCount)
             {
-                if (state.Active->Desc.OverflowPolicy == ProfileBufferOverflowPolicy::DropNewest)
-                {
-                    ++buffer.LocalDropped;
-                    state.DroppedEvents.fetch_add(1, std::memory_order_relaxed);
-                    return;
-                }
-                // GrowChunks still respects soft max by dropping once exceeded.
                 ++buffer.LocalDropped;
                 state.DroppedEvents.fetch_add(1, std::memory_order_relaxed);
                 return;
@@ -137,23 +274,15 @@ namespace minEngine::Profile
             stored.Frame = buffer.CurrentFrame;
 
             ++buffer.LocalRecorded;
-            ++state.Active->Stats.EventsRecorded;
-            if (stored.Type == ProfileEventType::ScopeBegin)
+            state.RecordedForCap.fetch_add(1, std::memory_order_relaxed);
+
+            if (stored.Type == ProfileEventType::ScopeBegin && stored.Depth > buffer.LocalMaxDepth)
             {
-                state.Active->Stats.MaxScopeDepth =
-                    (std::max)(state.Active->Stats.MaxScopeDepth, static_cast<uint32_t>(stored.Depth));
+                buffer.LocalMaxDepth = stored.Depth;
             }
         }
 
-        void FlushBufferIntoSession(ProfileSession& session, ProfileThreadBuffer& buffer)
-        {
-            session.Events.insert(session.Events.end(), buffer.Events.begin(), buffer.Events.end());
-            session.Stats.EventsDropped += buffer.LocalDropped;
-            buffer.ClearEvents();
-            buffer.LocalDropped = 0;
-            buffer.LocalRecorded = 0;
-        }
-
+        // Requires SessionLock held exclusively: no thread may be recording while it runs.
         void FlushAllBuffers(ProfileSystemState& state)
         {
             if (!state.Active)
@@ -161,10 +290,18 @@ namespace minEngine::Profile
                 return;
             }
 
-            std::lock_guard<std::mutex> lock(state.BufferMutex);
-            FlushBufferIntoSession(*state.Active, state.MainBuffer);
+            std::lock_guard<std::mutex> registryLock(state.RegistryMutex);
+            std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+            for (const std::shared_ptr<ProfileThreadBuffer>& buffer : state.Buffers)
+            {
+                if (buffer != nullptr)
+                {
+                    FlushBufferIntoSession(*state.Active, *buffer);
+                }
+            }
         }
 
+        // Requires SessionLock held (shared or exclusive).
         void CloseOpenPhaseAndFrame(ProfileSystemState& state)
         {
             if (!state.Active)
@@ -174,6 +311,8 @@ namespace minEngine::Profile
 
             ProfileThreadBuffer& tls = GetThreadBuffer(state);
             const ProfileTimestamp now = ProfileClock::Now();
+
+            std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
 
             if (tls.CurrentFrame != kInvalidFrameIndex)
             {
@@ -201,6 +340,195 @@ namespace minEngine::Profile
                 }
                 tls.CurrentPhase = kInvalidPhaseId;
             }
+        }
+
+        // Recording entry points below share one shape: an unlocked fast-path check, then the
+        // session lock in shared mode, then one of these *Locked bodies. Keeping the bodies
+        // separate is what makes phase/frame nesting callable without re-entering the lock.
+
+        // Requires SessionLock shared and IsRecordingLocked(state).
+        void BeginPhaseLocked(ProfileSystemState& state, const char* staticName)
+        {
+            ProfileThreadBuffer& tls = GetThreadBuffer(state);
+            if (tls.CurrentPhase != kInvalidPhaseId)
+            {
+                ME_LOG(LogCore, Warn, "Profile::BeginPhase rejected: nested phases are not supported");
+                return;
+            }
+
+            const ProfileNameId nameId = state.Names.GetOrRegister(staticName);
+            const ProfilePhaseId phaseId = state.NextPhaseId.fetch_add(1, std::memory_order_relaxed);
+            const ProfileTimestamp now = ProfileClock::Now();
+
+            {
+                std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+                ProfilePhaseRecord record;
+                record.Id = phaseId;
+                record.Name = nameId;
+                record.Start = now;
+                record.Open = true;
+                state.Active->Phases.push_back(record);
+            }
+
+            tls.CurrentPhase = phaseId;
+            tls.CurrentFrame = kInvalidFrameIndex;
+
+            ProfileEvent event;
+            event.Type = ProfileEventType::PhaseBegin;
+            event.Name = nameId;
+            event.Depth = 0;
+            event.Timestamp = now;
+            PushEvent(state, tls, event);
+        }
+
+        // Requires SessionLock shared and IsRecordingLocked(state).
+        void EndFrameLocked(ProfileSystemState& state)
+        {
+            ProfileThreadBuffer& tls = GetThreadBuffer(state);
+            if (tls.CurrentFrame == kInvalidFrameIndex)
+            {
+                ME_LOG(LogCore, Warn, "Profile::EndFrame with no active frame");
+                return;
+            }
+
+            const ProfileTimestamp now = ProfileClock::Now();
+            {
+                std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+                for (ProfileFrameRecord& frame : state.Active->Frames)
+                {
+                    if (frame.Index == tls.CurrentFrame && frame.End == 0)
+                    {
+                        frame.End = now;
+                        break;
+                    }
+                }
+            }
+
+            ProfileEvent event;
+            event.Type = ProfileEventType::FrameEnd;
+            event.Name = state.Names.GetOrRegister("Frame");
+            event.Depth = 0;
+            event.Timestamp = now;
+            PushEvent(state, tls, event);
+
+            tls.CurrentFrame = kInvalidFrameIndex;
+
+            std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+            FlushBufferIntoSession(*state.Active, tls);
+        }
+
+        // Requires SessionLock shared and IsRecordingLocked(state).
+        void EndPhaseLocked(ProfileSystemState& state)
+        {
+            ProfileThreadBuffer& tls = GetThreadBuffer(state);
+            if (tls.CurrentPhase == kInvalidPhaseId)
+            {
+                ME_LOG(LogCore, Warn, "Profile::EndPhase with no active phase");
+                return;
+            }
+
+            if (tls.CurrentFrame != kInvalidFrameIndex)
+            {
+                EndFrameLocked(state);
+            }
+
+            const ProfileTimestamp now = ProfileClock::Now();
+            ProfileNameId phaseName = kInvalidNameId;
+            {
+                std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+                for (ProfilePhaseRecord& phase : state.Active->Phases)
+                {
+                    if (phase.Id == tls.CurrentPhase && phase.Open)
+                    {
+                        phase.End = now;
+                        phase.Open = false;
+                        phaseName = phase.Name;
+                        break;
+                    }
+                }
+            }
+
+            ProfileEvent event;
+            event.Type = ProfileEventType::PhaseEnd;
+            event.Name = phaseName;
+            event.Depth = 0;
+            event.Timestamp = now;
+            PushEvent(state, tls, event);
+
+            tls.CurrentPhase = kInvalidPhaseId;
+
+            std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+            FlushBufferIntoSession(*state.Active, tls);
+        }
+
+        // Requires SessionLock shared and IsRecordingLocked(state).
+        void BeginFrameLocked(ProfileSystemState& state)
+        {
+            ProfileThreadBuffer& tls = GetThreadBuffer(state);
+            if (tls.CurrentPhase == kInvalidPhaseId)
+            {
+                ME_LOG(LogCore, Warn, "Profile::BeginFrame rejected: no active phase");
+                return;
+            }
+            if (tls.CurrentFrame != kInvalidFrameIndex)
+            {
+                ME_LOG(LogCore, Warn, "Profile::BeginFrame rejected: frame already open");
+                return;
+            }
+
+            const ProfileTimestamp now = ProfileClock::Now();
+            ProfileFrameRecord frame;
+            frame.Index = state.NextFrameIndex.fetch_add(1, std::memory_order_relaxed);
+            frame.Phase = tls.CurrentPhase;
+            frame.Start = now;
+
+            {
+                std::lock_guard<std::mutex> dataLock(state.SessionDataMutex);
+                state.Active->Frames.push_back(frame);
+            }
+            tls.CurrentFrame = frame.Index;
+
+            ProfileEvent event;
+            event.Type = ProfileEventType::FrameBegin;
+            event.Name = state.Names.GetOrRegister("Frame");
+            event.Depth = 0;
+            event.Timestamp = now;
+            PushEvent(state, tls, event);
+        }
+
+        // Requires SessionLock shared and IsRecordingLocked(state).
+        void BeginScopeLocked(ProfileSystemState& state, ProfileNameId name)
+        {
+            ProfileThreadBuffer& tls = GetThreadBuffer(state);
+            const uint8_t depth = tls.ScopeDepth;
+            if (tls.ScopeDepth < 255)
+            {
+                ++tls.ScopeDepth;
+            }
+
+            ProfileEvent event;
+            event.Type = ProfileEventType::ScopeBegin;
+            event.Name = name;
+            event.Depth = depth;
+            event.Timestamp = ProfileClock::Now();
+            PushEvent(state, tls, event);
+        }
+
+        // Requires SessionLock shared and IsRecordingLocked(state).
+        void EndScopeLocked(ProfileSystemState& state, ProfileNameId name)
+        {
+            ProfileThreadBuffer& tls = GetThreadBuffer(state);
+            if (tls.ScopeDepth > 0)
+            {
+                --tls.ScopeDepth;
+            }
+
+            ProfileEvent event;
+            event.Type = ProfileEventType::ScopeEnd;
+            event.Name = name;
+            event.Depth = tls.ScopeDepth;
+            event.Timestamp = ProfileClock::Now();
+            PushEvent(state, tls, event);
         }
 
         void EscapeJsonString(std::ostream& out, const char* text)
@@ -249,12 +577,12 @@ namespace minEngine::Profile
     void Initialize()
     {
         ProfileSystemState& state = GetState();
-        if (state.Initialized)
+        if (state.Initialized.exchange(true, std::memory_order_acq_rel))
         {
             return;
         }
-        state.Initialized = true;
         state.Enabled.store(false, std::memory_order_relaxed);
+        state.Recording.store(false, std::memory_order_relaxed);
         state.NoopHits.store(0, std::memory_order_relaxed);
         state.DroppedEvents.store(0, std::memory_order_relaxed);
     }
@@ -262,7 +590,7 @@ namespace minEngine::Profile
     void Shutdown()
     {
         ProfileSystemState& state = GetState();
-        if (!state.Initialized)
+        if (!state.Initialized.load(std::memory_order_acquire))
         {
             return;
         }
@@ -272,26 +600,27 @@ namespace minEngine::Profile
             StopSession();
         }
 
-        {
-            std::lock_guard<std::mutex> lock(state.BufferMutex);
-            state.MainBuffer.ClearEvents();
-            state.MainBuffer.Registered = false;
-            state.MainBuffer.ThreadId = 0;
-            state.MainBuffer.ScopeDepth = 0;
-            state.MainBuffer.CurrentPhase = kInvalidPhaseId;
-            state.MainBuffer.CurrentFrame = kInvalidFrameIndex;
-            state.MainBuffer.LocalDropped = 0;
-            state.MainBuffer.LocalRecorded = 0;
-        }
+        std::unique_lock<std::shared_mutex> sessionLock(state.SessionLock);
+
+        state.Recording.store(false, std::memory_order_release);
+        state.Enabled.store(false, std::memory_order_relaxed);
+
+        // A new epoch leaves buffers still held by live threads stale; the next recording call on
+        // those threads replaces them instead of writing into a released session.
+        state.Epoch.fetch_add(1, std::memory_order_acq_rel);
+        ClearBufferRegistry(state);
+
+        // Only the calling thread may release its own buffer.
+        GetThreadSlot().Buffer.reset();
 
         state.Active.reset();
         state.LastCompleted.reset();
-        state.NextSessionId = 1;
-        state.NextPhaseId = 1;
-        state.NextThreadId = 1;
-        state.NextFrameIndex = 0;
-        state.Enabled.store(false, std::memory_order_relaxed);
-        state.Initialized = false;
+        state.NextSessionId.store(1, std::memory_order_relaxed);
+        state.NextPhaseId.store(1, std::memory_order_relaxed);
+        state.NextThreadId.store(1, std::memory_order_relaxed);
+        state.NextFrameIndex.store(0, std::memory_order_relaxed);
+        state.RecordedForCap.store(0, std::memory_order_relaxed);
+        state.Initialized.store(false, std::memory_order_release);
     }
 
     void SetEnabled(bool enabled)
@@ -332,29 +661,36 @@ namespace minEngine::Profile
         ProfileSystemState& state = GetState();
         Initialize();
 
-        if (state.Active && state.Active->State == ProfileSessionState::Recording)
+        std::unique_lock<std::shared_mutex> sessionLock(state.SessionLock);
+
+        if (IsRecordingLocked(state))
         {
             ME_LOG(LogCore, Warn, "Profile::StartSession rejected: session already active");
             return 0;
         }
 
         auto session = std::make_unique<ProfileSession>();
-        session->Id = state.NextSessionId++;
+        session->Id = state.NextSessionId.fetch_add(1, std::memory_order_relaxed);
         session->State = ProfileSessionState::Recording;
         session->Desc = desc;
         session->Label = desc.Label != nullptr ? desc.Label : "default";
         session->SessionStart = ProfileClock::Now();
-        state.NextFrameIndex = 0;
+        state.NextFrameIndex.store(0, std::memory_order_relaxed);
+        state.RecordedForCap.store(0, std::memory_order_relaxed);
         state.DroppedEvents.store(0, std::memory_order_relaxed);
 
         state.Active = std::move(session);
-        state.Enabled.store(true, std::memory_order_relaxed);
+        // Every session owns a fresh buffer generation, so a thread that recorded in an earlier
+        // session re-registers here instead of appending to a stale buffer.
+        state.Epoch.fetch_add(1, std::memory_order_acq_rel);
+        ClearBufferRegistry(state);
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        tls.CurrentPhase = kInvalidPhaseId;
-        tls.CurrentFrame = kInvalidFrameIndex;
-        tls.ScopeDepth = 0;
-        RegisterBufferIfNeeded(state, tls);
+        state.Enabled.store(true, std::memory_order_relaxed);
+        state.Recording.store(true, std::memory_order_release);
+
+        // Register the starting thread up front: a session always reports the thread that owns it,
+        // even before that thread records anything.
+        (void)GetThreadBuffer(state);
 
         return state.Active->Id;
     }
@@ -362,10 +698,16 @@ namespace minEngine::Profile
     void StopSession()
     {
         ProfileSystemState& state = GetState();
-        if (!state.Active || state.Active->State != ProfileSessionState::Recording)
+
+        std::unique_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
             return;
         }
+
+        // Closed before the drain: a recorder that already passed the fast path re-checks the
+        // session under the lock and turns into a noop instead of feeding a retired session.
+        state.Recording.store(false, std::memory_order_release);
 
         CloseOpenPhaseAndFrame(state);
         FlushAllBuffers(state);
@@ -375,7 +717,6 @@ namespace minEngine::Profile
         AnalyzeSession(*state.Active);
         state.Active->State = ProfileSessionState::Completed;
         state.Active->Stats.NoopHits = state.NoopHits.load(std::memory_order_relaxed);
-        state.Active->Stats.EventsDropped += state.DroppedEvents.load(std::memory_order_relaxed);
 
         state.LastCompleted = std::move(state.Active);
         state.Active.reset();
@@ -383,8 +724,7 @@ namespace minEngine::Profile
 
     bool IsSessionActive()
     {
-        const ProfileSystemState& state = GetState();
-        return state.Active != nullptr && state.Active->State == ProfileSessionState::Recording;
+        return GetState().Recording.load(std::memory_order_acquire);
     }
 
     ProfileSessionId GetActiveSessionId()
@@ -416,204 +756,113 @@ namespace minEngine::Profile
     void BeginPhase(const char* staticName)
     {
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
             return;
         }
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        if (tls.CurrentPhase != kInvalidPhaseId)
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
-            ME_LOG(LogCore, Warn, "Profile::BeginPhase rejected: nested phases are not supported");
+            NoteNoop(state);
             return;
         }
 
-        const ProfileNameId nameId = state.Names.GetOrRegister(staticName);
-        const ProfilePhaseId phaseId = state.NextPhaseId++;
-        const ProfileTimestamp now = ProfileClock::Now();
-
-        ProfilePhaseRecord record;
-        record.Id = phaseId;
-        record.Name = nameId;
-        record.Start = now;
-        record.Open = true;
-        state.Active->Phases.push_back(record);
-
-        tls.CurrentPhase = phaseId;
-        tls.CurrentFrame = kInvalidFrameIndex;
-
-        ProfileEvent event;
-        event.Type = ProfileEventType::PhaseBegin;
-        event.Name = nameId;
-        event.Depth = 0;
-        event.Timestamp = now;
-        PushEvent(state, tls, event);
+        BeginPhaseLocked(state, staticName);
     }
 
     void EndPhase()
     {
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
             return;
         }
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        if (tls.CurrentPhase == kInvalidPhaseId)
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
-            ME_LOG(LogCore, Warn, "Profile::EndPhase with no active phase");
+            NoteNoop(state);
             return;
         }
 
-        if (tls.CurrentFrame != kInvalidFrameIndex)
-        {
-            EndFrame();
-        }
-
-        const ProfileTimestamp now = ProfileClock::Now();
-        ProfileNameId phaseName = kInvalidNameId;
-        for (ProfilePhaseRecord& phase : state.Active->Phases)
-        {
-            if (phase.Id == tls.CurrentPhase && phase.Open)
-            {
-                phase.End = now;
-                phase.Open = false;
-                phaseName = phase.Name;
-                break;
-            }
-        }
-
-        ProfileEvent event;
-        event.Type = ProfileEventType::PhaseEnd;
-        event.Name = phaseName;
-        event.Depth = 0;
-        event.Timestamp = now;
-        PushEvent(state, tls, event);
-
-        tls.CurrentPhase = kInvalidPhaseId;
-        FlushBufferIntoSession(*state.Active, tls);
+        EndPhaseLocked(state);
     }
 
     void BeginFrame()
     {
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
             return;
         }
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        if (tls.CurrentPhase == kInvalidPhaseId)
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
-            ME_LOG(LogCore, Warn, "Profile::BeginFrame rejected: no active phase");
-            return;
-        }
-        if (tls.CurrentFrame != kInvalidFrameIndex)
-        {
-            ME_LOG(LogCore, Warn, "Profile::BeginFrame rejected: frame already open");
+            NoteNoop(state);
             return;
         }
 
-        const ProfileTimestamp now = ProfileClock::Now();
-        ProfileFrameRecord frame;
-        frame.Index = state.NextFrameIndex++;
-        frame.Phase = tls.CurrentPhase;
-        frame.Start = now;
-        state.Active->Frames.push_back(frame);
-        tls.CurrentFrame = frame.Index;
-
-        ProfileEvent event;
-        event.Type = ProfileEventType::FrameBegin;
-        event.Name = state.Names.GetOrRegister("Frame");
-        event.Depth = 0;
-        event.Timestamp = now;
-        PushEvent(state, tls, event);
+        BeginFrameLocked(state);
     }
 
     void EndFrame()
     {
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
             return;
         }
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        if (tls.CurrentFrame == kInvalidFrameIndex)
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
-            ME_LOG(LogCore, Warn, "Profile::EndFrame with no active frame");
+            NoteNoop(state);
             return;
         }
 
-        const ProfileTimestamp now = ProfileClock::Now();
-        for (ProfileFrameRecord& frame : state.Active->Frames)
-        {
-            if (frame.Index == tls.CurrentFrame && frame.End == 0)
-            {
-                frame.End = now;
-                break;
-            }
-        }
-
-        ProfileEvent event;
-        event.Type = ProfileEventType::FrameEnd;
-        event.Name = state.Names.GetOrRegister("Frame");
-        event.Depth = 0;
-        event.Timestamp = now;
-        PushEvent(state, tls, event);
-
-        tls.CurrentFrame = kInvalidFrameIndex;
-        FlushBufferIntoSession(*state.Active, tls);
+        EndFrameLocked(state);
     }
 
     void Detail_BeginScope(ProfileNameId name)
     {
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
             return;
         }
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        const uint8_t depth = tls.ScopeDepth;
-        if (tls.ScopeDepth < 255)
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
-            ++tls.ScopeDepth;
+            NoteNoop(state);
+            return;
         }
 
-        ProfileEvent event;
-        event.Type = ProfileEventType::ScopeBegin;
-        event.Name = name;
-        event.Depth = depth;
-        event.Timestamp = ProfileClock::Now();
-        PushEvent(state, tls, event);
+        BeginScopeLocked(state, name);
     }
 
     void Detail_EndScope(ProfileNameId name)
     {
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
             return;
         }
 
-        ProfileThreadBuffer& tls = GetThreadBuffer(state);
-        if (tls.ScopeDepth > 0)
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
         {
-            --tls.ScopeDepth;
+            return;
         }
 
-        ProfileEvent event;
-        event.Type = ProfileEventType::ScopeEnd;
-        event.Name = name;
-        event.Depth = tls.ScopeDepth;
-        event.Timestamp = ProfileClock::Now();
-        PushEvent(state, tls, event);
+        EndScopeLocked(state, name);
     }
 
     void ProfileScope_Begin(ProfileScopeState& scopeState, const char* staticLiteralName)
@@ -622,15 +871,22 @@ namespace minEngine::Profile
         scopeState.Active = 0;
 
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
+            return;
+        }
+
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
+        {
+            NoteNoop(state);
             return;
         }
 
         scopeState.Name = state.Names.GetOrRegister(staticLiteralName);
         scopeState.Active = 1;
-        Detail_BeginScope(scopeState.Name);
+        BeginScopeLocked(state, scopeState.Name);
     }
 
     void ProfileScope_End(ProfileScopeState& scopeState)
@@ -639,7 +895,17 @@ namespace minEngine::Profile
         {
             return;
         }
-        Detail_EndScope(scopeState.Name);
+
+        ProfileSystemState& state = GetState();
+        if (IsRecordingRequested(state))
+        {
+            std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+            if (IsRecordingLocked(state))
+            {
+                EndScopeLocked(state, scopeState.Name);
+            }
+        }
+
         scopeState.Active = 0;
         scopeState.Name = kInvalidNameId;
     }
@@ -647,13 +913,22 @@ namespace minEngine::Profile
     void ProfilePhase_Begin(ProfilePhaseState& phaseState, const char* staticName)
     {
         phaseState.Active = 0;
+
         ProfileSystemState& state = GetState();
-        if (!CanRecord(state))
+        if (!IsRecordingRequested(state))
         {
-            state.NoopHits.fetch_add(1, std::memory_order_relaxed);
+            NoteNoop(state);
             return;
         }
-        BeginPhase(staticName);
+
+        std::shared_lock<std::shared_mutex> sessionLock(state.SessionLock);
+        if (!IsRecordingLocked(state))
+        {
+            NoteNoop(state);
+            return;
+        }
+
+        BeginPhaseLocked(state, staticName);
         phaseState.Active = 1;
     }
 

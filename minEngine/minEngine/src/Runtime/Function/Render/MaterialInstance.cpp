@@ -6,7 +6,15 @@
 
 namespace minEngine
 {
-    MaterialInstance::~MaterialInstance() = default;
+    MaterialInstance::~MaterialInstance()
+    {
+        // See Material::~Material: a render object that outlives this instance must stop reading
+        // the override tables and the parent link that are about to be freed.
+        if (m_RenderProxy)
+        {
+            m_RenderProxy->DetachFromOwner();
+        }
+    }
 
     void MaterialInstance::ApplyClassIdentity()
     {
@@ -23,6 +31,12 @@ namespace minEngine
         m_Parent = std::move(parent);
         ApplyClassIdentity();
         EnsureRenderProxy();
+        if (InstanceMaterialRenderProxy* proxy =
+                static_cast<InstanceMaterialRenderProxy*>(m_RenderProxy.get()))
+        {
+            proxy->SetParentProxy(m_Parent ? m_Parent->GetRenderProxy() : nullptr);
+            proxy->MarkGameDataDirty();
+        }
         return true;
     }
 
@@ -40,7 +54,13 @@ namespace minEngine
     {
         if (!m_RenderProxy)
         {
-            m_RenderProxy = std::make_unique<InstanceMaterialRenderProxy>(*this);
+            m_RenderProxy = MakeMaterialRenderProxy<InstanceMaterialRenderProxy>(*this);
+            // The proxy draws from a snapshot of the parent's slots with these overrides applied, so
+            // it needs the parent *proxy* rather than the parent material.
+            InstanceMaterialRenderProxy* proxy =
+                static_cast<InstanceMaterialRenderProxy*>(m_RenderProxy.get());
+            proxy->SetParentProxy(m_Parent ? m_Parent->GetRenderProxy() : nullptr);
+            proxy->PublishGameData();
         }
     }
 
@@ -79,7 +99,7 @@ namespace minEngine
             {
                 entry.Value = value;
                 EnsureRenderProxy();
-                m_RenderProxy->InvalidateParameterBindings();
+                m_RenderProxy->MarkGameDataDirty();
                 return;
             }
         }
@@ -89,7 +109,7 @@ namespace minEngine
         entry.Value = value;
         m_ScalarOverrides.push_back(std::move(entry));
         EnsureRenderProxy();
-        m_RenderProxy->InvalidateParameterBindings();
+        m_RenderProxy->MarkGameDataDirty();
     }
 
     void MaterialInstance::SetTextureParameter(const std::string& name, std::shared_ptr<Texture2D> texture)
@@ -100,7 +120,7 @@ namespace minEngine
             {
                 entry.Value = std::move(texture);
                 EnsureRenderProxy();
-                m_RenderProxy->InvalidateParameterBindings();
+                m_RenderProxy->MarkGameDataDirty();
                 return;
             }
         }
@@ -110,7 +130,7 @@ namespace minEngine
         entry.Value = std::move(texture);
         m_TextureOverrides.push_back(std::move(entry));
         EnsureRenderProxy();
-        m_RenderProxy->InvalidateParameterBindings();
+        m_RenderProxy->MarkGameDataDirty();
     }
 
     Material* MaterialInstance::GetBaseMaterial() const
@@ -142,9 +162,12 @@ namespace minEngine
         }
 
         EnsureRenderProxy();
-        if (m_RenderProxy)
+        if (InstanceMaterialRenderProxy* proxy =
+                static_cast<InstanceMaterialRenderProxy*>(m_RenderProxy.get()))
         {
-            m_RenderProxy->InvalidateParameterBindings();
+            // Deserialization assigns m_Parent directly, so the parent proxy link is bound here too.
+            proxy->SetParentProxy(m_Parent ? m_Parent->GetRenderProxy() : nullptr);
+            proxy->MarkGameDataDirty();
         }
         return true;
     }

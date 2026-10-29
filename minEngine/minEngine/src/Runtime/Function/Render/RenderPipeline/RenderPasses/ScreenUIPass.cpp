@@ -3,6 +3,7 @@
 #include "Render/RenderGraph/RenderGraph.h"
 #include "Render/RenderGraph/RenderPass.h"
 #include "Render/RenderGraph/SceneRenderPassUtils.h"
+#include "Runtime/Function/Render/EngineSceneBindingSets.h"
 #include "Runtime/Function/Render/RenderPipeline/ForwardRenderer.h"
 #include "Runtime/Function/Render/RenderPipeline/SceneMeshDrawUtils.h"
 #include "Runtime/Function/Render/RenderSystem.h"
@@ -33,6 +34,31 @@ namespace minEngine
             info.Format = TextureFormat::DEPTH24STENCIL8;
             return info;
         }
+
+        /**
+         * Points the per-object binder at the screen-space block while the UI draws are recorded.
+         * Draws read their block at replay, so this only has to cover the recording of this pass.
+         */
+        class ScreenSpacePerFrameScope
+        {
+        public:
+            ScreenSpacePerFrameScope(EngineSceneBindingSets& bindings, RHIBuffer* block)
+                : m_Bindings(bindings)
+            {
+                m_Bindings.SetScreenSpacePerFrame(block);
+            }
+
+            ~ScreenSpacePerFrameScope()
+            {
+                m_Bindings.SetScreenSpacePerFrame(nullptr);
+            }
+
+            ScreenSpacePerFrameScope(const ScreenSpacePerFrameScope&) = delete;
+            ScreenSpacePerFrameScope& operator=(const ScreenSpacePerFrameScope&) = delete;
+
+        private:
+            EngineSceneBindingSets& m_Bindings;
+        };
     }
 
     void ScreenUIPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
@@ -44,19 +70,15 @@ namespace minEngine
 
     void ScreenUIPass::BindIdentityCameraForScreenSpace()
     {
-        if (m_PerFrameUniformBuffer == nullptr || m_ViewportWidth == 0 || m_ViewportHeight == 0)
+        if (m_ScreenSpacePerFrameUniformBuffer == nullptr || m_ViewportWidth == 0 || m_ViewportHeight == 0)
         {
             return;
         }
 
-        PerFrameData perFrameData{};
-        perFrameData.View = Matrix4(1.0f);
-        perFrameData.Proj = ScreenUICoords::MakePixelOrthoProjection(
+        const PerFrameData perFrameData = MakeScreenSpacePerFrameData(
             static_cast<float>(m_ViewportWidth),
             static_cast<float>(m_ViewportHeight));
-        perFrameData.ViewProj = perFrameData.Proj * perFrameData.View;
-        perFrameData.CameraPos = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-        m_PerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
+        m_ScreenSpacePerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
     }
 
     void ScreenUIPass::Prepare(RenderGraph& graph)
@@ -100,7 +122,12 @@ namespace minEngine
         RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, false);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
-        SubmitSceneMeshDrawPackets(*pipeline, cmdList, m_DrawCommands, m_DrawPackets);
+        {
+            ScreenSpacePerFrameScope screenSpaceScope(
+                pipeline->GetSceneBindings(),
+                m_ScreenSpacePerFrameUniformBuffer);
+            SubmitSceneMeshDrawPackets(*pipeline, cmdList, m_DrawCommands, m_DrawPackets);
+        }
         cmdList.EndRenderPass();
     }
 

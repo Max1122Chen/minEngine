@@ -26,13 +26,29 @@ collaboration truth lives in `docs/ai/`.
 
 ## Export contract
 
+Policy background: `docs/ai/Platform/ProductBuild/BUILD-F02_EXPLICIT_EXPORT_MINENGINE_API_DESIGN.md`
+(`## 增量导出门禁`).
+
 - New public API is annotated with `MINENGINE_API`. Do **not** add new lines to
   `minEngine/cmake/minEngine_exports.def`; the whitelist is a legacy carrier that should only shrink.
+- `minEngine/cmake/minEngine_export_snapshot.txt` is the committed export list (one symbol per
+  line). The gate compares the built DLL against it: **more than 25 new exports in one change
+  fails**, and **a symbol disappearing fails**. An intended addition is accepted by regenerating
+  the snapshot (`python scripts/audit_dll_exports.py --write-export-snapshot
+  minEngine/cmake/minEngine_export_snapshot.txt`), which turns the confirmation into a one-line
+  diff a reviewer reads instead of a decision nobody records.
 - `minEngine_export_baseline.json` records the symbols consumers depend on. Refreshing it is the
   review step for an intentional removal, so a deletion shows up in the diff; never refresh it to
   silence a failure.
-- These assertions are part of the gate and must stay green: export budget, forbidden third-party
-  buckets, removal baseline, consumer coverage, GL function-table load guard.
+- The absolute export budget (`MINENGINE_EXPORT_BUDGET` / `--max-exports`, 3500) is an **accident
+  ceiling only**: it catches a whole family leaking into the table (a template-instantiation
+  cascade, a relink under `--export-all-symbols`). It is not a growth policy and never a reason to
+  decide whether a symbol may exist — the snapshot delta carries that judgement.
+- Every new export is named in the commit message, one line per symbol, with why it is public API
+  rather than a test convenience. This is policy, not a code check: a name cannot tell the two
+  apart, so a heuristic would only produce false positives.
+- These assertions are part of the gate and must stay green: export snapshot delta, forbidden
+  third-party buckets, removal baseline, consumer coverage, GL function-table load guard.
 
 ## Consumer repositories
 

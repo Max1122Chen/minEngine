@@ -5,12 +5,11 @@
 #include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Function/Framework/Components/Component.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 
 namespace minEngine
 {
     class Material;
-    class RHIBuffer;
-    class RHIVertexInputLayout;
     class Texture2D;
 
     /**
@@ -22,9 +21,26 @@ namespace minEngine
     {
         /** True when the vertex buffer is a widget-local pixel mesh instead of the shared quad. */
         bool bLocalPixelMesh = false;
-        RHIBuffer* VertexBuffer = nullptr;
-        RHIBuffer* IndexBuffer = nullptr;
+
+        /**
+         * Geometry buffers of this draw, strongly held: the graphic that built them may replace or
+         * drop its own copies the next time it rebuilds, while the proxy assembled from this data
+         * is still waiting on the render thread.
+         */
+        RHIBufferRef VertexBuffer;
+        RHIBufferRef IndexBuffer;
+
+        /**
+         * Not owned: vertex input layouts come from process-lifetime caches (SpriteQuadMesh for the
+         * shared quad, TextMeshBuilder for glyph geometry), so this pointer stays valid for as long
+         * as any proxy can use it.
+         */
         RHIVertexInputLayout* VertexInputLayout = nullptr;
+
+        /** Draw range of that geometry, from the graphic's own mesh metadata. */
+        uint32_t IndexCount = 0;
+        uint32_t VertexCount = 0;
+
         Texture2D* Texture = nullptr;
         Vector4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
         Vector4 UVRect{ 0.0f, 0.0f, 1.0f, 1.0f };

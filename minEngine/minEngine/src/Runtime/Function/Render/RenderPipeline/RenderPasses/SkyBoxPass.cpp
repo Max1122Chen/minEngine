@@ -72,6 +72,12 @@ namespace minEngine
              1.0f,  1.0f, -1.0f,
             -1.0f,  1.0f, -1.0f,
         };
+
+        /** Vertex count of the cube, taken from the geometry itself rather than a GPU query. */
+        constexpr uint32_t CubeVertexCount()
+        {
+            return static_cast<uint32_t>(sizeof(kCubeVertices) / (3u * sizeof(float)));
+        }
     }
 
     void SkyBoxPass::Initialize(RHI& rhi, const std::filesystem::path& engineDefaultAssetsRoot)
@@ -255,6 +261,7 @@ namespace minEngine
         m_DrawPacket.PipelineState = m_SkyPipelineState;
         m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
         m_DrawPacket.VertexBuffer = m_CubeVertexBuffer.get();
+        m_DrawPacket.VertexCount = CubeVertexCount();
         m_ShouldRender = true;
     }
 
@@ -324,6 +331,7 @@ namespace minEngine
         packet.PipelineState = m_SkyPipelineState;
         packet.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
         packet.VertexBuffer = m_CubeVertexBuffer.get();
+        packet.VertexCount = CubeVertexCount();
         cmdList.SubmitMeshDrawPacket(packet);
     }
 }

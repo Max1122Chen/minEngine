@@ -24,6 +24,8 @@ namespace minEngine
         command.m_VertexBuffer = batch.m_VertexBuffer;
         command.m_VertexInputLayout = batch.m_VertexInputLayout;
         command.m_IndexBuffer = batch.m_IndexBuffer;
+        command.m_IndexCount = batch.m_IndexCount;
+        command.m_VertexCount = batch.m_VertexCount;
         command.m_MaterialProxy = batch.m_MaterialProxy;
         command.m_ModelMatrix = batch.m_LocalToWorld;
         command.m_BoundingBox = batch.m_BoundingBox;

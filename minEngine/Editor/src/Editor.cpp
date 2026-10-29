@@ -641,7 +641,7 @@ namespace minEngine
 
             // Window thread: GLFW + ImGui CPU. Graphics role: renderer NewFrame, scene,
             // ImGui GPU submit, Present. wait=true keeps ImDrawData valid across the handoff.
-            m_Engine->StartMultiFrameRoles(
+            const bool bFrameRolesStarted = m_Engine->TryStartMultiFrameRoles(
                 [this, rhi, &fontAtlasGpuMarked](float deltaTime) {
                     m_ImGuiBackend.RendererNewFrame();
                     m_Engine->TickRendererFrame(deltaTime);
@@ -670,6 +670,19 @@ namespace minEngine
                         WindowSystem::Get().SwapBuffers();
                     }
                 });
+
+            if (!bFrameRolesStarted)
+            {
+                // The frame loop below can draw on this thread, and in Multi this thread does not
+                // own the Render role: taking that branch would trip the role assertion instead of
+                // running a slower but valid mode. Refuse to enter the loop at all.
+                ME_LOG(
+                    LogEditor,
+                    Error,
+                    "Editor::Run: Multi frame roles could not start; the editor cannot render in "
+                    "this topology and will exit instead of drawing from the game thread.");
+                m_ExitRequested = true;
+            }
         }
 
         while (!windowSystem.ShouldClose() && !m_ExitRequested)
@@ -706,7 +719,10 @@ namespace minEngine
 
                 TaskSystem* tasks = m_Engine->GetTaskSystem();
                 ME_ASSERT(tasks != nullptr, "Multi Editor requires TaskSystem");
+                // Waiting submits the frame and returns once its RHI work is finished, which is
+                // exactly the point where the frame's scene draws can no longer be referenced.
                 tasks->SubmitRenderFrameTask(deltaTime, /*waitForCompletion=*/true);
+                m_Engine->CompleteFrameReleases();
                 continue;
             }
 
@@ -746,6 +762,10 @@ namespace minEngine
             {
                 windowSystem.SwapBuffers();
             }
+
+            // Same gate as the Multi branch above: this thread ran the RHI work itself, so the
+            // frame that could still reference a retired scene is already finished here.
+            m_Engine->CompleteFrameReleases();
         }
 
         if (multiFrame)

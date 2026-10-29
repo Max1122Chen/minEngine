@@ -39,6 +39,23 @@ namespace minEngine
             RHIBuffer* bonePaletteRing = nullptr,
             uint32_t bonePaletteSlotStride = 0);
 
+        /**
+         * Route the per-frame block that per-object set0 views while a screen-space pass records.
+         * The block is read when a draw is replayed, so a role that publishes different matrices
+         * needs a block of its own instead of overwriting the camera block the 3D draws point at.
+         * Passing nullptr returns set0 to the scene camera block.
+         */
+        void SetScreenSpacePerFrame(RHIBuffer* block)
+        {
+            if (block != nullptr && block != m_ScreenSpaceSet0Block)
+            {
+                m_ScreenSpaceSet0Block = block;
+                m_ScreenSpaceSet0BySlot.clear();
+            }
+
+            m_ScreenSpacePerFrame = block;
+        }
+
         /** Write next ring slot and return a set0 that views that slot (scene opaque/translucent). */
         RHIShaderBindingSet* BindNextPerObjectModel(
             RHICommandList& cmdList,
@@ -88,6 +105,10 @@ namespace minEngine
         RHIShaderBindingSetLayoutRef m_SceneSet1Layout;
         RHIShaderBindingSetRef m_SceneSet1;
         std::vector<RHIShaderBindingSetRef> m_SceneSet0BySlot;
+        /** Same ring slots as m_SceneSet0BySlot, but viewing the screen-space per-frame block. */
+        std::vector<RHIShaderBindingSetRef> m_ScreenSpaceSet0BySlot;
+        RHIBuffer* m_ScreenSpacePerFrame = nullptr;
+        RHIBuffer* m_ScreenSpaceSet0Block = nullptr;
 
         RHIShaderResourceViewRef GetOrCreateTextureSRV(RHICommandList& cmdList, RHITexture* texture, int32_t arraySlice = -1);
 

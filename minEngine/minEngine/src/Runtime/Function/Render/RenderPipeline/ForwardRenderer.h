@@ -2,6 +2,7 @@
 #include "Core.h"
 #include "Runtime/Function/Render/SceneRenderer.h"
 #include "Runtime/Function/Render/EngineRenderLimits.h"
+#include "ScenePerFrameData.h"
 #include "RenderPasses/ShadowPass.h"
 #include "RenderPasses/ShadowGraphPass.h"
 #include "RenderPasses/BasePass.h"
@@ -39,16 +40,6 @@ namespace minEngine
      * - 1: Light data (directional light, point lights, spot lights, etc.)
      */
 
-    // Data structure for per-frame uniform buffer
-    struct PerFrameData
-    {
-        Matrix4 View;
-        Matrix4 Proj;
-        Matrix4 ViewProj;
-
-        Vector4 CameraPos;
-    };
-    
     // Data structure for light uniform buffer
     struct DirectionalLightData
     {
@@ -128,7 +119,13 @@ namespace minEngine
         const EnginePipelineLayouts& GetPipelineLayouts() const { return m_PipelineLayouts; }
 
     protected:
+        /** Camera block every 3D draw of the frame reads. No late pass may write it. */
         RHIBufferRef m_PerFrameUniformBuffer;
+        /**
+         * Screen-space UI block. The UI pass publishes its pixel-ortho matrices here while it is
+         * still recording, so it cannot be the camera block the 3D draws already point at.
+         */
+        RHIBufferRef m_ScreenUIPerFrameUniformBuffer;
         RHIBufferRef m_LightDataUniformBuffer;
         RHIBufferRef m_PerObjectUniformBuffer;
         uint32_t m_PerObjectSlotStride = 256;

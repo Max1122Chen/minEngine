@@ -23,7 +23,11 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 # BUILD-F03 knife 1: and NO glad entry either. The engine still compiles glad.c, but it must not
 # EXPORT it: minEngineTests carries its own glad translation unit now, and a second exported glad
 # copy is the same two-instances shape as glfw.
-python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --max-exports 3000 --fail --forbid-buckets imgui,glfw,glad
+# The 3500 ceiling is an ACCIDENT breaker, not a decision input: it only trips when a whole
+# family leaks into the table (a template-instantiation cascade, a relink back under
+# --export-all-symbols). Normal growth is governed by the snapshot delta below, so no one has to
+# make "is this symbol worth one of the remaining budget slots" choices at the margin.
+python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --max-exports 3500 --fail --forbid-buckets imgui,glfw,glad
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # BUILD-F03 knife 1 removal guard: the assertions above bound what may APPEAR in the export table;
@@ -33,6 +37,17 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 # (scripts\audit_dll_exports.py --write-export-baseline ...) - there is no allow-removal flag.
 # A missing/empty baseline fails here; it never degrades to "nothing to compare".
 python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --dll (Join-Path $BinDir "libminEngined.dll") --assert-no-removals-vs (Join-Path $RepoRoot "minEngine\cmake\minEngine_export_baseline.json")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Incremental export gate: the ceiling above bounds the table in absolute terms and therefore
+# says nothing useful about one ordinary change. This one asserts the DELTA against
+# minEngine\cmake\minEngine_export_snapshot.txt - more than 25 new exports in a single change
+# means a family leaked in, and a symbol disappearing breaks the next link of a consumer that
+# imports it. An intended addition is recorded by regenerating the snapshot, which turns the
+# confirmation into a one-line diff a reviewer reads. An intended removal is reviewed by
+# refreshing the removal baseline and then recorded by regenerating the snapshot, so the deletion
+# shows in the diff too; the gate never lets a symbol disappear unreviewed.
+python (Join-Path $RepoRoot "scripts\audit_dll_exports.py") --dll (Join-Path $BinDir "libminEngined.dll") --fail --snapshot (Join-Path $RepoRoot "minEngine\cmake\minEngine_export_snapshot.txt") --assert-max-growth 25 --removal-baseline (Join-Path $RepoRoot "minEngine\cmake\minEngine_export_baseline.json")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # BUILD-F04 S04 / O3 in-repo half: every in-repo consumer of the post-S04 engine contract must

@@ -1,3 +1,83 @@
+## 2026-10-28 — 屏幕空间 per-frame 块独立（多视口 PIE 世界消失的修复）
+
+- **根因：** `ForwardRenderer` 只有一个 per-frame UBO，ScreenUI pass 在**录制期**把像素正交写进去；Multi 整帧先录制后 replay，早先录下的 3D draw 到 replay 时读到正交矩阵 → 世界消失（Single 恰好不受影响，因为 UI 写在 3D 已 replay 之后）。
+- **修复：** 屏幕空间拿到自己的块（`ForwardRenderer::m_ScreenUIPerFrameUniformBuffer`）+ 自己的 set0（`EngineSceneBindingSets::SetScreenSpacePerFrame` 只在该 pass 录制期间路由 per-frame 绑定，set0 按角色分缓存）。`PerFrameData` 移到 `RenderPipeline/ScenePerFrameData.h`；正交块由 `ScreenUIPass::MakeScreenSpacePerFrameData` 产出（纯数据，可直接断言）。
+- **Single 不变：** UI 读到的块内容逐字节等于旧写法（identity View + `ScreenUICoords::MakePixelOrthoProjection`，绑定仍是整块），像素结果不变。
+- **测试：** 新套件 `screen-ui-per-frame-ubo`（2 case / 17 断言）钉住正交契约与"块不共享存储"；`Tests/Fixtures/ScreenUIPerFrameUboProbe` 编译真实 `ScreenUIPass.cpp` + `EngineSceneBindingSets.cpp`，修复前 **RED（3 项失败）**、修复后 **GREEN（8/8，含 set0 绑定路由）**。
+- **遗留：** 录制期 `UpdateSubresource` 仍绕过命令列表 → `TECH_DEBT` TD-045，站点清单见 probe README。
+
+## 2026-10-28 — CORE-F47 收尾：退出阶段两条真实错误（场景销毁仍有图元 / 设备早于渲染侧句柄）
+
+- **现象（真实日志，minCraft-render 16:55–16:58）：** `RenderScene destroyed with 1 primitive`（`BlockItemIconBake`，运行期被释放的工装场景）、`RenderScene destroyed with 52 primitive`（关停时被销毁的 PIE 世界）、`openGL vertex input layout: last reference dropped while no RHI was alive`。
+- **第一条错误的路径：** `~Scene` 先 `m_GameObjects.clear()`。组件析构时已经问不到所属渲染场景（`GetOwningRenderSceneIfPresent()` 走 GameObject→Scene 链，链正在拆），于是只清自己的代理指针、不入移除命令；代理留在绘制列表上，接着 `m_RenderScene.reset()` 直接带着它们析构。补法：`~Scene` 在拆 GameObject 之前自己调 `DetachSceneRenderState`（从 SceneManager.cpp 的文件内静态挪成可共享声明，导出零增长）。
+- **第二条错误的路径：** 关停时帧角色已停，退役队列里的移除没有 drain 会应用、也没有帧末跑删除；`FlushRetiredScenes` 于是把场景留在队列里，最后由 SceneManager 析构释放——52 个代理在这时随场景一起释放。补法：`SceneManager::Shutdown` 在销毁退役场景前对每个场景调 `DiscardRenderSceneProxiesForTeardown`（标记 + 摘绘制列表 + 立即销毁），并清空无主 `RenderScene` 表。
+- **最后一个强引用消失的出口：** `~Scene` 把仍持有代理的 `RenderScene` 交给帧末（`HandOverOrphanedRenderScene` → `FlushPendingProxyDeletes`），移除先行不变，帧末仍是唯一删除点；还留着所有者就继续等。
+- **关停顺序：** AssetManager / ObjectManager / GameplayTagManager 移到 `RenderSystem::Shutdown` 之前；`RenderSystem::Shutdown` 在 `m_RHI->Shutdown()` 之前调 `RHIDrainAllDeferredDestroys()` 并检查 `GetPendingCount()`，残留按 Error 上报。
+- **Verification:** `minEngineTests` / `Editor` 构建通过；`test smoke` exit 0（23 套件）；`scene-retirement` 10 例 / 243 断言（新增 2 例）、`scene-proxy-lifetime` 11/177、`rhi-deferred-destroy` 14/297（新增 1 例）全绿；导出 2998 → 2998（增量 0，无符号消失，consumer coverage PASS）。
+- **残留：** 渲染角色在运行期被停的顺序未改（任务边界外）；真实编辑器 Single PIE + 关停手工复跑待执行；无主 `RenderScene` 若出现"没有移除命令可等"的代理，只有关停 drain 会清它。
+
+## 2026-10-27 — CORE-F47 P4c：着色器 / PSO / 绑定集 / sampler 的创建并入延迟创建通道
+
+- **起因（真实日志）：** Multi 下 PIE 起来但 UI 完全不显示，312 条 `Vertex SPIR-V specialize failed`。材质编译在游戏线程，而 `glCreateShader` + `glSpecializeShader` 仍在调用线程执行；P4a 只搬了 buffer / VAO / texture，shader / PSO / binding set 明确留作残留。
+- **机制（不是新机制）：** `RHIShader` / `RHIGraphicsPipelineState` / `RHIShaderBindingSetLayout` / `RHIShaderBindingSet` / `RHISampler` 继承 `RHIDeferredCreateTarget`，OpenGL 工厂一律经 `RHI::ScheduleNativeCreate`；`IsReady()` 已就绪者直接放行（本就没有原生对象的 OpenGL PSO / binding set / layout 因此不排空转），未就绪且非图形角色才投递。shader 与 sampler 拆出 `DeferredNativeCreate` 构造函数：只复制 SPIR-V / 采样描述，特化、链接与 `glGenSamplers` 交给图形角色。
+- **中间态：** `IsReady()` / `IsValid()` / `HasNativeCreateFailed()` 三态；材质侧 `HasCompiledProgram()` / `IsProgramPendingMaterialization()` / `HasProgramCreateFailed()`，`IsCompiledForDraw()` 仅在程序确实存在时为真。发布快照的 `bCompiledForDraw` 记编译期事实，程序是否已创建由句柄现问——快照因此不必在帧首之后重发就能从不可绘制转为可绘制。
+- **失败不再静默：** 失败只上报一次，报在看见驱动答复的线程上并带原文；`RHICreateOutcome::Failed` 让请求离队不再重试，队列只计数。`RHICreateShader` 的 `outCompileLog` 在未实体化时给出明确的"已排队、稍后可在句柄上读到"；`Material::GetShaderCompileLog()` 每次读取从句柄刷新。`SpriteMaterialFactory` 在模板程序终态失败时补一条"相关绘制被跳过"的解释（每模板一次）。
+- **调用方语义：** `MaterialCompiler::Compile` 对"已排队"返回成功（编译没失败）；`Material::CreateRuntimeInstance` 与 `CompileSkinnedVariant` 改判"编译完成"，因此一次编译后的派生/变体请求不会因为程序晚一帧而失败。屏幕 UI 代理的 `m_bVisible` 与两个组件的 `EnsureRuntimeMaterial` 从"可绘制"改判"编译完成"：该标志填充一次后被 latch，判严格可绘制会把"程序还没创建"永久冻成不可见。绘制守卫（`SceneMeshDrawUtils`）仍是严格判据。
+- **滞留可观测：** 与删除队列同风格——最久等待超过 `SetStallWarnIntervalMs`（默认 2000ms）限频 Warn，计数 `GetStallWarnCount()` / `GetOldestPendingAgeMs()`。
+- **Verification:** `minEngineTests` / `Editor` / `SampleEditor` 构建通过；`test smoke` exit 0（23 套件全绿）；`rhi-deferred-create` 15 例 / 123 断言（新增 6 例）、`material-proxy-data` 8 例 / 149 断言（新增 1 例）、`material-ir` 5/79、`scene-proxy-lifetime` 11/177、`screen-ui-text` 1/2、`sprite-translucency` 2/7、`scene-proxy-render-read` 3/59、`material-compile-cache` 8 例、`texture-sampler` 7 例、`rhi-command-list` 3 例、`sprite-runtime-consume` 3 例、`rhi-deferred-destroy` 13/287、`render-command-pipe` 9/6914 全绿；导出 2998 → 2998（增量 0，无符号消失），导出门禁（growth / 移除基线 / 三方桶 / consumer coverage）、GL 函数表装载守卫、渲染线程状态审计、编辑器模块边界审计全部 PASS。顺带修掉 GL 装载守卫指出的既有漏判 `OpenGLRHIBuffer::CreateNativeBuffer`（同一后端文件，与本轮 shader 改动相邻）。
+- **残留：** `RHIPipelineLayout` 与 shader resource view 未走通道（前者两个后端都无 OpenGL 原生对象、Vulkan 保持立即创建）；屏幕 UI 的 latch 修复只有单测覆盖到判据、`FillSceneProxy` 那一行的接线为静态审阅；真实编辑器 Multi PIE 手工验收待执行。
+## 2026-10-27 — CORE-F47 P1：应用提前到录制之前 + 代理删除点移到帧末 + 场景退役移除先行
+
+- **帧序（`Engine::TickRendererFrame`）：** 资源创建（`RHIDrainDeferredCreates`）→ 世代检查 → **命令应用**（`FlushApplyForFrameChecked`）→ 视图意图 → **录制**（`RendererTick`）→ **帧末删除**（`RenderScene::FlushPendingProxyDeletes`）。场景变更因此当帧可见，不再晚一帧。
+- **删除点：** 从"应用之后"移到"录制之后"。判据是**录制已结束**而不是 present 已发生：`ForwardRenderer::Execute` 结束即已把绘制翻译成命令列表（`MeshDrawCommand` 只持 GPU 句柄与材质渲染对象指针，不含场景代理指针），Multi 下 present 在 RHI 角色不可观察，GPU 侧生命期由 `RHIDeferredDestroyQueue` 的批次尾部兜底，因此不新增跨角色同步。
+- **断言：** 帧末删除前断言容器内每个代理都带移除标记且已不在任何绘制列表上（"仍可被本帧提交的 draw command 命名"即两段式被拆掉）。
+- **场景退役：** `SceneManager::RetireScene` 先对场景内图元 / 灯光 / Widget / 天空盒走各自的移除入口并清组件侧句柄，再入退役队列；`FlushRetiredScenes` 只在场景的 `RenderScene` 既无所有者也无待删代理（`HasPendingProxyWork()`）时销毁，否则等下一个帧边界——退役闸口多一个条件而不是少一个。关停时（帧角色已停、本线程即渲染角色）先 drain 队列再走闸口，PIE 退出 / 场景卸载不再产生 `~RenderScene` 的"仍有 primitive"上报。
+- **Verification:** `minEngineTests` / `Editor` 构建通过；`test smoke` exit 0（31 套件）；新增用例：`scene-proxy-lifetime` 11 例 / 177 断言、`scene-retirement` 8 例 / 213 断言；`render-command-pipe` 9/17298、`rhi-deferred-create` 9/63、`rhi-deferred-destroy` 13/287、`material-proxy-data` 7/125 全绿；导出 2998 → 2998（增量 0，无符号消失）。
+- **Next:** 帧末完成信号（游戏线程不超前 N-1 帧）仍属 P1 剩余项；真实编辑器 PIE 手工验收。
+
+## 2026-10-27 — CORE-F47 P3b：材质渲染代理改为渲染侧引用计数对象（删延迟释放队列）
+
+- **Scope:** 代理所有权从 `Material` 内的 `unique_ptr` + 场景代理的 `shared_ptr<MaterialInterface>` 改为 `MaterialRenderProxyRef`；删除 `DeferredObjectRelease` 与 `MaterialRenderProxyHandle`
+- **Completed:**
+  - `MaterialInterface::GetRenderProxyRef()`（新增，虚函数内联）；`Material` / `MaterialInstance` 各持一份代理引用
+  - `PrimitiveSceneProxy` / `WidgetSceneProxy` 持 `m_MaterialSource` + `m_PreviousMaterialSource` 两份代理引用；`RenderScene` 两槽 keep-alive 同样改为持代理引用
+  - 代理析构：离开发布登记表（弱引用表 + 互斥锁）+ 释放 GPU 句柄（RHI 退役队列），不碰 `ObjectManager`
+  - `~Material` / `~MaterialInstance` 调 `DetachFromOwner()`：资产先死时代理冻结在最后一份快照，不再发布
+  - 删除 `Core/Object/DeferredObjectRelease.{h,cpp}`、`MaterialRenderProxyHandle.h`、`deferred-release` 套件；`Engine::CompleteFrameReleases` 只留退役场景
+- **Verification:** `minEngineTests` / `Editor` 构建通过；`test smoke` exit 0；`material-proxy-data` 7/125、`scene-proxy-lifetime` 5/79、`scene-retirement` 5/162、`scene-proxy-render-read` 3/59、`sprite-translucency` 2/7、`screen-ui-text` 1/2、`material-ir` 5/79 全绿；导出 2998 → 2997（只少 `GetDeferredObjectReleaseQueue`，无新增）
+- **Next:** P2 代理删除两段式（落地后可删 `RenderScene` 两槽 keep-alive 与 `MeshDrawCommand` 里的裸代理指针）
+
+## 2026-10-27 — CORE-F47 帧线程契约：按 UE 对齐重做（P-1 / P4a / P4b / P3a / P3b / P2 / P1）
+
+- **起因：** 多线程升级后连续出现三类真实崩溃（包围盒回指已销毁组件、材质渲染代理悬垂、驱动内空指针），复盘结论是"缺三条硬约束，不是缺三个机制"。
+- **取经：** 实测 UE 源码（Component↔SceneProxy、RHI 资源生灭、命令与帧边界），确认三条约束：渲染侧不持游戏对象、代理删除两段式、GPU 资源创建/销毁只在渲染侧。
+- **P-1 诊断可信化：** 崩溃记录补实际装载模块基址 + timestamp + 故障线程身份/创建位置 + minidump；新增 `scripts/symbolize_crash.py`（含已知符号自检，三镜像 outside=0）。原"符号化给出合理但错误答案"的真因是崩溃记录按错误模块名查基址，永远拿不到基址。
+- **P4a 创建：** GPU 对象创建走 `RHIDeferredCreateQueue`，图形角色立即执行、否则帧首实体化；未就绪状态可检查。
+- **P4b 销毁：** 判据从"固定 2 帧"改为"提交批次尾部"；删除 `RHINativeResourceOwner`，队列归 RHI 全局。
+- **P3a/P3b 材质：** 渲染代理自持不可变快照（探针实测渲染路径对游戏对象读取 0 次）；改为渲染侧引用计数对象，删除 `DeferredObjectRelease` 与 `MaterialRenderProxyHandle`。
+- **P2 两段式：** 移除命令只 park，帧末统一删除；删除帧保活两槽补丁。
+- **P1 帧序：** 资源创建 → 命令应用 → 录制 → 帧末删除（与 UE 的 OnRenderBegin→Scene::Update 一致）；场景退役先移除 primitive 再销毁。
+- **验证：** 构建（minEngineTests / Editor）、`test smoke` exit 0、导出门禁 growth 0（2998）。真机 Single/Multi 验收待执行。
+- **删除清单：** `DeferredObjectRelease`、`RHINativeResourceOwner`、`MaterialRenderProxyHandle`、帧保活两槽、固定帧延迟常量——本轮是净删除。
+
+## 2026-10-25 — BUG-RENDER-016 收口 + 帧线程契约四片落地（CORE-F47 S01–S04）
+
+- **范围 A（BUG-RENDER-016 直接原因）：** 渲染代理改为强引用其绘制所需的 GPU 缓冲 / 顶点布局 / 材质所有者；绘制范围从网格 section 元数据贯通到 packet；提交路径删除两条 `GetDesc()` 兜底。新套件 `scene-proxy-lifetime` 3 例 / 38 断言。
+- **门禁修正：** `frame-threading` 用例改为断言真实契约（Multi 初始化只绑 Game，Render/RHI 由角色线程认领）并加单例作用域守卫；导出基线按评审流程删除 3 条早已失效的符号（`RenderScene::UpdateLight`/`UpdatePrimitive` 由 `330f1b3d` 删除，`RenderGraph::SetupAttachments` 旧签名由 `1eb90492` 替换）。
+- **S01 止血：** 角色线程与命令 Flush 加异常边界（失败仍结算完成信号并计数）；列表池借用改 RAII；命令队列过期条目丢弃 + 有界等待；关停顺序改为先停角色再拆世界；`TryStartMultiFrameRoles` 传播启动失败。
+- **S02 帧号所有权：** 逻辑帧号归游戏角色，删除 `AdvanceLogicFrame` / `GetLogicFrameIndex`；Drain 改「小于等于」；世代断言改为比较两个独立写入者（游戏发布的世代 vs 渲染已 drain 的帧）；计数器与帧号原子化。
+- **S03 退役闸口：** 场景销毁改到「该帧 RHI 完成」且回到游戏角色；`m_RetiredScenes` 加锁；PIE 退出 / 切场景 / 卸载统一走 `RetireScene`；新增延迟释放队列。
+- **S04 接线与背压：** 代理销毁路径把材质交接给延迟释放队列（`TD-039` 的真实路径）；背压改为端到端在飞帧上界；每帧最多一条工作丢失汇总；`scene-retirement` / `deferred-release` / `scene-proxy-lifetime` 纳入 smoke。
+- **验证：** `minEngineTests` / `Editor` 构建通过；`test smoke` exit 0（21 套件）；导出 2998/3000。`verify.ps1` 一路绿灯，**停在外部消费者审计**：兄弟仓库 `minCraft*` 的过期二进制仍导入引擎已删除的符号——需重建外部宿主后整门转绿。
+- **未完成：** 真实编辑器 PIE 手工验收；`TD-035/036`（渲染线程仍解引用代理回指的组件）需「渲染线程不回指」结构性切片。
+
+## 2026-10-25 — BUG-RENDER-016：PIE SubmitDrawBuffers dangling IndexBuffer（非 PointerPolicy）
+
+- **Scope:** minCraft 反馈 PIE Shift+F1/recapture AV；本机 gdb 复现与符号化
+- **Evidence:** `SubmitDrawBuffers` L225 `IndexBuffer->GetDesc()`；packet `IndexCount=0`，vtable 首字=`0x1`；`drawIndex=1/39`；F5 后即崩（不必 recapture）
+- **Docs:** [BUG-RENDER-016](./bugs/BUG-RENDER-016.md)；crash 诊断增强（RSP dump）已改源码、重建曾被残留进程锁 DLL 打断
+- **Next:** 追 IndexBuffer UAF 来源（PIE/proxy/mesh 重建）；再修 submit 路径
+
 ## 2026-10-25 — merge: feat/core + feat/render → master
 
 - **Scope:** 主工作树合入 core（F38/F42/F44–F46 等）与 render（F26–F28）

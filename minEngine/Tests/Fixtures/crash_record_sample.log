@@ -1,0 +1,39 @@
+# Format sample, not a captured crash: the RVAs below match one build and move when it is
+# rebuilt. A record whose module timestamps no longer match the files on disk is exactly what
+# the resolver marks [STALE]; the second record below shows that marker on purpose.
+=== Editor crash 2026-10-26 17:20:01.123 ===
+LoadedModules (5):
+  MaximumEditor.exe base=0x140000000 imagebase=0x140000000 size=0x49000 timestamp=0x6AE05561
+  libMaximumEditord.dll base=0x3508A0000 imagebase=0x3508A0000 size=0xB37A000 timestamp=0x6AE05559
+  libminEngined.dll base=0x290290000 imagebase=0x290290000 size=0x20116000 timestamp=0x6AE05082
+  nvoglv64.dll base=0x7FF8A0000000 imagebase=0x7FF8A0000000 size=0x2000000 timestamp=0x5E0A1B2C
+  opengl32.dll base=0x7FF8B0000000 imagebase=0x7FF8B0000000 size=0x100000 timestamp=0x00000000
+FaultThread: id=48212 logid=305419896 role=Render name="RenderThread" start=0x2903B2B22 (libminEngined.dll+0xD2B22)
+ExceptionCode=0xC0000005
+ExceptionAddress=0x7FF8A001A2B3C
+AV operation=0 address=0xFFFFFFFFFFFFFFFF
+FaultRIP=0x7FF8A001A2B3C (nvoglv64.dll+0x1A2B3C)
+RAX=0x0000000000000000 RCX=0x0000000000000001 RDX=0x0000000000000000 RBX=0x0000000000000000
+RSP=0x000000000014F900 RBP=0x000000000014F930 RSI=0x0000000000000000 RDI=0x0000000000000000
+R8=0x0000000000000000 R9=0x0000000000000000 R10=0x0000000000000000 R11=0x0000000000000000
+FaultStackWords (48 from RSP):
+  [0] 0x7FF8A001A2C10 (nvoglv64.dll+0x1A2C10)
+  [1] 0x7FF8A001A2C44 (nvoglv64.dll+0x1A2C44)
+  [2] 0x7FF8A001A2C80 (nvoglv64.dll+0x1A2C80)
+  [3] 0x7FF8A001A2D02 (nvoglv64.dll+0x1A2D02)
+FilterStack (3 frames, CaptureStackBackTrace):
+  #0 0x3508AA013C (libMaximumEditord.dll+0xA013C)
+  #1 0x290360410 (libminEngined.dll+0xD0410)
+  #2 0x2903B2B22 (libminEngined.dll+0xD2B22)
+MiniDump: D:\Dev\GitRepo\minEngine\minEngine\bin\ed_crash_2026-10-26-17-20-01-123.dmp
+
+=== Editor crash 2026-09-12 09:41:55.002 ===
+LoadedModules (3):
+  MaximumEditor.exe base=0x140000000 imagebase=0x140000000 size=0x49000 timestamp=0x6A000000
+  libmaxEngineOld.dll base=0x290290000 imagebase=0x290290000 size=0x20116000 timestamp=0x6A000000
+  libminEngined.dll base=0x290290000 imagebase=0x290290000 size=0x20116000 timestamp=0x6A000000
+FaultThread: id=1234 logid=1 role=RHI name="RHIThread" start=<unavailable>
+ExceptionCode=0xC0000005
+ExceptionAddress=0x290360410
+AV operation=0 address=0xFFFFFFFFFFFFFFFF
+FaultRIP=0x290360410 (libminEngined.dll+0xD0410)

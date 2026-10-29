@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Render/RHI/RHIDeferredCreate.h"
 #include "Render/RHI/RHIPipelineLayout.h"
 #include "Render/RHI/RHIRenderPass.h"
 #include "Render/RHI/RHITexture.h"
@@ -58,7 +59,15 @@ namespace minEngine
         float DepthBiasConstant = 0.0f;
     };
 
-    class RHIGraphicsPipelineState
+    /**
+     * A graphics pipeline state.
+     *
+     * Whether the backend owns a native object for it depends on the API: OpenGL binds the state
+     * piece by piece and the value is only a description, while other APIs compile a pipeline
+     * object. Taking the same hand-off as the other resources means a backend that does own one
+     * still creates it where the context is current, and a backend that does not is ready at once.
+     */
+    class RHIGraphicsPipelineState : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHIGraphicsPipelineState() = default;

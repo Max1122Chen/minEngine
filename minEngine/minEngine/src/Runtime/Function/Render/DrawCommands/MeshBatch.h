@@ -19,6 +19,15 @@ namespace minEngine
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;
         RHIBuffer* m_IndexBuffer = nullptr;
 
+        /**
+         * Draw ranges from the mesh metadata. The proxy that emitted this batch owns the buffers
+         * for as long as the batch is alive, but the counts still travel with the batch: reading
+         * them back from the GPU object at submission time would tie the draw to an object the
+         * frame only borrows.
+         */
+        uint32_t m_IndexCount = 0;
+        uint32_t m_VertexCount = 0;
+
         MaterialRenderProxy* m_MaterialProxy = nullptr;
 
         Matrix4 m_LocalToWorld{ 1.0f };

@@ -182,6 +182,7 @@ namespace minEngine
 
         m_State = PlayState::Playing;
         ApplyInspectingSceneForPlayState();
+        ME_LOG(LogEditor, Info, "PlayInEditorSession: EnterPlay succeeded (PIE active).");
         return true;
     }
 

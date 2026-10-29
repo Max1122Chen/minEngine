@@ -364,15 +364,32 @@ namespace minEngine
 
         if (m_Mesh)
         {
-            sceneProxy.m_VertexBuffer = m_Mesh->m_VertexBuffer.get();
-            sceneProxy.m_VertexInputLayout = m_Mesh->m_VertexInputLayout.get();
-            sceneProxy.m_IndexBuffer = m_Mesh->m_IndexBuffer.get();
+            // The proxy keeps the asset's buffers alive; the component may exchange or release the
+            // mesh afterwards while the proxy is still drawing on the render thread.
+            uint32_t indexCount = 0;
+            for (const SkeletalMeshSectionInfo& section : m_Mesh->m_Sections)
+            {
+                indexCount += section.NumIndices;
+            }
+            if (indexCount == 0 && m_Mesh->m_IndexBuffer)
+            {
+                // A mesh built without a section table has one range: the whole index buffer.
+                indexCount = m_Mesh->m_IndexBuffer->GetDesc().ElementCount;
+            }
+
+            const uint32_t vertexCount =
+                m_Mesh->m_VertexBuffer ? m_Mesh->m_VertexBuffer->GetDesc().ElementCount : 0;
+
+            sceneProxy.SetMeshResources(
+                m_Mesh->m_VertexBuffer,
+                m_Mesh->m_VertexInputLayout,
+                m_Mesh->m_IndexBuffer,
+                indexCount,
+                vertexCount);
         }
         else
         {
-            sceneProxy.m_VertexBuffer = nullptr;
-            sceneProxy.m_VertexInputLayout = nullptr;
-            sceneProxy.m_IndexBuffer = nullptr;
+            sceneProxy.ClearMeshResources();
         }
 
         if (m_Material)
@@ -385,12 +402,9 @@ namespace minEngine
                     "skinned draws will be skipped until compile succeeds.",
                     baseMaterial->GetName());
             }
-            sceneProxy.m_MaterialProxy = m_Material->GetRenderProxy();
         }
-        else
-        {
-            sceneProxy.m_MaterialProxy = nullptr;
-        }
+
+        sceneProxy.SetMaterialSource(m_Material);
     }
 
     PrimitiveSceneProxy* SkeletalMeshComponent::CreateSceneProxy()

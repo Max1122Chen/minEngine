@@ -9,7 +9,7 @@ namespace minEngine
         const MeshCollectContext& context) const
     {
         (void)context;
-        if (m_VertexBuffer == nullptr || m_VertexInputLayout == nullptr || m_MaterialProxy == nullptr)
+        if (m_VertexBuffer == nullptr || m_VertexInputLayout == nullptr || GetMaterialProxy() == nullptr)
         {
             return;
         }
@@ -18,7 +18,9 @@ namespace minEngine
         batch.m_VertexBuffer = m_VertexBuffer;
         batch.m_VertexInputLayout = m_VertexInputLayout;
         batch.m_IndexBuffer = m_IndexBuffer;
-        batch.m_MaterialProxy = m_MaterialProxy;
+        batch.m_IndexCount = m_IndexCount;
+        batch.m_VertexCount = m_VertexCount;
+        batch.m_MaterialProxy = GetMaterialProxy();
         batch.m_LocalToWorld = m_Transform.ToMatrix();
         batch.m_CastShadow = m_CastShadow;
         batch.m_BoundingBox = ResolveWorldBounds();

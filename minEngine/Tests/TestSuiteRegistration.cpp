@@ -72,6 +72,10 @@
 #include "Suites/MaterialCompileCacheTest.h"
 #include "Suites/TaskSystemTest.h"
 #include "Suites/RHICommandListTest.h"
+#include "Suites/RHIDeferredCreateTest.h"
+#include "Suites/RHIDeferredDestroyTest.h"
+#include "Suites/SceneProxyResourceLifetimeTest.h"
+#include "Suites/MaterialRenderProxyDataTest.h"
 
 namespace minEngine
 {
@@ -1373,6 +1377,72 @@ namespace minEngine
             }
         };
 
+        struct SceneRetirementGateTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "scene-retirement",
+                    "Scene Retirement Release Gate",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-retirement'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "scene-retirement",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct SceneProxyResourceLifetimeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "scene-proxy-lifetime",
+                    "Scene Proxy Render Resource Lifetime",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-proxy-lifetime'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "scene-proxy-lifetime",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct SceneProxyRenderReadTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "scene-proxy-render-read",
+                    "Scene Proxy Render-Role Reads",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-proxy-render-read'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "scene-proxy-render-read",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct RHICommandListTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1395,6 +1465,50 @@ namespace minEngine
             }
         };
 
+        struct RHIDeferredDestroyTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "rhi-deferred-destroy",
+                    "RHI Deferred Native Destruction",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'rhi-deferred-destroy'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "rhi-deferred-destroy",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct RHIDeferredCreateTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "rhi-deferred-create",
+                    "RHI Deferred Native Creation",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'rhi-deferred-create'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "rhi-deferred-create",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct MaterialCompileCacheTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1413,6 +1527,59 @@ namespace minEngine
                 EngineTestContextScope scope(context);
                 return DoctestSuiteRunner::RunSuiteForContext(
                     "material-compile-cache",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        /**
+         * Material render proxy data: what a proxy publishes and what drawing reads back.
+         *
+         * Needs a GPU - the cases compile a real material and build binding sets - so it runs in
+         * the full set only, like the material compile-cache suite.
+         */
+        struct MaterialRenderProxyDataTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "material-proxy-data",
+                    "Material render proxy published data",
+                    false,
+                    true,
+                    true};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'material-proxy-data'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "material-proxy-data",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        /**
+         * The cases drive real GL buffers, so the suite needs a GPU and runs in the full set only.
+         */
+        struct ScreenUIPerFrameUboTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "screen-ui-per-frame-ubo",
+                    "Screen UI per-frame uniform block",
+                    false,
+                    true,
+                    true};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'screen-ui-per-frame-ubo'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "screen-ui-per-frame-ubo",
                     context.GetCommandLine().TestKind);
             }
         };
@@ -1493,7 +1660,14 @@ namespace minEngine
         using FrameThreadingSuite = TypedTestSuite<FrameThreadingTestSuiteTraits>;
         using RenderCommandPipeSuite = TypedTestSuite<RenderCommandPipeTestSuiteTraits>;
         using RHICommandListSuite = TypedTestSuite<RHICommandListTestSuiteTraits>;
+        using RHIDeferredCreateSuite = TypedTestSuite<RHIDeferredCreateTestSuiteTraits>;
+        using RHIDeferredDestroySuite = TypedTestSuite<RHIDeferredDestroyTestSuiteTraits>;
+        using SceneProxyResourceLifetimeSuite = TypedTestSuite<SceneProxyResourceLifetimeTestSuiteTraits>;
+        using SceneProxyRenderReadSuite = TypedTestSuite<SceneProxyRenderReadTestSuiteTraits>;
+        using SceneRetirementGateSuite = TypedTestSuite<SceneRetirementGateTestSuiteTraits>;
         using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
+        using MaterialRenderProxyDataSuite = TypedTestSuite<MaterialRenderProxyDataTestSuiteTraits>;
+        using ScreenUIPerFrameUboSuite = TypedTestSuite<ScreenUIPerFrameUboTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1580,7 +1754,14 @@ namespace minEngine
             registry.Register(FrameThreadingSuite::Get());
             registry.Register(RenderCommandPipeSuite::Get());
             registry.Register(RHICommandListSuite::Get());
+            registry.Register(RHIDeferredCreateSuite::Get());
+            registry.Register(RHIDeferredDestroySuite::Get());
+            registry.Register(SceneProxyResourceLifetimeSuite::Get());
+            registry.Register(SceneProxyRenderReadSuite::Get());
+            registry.Register(SceneRetirementGateSuite::Get());
             registry.Register(MaterialCompileCacheSuite::Get());
+            registry.Register(MaterialRenderProxyDataSuite::Get());
+            registry.Register(ScreenUIPerFrameUboSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS

@@ -27,6 +27,13 @@ namespace minEngine
             MeshDrawPacket& packet = outPackets[drawIndex];
             packet = {};
 
+            // The material belongs to the frame that produced this command cell: a proxy removal
+            // keeps the material of the proxy it removed alive through the two collections that
+            // follow it, so this pointer outlives every draw command built from that proxy. A
+            // command with no material at all is a proxy that draws nothing, not a dangling one.
+            //
+            // Everything read through it here comes from the snapshot the material published at the
+            // end of its last game tick, plus the GPU state the proxy owns on this role.
             MaterialRenderProxy* materialProxy = drawCommand.m_MaterialProxy;
             if (!materialProxy || !materialProxy->IsCompiledForDraw() || !drawCommand.m_VertexInputLayout)
             {
@@ -48,8 +55,7 @@ namespace minEngine
                 shader,
                 drawCommand.m_VertexInputLayout,
                 passKind);
-            packet.VertexBuffer = drawCommand.m_VertexBuffer;
-            packet.IndexBuffer = drawCommand.m_IndexBuffer;
+            packet.BindDrawCommand(drawCommand);
             packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = materialProxy->GetMaterialShaderBindingSet();
         }
     }

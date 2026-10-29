@@ -218,7 +218,8 @@ namespace minEngine
         void RecreateSwapchain();
         bool BeginFrameRecording();
         void RecordSwapchainClearPass();
-        void EndFrameRecordingAndSubmit();
+        /** Submits the recorded frame. @return true when the batch actually reached the queue. */
+        bool EndFrameRecordingAndSubmit();
         VulkanDeviceContext GetDeviceContext() const;
 
         VkCommandBuffer GetCurrentCommandBuffer() const;

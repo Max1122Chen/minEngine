@@ -18,6 +18,12 @@
 
 namespace minEngine
 {
+    namespace
+    {
+        /** Vertex count of the fullscreen quad ForwardRenderer builds and hands to this pass. */
+        constexpr uint32_t kScreenQuadVertexCount = 6u;
+    }
+
     void PostProcessPass::SetGraphTextureNames(const char* inputName, const char* outputName)
     {
         m_InputTextureName = inputName != nullptr ? inputName : kRDGSceneColor;
@@ -195,5 +201,6 @@ namespace minEngine
         m_DrawPacket.PipelineState = m_PostProcessPipelineState;
         m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PostShaderBindingSet.get();
         m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
+        m_DrawPacket.VertexCount = kScreenQuadVertexCount;
     }
 }

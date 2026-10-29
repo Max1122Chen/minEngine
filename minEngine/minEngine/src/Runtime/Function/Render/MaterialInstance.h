@@ -58,6 +58,7 @@ namespace minEngine
 
         Material* GetBaseMaterial() const override;
         MaterialRenderProxy* GetRenderProxy() const override;
+        MaterialRenderProxyRef GetRenderProxyRef() const override { return m_RenderProxy; }
         std::shared_ptr<Material> ResolveParentMaterial(
             const std::shared_ptr<MaterialInterface>& self) const override;
 
@@ -87,7 +88,8 @@ namespace minEngine
         ME_PROPERTY()
         std::vector<MaterialTextureOverrideEntry> m_TextureOverrides;
 
-        std::unique_ptr<MaterialRenderProxy> m_RenderProxy;
+        /** Built once and kept for this instance's whole lifetime; see Material::m_RenderProxy. */
+        MaterialRenderProxyRef m_RenderProxy;
     };
 }
 

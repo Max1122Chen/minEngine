@@ -99,6 +99,11 @@ namespace minEngine
         proxy.m_PrimitiveComponent = this;
         proxy.m_Transform = GetWorldTransform();
         proxy.m_CastShadow = CastShadow();
+
+        // Computed here, while the component and its asset are certainly alive: the render role
+        // only ever reads this box back, so a queued removal that has not been applied yet can no
+        // longer reach a component the game role already destroyed.
+        proxy.SetWorldBounds(Math::Geometry::Transform(GetBoundingBox(), GetWorldMatrix()));
     }
 
 }

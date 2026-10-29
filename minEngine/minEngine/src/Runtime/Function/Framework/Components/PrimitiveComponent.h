@@ -26,6 +26,13 @@ namespace minEngine
         }
 
         bool CastShadow() const { return m_CastShadow; }
+
+        /**
+         * Bounds in the component's own space, i.e. before its world transform.
+         *
+         * The world box the render role uses is derived from this once per sync, on the game role,
+         * and stored on the proxy; nothing on the render role calls back in here.
+         */
         virtual Math::Geometry::AABB GetBoundingBox() const = 0;
 
         virtual void DoEndOfFrameUpdate() override;

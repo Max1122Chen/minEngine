@@ -62,6 +62,9 @@ namespace minEngine
     void EngineSceneBindingSets::Shutdown()
     {
         m_SceneSet0BySlot.clear();
+        m_ScreenSpaceSet0BySlot.clear();
+        m_ScreenSpacePerFrame = nullptr;
+        m_ScreenSpaceSet0Block = nullptr;
         m_SceneSet1.reset();
         m_SceneSet0Layout.reset();
         m_SceneSet1Layout.reset();
@@ -130,6 +133,8 @@ namespace minEngine
         {
             m_SceneSet0BySlot.clear();
             m_SceneSet0BySlot.resize(kPerObjectRingSlots);
+            m_ScreenSpaceSet0BySlot.clear();
+            m_ScreenSpaceSet0Block = nullptr;
         }
     }
 
@@ -161,7 +166,9 @@ namespace minEngine
         const Matrix4* bonePalette,
         uint32_t boneCount)
     {
-        if (!m_SceneSet0Layout || !m_CachedPerFrame || !m_CachedLights || !m_PerObjectRing)
+        const bool screenSpace = m_ScreenSpacePerFrame != nullptr;
+        RHIBuffer* perFrame = screenSpace ? m_ScreenSpacePerFrame : m_CachedPerFrame;
+        if (!m_SceneSet0Layout || !perFrame || !m_CachedLights || !m_PerObjectRing)
         {
             return nullptr;
         }
@@ -202,15 +209,18 @@ namespace minEngine
             return nullptr;
         }
 
-        if (slot >= m_SceneSet0BySlot.size())
+        std::vector<RHIShaderBindingSetRef>& set0BySlot =
+            screenSpace ? m_ScreenSpaceSet0BySlot : m_SceneSet0BySlot;
+
+        if (slot >= set0BySlot.size())
         {
-            m_SceneSet0BySlot.resize(kPerObjectRingSlots);
+            set0BySlot.resize(kPerObjectRingSlots);
         }
 
-        if (!m_SceneSet0BySlot[slot])
+        if (!set0BySlot[slot])
         {
             std::vector<RHIShaderBinding> resources(4);
-            resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, m_CachedPerFrame, nullptr, 0, 0};
+            resources[kSet0_PerFrame] = {RHIShaderBindingType::UniformBuffer, perFrame, nullptr, 0, 0};
             resources[kSet0_Lights] = {RHIShaderBindingType::UniformBuffer, m_CachedLights, nullptr, 0, 0};
             resources[kSet0_PerObject] = {
                 RHIShaderBindingType::UniformBuffer,
@@ -224,10 +234,10 @@ namespace minEngine
                 nullptr,
                 boneOffset,
                 boneSize};
-            m_SceneSet0BySlot[slot] = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
+            set0BySlot[slot] = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
         }
 
-        return m_SceneSet0BySlot[slot].get();
+        return set0BySlot[slot].get();
     }
 
     bool EngineSceneBindingSets::ShadowTextureSlotChanged(

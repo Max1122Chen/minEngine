@@ -19,10 +19,29 @@ namespace minEngine
     {
         ME_LOG(LogCore, Info, "Scene '{}' is being destroyed. Cleaning up {} game objects.", m_SceneName, m_GameObjects.size());
         DeinitializeWorldSubsystems();
+
+        // Removal before destruction. The components below cannot queue their own removal once the
+        // GameObject they hang off is coming apart - each of them would find no owning render scene
+        // and drop its proxy instead, leaving it registered on a scene that is about to die. The
+        // Scene still knows both sides, so it drives the removal here.
+        if (m_RenderScene && m_RenderScene->HasPendingProxyWork())
+        {
+            DetachSceneRenderState(*this);
+        }
+
         m_GameplayEventSystem = nullptr;
         m_GameObjects.clear();
         m_GameObjectsById.clear();
         m_PrefabInstances.clear();
+
+        // The removals are commands of the frame this Scene is released in, so the proxies they act
+        // on are still owned here. A proxy may only be freed where that frame ended, which is also
+        // where the removal is applied - so the render side is handed to that boundary instead of
+        // being freed with the Scene.
+        if (m_RenderScene && m_RenderScene->HasPendingProxyWork())
+        {
+            HandOverOrphanedRenderScene(std::move(m_RenderScene));
+        }
         m_RenderScene.reset();
     }
 

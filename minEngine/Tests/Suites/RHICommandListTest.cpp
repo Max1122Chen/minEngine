@@ -2,14 +2,19 @@
 
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHICommandListPool.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
 
 #include "doctest.h"
 
+#include <atomic>
+#include <chrono>
 #include <memory>
+#include <thread>
 
 using minEngine::ERHICommandListState;
 using minEngine::RHI;
+using minEngine::RHICommandListPool;
 using minEngine::RHICommandList;
 using minEngine::RHIRenderPassInfo;
 
@@ -147,4 +152,56 @@ TEST_CASE("rhi-command-list: recording defers until Replay [smoke]")
     CHECK(rhi.DrawCount == 1);
     CHECK(rhi.EndPassCount == 1);
     CHECK(cmdList.GetState() == ERHICommandListState::Idle);
+}
+TEST_CASE("rhi-command-list: pool lease returns the list when the frame bails out early [smoke]")
+{
+    CountingRHI rhi;
+    RHICommandListPool pool;
+    pool.Initialize(&rhi);
+
+    // Simulates a frame returning before the recording is submitted (setup failure): the pool only
+    // holds kMaxInFlightCommandLists lists, so three leaked borrows would block every later frame.
+    for (int attempt = 0; attempt < 3; ++attempt)
+    {
+        RHICommandListPool::Lease lease = pool.AcquireLease();
+        CHECK(lease.IsValid());
+        CHECK(lease.Get() != nullptr);
+        CHECK(lease->IsImmediate() == false);
+    }
+
+    // The fourth borrow must still get a list; the wait is bounded so a leak fails the case instead
+    // of wedging the binary.
+    std::atomic<bool> borrowed{false};
+    std::thread borrower([&pool, &borrowed]() {
+        RHICommandListPool::Lease lease = pool.AcquireLease();
+        borrowed.store(lease.IsValid(), std::memory_order_release);
+    });
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!borrowed.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    if (!borrowed.load(std::memory_order_acquire))
+    {
+        pool.RequestShutdown();
+    }
+    borrower.join();
+    CHECK(borrowed.load(std::memory_order_acquire));
+
+    {
+        RHICommandListPool::Lease lease = pool.AcquireLease();
+        REQUIRE(lease.IsValid());
+        lease->BeginRecording();
+        lease->FinishRecording();
+        // Submitting hands the recording to the RHI side; the lease must not also free the slot.
+        lease.SubmitFinished();
+        CHECK_FALSE(lease.IsValid());
+    }
+
+    RHICommandList* finished = pool.TryTakeFinished();
+    REQUIRE(finished != nullptr);
+    CHECK(pool.TryTakeFinished() == nullptr);
+    pool.Release(finished);
+
+    pool.Shutdown();
 }

@@ -1,4 +1,4 @@
-﻿#include "VulkanRHI.h"
+#include "VulkanRHI.h"
 
 #include "Runtime/Core/EngineVersion.h"
 #include "Runtime/Core/Log/LogSystem.h"
@@ -170,6 +170,9 @@ namespace minEngine
         if (m_Device != VK_NULL_HANDLE)
         {
             vkDeviceWaitIdle(m_Device);
+            // The device is idle, so waiting for another submit protects nothing: queue entries land
+            // in the retired list now and are freed by the flush right after.
+            RHIDrainAllDeferredDestroys();
             FlushRetiredBuffers();
         }
 
@@ -1366,11 +1369,12 @@ namespace minEngine
         m_SwapchainDrawnThisFrame = true;
     }
 
-    void VulkanRHI::EndFrameRecordingAndSubmit()
+    bool VulkanRHI::EndFrameRecordingAndSubmit()
     {
         if (!m_FrameRecording)
         {
-            return;
+            // No batch was recorded, so there is nothing with the platform afterwards.
+            return false;
         }
 
         if (m_InRenderPass)
@@ -1387,7 +1391,7 @@ namespace minEngine
         if (!CheckVk(vkEndCommandBuffer(cmd), "vkEndCommandBuffer"))
         {
             m_FrameRecording = false;
-            return;
+            return false;
         }
 
         VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1406,7 +1410,7 @@ namespace minEngine
                 "vkQueueSubmit"))
         {
             m_FrameRecording = false;
-            return;
+            return false;
         }
 
         VkPresentInfoKHR presentInfo{};
@@ -1430,6 +1434,7 @@ namespace minEngine
         m_CurrentFrame = (m_CurrentFrame + 1) % kMaxFramesInFlight;
         m_FrameRecording = false;
         m_SwapchainDrawnThisFrame = false;
+        return true;
     }
 #endif
 
@@ -1474,10 +1479,24 @@ namespace minEngine
 #else
         if (!m_Initialized)
         {
+            // Nothing can be submitted, so nothing becomes deletable; the queue reports the stall
+            // instead of inventing a boundary that never happened.
+            RHINoteFrameWithoutSubmit();
             return;
         }
 
-        EndFrameRecordingAndSubmit();
+        const bool bSubmitted = EndFrameRecordingAndSubmit();
+        if (!bSubmitted)
+        {
+            RHINoteFrameWithoutSubmit();
+            return;
+        }
+
+        // This frame's commands are with the queue, so a handle retired before this point can no
+        // longer be named by new work and dies now. On Vulkan the queue is only the first half: its
+        // callbacks push into the retired list, which waits for the frame fences before the
+        // allocation is freed.
+        RHISubmitBatchCommitted();
 #endif
     }
 

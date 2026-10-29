@@ -127,7 +127,10 @@ namespace minEngine
 
     bool MaterialCompiler::CompileSkinnedVariant(Material& target, const MaterialCompileContext& ctx)
     {
-        if (!target.IsCompiledForDraw())
+        // The variant reuses the rigid program's layout and bindings, so a compile that finished
+        // while its program is still queued for the graphics role is enough to build on. Only a
+        // material that never compiled - or whose program the driver refused - is rejected here.
+        if (!target.HasCompiledProgram() || target.HasProgramCreateFailed())
         {
             target.m_LastCompileDiagnostics.push_back({
                 MaterialCompileDiagnostic::Error,
@@ -160,7 +163,22 @@ namespace minEngine
             (target.GetName().empty() ? "Material" : target.GetName()) + "_Skinned",
             &compileError);
         target.m_ShaderCompileLog = compileError;
-        return target.m_GPUShaderSkinned != nullptr && target.m_GPUShaderSkinned->IsValid();
+        if (target.m_GPUShaderSkinned == nullptr)
+        {
+            return false;
+        }
+
+        if (!target.m_GPUShaderSkinned->IsValid() && !target.m_GPUShaderSkinned->HasNativeCreateFailed())
+        {
+            ME_LOG(
+                LogRender,
+                Info,
+                "Material '{}': skinned program queued for the graphics role; it is created at the "
+                "start of the next render frame.",
+                target.GetName().empty() ? "Material" : target.GetName());
+        }
+
+        return true;
     }
 
     MaterialCompileResult MaterialCompiler::CompileForDiagnostics(

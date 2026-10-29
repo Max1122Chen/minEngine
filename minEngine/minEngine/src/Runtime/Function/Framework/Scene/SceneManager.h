@@ -3,6 +3,8 @@
 #include "Runtime/Function/Framework/Scene/Scene.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
 
+#include <mutex>
+
 namespace minEngine
 {
     class Engine;
@@ -82,12 +84,38 @@ namespace minEngine
         /**
          * Hand a Scene over for destruction at a frame-safe point instead of releasing it now.
          * Work already submitted this frame (scene draws, end-of-frame updates) may still
-         * reference the Scene, so the last strong reference parks here.
+         * reference the Scene, so the last strong reference parks here. Every path that would
+         * otherwise drop the last reference (scene unload, PIE exit, opening another scene) goes
+         * through this call, so no path can destroy a Scene the renderer still holds.
+         *
+         * Retiring also takes every render proxy of the Scene off its draw lists, through the same
+         * removal a destroyed component performs, so destruction starts from a scene whose
+         * primitives, lights, widgets and skybox are already on their way out. Nothing is freed
+         * here: the removals are commands the render role applies, and the frame end frees what
+         * they park.
          */
         void RetireScene(std::shared_ptr<Scene> scene);
 
-        /** Destroy every retired Scene; call once the frame's submissions were consumed. */
+        /**
+         * Destroy every retired Scene. Game role only, and only once the frame whose RHI work could
+         * still reference the retired Scenes has finished. Destroying here rather than where the
+         * last reference is dropped keeps world-subsystem teardown and GameObject destruction off
+         * the render threads, where they would touch game-role state.
+         *
+         * A Scene whose render proxies are still registered or still parked stays queued for a
+         * later boundary instead of being destroyed: the removals it was retired through have not
+         * been applied yet, so destroying it would release proxies the frame that recorded against
+         * them may still name. Shutdown applies those removals itself before calling this, since no
+         * boundary is left to do it.
+         */
         void FlushRetiredScenes();
+
+        /** True when a retired Scene is waiting for that safe point. */
+        bool HasRetiredScenes() const
+        {
+            std::lock_guard<std::mutex> lock(m_RetiredScenesMutex);
+            return !m_RetiredScenes.empty();
+        }
 
         bool IsInStructuralTraversal() const { return m_StructuralTraversalDepth > 0; }
 
@@ -135,7 +163,25 @@ namespace minEngine
         int32_t m_StructuralTraversalDepth{ 0 };
 
         std::unordered_map<std::string, std::string> m_RegisteredScenes;
+        /**
+         * Multi-producer, single-consumer: any role thread may retire a Scene, but only the game
+         * role ever drains the list. A lock-free single-producer structure would not describe that
+         * shape - the game role is itself one of the producers - and the list only moves on scene
+         * switches, so a mutex costs nothing measurable while keeping both ends provably safe.
+         */
+        mutable std::mutex m_RetiredScenesMutex;
         std::vector<std::shared_ptr<Scene>> m_RetiredScenes;
         SceneViewport* m_EditorSceneViewport = nullptr;
     };
+
+    /**
+     * Takes every render proxy of the scene off its draw lists through the component's own removal
+     * entry, leaving the removals queued for the render role.
+     *
+     * Callable from SceneManager::RetireScene, and from a Scene's destructor: that is the one point
+     * where the removal cannot be left to the components, because a GameObject being torn down no
+     * longer answers which render scene it belonged to and would drop its proxy instead of
+     * removing it.
+     */
+    void DetachSceneRenderState(Scene& scene);
 }

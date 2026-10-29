@@ -70,6 +70,15 @@ namespace minEngine
         void TickLogicalFrame(float deltaTime);
         void TickRendererFrame(float deltaTime);
         /**
+         * Game-role frame boundary. Call it once per frame, after that frame's RHI work is known to
+         * be finished: it destroys the Scenes retired for the frame and drains the objects the
+         * render roles handed over for game-role destruction.
+         *
+         * The topology only decides *when* that point is reached (Multi: after a submission that
+         * waited for its completion; Single: after present); what happens at it is the same call.
+         */
+        void CompleteFrameReleases();
+        /**
          * Variable gameplay phase: GI Tickable then Scene WorldTickable + GO.
          * LogicalTick calls this before Physics.
          */
@@ -149,10 +158,26 @@ namespace minEngine
          * Multi only: start TaskSystem frame roles + command-list pool.
          * renderOverride / rhiOverride optional (Editor supplies ImGui+Present).
          * Default: TickRendererFrame + pool Replay/Present.
+         *
+         * Returns true when the roles are running (or when the engine is in the single topology, so
+         * there is nothing to start). False means a Multi topology was requested and could not be
+         * started: the caller must not fall back to drawing on the game thread, because that thread
+         * does not own the Render role in Multi and rendering there is a contract violation.
          */
+        bool TryStartMultiFrameRoles(
+            TaskSystem::RenderFrameTaskFn renderOverride = {},
+            TaskSystem::RHIFrameTaskFn rhiOverride = {});
+
+        /** Same, without the verdict; the failure is logged. Prefer TryStartMultiFrameRoles. */
         void StartMultiFrameRoles(
             TaskSystem::RenderFrameTaskFn renderOverride = {},
             TaskSystem::RHIFrameTaskFn rhiOverride = {});
+
+        /**
+         * Stops new frame submissions, lets the queued frames run, joins the role threads, then
+         * releases the command-list pool. Must run before the world and the subsystems those
+         * threads were ticking are destroyed.
+         */
         void StopMultiFrameRoles();
         bool AreMultiFrameRolesRunning() const;
 
@@ -205,6 +230,12 @@ namespace minEngine
         std::unique_ptr<TaskSystem> m_TaskSystem;
         std::unique_ptr<FrameThreading> m_FrameThreading;
         std::unique_ptr<RenderCommandPipe> m_RenderCommandPipe;
+        /**
+         * Next logical frame the game role will simulate. Owned and advanced by TickLogicalFrame
+         * only; the render role reads the frame the game role published through the command pipe
+         * and never touches this member.
+         */
+        uint64_t m_GameLogicFrameIndex = 0;
         std::unique_ptr<RHICommandListPool> m_RHICommandListPool;
     };
 }

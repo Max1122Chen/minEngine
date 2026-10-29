@@ -10,11 +10,9 @@
 #include "Render/DrawCommands/MeshDrawCommandSort.h"
 #include "Render/SceneProxies/WidgetSceneProxy.h"
 #include "Render/ScreenUI/ScreenUICoords.h"
-#include "Runtime/Function/Framework/Components/CanvasComponent.h"
+#include "Render/RenderPipeline/RenderQueueBuild.h"
 #include "Runtime/Function/Framework/Components/LightComponent.h"
 #include "Runtime/Function/Framework/Components/PrimitiveComponent.h"
-#include "Runtime/Function/Framework/Components/WidgetComponent.h"
-#include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/UI/UITypes.h"
 #include "Render/DrawCommands/MeshDrawCommand.h"
 #include "Render/Material.h"
@@ -156,6 +154,7 @@ namespace minEngine
 
         RHICommandList cmdList(rhi);
         m_PerFrameUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(PerFrameData)));
+        m_ScreenUIPerFrameUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(PerFrameData)));
         m_LightDataUniformBuffer = cmdList.CreateBuffer(MakeUniformBufferDesc(sizeof(LightsData)));
 
         const uint32_t uboAlign = rhi->RHIGetMinUniformBufferOffsetAlignment();
@@ -617,6 +616,7 @@ namespace minEngine
 
         m_LightDataUniformBuffer.reset();
         m_PerFrameUniformBuffer.reset();
+        m_ScreenUIPerFrameUniformBuffer.reset();
         m_PerObjectUniformBuffer.reset();
         m_BonePaletteUniformBuffer.reset();
         m_BonePaletteSlotStride = 0;
@@ -691,11 +691,15 @@ namespace minEngine
 
         RHICommandList stackList(rhi);
         const bool immediate = stackList.IsImmediate();
+        // A pooled list is held by the lease, so every early return below (including the frame-graph
+        // setup failure) gives the slot back instead of shrinking the pool until Acquire blocks.
+        RHICommandListPool::Lease pooledList;
         RHICommandList* cmdListPtr = &stackList;
         if (!immediate)
         {
             ME_ASSERT(RHICommandListPool::HasInstance(), "Multi Recording requires RHICommandListPool");
-            cmdListPtr = RHICommandListPool::Get().Acquire();
+            pooledList = RHICommandListPool::Get().AcquireLease();
+            cmdListPtr = pooledList.Get();
             if (cmdListPtr == nullptr)
             {
                 return;
@@ -775,7 +779,7 @@ namespace minEngine
         {
             m_ScreenUIPass.m_DrawCommands.push_back(uiCommand.Draw);
         }
-        m_ScreenUIPass.m_PerFrameUniformBuffer = m_PerFrameUniformBuffer.get();
+        m_ScreenUIPass.m_ScreenSpacePerFrameUniformBuffer = m_ScreenUIPerFrameUniformBuffer.get();
         m_ScreenUIPass.m_ViewportWidth = sceneTarget->GetWidth();
         m_ScreenUIPass.m_ViewportHeight = sceneTarget->GetHeight();
 
@@ -788,7 +792,7 @@ namespace minEngine
         }
         else
         {
-            RHICommandListPool::Get().SubmitFinished(cmdListPtr);
+            pooledList.SubmitFinished();
         }
 
         ++m_FrameIndex;
@@ -1216,84 +1220,14 @@ namespace minEngine
     {
         ME_PROFILE_SCOPE("Render.BuildRenderQueue");
 
-        ctx.OpaqueQueue.clear();
-        ctx.TranslucentQueue.clear();
-        ctx.ShadowCasterQueue.clear();
-
-        RenderScene* renderScene = ctx.Scene;
-        if (!renderScene)
-        {
-            return;
-        }
-
-        const bool cullEnabled = m_bFrustumCullMainView && ctx.Camera != nullptr;
         Math::Geometry::Frustum mainFrustum;
+        const bool cullEnabled = m_bFrustumCullMainView && ctx.Camera != nullptr;
         if (cullEnabled)
         {
             mainFrustum = Math::Geometry::Frustum::FromViewProjection(ctx.Camera->GetViewProjMatrix());
         }
 
-        MeshBatchCollector mainCollector;
-        MeshBatchCollector shadowOnlyCollector;
-
-        MeshCollectContext mainCollectContext;
-        mainCollectContext.Purpose = MeshCollectPurpose::MainView;
-        if (cullEnabled)
-        {
-            mainCollectContext.ViewFrustum = &mainFrustum;
-        }
-
-        MeshCollectContext shadowOnlyCollectContext;
-        shadowOnlyCollectContext.Purpose = MeshCollectPurpose::ShadowOnly;
-        // No main-view frustum: sub-culling would drop casters outside the camera cone.
-
-        for (PrimitiveSceneProxy* primitiveProxy : renderScene->m_PrimitiveSceneProxies)
-        {
-            if (!primitiveProxy || !primitiveProxy->m_PrimitiveComponent)
-            {
-                continue;
-            }
-
-            // Hidden primitives stay registered and keep ticking; they only stop producing draw
-            // and shadow output. The game thread already decided that and stored it on the proxy,
-            // and both collectors are fed from this loop, so one guard covers both.
-            if (!primitiveProxy->m_Enabled)
-            {
-                continue;
-            }
-
-            const Math::Geometry::AABB worldBounds = primitiveProxy->ResolveWorldBounds();
-
-            bool bMainViewVisible = true;
-            if (cullEnabled && worldBounds.IsValid())
-            {
-                bMainViewVisible = mainFrustum.Intersect(worldBounds);
-            }
-
-            const bool bWantShadowCollect = ctx.bEnableShadows && primitiveProxy->m_CastShadow;
-            if (!bMainViewVisible && !bWantShadowCollect)
-            {
-                continue;
-            }
-
-            if (bMainViewVisible)
-            {
-                primitiveProxy->GetMeshBatches(mainCollector, mainCollectContext);
-            }
-            else
-            {
-                primitiveProxy->GetMeshBatches(shadowOnlyCollector, shadowOnlyCollectContext);
-            }
-        }
-
-        OpaqueMeshPassProcessor opaqueProcessor(ctx.OpaqueQueue);
-        TranslucentMeshPassProcessor translucentProcessor(ctx.TranslucentQueue);
-        ShadowDepthMeshPassProcessor shadowProcessor(ctx.ShadowCasterQueue);
-
-        mainCollector.DispatchTo(opaqueProcessor);
-        mainCollector.DispatchTo(translucentProcessor);
-        mainCollector.DispatchTo(shadowProcessor);
-        shadowOnlyCollector.DispatchTo(shadowProcessor);
+        BuildPrimitiveRenderQueue(ctx, cullEnabled ? &mainFrustum : nullptr);
     }
 
     void ForwardRenderer::SortMeshDrawQueues(SceneRenderContext& ctx)
@@ -1313,85 +1247,9 @@ namespace minEngine
 
     void ForwardRenderer::BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)
     {
-        ctx.ScreenUIQueue.clear();
-
-        RenderScene* renderScene = ctx.Scene;
-        if (!renderScene)
-        {
-            return;
-        }
-
-        for (WidgetSceneProxy* widgetProxy : renderScene->m_WidgetSceneProxies)
-        {
-            if (!widgetProxy || !widgetProxy->m_bVisible || !widgetProxy->m_WidgetComponent)
-            {
-                continue;
-            }
-
-            if (!widgetProxy->m_MaterialProxy || !widgetProxy->m_VertexBuffer || !widgetProxy->m_VertexInputLayout)
-            {
-                continue;
-            }
-
-            WidgetComponent* widget = widgetProxy->m_WidgetComponent;
-            // The draw bit is the whole gate: the game thread ANDs the widget's own state and its
-            // owning canvas being active into it when the proxy is assembled, so this side never
-            // asks a component whether it may draw.
-            CanvasComponent* canvas = CanvasComponent::FindOwningCanvas(widget->GetOwner());
-            if (canvas == nullptr)
-            {
-                continue;
-            }
-
-            // Proxy stores Canvas reference-space rect; map to viewport pixels.
-            Vector2 topLeftPx = widgetProxy->m_TopLeftPx;
-            Vector2 sizePx = widgetProxy->m_SizePx;
-            float letterboxScale = 1.0f;
-            if (canvas->GetScaleMode() == EUICanvasScaleMode::Letterbox)
-            {
-                const Vector2 ref = canvas->GetReferenceResolution();
-                const ScreenUICoords::LetterboxMapping mapping = ScreenUICoords::MakeLetterboxMapping(
-                    ref.x,
-                    ref.y,
-                    static_cast<float>(viewportWidth),
-                    static_cast<float>(viewportHeight));
-                topLeftPx = mapping.MapPoint(widgetProxy->m_TopLeftPx);
-                sizePx = mapping.MapSize(widgetProxy->m_SizePx);
-                letterboxScale = mapping.Scale;
-            }
-
-            UIDrawCommand command;
-            command.StableOrder = widgetProxy->m_StableOrder;
-            command.CanvasSortOrder = canvas->GetSortOrder();
-            command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
-            command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
-            command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
-            command.Draw.m_MaterialProxy = widgetProxy->m_MaterialProxy;
-            if (widgetProxy->m_bLocalPixelMesh)
-            {
-                command.Draw.m_ModelMatrix =
-                    ScreenUICoords::MakeWidgetLocalPixelModelMatrix(topLeftPx, letterboxScale);
-            }
-            else
-            {
-                command.Draw.m_ModelMatrix = ScreenUICoords::MakeWidgetModelMatrix(topLeftPx, sizePx);
-            }
-            command.Draw.m_CastShadow = false;
-            ctx.ScreenUIQueue.push_back(command);
-        }
-
-        std::stable_sort(
-            ctx.ScreenUIQueue.begin(),
-            ctx.ScreenUIQueue.end(),
-            [](const UIDrawCommand& a, const UIDrawCommand& b)
-            {
-                if (a.CanvasSortOrder != b.CanvasSortOrder)
-                {
-                    return a.CanvasSortOrder < b.CanvasSortOrder;
-                }
-                return a.StableOrder < b.StableOrder;
-            });
+        BuildScreenUIDrawQueue(ctx, viewportWidth, viewportHeight);
     }
+
 
     DirShadowCommandBuildResult ForwardRenderer::BuildDirectionalShadowDrawCommands(const ShadowRequest& shadowRequest,
                                                                                      const ShadowResourceHandle& handle,

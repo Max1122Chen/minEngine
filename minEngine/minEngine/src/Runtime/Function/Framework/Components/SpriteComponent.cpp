@@ -104,9 +104,10 @@ namespace minEngine
             return Math::Geometry::AABB();
         }
 
+        // Component space, like every other primitive: the size is the authored one, and the world
+        // transform is applied once by whoever needs the world box.
         const Vector3 halfExtent(m_Size.x * 0.5f, m_Size.y * 0.5f, 0.01f);
-        const Math::Geometry::AABB localBox(-halfExtent, halfExtent);
-        return Math::Geometry::Transform(localBox, GetWorldMatrix());
+        return Math::Geometry::AABB(-halfExtent, halfExtent);
     }
 
     void SpriteComponent::EnsureRuntimeMaterial()
@@ -119,8 +120,11 @@ namespace minEngine
 
         Texture2D* drawTexture = ResolveDrawTexture();
         const bool needsTranslucent = ComputeSpriteNeedsTranslucentPass(m_Color, drawTexture, false);
+        // Compiled is enough: a program the graphics role still has to create becomes drawable
+        // before the next frame records, so recreating the material for it would only lose the
+        // parameters applied to this one.
         if (m_RuntimeMaterial && m_bRuntimeMaterialTranslucent == needsTranslucent &&
-            m_RuntimeMaterial->IsCompiledForDraw())
+            m_RuntimeMaterial->HasCompiledProgram())
         {
             return;
         }
@@ -150,6 +154,10 @@ namespace minEngine
         proxy.m_Color = m_Color.ToVector4();
         proxy.m_Size = m_Size;
 
+        // This path fills the proxy without PrimitiveComponent::SyncSceneProxy, so it captures the
+        // world box itself and keeps the same rule: computed here, read on the render role.
+        proxy.SetWorldBounds(Math::Geometry::Transform(GetBoundingBox(), GetWorldMatrix()));
+
         const std::shared_ptr<Texture2D> drawTexture = ResolveDrawTextureShared();
         const Vector4 drawUv = ResolveDrawUVRect();
         proxy.m_Texture = drawTexture.get();
@@ -157,10 +165,8 @@ namespace minEngine
 
         if (drawTexture == nullptr || IsUVRectDegenerate(drawUv) || m_Size.x <= 0.0f || m_Size.y <= 0.0f)
         {
-            proxy.m_MaterialProxy = nullptr;
-            proxy.m_VertexBuffer = nullptr;
-            proxy.m_IndexBuffer = nullptr;
-            proxy.m_VertexInputLayout = nullptr;
+            proxy.ClearMeshResources();
+            proxy.SetMaterialSource(nullptr);
             proxy.m_bNeedsTranslucentPass = false;
             proxy.m_ModelMatrix = GetWorldMatrix();
             proxy.m_Transform = GetWorldTransform();
@@ -169,13 +175,13 @@ namespace minEngine
 
         EnsureRuntimeMaterial();
         SyncMaterialParameters();
-        proxy.m_MaterialProxy = m_RuntimeMaterial ? m_RuntimeMaterial->GetRenderProxy() : nullptr;
+        proxy.SetMaterialSource(m_RuntimeMaterial);
 
         proxy.m_bNeedsTranslucentPass =
             ComputeSpriteNeedsTranslucentPass(
                 m_Color,
                 drawTexture.get(),
-                proxy.m_MaterialProxy && proxy.m_MaterialProxy->IsTranslucent());
+                proxy.GetMaterialProxy() && proxy.GetMaterialProxy()->IsTranslucent());
 
         RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
         if (rhi != nullptr)
@@ -183,10 +189,15 @@ namespace minEngine
             SpriteQuadMesh::Get().EnsureInitialized(*rhi);
         }
 
+        // The proxy holds the quad geometry itself, so a sprite keeps drawing even if the game
+        // thread drops the component's material or re-points the sprite later this frame.
         SpriteQuadMesh& quad = SpriteQuadMesh::Get();
-        proxy.m_VertexBuffer = quad.GetVertexBuffer();
-        proxy.m_IndexBuffer = quad.GetIndexBuffer();
-        proxy.m_VertexInputLayout = quad.GetVertexInputLayout();
+        proxy.SetMeshResources(
+            quad.GetVertexBufferRef(),
+            quad.GetVertexInputLayoutRef(),
+            quad.GetIndexBufferRef(),
+            SpriteQuadMesh::IndexCount,
+            SpriteQuadMesh::VertexCount);
 
         const Matrix4 worldMatrix = GetWorldMatrix();
         const Matrix4 sizeScale = glm::scale(Matrix4(1.0f), Vector3(m_Size.x, m_Size.y, 1.0f));

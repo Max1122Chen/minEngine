@@ -326,6 +326,10 @@ namespace minEngine
 #endif
     };
 
+    /**
+     * Holds no device object - the vertex input state lives in the pipeline and the attributes are
+     * CPU-side data - so there is nothing to post to the destroy queue.
+     */
     class VulkanRHIVertexInputLayout final : public RHIVertexInputLayout
     {
     public:

@@ -9,6 +9,7 @@
 #include <taskflow/taskflow.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -37,6 +38,15 @@ namespace minEngine
             return static_cast<int>(hardware - 1u);
         }
 
+        // The role body runs on the Render or RHI thread; the frame it is working on and whether
+        // that frame already failed belong to that thread, so no shared state is touched while the
+        // frame is in flight.
+        thread_local uint64_t t_CurrentFrameSequence = 0;
+        thread_local bool t_CurrentFrameFailed = false;
+        thread_local const char* t_CurrentFrameFailureReason = nullptr;
+
+        // A queued frame whose role body blocks on user code must not hold shutdown forever.
+        constexpr uint32_t kFrameQueueDrainTimeoutMs = 2000;
     }
 
     struct TaskSystem::Impl
@@ -76,6 +86,8 @@ namespace minEngine
         {
             uint64_t Sequence = 0;
             bool SignalCompletion = false;
+            /** Set when the Render half of the same frame already failed. */
+            bool bFrameAlreadyFailed = false;
         };
 
         State StateValue = State::Stopped;
@@ -93,6 +105,10 @@ namespace minEngine
         bool bFrameRolesRunning = false;
         bool bCombineGraphicsThreads = false;
         std::atomic<bool> bFrameRolesStop{false};
+        /** Guarded by RenderMutex: false once shutdown started, so the queue can only shrink. */
+        bool bFrameRolesAccepting = false;
+        std::atomic<uint64_t> FailedFrameCount{0};
+        std::atomic<uint64_t> DroppedQueuedFrameCount{0};
         RenderFrameTaskFn RenderTaskFn;
         RHIFrameTaskFn RHITaskFn;
         std::thread RenderThread;
@@ -102,6 +118,16 @@ namespace minEngine
         std::mutex RenderMutex;
         std::condition_variable RenderCv;
         std::deque<RenderFrameTask> RenderTasks;
+
+        /**
+         * End-to-end in-flight accounting: a frame is counted from the moment the game role reserves
+         * its slot to the moment its RHI work has settled. Queued frames and the frame each role is
+         * executing all fall inside this one count, which is what bounds how far the game role can
+         * run ahead of the GPU.
+         */
+        std::mutex InFlightMutex;
+        std::condition_variable InFlightCv;
+        size_t InFlightFrames = 0;
 
         std::mutex RHIMutex;
         std::condition_variable RHICv;
@@ -336,8 +362,22 @@ namespace minEngine
             }
         }
 
-        void SignalFrameComplete(uint64_t sequence)
+        /**
+         * A failed frame still advances CompletedFrameSequence: the producer waiting for that frame
+         * has to be released either way, and it learns about the failure from FailedFrameCount and
+         * the log rather than by blocking forever on a frame that will never succeed.
+         */
+        void SignalFrameComplete(uint64_t sequence, bool bSucceeded)
         {
+            if (!bSucceeded)
+            {
+                FailedFrameCount.fetch_add(1, std::memory_order_relaxed);
+                ME_LOG(
+                    LogCore,
+                    Error,
+                    "TaskSystem: frame {} settled as not completed; completion signalled so the producer is not stuck.",
+                    sequence);
+            }
             {
                 std::lock_guard<std::mutex> lock(FrameCompleteMutex);
                 if (sequence > CompletedFrameSequence)
@@ -348,27 +388,142 @@ namespace minEngine
             FrameCompleteCv.notify_all();
         }
 
-        /** Caller must hold RenderMutex. */
-        void WaitForRenderQueueSpaceLocked(std::unique_lock<std::mutex>& lock)
+        /**
+         * Waits for a free end-to-end slot and reserves it. Only the game role submits frames, so the
+         * waiting and the increment can happen under one lock without over-reserving.
+         * Returns false when the roles stopped while waiting: no slot was taken.
+         */
+        bool ReserveInFlightSlot()
         {
-            while (RenderTasks.size() >= TaskSystem::kMaxPendingRenderFrames && !bFrameRolesStop)
+            std::unique_lock<std::mutex> lock(InFlightMutex);
+            while (InFlightFrames >= TaskSystem::kMaxInFlightFrames && !bFrameRolesStop)
             {
-                ME_PROFILE_SCOPE("Frame.Game.WaitRenderQueue");
-                RenderCv.wait(lock);
+                ME_PROFILE_SCOPE("Frame.Game.WaitInFlightSpace");
+                InFlightCv.wait(lock);
+            }
+            if (bFrameRolesStop)
+            {
+                return false;
+            }
+            ++InFlightFrames;
+            return true;
+        }
+
+        /** Game role only: wait for a free slot without taking it. */
+        void WaitForInFlightSlot()
+        {
+            std::unique_lock<std::mutex> lock(InFlightMutex);
+            while (InFlightFrames >= TaskSystem::kMaxInFlightFrames && !bFrameRolesStop)
+            {
+                ME_PROFILE_SCOPE("Frame.Game.WaitInFlightSpace");
+                InFlightCv.wait(lock);
             }
         }
 
-        void RunRHIFrameTask(const RHIFrameTask& task)
+        /** Releases the slots of frames that will never settle themselves. Any role thread. */
+        void SettleInFlightFrames(size_t count)
         {
-            if (RHITaskFn)
+            if (count == 0)
             {
-                ME_PROFILE_SCOPE("Frame.RHI.Replay");
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lock(InFlightMutex);
+                InFlightFrames -= (count < InFlightFrames) ? count : InFlightFrames;
+            }
+            InFlightCv.notify_all();
+        }
+
+        /** One frame starts; the Render and RHI halves of the same frame share one verdict. */
+        void BeginFrameContext(uint64_t sequence)
+        {
+            t_CurrentFrameSequence = sequence;
+            t_CurrentFrameFailed = false;
+            t_CurrentFrameFailureReason = nullptr;
+        }
+
+        bool FrameIsFailed()
+        {
+            return t_CurrentFrameFailed;
+        }
+
+        /** Frame over: returns the verdict and leaves no stale frame identity on this thread. */
+        bool EndFrameContext()
+        {
+            const bool bSucceeded = !t_CurrentFrameFailed;
+            t_CurrentFrameSequence = 0;
+            t_CurrentFrameFailed = false;
+            t_CurrentFrameFailureReason = nullptr;
+            return bSucceeded;
+        }
+
+        /** Annotates the current frame; does not settle it. */
+        void RunRenderBody(const RenderFrameTask& task)
+        {
+            if (!RenderTaskFn)
+            {
+                return;
+            }
+            ME_PROFILE_SCOPE("Frame.Render.Tick");
+            try
+            {
+                RenderTaskFn(task.DeltaTime);
+            }
+            catch (const std::exception& ex)
+            {
+                t_CurrentFrameFailed = true;
+                ME_LOG(LogCore, Error, "TaskSystem: Render role threw on frame {}: {}", task.Sequence, ex.what());
+            }
+            catch (...)
+            {
+                t_CurrentFrameFailed = true;
+                ME_LOG(LogCore, Error, "TaskSystem: Render role threw an unknown exception on frame {}.", task.Sequence);
+            }
+        }
+
+        /** Annotates the current frame; does not settle it. */
+        void RunRHIBody(const RHIFrameTask& task)
+        {
+            if (!RHITaskFn)
+            {
+                return;
+            }
+            ME_PROFILE_SCOPE("Frame.RHI.Replay");
+            try
+            {
                 RHITaskFn();
             }
+            catch (const std::exception& ex)
+            {
+                t_CurrentFrameFailed = true;
+                ME_LOG(LogCore, Error, "TaskSystem: RHI role threw on frame {}: {}", task.Sequence, ex.what());
+            }
+            catch (...)
+            {
+                t_CurrentFrameFailed = true;
+                ME_LOG(LogCore, Error, "TaskSystem: RHI role threw an unknown exception on frame {}.", task.Sequence);
+            }
+        }
+
+        /**
+         * Runs the RHI half of a frame and settles it. bFrameAlreadyFailed carries a Render-side
+         * failure across the role handoff, so a frame is reported once with one verdict instead of
+         * looking healthy just because the second role happened to succeed.
+         */
+        bool FinishRHIFrameTask(const RHIFrameTask& task)
+        {
+            BeginFrameContext(task.Sequence);
+            t_CurrentFrameFailed = task.bFrameAlreadyFailed;
+            RunRHIBody(task);
+            const bool bSucceeded = EndFrameContext();
             if (task.SignalCompletion)
             {
-                SignalFrameComplete(task.Sequence);
+                SignalFrameComplete(task.Sequence, bSucceeded);
             }
+            // The frame is over end to end: its RHI work has run, so the game role may hand over the
+            // next one. Settled last, after every consumer of the frame has finished with it.
+            SettleInFlightFrames(1);
+            return bSucceeded;
         }
 
         void CombinedGraphicsThreadMain()
@@ -377,7 +532,8 @@ namespace minEngine
             FrameThreading::Get().BindCurrentThread(FrameThreadKind::RHI);
             MakeGraphicsContextCurrentIfNeeded();
 
-            while (!bFrameRolesStop)
+            // Stops only when the queue is empty: shutdown wants what was already accepted to run.
+            for (;;)
             {
                 RenderFrameTask task{};
                 {
@@ -385,12 +541,12 @@ namespace minEngine
                     RenderCv.wait(lock, [&]() {
                         return bFrameRolesStop || !RenderTasks.empty();
                     });
-                    if (bFrameRolesStop && RenderTasks.empty())
-                    {
-                        break;
-                    }
                     if (RenderTasks.empty())
                     {
+                        if (bFrameRolesStop)
+                        {
+                            break;
+                        }
                         continue;
                     }
                     task = RenderTasks.front();
@@ -399,12 +555,11 @@ namespace minEngine
                 RenderCv.notify_all();
 
                 ME_PROFILE_SCOPE("Frame.Graphics.Tick");
-                if (RenderTaskFn)
-                {
-                    ME_PROFILE_SCOPE("Frame.Render.Tick");
-                    RenderTaskFn(task.DeltaTime);
-                }
-                RunRHIFrameTask(RHIFrameTask{task.Sequence, task.WaitForCompletion});
+                BeginFrameContext(task.Sequence);
+                RunRenderBody(task);
+                const bool bRenderFailed = FrameIsFailed();
+                EndFrameContext();
+                FinishRHIFrameTask(RHIFrameTask{task.Sequence, task.WaitForCompletion, bRenderFailed});
             }
 
             ClearGraphicsContextIfNeeded();
@@ -414,7 +569,8 @@ namespace minEngine
         {
             FrameThreading::Get().BindCurrentThread(FrameThreadKind::Render);
 
-            while (!bFrameRolesStop)
+            // Stops only when the queue is empty: shutdown wants what was already accepted to run.
+            for (;;)
             {
                 RenderFrameTask task{};
                 {
@@ -422,12 +578,12 @@ namespace minEngine
                     RenderCv.wait(lock, [&]() {
                         return bFrameRolesStop || !RenderTasks.empty();
                     });
-                    if (bFrameRolesStop && RenderTasks.empty())
-                    {
-                        break;
-                    }
                     if (RenderTasks.empty())
                     {
+                        if (bFrameRolesStop)
+                        {
+                            break;
+                        }
                         continue;
                     }
                     task = RenderTasks.front();
@@ -435,15 +591,14 @@ namespace minEngine
                 }
                 RenderCv.notify_all();
 
-                if (RenderTaskFn)
-                {
-                    ME_PROFILE_SCOPE("Frame.Render.Tick");
-                    RenderTaskFn(task.DeltaTime);
-                }
+                BeginFrameContext(task.Sequence);
+                RunRenderBody(task);
+                const bool bRenderFailed = FrameIsFailed();
+                EndFrameContext();
 
                 {
                     std::lock_guard<std::mutex> lock(RHIMutex);
-                    RHITasks.push_back(RHIFrameTask{task.Sequence, task.WaitForCompletion});
+                    RHITasks.push_back(RHIFrameTask{task.Sequence, task.WaitForCompletion, bRenderFailed});
                 }
                 RHICv.notify_one();
             }
@@ -454,7 +609,8 @@ namespace minEngine
             FrameThreading::Get().BindCurrentThread(FrameThreadKind::RHI);
             MakeGraphicsContextCurrentIfNeeded();
 
-            while (!bFrameRolesStop)
+            // Stops only when the queue is empty: shutdown wants what was already accepted to run.
+            for (;;)
             {
                 RHIFrameTask task{};
                 {
@@ -462,21 +618,64 @@ namespace minEngine
                     RHICv.wait(lock, [&]() {
                         return bFrameRolesStop || !RHITasks.empty();
                     });
-                    if (bFrameRolesStop && RHITasks.empty())
-                    {
-                        break;
-                    }
                     if (RHITasks.empty())
                     {
+                        if (bFrameRolesStop)
+                        {
+                            break;
+                        }
                         continue;
                     }
                     task = RHITasks.front();
                     RHITasks.pop_front();
                 }
-                RunRHIFrameTask(task);
+                RHICv.notify_all();
+                FinishRHIFrameTask(task);
             }
 
             ClearGraphicsContextIfNeeded();
+        }
+
+        /** Bounded wait for the in-flight queues to run empty. Caller has stopped new submissions. */
+        void DrainQueuedFrames()
+        {
+            const auto deadline =
+                std::chrono::steady_clock::now() + std::chrono::milliseconds(kFrameQueueDrainTimeoutMs);
+            for (;;)
+            {
+                size_t renderDepth = 0;
+                size_t rhiDepth = 0;
+                {
+                    std::lock_guard<std::mutex> lock(RenderMutex);
+                    renderDepth = RenderTasks.size();
+                }
+                {
+                    std::lock_guard<std::mutex> lock(RHIMutex);
+                    rhiDepth = RHITasks.size();
+                }
+                if (renderDepth == 0 && rhiDepth == 0)
+                {
+                    return;
+                }
+                if (std::chrono::steady_clock::now() >= deadline)
+                {
+                    ME_LOG(
+                        LogCore,
+                        Warn,
+                        "TaskSystem: frame queue drain timed out (render={}, rhi={}); stopping with work queued.",
+                        renderDepth,
+                        rhiDepth);
+                    return;
+                }
+                {
+                    std::unique_lock<std::mutex> lock(RenderMutex);
+                    RenderCv.wait_for(lock, std::chrono::milliseconds(5));
+                }
+                {
+                    std::unique_lock<std::mutex> lock(RHIMutex);
+                    RHICv.wait_for(lock, std::chrono::milliseconds(5));
+                }
+            }
         }
 
         void StopFrameRolesInternal()
@@ -486,10 +685,24 @@ namespace minEngine
                 return;
             }
 
+            // Phase 1: refuse new submissions, so from here the queues can only shrink.
+            {
+                std::lock_guard<std::mutex> lock(RenderMutex);
+                bFrameRolesAccepting = false;
+            }
+
+            // Phase 2: let the role threads finish the frames the game side already handed over.
+            // A frame in the middle of one role body is expected to complete; the wait is bounded
+            // because a role body may be stuck on user code and shutdown cannot hang on it.
+            DrainQueuedFrames();
+
+            // Phase 3: stop and join. Every waiter has to learn about the stop, including a game
+            // role blocked on an in-flight slot that nothing will free any more.
             bFrameRolesStop = true;
             RenderCv.notify_all();
             RHICv.notify_all();
             FrameCompleteCv.notify_all();
+            InFlightCv.notify_all();
 
             if (GraphicsThread.joinable())
             {
@@ -506,10 +719,25 @@ namespace minEngine
 
             RenderTaskFn = {};
             RHITaskFn = {};
+
+            // Phase 4: whatever is still queued is discarded, counted and logged — the engine must
+            // never report a frame as drawn that nobody drew.
+            const size_t leftover = RenderTasks.size() + RHITasks.size();
+            // Discarded frames never reach their RHI work, so nobody else will release their slots.
+            SettleInFlightFrames(leftover);
             RenderTasks.clear();
             RHITasks.clear();
             bFrameRolesRunning = false;
             bCombineGraphicsThreads = false;
+            if (leftover != 0)
+            {
+                DroppedQueuedFrameCount.fetch_add(leftover, std::memory_order_relaxed);
+                ME_LOG(
+                    LogCore,
+                    Warn,
+                    "TaskSystem: frame roles stopped with {} queued frame entr(ies) discarded.",
+                    leftover);
+            }
 
             if (FrameThreading::HasInstance())
             {
@@ -539,8 +767,18 @@ namespace minEngine
             RHITaskFn = std::move(rhiTask);
             bCombineGraphicsThreads = combineGraphicsThreads;
             bFrameRolesStop = false;
+            {
+                std::lock_guard<std::mutex> lock(RenderMutex);
+                bFrameRolesAccepting = true;
+            }
             NextFrameSequence = 1;
             CompletedFrameSequence = 0;
+            {
+                // A fresh set of roles starts with nothing in flight, whatever the previous one left
+                // behind after a stop.
+                std::lock_guard<std::mutex> lock(InFlightMutex);
+                InFlightFrames = 0;
+            }
             bFrameRolesRunning = true;
 
             FrameThreading::Get().BindCurrentThread(FrameThreadKind::Game);
@@ -835,6 +1073,32 @@ namespace minEngine
         m_Impl->StopFrameRolesInternal();
     }
 
+    void TaskSystem::MarkCurrentFrameIncomplete(const char* reason)
+    {
+        if (t_CurrentFrameSequence == 0)
+        {
+            return;
+        }
+        t_CurrentFrameFailed = true;
+        t_CurrentFrameFailureReason = (reason != nullptr) ? reason : "unspecified";
+        ME_LOG(
+            LogCore,
+            Error,
+            "TaskSystem: frame {} reported incomplete by its role body: {}",
+            t_CurrentFrameSequence,
+            t_CurrentFrameFailureReason);
+    }
+
+    uint64_t TaskSystem::GetFailedFrameCount() const
+    {
+        return m_Impl->FailedFrameCount.load(std::memory_order_relaxed);
+    }
+
+    uint64_t TaskSystem::GetDroppedQueuedFrameCount() const
+    {
+        return m_Impl->DroppedQueuedFrameCount.load(std::memory_order_relaxed);
+    }
+
     void TaskSystem::WaitForRenderQueueSpace()
     {
         Impl& impl = *m_Impl;
@@ -842,8 +1106,7 @@ namespace minEngine
         {
             return;
         }
-        std::unique_lock<std::mutex> lock(impl.RenderMutex);
-        impl.WaitForRenderQueueSpaceLocked(lock);
+        impl.WaitForInFlightSlot();
     }
 
     void TaskSystem::SubmitRenderFrameTask(float deltaTime, bool waitForCompletion)
@@ -853,12 +1116,21 @@ namespace minEngine
 
         ME_PROFILE_SCOPE("Frame.Game.SubmitRenderFrame");
 
+        // The slot is reserved before the frame becomes visible to a role: a fast frame can settle
+        // before this function returns, and counting it afterwards would race that release.
+        if (!impl.ReserveInFlightSlot())
+        {
+            return;
+        }
+
         uint64_t sequence = 0;
         {
-            std::unique_lock<std::mutex> lock(impl.RenderMutex);
-            impl.WaitForRenderQueueSpaceLocked(lock);
-            if (impl.bFrameRolesStop)
+            std::lock_guard<std::mutex> lock(impl.RenderMutex);
+            if (!impl.bFrameRolesAccepting)
             {
+                // Shutdown is draining: accepting here would grow a queue nothing will consume.
+                impl.SettleInFlightFrames(1);
+                ME_LOG(LogCore, Warn, "TaskSystem::SubmitRenderFrameTask rejected: frame roles are shutting down.");
                 return;
             }
             sequence = impl.NextFrameSequence++;

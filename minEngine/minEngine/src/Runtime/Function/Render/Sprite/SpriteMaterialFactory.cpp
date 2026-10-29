@@ -141,6 +141,12 @@ namespace minEngine
             std::shared_ptr<Material> Opaque;
             std::shared_ptr<Material> Translucent;
             SpriteMaterialCacheStats Stats;
+            /**
+             * A program the driver refused is refused for the life of the template, so it is
+             * reported once per cached template instead of once per widget that asks.
+             */
+            bool bOpaqueFailureReported = false;
+            bool bTranslucentFailureReported = false;
         };
 
         SpriteTemplateCache& GetTemplateCache()
@@ -167,6 +173,18 @@ namespace minEngine
                 return nullptr;
             }
 
+            if (material->IsProgramPendingMaterialization())
+            {
+                // Not a failure: the compile finished and the program is created by the graphics
+                // role at the start of the next render frame, which is before anything records.
+                ME_LOG(
+                    LogRender,
+                    Info,
+                    "SpriteMaterialFactory: {} sprite material compiled; its program is created by "
+                    "the graphics role at the next frame start.",
+                    translucent ? "translucent" : "opaque");
+            }
+
             return material;
         }
     }
@@ -182,11 +200,34 @@ namespace minEngine
             cache.RhiSerial = rhi.GetInstanceSerial();
             cache.Opaque.reset();
             cache.Translucent.reset();
+            cache.bOpaqueFailureReported = false;
+            cache.bTranslucentFailureReported = false;
         }
 
         std::shared_ptr<Material>& slot = translucent ? cache.Translucent : cache.Opaque;
         if (slot)
         {
+            bool& bFailureReported =
+                translucent ? cache.bTranslucentFailureReported : cache.bOpaqueFailureReported;
+            if (slot->HasProgramCreateFailed())
+            {
+                if (!bFailureReported)
+                {
+                    // The graphics role already reported the driver's own message. This adds the
+                    // one thing it cannot know: what the failure costs, so a scene with no sprites
+                    // is explained rather than silently empty.
+                    bFailureReported = true;
+                    ME_LOG(
+                        LogRender,
+                        Error,
+                        "SpriteMaterialFactory: the {} sprite material's program failed to create; "
+                        "sprite and UI draws with it are skipped. {}",
+                        translucent ? "translucent" : "opaque",
+                        slot->GetShaderCompileLog());
+                }
+                return nullptr;
+            }
+
             return slot;
         }
 

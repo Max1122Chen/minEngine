@@ -27,6 +27,7 @@
 
 #include "Render/RenderScene.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Pointer/PointerPolicyService.h"
 #include "Runtime/Function/UI/UISystem.h"
@@ -404,6 +405,7 @@ namespace minEngine
 
     void SceneEditingViewportClient::ApplyPointerPolicy(ViewportPointerMode mode)
     {
+        const ViewportPointerMode previousMode = m_PointerMode;
         m_PointerMode = mode;
 
         if (!PointerPolicyService::HasInstance())
@@ -430,6 +432,10 @@ namespace minEngine
                 m_NavigateRequest =
                     policy.Request(EPointerTier::Editor, EPointerMode::Captured, clipSpec);
             }
+            if (previousMode != mode)
+            {
+                ME_LOG(LogEditor, Info, "SEVC pointer policy -> EditNavigate");
+            }
             return;
         }
 
@@ -446,10 +452,19 @@ namespace minEngine
                 // Game tier: inventory/UI can Request(UI, Free/Confined) above this.
                 m_PlayCaptureRequest =
                     policy.Request(EPointerTier::Game, EPointerMode::Captured, clipSpec);
+                ME_LOG(LogEditor, Info, "SEVC pointer policy -> PieCaptured (new Game Captured request)");
             }
             return;
         }
 
+        if (previousMode != mode)
+        {
+            ME_LOG(
+                LogEditor,
+                Info,
+                "SEVC pointer policy -> {} (release navigate/play requests)",
+                mode == ViewportPointerMode::PieReleased ? "PieReleased" : "Off");
+        }
         m_NavigateRequest.Release();
         m_PlayCaptureRequest.Release();
         SetImGuiCursorDriveEnabled(true);

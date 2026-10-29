@@ -16,6 +16,7 @@
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "RenderPipeline/ForwardRenderer.h"
 #include "RenderPipeline/ManualRenderer.h"
+#include "RenderScene.h"
 
 #include <filesystem>
 
@@ -142,6 +143,34 @@ namespace minEngine
 
         if (m_RHI)
         {
+            // Anything whose last reference dropped above - and anything the world released on its
+            // way here - queued its native handle for a batch tail that is not coming. The device is
+            // still alive, so take them now: a handle left queued here is one the backend can no
+            // longer destroy, and the release that follows reports it as a leak.
+            DiscardOrphanedRenderScenesForTeardown();
+
+            const size_t destroyedHandles = m_RHI->RHIDrainAllDeferredDestroys();
+            const size_t leakedHandles = m_RHI->GetDeferredDestroyQueue().GetPendingCount();
+            if (leakedHandles != 0)
+            {
+                ME_LOG(
+                    LogRHI,
+                    Error,
+                    "RenderSystem::Shutdown: {} native handle(s) are still queued for destruction "
+                    "and cannot be destroyed once the device goes; the batch tail that would have "
+                    "freed them never ran.",
+                    leakedHandles);
+            }
+            else if (destroyedHandles != 0)
+            {
+                ME_LOG(
+                    LogRHI,
+                    Info,
+                    "RenderSystem::Shutdown: destroyed {} native handle(s) that were waiting for a "
+                    "batch tail.",
+                    destroyedHandles);
+            }
+
             m_RHI->Shutdown();
             m_RHI.reset();
         }

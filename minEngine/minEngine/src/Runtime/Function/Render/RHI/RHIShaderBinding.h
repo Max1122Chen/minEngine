@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Render/RHI/RHIDeferredCreate.h"
 #include "Render/RHI/RHITexture.h"
 #include "Render/RHI/RHISampler.h"
 
@@ -52,7 +53,12 @@ namespace minEngine
         RHIGraphicsShaderStage Visibility = RHIGraphicsShaderStage::Pixel;
     };
 
-    class RHIShaderBindingSetLayout
+    /**
+     * The table a binding set is built from. Owns a native descriptor-set layout on APIs that have
+     * one, and is a plain table on the ones that bind resources individually; the hand-off is the
+     * same either way.
+     */
+    class RHIShaderBindingSetLayout : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHIShaderBindingSetLayout() = default;
@@ -75,7 +81,8 @@ namespace minEngine
         RHISampler* Sampler = nullptr;
     };
 
-    class RHIShaderBindingSet
+    /** The resources bound together. Owns a driver object only on APIs that need one. */
+    class RHIShaderBindingSet : public RHIDeferredCreateTarget
     {
     public:
         virtual ~RHIShaderBindingSet() = default;

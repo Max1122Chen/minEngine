@@ -19,6 +19,15 @@ Three uses (see docs/ai/Platform/ProductBuild/BUILD-F02_S01_EXPORT_WHITELIST_IMP
                                    to delete a symbol is to refresh the baseline, which then
                                    shows up as a deletion in the commit diff.
 
+  --write-export-snapshot PATH     freeze the current export symbol list into a plain-text
+                                   snapshot (one symbol name per line, sorted)
+  --snapshot PATH --assert-max-growth N --fail
+                                   incremental gate: fail when the table gained more than N
+                                   symbols since the snapshot, or lost a symbol the removal
+                                   baseline has not sanctioned. The delta is what says
+                                   something about ONE change; the absolute budget only
+                                   catches a blow-up.
+
 The whitelist is built from what consumers actually import, never from the DLL export
 table: dumping the current export table into a .def does not lower the entry count and
 therefore does not remove the 65535-ordinal bomb.
@@ -37,7 +46,12 @@ import time
 
 DEFAULT_DLL = os.path.join("minEngine", "bin", "libminEngined.dll")
 DEFAULT_CONSUMER_DIR = os.path.join("minEngine", "bin")
-DEFAULT_BUDGET = 3000
+# Accident ceiling, not a decision input. At ~3000 live exports a number this round carries no
+# information about a normal change, and using it as the daily gate only forces pointless
+# "is this class worth a test export" trade-offs. What the gate asserts now is the DELTA
+# against the committed snapshot (--assert-max-growth); this number stays as the backstop for
+# an explosion (a template-instantiation cascade, a relink under --export-all-symbols).
+DEFAULT_BUDGET = 3500
 DEFAULT_MIN_HEADROOM = 60000
 # Stale artifacts kept out of the contract by default (see design P3): Maximum.exe is the
 # retired Playground build and imports symbols the engine no longer defines.
@@ -709,6 +723,150 @@ def assert_no_removals_vs(baseline_path, dll_path, exports):
     return 1
 
 
+# --- export snapshot: the incremental gate ---------------------------------------------
+# The budget bounds the table, the removal baseline protects what consumers import. Neither
+# notices "this change quietly exported 300 more symbols", which is the shape that actually
+# erodes a DLL boundary: each individual addition looks reasonable, the sum does not. The
+# snapshot is the committed export list of the last accepted state, so the gate can assert the
+# DELTA of one change. Regenerating it is the explicit confirmation for an intentional
+# addition, and because it is a tracked one-name-per-line file that confirmation is a diff a
+# reviewer reads without running anything.
+DEFAULT_MAX_GROWTH = 25
+# Printed names per failure. Enough to recognise the family that leaked, short enough that the
+# gate's own output stays readable in a verify log.
+GROWTH_PRINT_LIMIT = 40
+
+
+def read_export_snapshot(path):
+    """Symbol set of a committed snapshot. Raises ValueError when the file cannot verify.
+
+    The format is deliberately boring: sorted symbol names, one per line. Blank lines are
+    ignored so a trailing newline is not a failure; comment lines are an error rather than
+    silently skipped, because a snapshot that carries prose has been hand-edited and is not
+    the generated artifact the gate compares against.
+    """
+    names = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for raw in handle:
+            line = raw.strip()
+            if not line:
+                continue
+            if line.startswith(";"):
+                raise ValueError("comment line %r (the snapshot is generated, not authored)"
+                                 % line[:40])
+            names.append(line)
+    if not names:
+        raise ValueError("holds 0 symbols - an empty snapshot grows by nothing and passes every "
+                         "growth assertion by vacuity")
+    if len(names) != len(set(names)):
+        duplicates = sorted(name for name, count in collections.Counter(names).items()
+                            if count > 1)
+        raise ValueError("holds %d duplicate line(s), e.g. %s" % (
+            len(duplicates), ", ".join(duplicates[:3])))
+    return set(names)
+
+
+def write_export_snapshot(path, dll_path, exports):
+    """Freeze the current export list into the committed snapshot (sorted, one name per line)."""
+    names = sorted(exports.name_set())
+    os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(names) + "\n")
+    print("wrote %s: %d export symbols (contract %s, %d data)" % (
+        path, len(names), contract_key(os.path.basename(dll_path)),
+        sum(1 for name in names if exports.kinds.get(name) == "data")))
+    return names
+
+
+def read_removal_baseline(path):
+    """Symbol set of the removal baseline, or None when it is absent/unusable.
+
+    Used to label a disappearance: a symbol the baseline still records was imported by a
+    consumer, so its removal breaks that consumer's next link. It never excuses a removal.
+    """
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    symbols = payload.get("symbols") if isinstance(payload, dict) else None
+    if not isinstance(symbols, list) or not all(isinstance(name, str) for name in symbols):
+        return None
+    return set(symbols)
+
+
+def assert_max_growth(snapshot_path, dll_path, exports, max_growth, removal_baseline_path):
+    """Assert the table grew by at most max_growth and lost nothing unsanctioned.
+
+    Exit 1 is a real violation; exit 2 means the gate could not verify anything (missing,
+    empty, duplicated or hand-authored snapshot). Both fail: a growth gate that skips itself
+    when its input is missing is the false green the coverage check already refuses.
+    """
+    if max_growth is None:
+        max_growth = DEFAULT_MAX_GROWTH
+    try:
+        frozen = read_export_snapshot(snapshot_path)
+    except OSError as exc:
+        print("FAIL: export snapshot unreadable: %s (%s)" % (snapshot_path, exc), file=sys.stderr)
+        print("      nothing was compared; regenerate it with "
+              "--write-export-snapshot %s" % snapshot_path, file=sys.stderr)
+        return 2
+    except ValueError as exc:
+        print("FAIL: export snapshot %s %s" % (snapshot_path, exc), file=sys.stderr)
+        print("      nothing was compared; regenerate it with "
+              "--write-export-snapshot %s" % snapshot_path, file=sys.stderr)
+        return 2
+    current = exports.name_set()
+    added = sorted(current - frozen)
+    removed = sorted(frozen - current)
+    sanctioned = read_removal_baseline(removal_baseline_path) or set()
+    print("snapshot ....... %s" % snapshot_path)
+    print("  frozen ....... %d symbols" % len(frozen))
+    print("  current DLL .. %s (%d exports)" % (dll_path, len(current)))
+    exit_code = 0
+    if len(added) > max_growth:
+        print("FAIL: export table grew by %d symbols, limit %d" % (len(added), max_growth),
+              file=sys.stderr)
+        for name in added[:GROWTH_PRINT_LIMIT]:
+            print("  new: %s" % name, file=sys.stderr)
+        if len(added) > GROWTH_PRINT_LIMIT:
+            print("  ... %d more new symbols" % (len(added) - GROWTH_PRINT_LIMIT),
+                  file=sys.stderr)
+        print("      If the addition is intended, record it by regenerating the snapshot "
+              "(--write-export-snapshot %s) and name each new export in the commit message."
+              % snapshot_path, file=sys.stderr)
+        exit_code = 1
+    if removed:
+        # Every disappearance fails, including one the removal baseline never recorded: an export
+        # nobody imports today is still a symbol someone's product may call tomorrow, and a gate
+        # that exempts exactly the symbols nobody is watching is the false green this repository
+        # keeps designing against. Accepting an intended removal costs one regenerated snapshot,
+        # which puts the deletion in the commit diff.
+        in_baseline = [name for name in removed if name in sanctioned]
+        print("FAIL: %d symbol(s) listed in the snapshot are no longer exported by %s" % (
+            len(removed), dll_path), file=sys.stderr)
+        for name in removed[:GROWTH_PRINT_LIMIT]:
+            print("  removed: %s%s" % (
+                name, "   (recorded in the removal baseline: consumer contract regression)"
+                if name in sanctioned else ""), file=sys.stderr)
+        if len(removed) > GROWTH_PRINT_LIMIT:
+            print("  ... %d more removed symbols" % (
+                len(removed) - GROWTH_PRINT_LIMIT), file=sys.stderr)
+        if in_baseline:
+            print("      %d of them are recorded in the removal baseline, so a consumer that "
+                  "imports them breaks on its next link." % len(in_baseline), file=sys.stderr)
+        print("      Restore the export, or - if the removal is intended and reviewed through a "
+              "baseline refresh - regenerate the snapshot (--write-export-snapshot %s) so the "
+              "deletion is recorded in the commit diff." % snapshot_path, file=sys.stderr)
+        exit_code = 1
+    if exit_code == 0:
+        print("PASS: export growth %d <= %d, no symbol left the export table" % (
+            len(added), max_growth))
+    return exit_code
+
+
 def write_whitelist(path, dll_path, exports, consumers, extra_defs):
     target = os.path.basename(dll_path).lower()
     existing = exports.name_set()
@@ -828,6 +986,19 @@ def main(argv=None):
                              "DLL; exits non-zero on any removal AND when the baseline is missing, "
                              "unreadable, empty, or belongs to another contract (a guard that "
                              "cannot verify must not pass)")
+    parser.add_argument("--write-export-snapshot", default=None, metavar="PATH",
+                        help="freeze the current export symbol list into a sorted plain-text "
+                             "snapshot (one name per line) for the incremental export gate")
+    parser.add_argument("--snapshot", default=None, metavar="PATH",
+                        help="with --fail: compare the export table against this committed "
+                             "snapshot; a growth above --assert-max-growth, or a symbol the "
+                             "removal baseline has not sanctioned, fails")
+    parser.add_argument("--assert-max-growth", type=int, default=None, metavar="N",
+                        help="with --snapshot: allowed number of exports newer than the snapshot "
+                             "(default %d)" % DEFAULT_MAX_GROWTH)
+    parser.add_argument("--removal-baseline", default=None, metavar="PATH",
+                        help="with --snapshot: baseline used to label a removal as a consumer "
+                             "contract regression. Diagnosis only - a removal always fails")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
 
@@ -859,6 +1030,17 @@ def main(argv=None):
     if transitional_buckets and not args.verify_coverage:
         print("error: --transitional-missing-bucket requires --verify-coverage (otherwise it "
               "tolerates nothing)", file=sys.stderr)
+        return 2
+    if args.assert_max_growth is not None and not args.snapshot:
+        print("error: --assert-max-growth requires --snapshot (there is nothing to compare "
+              "against)", file=sys.stderr)
+        return 2
+    if args.snapshot and not args.fail:
+        print("error: --snapshot requires --fail (otherwise it asserts nothing)", file=sys.stderr)
+        return 2
+    if args.removal_baseline and not args.snapshot:
+        print("error: --removal-baseline requires --snapshot (otherwise it labels nothing)",
+              file=sys.stderr)
         return 2
 
     dll_path = args.dll
@@ -903,6 +1085,8 @@ def main(argv=None):
         write_whitelist(args.emit_whitelist, dll_path, exports, consumers, args.extra_def)
     if args.write_export_baseline:
         write_export_baseline(args.write_export_baseline, dll_path, exports)
+    if args.write_export_snapshot:
+        write_export_snapshot(args.write_export_snapshot, dll_path, exports)
 
     payload = None
     if args.report or args.json:
@@ -919,6 +1103,12 @@ def main(argv=None):
         # Runs before --fail: a removal is the more specific failure and must not be masked by
         # a budget assertion that happens to pass on the smaller table.
         exit_code = assert_no_removals_vs(args.assert_no_removals_vs, dll_path, exports)
+    if args.snapshot:
+        # Before --fail: "this change exported 300 new symbols" is more actionable than the
+        # budget, and a growth failure must not be masked by a passing ceiling.
+        exit_code = max(exit_code, assert_max_growth(args.snapshot, dll_path, exports,
+                                                     args.assert_max_growth,
+                                                     args.removal_baseline))
     if args.verify_coverage:
         # max(), not assignment: a removal failure (1) or an unverifiable guard (2) must never be
         # overwritten by a later assertion that happens to pass in the same invocation.

@@ -65,6 +65,12 @@ namespace minEngine
             "frame-threading",
             "render-command-pipe",
             "rhi-command-list",
+            "rhi-deferred-create",
+            "rhi-deferred-destroy",
+            "scene-retirement",
+            "deferred-release",
+            "scene-proxy-lifetime",
+            "scene-proxy-render-read",
         };
 
         std::vector<ITestSuite*> ordered;

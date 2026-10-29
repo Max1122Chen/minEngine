@@ -26,6 +26,9 @@ namespace minEngine
     Material::Material()
     {
         EnsureRenderProxy();
+        // Publishes the authored state (blend mode, empty tables) so a proxy created before the
+        // first compile answers translucent/masked exactly as the material does.
+        m_RenderProxy->PublishGameData();
     }
 
     std::shared_ptr<Material> Material::ResolveParentMaterial(
@@ -38,13 +41,16 @@ namespace minEngine
     {
         if (!m_RenderProxy)
         {
-            m_RenderProxy = std::make_unique<DefaultMaterialRenderProxy>(*this);
+            m_RenderProxy = MakeMaterialRenderProxy<DefaultMaterialRenderProxy>(*this);
         }
     }
 
     std::shared_ptr<Material> Material::CreateRuntimeInstance(const std::string& instanceName) const
     {
-        if (!IsCompiledForDraw() || !m_Graph)
+        // A sibling reuses this material's program instead of compiling one, so a program that is
+        // still queued for the graphics role is enough: both materials name the same handle, and
+        // both become drawable when the graphics role creates it.
+        if (!HasCompiledProgram() || !m_Graph)
         {
             return nullptr;
         }
@@ -67,6 +73,9 @@ namespace minEngine
         instance->m_MaterialShaderBindingSetLayout = m_MaterialShaderBindingSetLayout;
         instance->m_CompileGeneration = m_CompileGeneration;
         instance->EnsureRenderProxy();
+        // Nothing compiles for a sibling, so the publish the compile path would have done has to
+        // happen here: the copied program, layout and tables are what the render role draws with.
+        instance->m_RenderProxy->PublishGameData();
         return instance;
     }
 
@@ -279,13 +288,27 @@ namespace minEngine
         {
             return true;
         }
-        if (!IsCompiledForDraw() && !Compile())
+        if (!HasCompiledProgram() && !Compile())
         {
             return false;
         }
+        if (m_GPUShaderSkinned != nullptr && !m_GPUShaderSkinned->HasNativeCreateFailed())
+        {
+            // The variant was already built for this generation: its program is queued for the
+            // graphics role or already exists. Requesting it again would make a second program
+            // for the same material and publish a snapshot of the same state.
+            return true;
+        }
         MaterialCompileContext ctx;
         ctx.RHI = RenderSystem::Get().GetRHI();
-        return MaterialCompiler::CompileSkinnedVariant(*this, ctx);
+        const bool bCompiled = MaterialCompiler::CompileSkinnedVariant(*this, ctx);
+        if (bCompiled && m_RenderProxy)
+        {
+            // A skinned variant is a second GPU program; without publishing it the render role has
+            // no snapshot that names it and the mesh keeps drawing unskinned.
+            m_RenderProxy->PublishGameData();
+        }
+        return bCompiled;
     }
 
     const MaterialGraphNodeDef_TextureObject* Material::FindTextureNodeBySlot(int slotIndex) const
@@ -371,6 +394,19 @@ namespace minEngine
                 });
             }
             return false;
+        }
+
+        if (!m_GPUShader->IsValid() && !m_GPUShader->HasNativeCreateFailed())
+        {
+            // The program is queued for the graphics role. The compile itself succeeded, so this
+            // is not a failure - but it is the one moment someone might look for a drawable
+            // material and find none, so the state is named once per compile.
+            ME_LOG(
+                LogRender,
+                Info,
+                "Material '{}': program queued for the graphics role; it becomes drawable at the "
+                "start of the next render frame.",
+                GetName().empty() ? "Material" : GetName());
         }
 
         m_ParameterLayout = result.ParameterLayout;
@@ -496,7 +532,10 @@ namespace minEngine
 
         ++m_CompileGeneration;
         EnsureRenderProxy();
-        m_RenderProxy->NotifyCompiled(cmdList);
+        // Game role: publish the new generation, shaders and layout. The GPU objects built from them
+        // (binding set, scalar UBO) are created on the render role the first time it draws this
+        // generation, which is where a graphics handle may legally be created.
+        m_RenderProxy->PublishGameData();
         return true;
     }
 
@@ -560,7 +599,9 @@ namespace minEngine
             EnsureRenderProxy();
             if (m_RenderProxy)
             {
-                m_RenderProxy->InvalidateParameterBindings();
+                // One publish per tick, not one per write: a sprite syncing ten parameters must
+                // still hand the render role a single snapshot.
+                m_RenderProxy->MarkGameDataDirty();
             }
         }
     }
@@ -573,7 +614,7 @@ namespace minEngine
             EnsureRenderProxy();
             if (m_RenderProxy)
             {
-                m_RenderProxy->InvalidateParameterBindings();
+                m_RenderProxy->MarkGameDataDirty();
             }
         }
     }

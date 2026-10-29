@@ -7,10 +7,93 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <thread>
 
 namespace minEngine
 {
+    /**
+     * Frame-role events that mean work was lost: render commands and view intents a role discarded,
+     * a command that threw while being applied, and frames the roles failed or threw away at
+     * shutdown. Sampled once per frame by the caller so one bad frame produces one log line instead
+     * of one line per lost item.
+     */
+    struct FrameWorkLossCounters
+    {
+        uint64_t DroppedCommands = 0;
+        uint64_t DroppedViewIntents = 0;
+        uint64_t ApplyFailures = 0;
+        uint64_t FailedFrames = 0;
+        uint64_t DroppedFrames = 0;
+
+        bool operator==(const FrameWorkLossCounters& other) const
+        {
+            return DroppedCommands == other.DroppedCommands
+                && DroppedViewIntents == other.DroppedViewIntents
+                && ApplyFailures == other.ApplyFailures
+                && FailedFrames == other.FailedFrames
+                && DroppedFrames == other.DroppedFrames;
+        }
+
+        bool operator!=(const FrameWorkLossCounters& other) const { return !(*this == other); }
+    };
+
+    /**
+     * One summary line for what was lost between the two snapshots, or an empty string when nothing
+     * was. Only non-zero deltas appear, so a normal frame stays silent and a frame that dropped N
+     * commands reports a single line carrying N.
+     *
+     * A counter that moved backwards means a new frame-role instance replaced the old one, not that
+     * work was recovered: that reading re-baselines instead of reporting a bogus delta.
+     */
+    inline std::string DescribeFrameWorkLossDelta(
+        const FrameWorkLossCounters& previous,
+        const FrameWorkLossCounters& current)
+    {
+        const uint64_t commandDelta = (current.DroppedCommands > previous.DroppedCommands)
+            ? current.DroppedCommands - previous.DroppedCommands
+            : 0u;
+        const uint64_t intentDelta = (current.DroppedViewIntents > previous.DroppedViewIntents)
+            ? current.DroppedViewIntents - previous.DroppedViewIntents
+            : 0u;
+        const uint64_t applyFailureDelta = (current.ApplyFailures > previous.ApplyFailures)
+            ? current.ApplyFailures - previous.ApplyFailures
+            : 0u;
+        const uint64_t failedFrameDelta = (current.FailedFrames > previous.FailedFrames)
+            ? current.FailedFrames - previous.FailedFrames
+            : 0u;
+        const uint64_t droppedFrameDelta = (current.DroppedFrames > previous.DroppedFrames)
+            ? current.DroppedFrames - previous.DroppedFrames
+            : 0u;
+
+        std::string line;
+        const auto append = [&line](uint64_t delta, const char* label) {
+            if (delta == 0)
+            {
+                return;
+            }
+            if (!line.empty())
+            {
+                line += ", ";
+            }
+            line += std::to_string(delta);
+            line += ' ';
+            line += label;
+        };
+
+        append(commandDelta, "render command(s) dropped");
+        append(intentDelta, "view intent(s) dropped");
+        append(applyFailureDelta, "render command(s) failed to apply");
+        append(failedFrameDelta, "frame(s) failed");
+        append(droppedFrameDelta, "queued frame(s) discarded");
+
+        if (line.empty())
+        {
+            return {};
+        }
+        return "Frame work lost: " + line + ".";
+    }
+
     /**
      * Execution facade: TaskFlow workers + Multi frame-role OS threads.
      *
@@ -32,7 +115,13 @@ namespace minEngine
         using RenderFrameTaskFn = std::function<void(float deltaTime)>;
         using RHIFrameTaskFn = std::function<void()>;
 
-        static constexpr size_t kMaxPendingRenderFrames = 3;
+        /**
+         * Frames allowed in flight end to end: from the game role handing a frame over to the frame's
+         * RHI work finishing. The render queue, the RHI queue and the frame each role is executing
+         * share this one bound, so a slow GPU throttles the game role instead of letting the two
+         * drift apart by an unbounded number of frames.
+         */
+        static constexpr size_t kMaxInFlightFrames = 3;
 
         TaskSystem();
         ~TaskSystem();
@@ -84,15 +173,34 @@ namespace minEngine
             RHIFrameTaskFn rhiTask,
             bool combineGraphicsThreads);
 
+        /**
+         * Stops accepting new frames, lets the already queued ones run, then joins the role
+         * threads. Frames still queued when the bounded drain gives up are counted and logged,
+         * never silently reported as drawn.
+         */
         void StopFrameRoles();
 
         /**
-         * Game posts a render frame. Blocks while the pending-render queue is full
-         * (kMaxPendingRenderFrames). Optional wait until that frame's RHI completes.
+         * Render/RHI role body: report that the frame currently executing did not complete, for a
+         * failure the body handled itself (for example an isolated command failure). The frame
+         * still signals completion so a waiting producer is released, but it counts as failed.
+         * A no-op when no frame is executing on this thread.
+         */
+        void MarkCurrentFrameIncomplete(const char* reason);
+
+        /** Frames whose role body threw or reported incomplete. */
+        uint64_t GetFailedFrameCount() const;
+
+        /** Queued frames discarded because the role threads stopped before executing them. */
+        uint64_t GetDroppedQueuedFrameCount() const;
+
+        /**
+         * Game posts a render frame. Blocks while kMaxInFlightFrames frames are already in flight
+         * (queued for either role, or executing). Optional wait until that frame's RHI completes.
          */
         void SubmitRenderFrameTask(float deltaTime, bool waitForCompletion);
 
-        /** Game: block until the pending-render queue has a free slot (or roles stop). */
+        /** Game: block until an in-flight slot frees up (or the roles stop). */
         void WaitForRenderQueueSpace();
 
         bool IsRunning() const;

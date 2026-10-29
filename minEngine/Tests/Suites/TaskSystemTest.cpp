@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -30,6 +31,22 @@ namespace
     {
         const char* value = std::getenv("MINENGINE_SKIP_TASK_PERF");
         return value != nullptr && value[0] != '\0' && value[0] != '0';
+    }
+
+    /** Bounded wait: a broken contract must fail the case, not wedge the whole test binary. */
+    template <typename TPredicate>
+    bool WaitUntil(TPredicate predicate, std::chrono::milliseconds timeout)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            if (predicate())
+            {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return predicate();
     }
 
     uint64_t BusyHash(uint64_t seed, int iterations)
@@ -509,8 +526,9 @@ TEST_CASE("task-system: frame roles backpressure [smoke]")
         [&]() {},
         /*combineGraphicsThreads=*/true);
 
-    // Fill: 1 in-flight (blocked on permit) + kMaxPending queued.
-    constexpr int kFillCount = static_cast<int>(TaskSystem::kMaxPendingRenderFrames) + 1;
+    // Fill every end-to-end slot: the frame executing (blocked on a permit) and the ones queued
+    // behind it are all in flight, so the bound is reached and the next submit has to wait.
+    constexpr int kFillCount = static_cast<int>(TaskSystem::kMaxInFlightFrames);
     for (int i = 0; i < kFillCount; ++i)
     {
         tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/false);
@@ -542,6 +560,124 @@ TEST_CASE("task-system: frame roles backpressure [smoke]")
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     CHECK(rendered.load(std::memory_order_relaxed) == kFillCount + 1);
+
+    tasks.StopFrameRoles();
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: in-flight frames stay bounded when the RHI side is slow [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    constexpr auto kRHIDuration = std::chrono::milliseconds(8);
+    constexpr int kFrames = 12;
+
+    std::atomic<int> submitted{0};
+    std::atomic<int> rhiSettled{0};
+    std::atomic<int> maxSkew{0};
+
+    // How far the game role is ahead of the GPU: frames handed over whose RHI work has not settled.
+    const auto observeSkew = [&]() {
+        const int skew =
+            submitted.load(std::memory_order_acquire) - rhiSettled.load(std::memory_order_acquire);
+        int seen = maxSkew.load(std::memory_order_relaxed);
+        while (skew > seen && !maxSkew.compare_exchange_weak(seen, skew, std::memory_order_relaxed))
+        {
+        }
+    };
+
+    tasks.StartFrameRoles(
+        [&](float) { observeSkew(); },
+        [&]() {
+            // A slow GPU: the frame is over only once this finished.
+            std::this_thread::sleep_for(kRHIDuration);
+            rhiSettled.fetch_add(1, std::memory_order_acq_rel);
+            observeSkew();
+        },
+        /*combineGraphicsThreads=*/false);
+
+    const auto start = std::chrono::steady_clock::now();
+    for (int index = 0; index < kFrames; ++index)
+    {
+        tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/false);
+
+        // Submitting returns only once this frame has an end-to-end slot, so the frames handed over
+        // and not yet replayed never exceed the bound. A queue-only bound would let the loop run
+        // every frame while the RHI side was still replaying the first ones. Counted after the
+        // submit, because a frame waiting for a slot has not been handed over yet.
+        const int handedOver = submitted.fetch_add(1, std::memory_order_acq_rel) + 1;
+        const int settled = rhiSettled.load(std::memory_order_acquire);
+        CHECK(settled >= handedOver - static_cast<int>(TaskSystem::kMaxInFlightFrames));
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    CHECK(maxSkew.load(std::memory_order_relaxed) <= static_cast<int>(TaskSystem::kMaxInFlightFrames));
+    // The game role was held back instead of running ahead: everything past the first bound-many
+    // frames had to wait for RHI work.
+    CHECK(elapsed >= (kRHIDuration * (kFrames - static_cast<int>(TaskSystem::kMaxInFlightFrames))) / 2);
+
+    tasks.StopFrameRoles();
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: frame work loss is reported as one summary line [smoke]")
+{
+    using minEngine::DescribeFrameWorkLossDelta;
+    using minEngine::FrameWorkLossCounters;
+
+    const FrameWorkLossCounters quiet;
+    CHECK(DescribeFrameWorkLossDelta(quiet, quiet).empty());
+
+    FrameWorkLossCounters lossy;
+    lossy.DroppedCommands = 5;
+    lossy.DroppedViewIntents = 1;
+    lossy.ApplyFailures = 2;
+    lossy.FailedFrames = 1;
+    lossy.DroppedFrames = 3;
+
+    const std::string line = DescribeFrameWorkLossDelta(quiet, lossy);
+    REQUIRE_FALSE(line.empty());
+    // One line for the frame as a whole, carrying each count instead of one line per event.
+    CHECK(line.find('\n') == std::string::npos);
+    CHECK(line.find("5 render command(s) dropped") != std::string::npos);
+    CHECK(line.find("1 view intent(s) dropped") != std::string::npos);
+    CHECK(line.find("2 render command(s) failed to apply") != std::string::npos);
+    CHECK(line.find("1 frame(s) failed") != std::string::npos);
+    CHECK(line.find("3 queued frame(s) discarded") != std::string::npos);
+
+    // The next frame reports only what it lost itself.
+    FrameWorkLossCounters next = lossy;
+    next.DroppedCommands = 6;
+    const std::string nextLine = DescribeFrameWorkLossDelta(lossy, next);
+    CHECK(nextLine.find("1 render command(s) dropped") != std::string::npos);
+    CHECK(nextLine.find("view intent") == std::string::npos);
+
+    // A counter that went backwards is a new frame-role instance, not recovered work.
+    CHECK(DescribeFrameWorkLossDelta(lossy, FrameWorkLossCounters{}).empty());
+
+    // The summary is fed by the live counters, not by a private copy: a frame that failed in the
+    // roles shows up through the same snapshot the engine logs.
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+    TaskSystem tasks;
+    tasks.Init(2);
+    tasks.StartFrameRoles(
+        [](float) { throw std::runtime_error("synthetic render role failure"); },
+        []() {},
+        /*combineGraphicsThreads=*/true);
+    tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/true);
+
+    FrameWorkLossCounters live;
+    live.FailedFrames = tasks.GetFailedFrameCount();
+    live.DroppedFrames = tasks.GetDroppedQueuedFrameCount();
+    CHECK(live.FailedFrames == 1u);
+    CHECK(DescribeFrameWorkLossDelta(quiet, live).find("1 frame(s) failed") != std::string::npos);
 
     tasks.StopFrameRoles();
     tasks.Shutdown();
@@ -607,4 +743,103 @@ TEST_CASE("task-system: worker one vs n wall clock [full]")
         many.second,
         "s; speedup=",
         (many.second > 0.0 ? one.second / many.second : 0.0));
+}
+TEST_CASE("task-system: role exception settles the frame incomplete and the thread lives [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::atomic<int> renderCalls{0};
+    tasks.StartFrameRoles(
+        [&renderCalls](float) {
+            if (renderCalls.fetch_add(1, std::memory_order_relaxed) == 0)
+            {
+                throw std::runtime_error("synthetic render role failure");
+            }
+        },
+        []() {},
+        /*combineGraphicsThreads=*/true);
+
+    // A throwing role body must not escape the thread entry point; the frame is settled as not
+    // completed and the waiting producer is released instead of hanging.
+    std::atomic<bool> producerReleased{false};
+    std::thread producer([&tasks, &producerReleased]() {
+        tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/true);
+        producerReleased.store(true, std::memory_order_release);
+    });
+
+    const bool bReleased = WaitUntil(
+        [&producerReleased]() { return producerReleased.load(std::memory_order_acquire); },
+        std::chrono::milliseconds(5000));
+    CHECK(bReleased);
+    if (bReleased)
+    {
+        producer.join();
+    }
+    else
+    {
+        // Unblock the waiter so the test can still report and exit: stop signals every waiter.
+        tasks.StopFrameRoles();
+        producer.join();
+    }
+    CHECK(bReleased);
+    CHECK(tasks.GetFailedFrameCount() == 1);
+
+    // The role thread survived the throw and keeps executing later frames.
+    tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/true);
+    CHECK(renderCalls.load(std::memory_order_relaxed) == 2);
+    CHECK(tasks.GetFailedFrameCount() == 1);
+
+    tasks.StopFrameRoles();
+    CHECK_FALSE(tasks.AreFrameRolesRunning());
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: stopping roles drains queued frames without hanging [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::atomic<int> rendered{0};
+    tasks.StartFrameRoles(
+        [&rendered](float) { rendered.fetch_add(1, std::memory_order_relaxed); },
+        []() {},
+        /*combineGraphicsThreads=*/true);
+
+    constexpr int kQueuedFrames = 4;
+    for (int i = 0; i < kQueuedFrames; ++i)
+    {
+        tasks.SubmitRenderFrameTask(0.016f, /*waitForCompletion=*/false);
+    }
+
+    // Shutdown may not discard frames it already accepted, and it may not wait forever on them.
+    std::atomic<bool> stopped{false};
+    std::thread stopper([&tasks, &stopped]() {
+        tasks.StopFrameRoles();
+        stopped.store(true, std::memory_order_release);
+    });
+
+    const bool bStopped = WaitUntil(
+        [&stopped]() { return stopped.load(std::memory_order_acquire); },
+        std::chrono::milliseconds(8000));
+    CHECK(bStopped);
+    stopper.join();
+
+    CHECK(rendered.load(std::memory_order_relaxed) == kQueuedFrames);
+    CHECK(tasks.GetDroppedQueuedFrameCount() == 0);
+
+    // Nothing may still be ticking the world once StopFrameRoles returned.
+    const int framesAtStop = rendered.load(std::memory_order_relaxed);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    CHECK(rendered.load(std::memory_order_relaxed) == framesAtStop);
+
+    tasks.Shutdown();
+    frameThreads.Shutdown();
 }

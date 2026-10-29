@@ -989,17 +989,38 @@ namespace minEngine
         }
         if (m_Mapped != nullptr)
         {
+            // Unmapping releases this side's host pointer. It neither frees the memory the GPU
+            // reads nor invalidates a command buffer still referencing it, so it stays here.
             vkUnmapMemory(m_Context.Device, m_Memory);
             m_Mapped = nullptr;
         }
-        if (m_Context.OwnerRHI != nullptr)
-        {
-            m_Context.OwnerRHI->RetireBuffer(m_Buffer, m_Memory);
-            m_Buffer = VK_NULL_HANDLE;
-            m_Memory = VK_NULL_HANDLE;
-            return;
-        }
-        VulkanRHIAllocator::DestroyBuffer(m_Context.Device, m_Buffer, m_Memory);
+
+        // Not const: the allocator's destroy takes the handles by reference and clears them.
+        VkDevice device = m_Context.Device;
+        VkBuffer buffer = m_Buffer;
+        VkDeviceMemory memory = m_Memory;
+        VulkanRHI* owner = m_Context.OwnerRHI;
+        m_Buffer = VK_NULL_HANDLE;
+        m_Memory = VK_NULL_HANDLE;
+
+        // A command buffer recorded before the last reference dropped may still be executing, so
+        // the handle outlives this wrapper. Posting puts the hand-off on the RHI role's batch tail;
+        // the owner's retired list then delays it again until the frame fences say the GPU is done.
+        PostNativeDestroy(
+            [device, buffer, memory, owner]() mutable {
+                if (owner != nullptr)
+                {
+                    owner->RetireBuffer(buffer, memory);
+                    return true;
+                }
+                // No owner: the buffer was created with a bare device context, so the device
+                // itself is the only completion point the caller could have waited on.
+                VulkanRHIAllocator::DestroyBuffer(device, buffer, memory);
+                return true;
+            },
+            "vulkan buffer");
+        // When the queue is already gone the post reports the leak: the retired list and the
+        // allocation belonged to that same RHI, so there is nothing left that could legally free it.
     }
 
     void VulkanRHIBuffer::UpdateSubresource(const void* data, uint32_t offset, uint32_t size)
