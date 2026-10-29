@@ -1,5 +1,6 @@
 #include "TaskSystemTest.h"
 
+#include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Tasks/TaskFlowBuilder.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
@@ -640,6 +641,7 @@ TEST_CASE("task-system: frame work loss is reported as one summary line [smoke]"
     lossy.ApplyFailures = 2;
     lossy.FailedFrames = 1;
     lossy.DroppedFrames = 3;
+    lossy.RenderWritesDuringFrame = 4;
 
     const std::string line = DescribeFrameWorkLossDelta(quiet, lossy);
     REQUIRE_FALSE(line.empty());
@@ -650,6 +652,7 @@ TEST_CASE("task-system: frame work loss is reported as one summary line [smoke]"
     CHECK(line.find("2 render command(s) failed to apply") != std::string::npos);
     CHECK(line.find("1 frame(s) failed") != std::string::npos);
     CHECK(line.find("3 queued frame(s) discarded") != std::string::npos);
+    CHECK(line.find("4 render-side write(s) made while a frame was in flight") != std::string::npos);
 
     // The next frame reports only what it lost itself.
     FrameWorkLossCounters next = lossy;
@@ -657,6 +660,7 @@ TEST_CASE("task-system: frame work loss is reported as one summary line [smoke]"
     const std::string nextLine = DescribeFrameWorkLossDelta(lossy, next);
     CHECK(nextLine.find("1 render command(s) dropped") != std::string::npos);
     CHECK(nextLine.find("view intent") == std::string::npos);
+    CHECK(nextLine.find("render-side write") == std::string::npos);
 
     // A counter that went backwards is a new frame-role instance, not recovered work.
     CHECK(DescribeFrameWorkLossDelta(lossy, FrameWorkLossCounters{}).empty());
@@ -840,6 +844,87 @@ TEST_CASE("task-system: stopping roles drains queued frames without hanging [smo
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     CHECK(rendered.load(std::memory_order_relaxed) == framesAtStop);
 
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: a game-role render write with a frame in flight is counted and recorded [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    std::atomic<bool> renderBodyEntered{false};
+    std::atomic<bool> releaseRenderBody{false};
+
+    tasks.StartFrameRoles(
+        [&](float) {
+            // The frame stays inside the render role until the game role lets it out, which is the
+            // overlap the contract is about: a handed-over frame and a game role that keeps running.
+            renderBodyEntered.store(true, std::memory_order_release);
+            while (!releaseRenderBody.load(std::memory_order_acquire))
+            {
+                std::this_thread::yield();
+            }
+        },
+        []() {},
+        /*combineGraphicsThreads=*/true);
+
+    tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/false);
+    REQUIRE(WaitUntil(
+        [&]() { return renderBodyEntered.load(std::memory_order_acquire); },
+        std::chrono::milliseconds(10000)));
+    REQUIRE(tasks.GetInFlightFrameCount() >= 1u);
+
+    const uint64_t writesBefore = tasks.GetGameRoleRenderWriteCount();
+    const uint64_t recordsBefore = minEngine::GetContractViolationCounters().Total();
+
+    // The game role writes state the frame carries. Recorded, counted, and still performed: a drop
+    // here would be a stuck camera, not a safer program. The frame is let out before the assertions
+    // so a failing check cannot leave the render role spinning inside it.
+    const bool bRecorded = tasks.NoteGameRoleRenderWrite("a view intent");
+    const uint64_t writesAfter = tasks.GetGameRoleRenderWriteCount();
+    const uint64_t recordsAfter = minEngine::GetContractViolationCounters().Total();
+
+    releaseRenderBody.store(true, std::memory_order_release);
+    tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/true);
+    const size_t inFlightAfter = tasks.GetInFlightFrameCount();
+
+    CHECK(bRecorded);
+    CHECK(writesAfter == writesBefore + 1u);
+    CHECK(recordsAfter > recordsBefore);
+    CHECK(inFlightAfter == 0u);
+
+    tasks.StopFrameRoles();
+    tasks.Shutdown();
+    frameThreads.Shutdown();
+}
+
+TEST_CASE("task-system: no frame in flight means a game-role render write is not counted [smoke]")
+{
+    FrameThreading frameThreads;
+    frameThreads.Initialize(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+
+    // Nothing handed over yet, so no frame can be in flight.
+    CHECK(tasks.GetInFlightFrameCount() == 0u);
+    CHECK_FALSE(tasks.NoteGameRoleRenderWrite("a view intent"));
+    CHECK(tasks.GetGameRoleRenderWriteCount() == 0u);
+
+    tasks.StartFrameRoles([](float) {}, []() {}, /*combineGraphicsThreads=*/true);
+
+    // Waiting for the frame is the editor's contract today: the game role only resumes once the
+    // frame has settled, so the write right after it cannot overlap the render role.
+    tasks.SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/true);
+    CHECK(tasks.GetInFlightFrameCount() == 0u);
+    CHECK_FALSE(tasks.NoteGameRoleRenderWrite("the viewport camera's aspect and matrices"));
+    CHECK(tasks.GetGameRoleRenderWriteCount() == 0u);
+
+    tasks.StopFrameRoles();
     tasks.Shutdown();
     frameThreads.Shutdown();
 }

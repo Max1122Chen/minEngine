@@ -339,6 +339,7 @@ namespace minEngine
             current.FailedFrames = tasks.GetFailedFrameCount();
             current.DroppedFrames = tasks.GetDroppedQueuedFrameCount();
             current.ContractViolations = GetContractViolationCounters().Total();
+            current.RenderWritesDuringFrame = tasks.GetGameRoleRenderWriteCount();
 
             const std::string line = DescribeFrameWorkLossDelta(s_LastFrameWorkLoss, current);
             s_LastFrameWorkLoss = current;

@@ -1,6 +1,7 @@
 #include "Access/ObjectManagerTestAccess.h"
 #include "Access/SceneManagerTestAccess.h"
 
+#include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Log/LogConsole.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
@@ -13,6 +14,7 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialRenderProxy.h"
+#include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
 #include "Runtime/Function/Render/RenderScene.h"
 
 #include "EngineTestFixture.h"
@@ -690,3 +692,67 @@ TEST_CASE("scene-retirement: shutdown frees the proxies of a scene no frame can 
     CHECK_FALSE(reported);
 }
 
+
+TEST_CASE("scene-retirement: the orphan sweep is refused off the render role [smoke]")
+{
+    // The sweep rewrites the draw lists the renderer walks every frame, so only the role that owns
+    // them may call it. This thread holds the game role alone.
+    FrameRoleScope frameRoles;
+
+    minEngine::RenderScene renderScene;
+
+    // A draw-list entry whose component is gone: exactly what the sweep exists to drop. The list
+    // never owns what it points at - a removal is what frees a proxy - so this case frees the entry
+    // it borrowed.
+    std::unique_ptr<minEngine::PrimitiveSceneProxy> orphan = std::make_unique<minEngine::PrimitiveSceneProxy>();
+    REQUIRE(orphan->m_PrimitiveComponent == nullptr);
+    renderScene.m_PrimitiveSceneProxies.push_back(orphan.get());
+    REQUIRE(renderScene.m_PrimitiveSceneProxies.size() == 1u);
+
+    const uint64_t refusalsBefore = minEngine::RenderScene::GetOffRoleSweepRefusalCount();
+    const uint64_t recordsBefore = minEngine::GetContractViolationCounters().Total();
+
+    renderScene.CollectOrphanedSceneProxies();
+
+    // Nothing was collected: the entry is still there, the refusal is counted, and the report site
+    // staged a record for it.
+    CHECK(renderScene.m_PrimitiveSceneProxies.size() == 1u);
+    CHECK(renderScene.m_PrimitiveSceneProxies[0] == orphan.get());
+    CHECK(minEngine::RenderScene::GetOffRoleSweepRefusalCount() == refusalsBefore + 1u);
+    CHECK(minEngine::GetContractViolationCounters().Total() > recordsBefore);
+
+    renderScene.m_PrimitiveSceneProxies.clear();
+}
+
+TEST_CASE("scene-retirement: a queued orphan sweep reaches the render role and clears the entry [smoke]")
+{
+    FrameRoleScope frameRoles;
+    RenderCommandPipeScope pipeScope;
+    minEngine::RenderCommandPipe& pipe = pipeScope.Pipe();
+
+    minEngine::RenderScene renderScene;
+    std::unique_ptr<minEngine::PrimitiveSceneProxy> orphan = std::make_unique<minEngine::PrimitiveSceneProxy>();
+    renderScene.m_PrimitiveSceneProxies.push_back(orphan.get());
+    REQUIRE(renderScene.m_PrimitiveSceneProxies.size() == 1u);
+
+    const uint64_t refusalsBefore = minEngine::RenderScene::GetOffRoleSweepRefusalCount();
+
+    // A transition that changes which scene owns what hands the sweep over this way: a command
+    // tagged for the frame the game role publishes next, instead of a call from the game role.
+    pipe.PublishGameFrame(0u, 1u);
+    minEngine::EnqueueRenderCommand([&renderScene]() { renderScene.CollectOrphanedSceneProxies(); });
+    pipe.PublishGameFrame(1u, 2u);
+
+    // The frame that command was tagged for, executed by the real render role.
+    frameRoles.Tasks().StartFrameRoles(
+        [&pipe](float) { pipe.FlushApplyForFrameChecked(pipe.GetCompletedGameFrame()); },
+        []() {},
+        /*combineGraphicsThreads=*/true);
+    frameRoles.Tasks().SubmitRenderFrameTask(0.0f, /*waitForCompletion=*/true);
+
+    // Collected - the entry is gone - and it happened on the role allowed to collect it.
+    CHECK(renderScene.m_PrimitiveSceneProxies.empty());
+    CHECK(minEngine::RenderScene::GetOffRoleSweepRefusalCount() == refusalsBefore);
+
+    frameRoles.Tasks().StopFrameRoles();
+}

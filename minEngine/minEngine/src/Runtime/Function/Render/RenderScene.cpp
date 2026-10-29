@@ -73,6 +73,19 @@ namespace minEngine
         };
 
         /**
+         * Sweeps refused because the caller did not hold the render role.
+         *
+         * A fact about the frame topology rather than about one scene, so it is counted once for the
+         * process: a reader who sees the number move knows the draw lists were asked to change from
+         * a role that may not change them, and the report site named the caller.
+         */
+        std::atomic<uint64_t>& SweepRefusalCount()
+        {
+            static std::atomic<uint64_t> refusals{ 0 };
+            return refusals;
+        }
+
+        /**
          * Puts a scene in the frame-end list on the proxy that starts its wait clock.
          *
          * Both facts belong to the scene and outlive this call, so they are passed by reference
@@ -941,8 +954,28 @@ namespace minEngine
         });
     }
 
+    uint64_t RenderScene::GetOffRoleSweepRefusalCount()
+    {
+        return SweepRefusalCount().load(std::memory_order_relaxed);
+    }
+
     void RenderScene::CollectOrphanedSceneProxies()
     {
+        // The draw lists are the renderer's own state, and the renderer rewrites nothing here it is
+        // not entitled to: a sweep from another role would rewrite the vectors the frame being
+        // recorded is walking. Refused and counted rather than applied, because a race applied once
+        // is a race nobody can reproduce.
+        if (FrameThreading::HasInstance() && !FrameThreading::Get().IsInRenderingThread())
+        {
+            SweepRefusalCount().fetch_add(1, std::memory_order_relaxed);
+            ME_ENSURE(
+                false,
+                "RenderScene::CollectOrphanedSceneProxies was called off the render role: the draw "
+                "lists belong to the role that reads them, so nothing was collected. Queue the sweep "
+                "as a render command instead.");
+            return;
+        }
+
         // The draw lists only: an owner leaves this scene through a removal command, which parks it
         // for the frame-end delete instead of destroying it here. Dropping an owner in this sweep
         // would destroy a proxy a recorded draw command may still name.

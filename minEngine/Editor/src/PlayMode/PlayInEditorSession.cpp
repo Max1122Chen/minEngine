@@ -3,6 +3,7 @@
 #include "ActiveSceneScope.h"
 
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Threading/RenderCommandPipe.h"
 #include "Runtime/Engine.h"
 #include "Runtime/Function/Audio/AudioSystem.h"
 #include "Runtime/Function/Framework/GameInstance/GameInstance.h"
@@ -25,6 +26,40 @@ namespace minEngine
     {
         // MVP: single PIE instance; must match SceneManager::GetTickTargetScene PIE lookup.
         constexpr int32_t kPIEInstanceId = 0;
+
+        /**
+         * Hands the orphan sweep of a scene to the render role as a command.
+         *
+         * A PIE transition leaves proxies on the editor scene's draw lists whose component let go,
+         * and a draw list is the renderer's own state: removing them here would rewrite the vectors a
+         * frame still being recorded is walking. The command runs in the next drain, on the render
+         * role, after the removals that transition queued - so the sweep sees the state those
+         * commands produced instead of the state they were about to change.
+         *
+         * The scene is captured weakly: a scene retired before the drain must not be reached through
+         * a command that outlived it.
+         */
+        void QueueOrphanSweep(const std::shared_ptr<Scene>& scene)
+        {
+            if (!scene)
+            {
+                return;
+            }
+
+            const std::shared_ptr<RenderScene> renderScene = scene->GetRenderSceneShared();
+            if (!renderScene)
+            {
+                return;
+            }
+
+            const std::weak_ptr<RenderScene> swept = renderScene;
+            EnqueueRenderCommand([swept]() {
+                if (const std::shared_ptr<RenderScene> alive = swept.lock())
+                {
+                    alive->CollectOrphanedSceneProxies();
+                }
+            });
+        }
     }
 
     Scene* PlayInEditorSession::GetEditorScene() const
@@ -150,10 +185,7 @@ namespace minEngine
         sceneManager.RegisterPIEScene(pieScene, kPIEInstanceId);
         sceneManager.SetPIEPlayActive(true);
 
-        if (RenderScene* editorRenderScene = editorScene->GetRenderScene())
-        {
-            editorRenderScene->CollectOrphanedSceneProxies();
-        }
+        QueueOrphanSweep(editorScene);
 
         if (AudioSystem::HasInstance())
         {
@@ -246,10 +278,7 @@ namespace minEngine
             m_EditorContext.TickPolicy = ESceneTickPolicy::Gameplay;
             m_EditorContext.Scene->SetTickPolicy(ESceneTickPolicy::Gameplay);
 
-            if (RenderScene* editorRenderScene = m_EditorContext.Scene->GetRenderScene())
-            {
-                editorRenderScene->CollectOrphanedSceneProxies();
-            }
+            QueueOrphanSweep(m_EditorContext.Scene);
 
             if (SceneManager::HasInstance())
             {

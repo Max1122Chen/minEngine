@@ -51,7 +51,20 @@ namespace minEngine
         void RecreateWidget(WidgetComponent* widgetComponent);
         void RemoveWidget(WidgetComponent* widgetComponent);
 
+        /**
+         * Drop the draw-list entries whose owner already let go: a proxy whose component detached
+         * without a removal ever reaching this scene, or one a removal marked and left behind.
+         *
+         * Render role only. The draw lists are the renderer's own state - the role that walks them
+         * every frame is the role that may rewrite them - so a call from any other role changes
+         * nothing, is counted, and is reported as a contract violation instead of silently racing
+         * the frame that is reading the same vectors. The editor reaches this through a command
+         * when a Scene's ownership changes, and every pipeline calls it at frame start.
+         */
         void CollectOrphanedSceneProxies();
+
+        /** Sweeps refused because the caller did not hold the render role. Diagnostics and tests. */
+        static uint64_t GetOffRoleSweepRefusalCount();
 
         /**
          * End of the render frame: destroy the proxies that removal commands parked during it.

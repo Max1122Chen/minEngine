@@ -30,6 +30,13 @@ namespace minEngine
         uint64_t FailedFrames = 0;
         uint64_t DroppedFrames = 0;
         uint64_t ContractViolations = 0;
+        /**
+         * Render-side state the game role wrote while a frame was in flight: a view intent handed
+         * over, a camera a queued intent carries rewritten in place. The frame the roles are
+         * executing may be reading exactly that state, so each write is a violated contract - the
+         * write still happens, because dropping an editor camera update is the worse bug.
+         */
+        uint64_t RenderWritesDuringFrame = 0;
 
         bool operator==(const FrameWorkLossCounters& other) const
         {
@@ -38,7 +45,8 @@ namespace minEngine
                 && ApplyFailures == other.ApplyFailures
                 && FailedFrames == other.FailedFrames
                 && DroppedFrames == other.DroppedFrames
-                && ContractViolations == other.ContractViolations;
+                && ContractViolations == other.ContractViolations
+                && RenderWritesDuringFrame == other.RenderWritesDuringFrame;
         }
 
         bool operator!=(const FrameWorkLossCounters& other) const { return !(*this == other); }
@@ -74,6 +82,10 @@ namespace minEngine
         const uint64_t contractDelta = (current.ContractViolations > previous.ContractViolations)
             ? current.ContractViolations - previous.ContractViolations
             : 0u;
+        const uint64_t renderWriteDelta =
+            (current.RenderWritesDuringFrame > previous.RenderWritesDuringFrame)
+            ? current.RenderWritesDuringFrame - previous.RenderWritesDuringFrame
+            : 0u;
 
         std::string line;
         const auto append = [&line](uint64_t delta, const char* label) {
@@ -96,6 +108,7 @@ namespace minEngine
         append(failedFrameDelta, "frame(s) failed");
         append(droppedFrameDelta, "queued frame(s) discarded");
         append(contractDelta, "contract violation(s) recorded");
+        append(renderWriteDelta, "render-side write(s) made while a frame was in flight");
 
         if (line.empty())
         {
@@ -212,6 +225,29 @@ namespace minEngine
 
         /** Game: block until an in-flight slot frees up (or the roles stop). */
         void WaitForRenderQueueSpace();
+
+        /**
+         * Frames in flight end to end right now - queued for either role, or executing.
+         *
+         * Zero means the render role holds no frame, which is the only state in which the game role
+         * may hand it state or rewrite state a frame carries without racing it. Allowed from any
+         * role: the count is taken under the same lock the submit takes its slot under.
+         */
+        size_t GetInFlightFrameCount() const;
+
+        /**
+         * Game role: announces that it is about to hand the render role state a frame reads, or to
+         * rewrite that state in place - a view intent, or a camera the queued intent carries.
+         *
+         * Called before the write. While a frame is in flight the render role may be reading
+         * exactly that state, so the write is recorded and counted as a contract violation; the
+         * caller still proceeds, because a dropped editor camera update would be the worse bug.
+         * Returns true when a frame was in flight.
+         */
+        bool NoteGameRoleRenderWrite(const char* what);
+
+        /** Writes NoteGameRoleRenderWrite recorded so far. Diagnostics, tests, frame summary. */
+        uint64_t GetGameRoleRenderWriteCount() const;
 
         bool IsRunning() const;
         int GetWorkerCount() const;

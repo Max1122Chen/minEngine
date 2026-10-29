@@ -129,6 +129,14 @@ namespace minEngine
         std::condition_variable InFlightCv;
         size_t InFlightFrames = 0;
 
+        /**
+         * Game-role writes of render-side state performed while a frame was in flight.
+         *
+         * Written by the game role only, read by the frame summary: kept apart from the in-flight
+         * count so a reader can tell how often the two roles overlapped, not just that they did.
+         */
+        std::atomic<uint64_t> GameRoleRenderWrites{0};
+
         std::mutex RHIMutex;
         std::condition_variable RHICv;
         std::deque<RHIFrameTask> RHITasks;
@@ -1102,6 +1110,39 @@ namespace minEngine
     uint64_t TaskSystem::GetDroppedQueuedFrameCount() const
     {
         return m_Impl->DroppedQueuedFrameCount.load(std::memory_order_relaxed);
+    }
+
+    size_t TaskSystem::GetInFlightFrameCount() const
+    {
+        std::lock_guard<std::mutex> lock(m_Impl->InFlightMutex);
+        return m_Impl->InFlightFrames;
+    }
+
+    bool TaskSystem::NoteGameRoleRenderWrite(const char* what)
+    {
+        const size_t inFlight = GetInFlightFrameCount();
+        if (inFlight == 0)
+        {
+            return false;
+        }
+
+        m_Impl->GameRoleRenderWrites.fetch_add(1, std::memory_order_relaxed);
+
+        // Reported on every occurrence: the report path keeps a per-site budget, so a write that
+        // happens every frame produces a bounded number of records while the counter above - and the
+        // frame summary - keep naming what is still happening.
+        ME_ENSURE(
+            false,
+            "the game role wrote %s while %zu frame(s) were in flight: the render role may be "
+            "reading that state from the frame it is executing",
+            what != nullptr ? what : "render-side view state",
+            inFlight);
+        return true;
+    }
+
+    uint64_t TaskSystem::GetGameRoleRenderWriteCount() const
+    {
+        return m_Impl->GameRoleRenderWrites.load(std::memory_order_relaxed);
     }
 
     void TaskSystem::WaitForRenderQueueSpace()
