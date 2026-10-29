@@ -281,7 +281,7 @@ namespace minEngine
             scalarData[static_cast<size_t>(scalar.SlotIndex) * 4u] = scalar.Value;
         }
 
-        m_ScalarParamsUBO->UpdateSubresource(scalarData.data(), 0, m_ScalarParamsUBOSize);
+        cmdList.UpdateBuffer(m_ScalarParamsUBO.get(), scalarData.data(), 0, m_ScalarParamsUBOSize);
     }
 
     void MaterialRenderProxy::RebuildShaderBindingSet(

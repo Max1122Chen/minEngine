@@ -708,7 +708,7 @@ namespace minEngine
         RHICommandList& cmdList = *cmdListPtr;
         cmdList.BeginRecording();
 
-        UpdatePerFrameUBO(ctx);
+        UpdatePerFrameUBO(cmdList, ctx);
 
         // allocate graph shadow maps before Set1 samples them.
         if (!SetupFrameRenderGraph(cmdList, desc, ctx))
@@ -722,7 +722,7 @@ namespace minEngine
         frameContext.SceneContext = &ctx;
         m_FrameRenderGraph.SetFrameContext(frameContext);
 
-        UpdateLightUBO(ctx);
+        UpdateLightUBO(cmdList, ctx);
 
         if (RHI* rhiForIbl = RenderSystem::Get().GetRHI())
         {
@@ -798,7 +798,7 @@ namespace minEngine
         ++m_FrameIndex;
     }
 
-    void ForwardRenderer::UpdatePerFrameUBO(const SceneRenderContext& ctx)
+    void ForwardRenderer::UpdatePerFrameUBO(RHICommandList& cmdList, const SceneRenderContext& ctx)
     {
         RenderCamera* mainCamera = ctx.Camera;
         if (!mainCamera || !m_PerFrameUniformBuffer)
@@ -812,10 +812,10 @@ namespace minEngine
         perFrameData.ViewProj = mainCamera->GetViewProjMatrix();
         perFrameData.CameraPos = Vector4(mainCamera->m_Position, 1.0f);
 
-        m_PerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
+        cmdList.UpdateBuffer(m_PerFrameUniformBuffer.get(), &perFrameData, 0, sizeof(PerFrameData));
     }
 
-    void ForwardRenderer::UpdateLightUBO(const SceneRenderContext& ctx)
+    void ForwardRenderer::UpdateLightUBO(RHICommandList& cmdList, const SceneRenderContext& ctx)
     {
         RenderScene* renderScene = ctx.Scene;
         if (!renderScene || !m_LightDataUniformBuffer)
@@ -916,7 +916,7 @@ namespace minEngine
         lightsData.SpotLightsCount = spotLightCount;
 
 
-        m_LightDataUniformBuffer->UpdateSubresource(&lightsData, 0, sizeof(LightsData));
+        cmdList.UpdateBuffer(m_LightDataUniformBuffer.get(), &lightsData, 0, sizeof(LightsData));
     }
 
     void ForwardRenderer::CollectShadowRequests(SceneRenderContext& ctx)

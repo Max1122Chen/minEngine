@@ -42,29 +42,32 @@ Not covered: pixels. No shader is run and no render pass is opened, so "the 3D i
 Multi" still has to be confirmed in the editor. The block content itself is checked numerically, and
 the pixel-position contract of the projection is pinned by the `screen-ui-per-frame-ubo` suite.
 
-## Record-time uploads that bypass the command list
+## Record-time uploads: now commands, not immediate writes
 
-`RHIBuffer::UpdateSubresource` uploads immediately on the calling thread; nothing about it is
-recorded. Every write below therefore lands while the frame is still being recorded, and any draw
-that already points at the buffer sees the new bytes at replay.
+`RHIBuffer::UpdateSubresource` still uploads immediately on the calling thread — that is what a
+backend primitive is. What changed is that recording paths no longer call it: they upload through
+`RHICommandList::UpdateBuffer`, which in a recording copies the payload into the command stream and
+writes it at Replay, in the recorded order. A draw recorded between two uploads now reads the first
+one, so the "one writer, one reader role" property is no longer something a pass has to prove.
 
-| Site | Buffer | Written from | Read by | Same risk as a shared per-frame block? |
-|---|---|---|---|---|
-| `ForwardRenderer.cpp:815` | camera per-frame block | `UpdatePerFrameUBO`, once before recording | every 3D draw, `DebugDrawPass` | **No longer**: one writer, one role, before any recording |
-| `ScreenUIPass.cpp:81` | screen-space per-frame block | the pass, while it records | screen-space draws only | No: the pass owns the block |
-| `ForwardRenderer.cpp:919` | light block | `UpdateLightUBO`, once before recording | every lit draw | No: single writer, before recording |
-| `ForwardRenderer.cpp:1079,1083,1117,1175,1179` | directional/spot cascade matrices, cascade far planes | `BuildShadowDrawCommands`, before the graph records | shadow passes and every lit draw | Low: written before recording; a slot is written once per frame |
-| `ForwardRenderer.cpp:1211` | unused cascade slots | `ClearUnusedShadowViewProjSlots` | lit draws | Low: same, slots are zeroed once per frame |
-| `ShadowUniformBuffers.cpp:80` | point-light view-proj ring | each shadow command build | the matching shadow pass | Low: ring slot per command, aliases only when the ring wraps |
-| `ShadowUniformBuffers.cpp:101` | shadow params ring | each shadow command build | the matching shadow pass | Low: same ring-slot rule |
-| `EngineSceneBindingSets.cpp:159` | per-object matrix ring | every draw submit | that draw | Low: one slot per draw; a draw sees the wrong matrix only after 512 draws wrap the ring (logged as an error) |
-| `EngineSceneBindingSets.cpp:193,202` | bone palette ring | skinned draws | that draw | Low: same ring-slot rule |
-| `MaterialRenderProxy.cpp:284` | per-proxy scalar parameter block | `BindForDraw` → `SyncScalarUniformBuffer`, **on every draw while recording** | every draw of that proxy | **Yes, same shape**: one block for all draws of the material, rewritten at recording time. Benign while the published snapshot is stable, and it reads the wrong values if the game side republishes that proxy while the frame is still recording |
-| `DebugDrawPass.cpp:163` | debug line vertex buffer | `DebugDrawPass::Prepare`, while recording | that pass's own draws | Same shape, single owner: a second recording against the buffer before the first replay would mix two frames' geometry |
-| `PostProcessPass.cpp:199` | post parameter block | `PrepareDrawPacket`, while recording | that pass's own full-screen draw | Same shape, single owner |
-| `SkyBoxPass.cpp:259,328` | sky frame block | `SkyBoxPass::Prepare` / `Execute` | that pass's own draw | Same shape, single owner |
+| Site | Buffer | Now |
+|---|---|---|
+| `ForwardRenderer::UpdatePerFrameUBO` | camera per-frame block | `cmdList.UpdateBuffer` (recorded) |
+| `ForwardRenderer::UpdateLightUBO` | light block | `cmdList.UpdateBuffer` (recorded) |
+| `ScreenUIPass::BindIdentityCameraForScreenSpace` | screen-space per-frame block | `cmdList.UpdateBuffer` (recorded) |
+| `PostProcessPass` post params | post parameter block | `cmdList.UpdateBuffer` (recorded) |
+| `SkyBoxPass` sky frame block (graph and `Execute`) | sky frame block | `cmdList.UpdateBuffer` (recorded) |
+| `DebugDrawPass` vertex stream | debug line vertices | `cmdList.UpdateBuffer` (recorded) |
+| `EngineSceneBindingSets::WriteNextPerObjectModel` | per-object matrix ring | `cmdList.UpdateBuffer` (recorded) |
+| `EngineSceneBindingSets` bone palette ring | bone palette ring | `cmdList.UpdateBuffer` (recorded) |
+| `MaterialRenderProxy::SyncScalarUniformBuffer` | per-proxy scalar block | `cmdList.UpdateBuffer` (recorded) |
+| `ForwardRenderer::BuildShadowDrawCommands`, `ClearUnusedShadowViewProjSlots`, `ShadowUniformBuffers` rings | shadow matrices / params | **unchanged**: written before `BeginRecording`, outside the recording window, where there is no stream position to hold them |
 
-The pattern behind the last four rows is the same one this probe demonstrates: a block written
-between recording and replay is only safe while it has exactly one writer and one reader role. Moving
-uploads onto the command list removes the constraint; until then, a new pass that writes an existing
-block has to prove the same property.
+The last row is the remaining gap in this area: those writes are still immediate, and in Multi they
+land while the previous frame's replay may still be reading the same blocks. That is a cross-frame
+window rather than a within-frame ordering problem, and it is registered on its own.
+
+A write that bypasses the stream is no longer silent: the backends report an immediate upload to
+`RHICommandList` while a recording is open on the same thread, which logs an error once per write
+and bumps `RHICommandList::GetImmediateUploadWhileRecordingCount()`. The `rhi-command-list` suite
+pins both the ordering and that counter.

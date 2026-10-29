@@ -1,3 +1,15 @@
+## 2026-10-29 — 录制期上传成为命令：`RHICommandList::UpdateBuffer`（TD-045 收口）
+
+- **根因：** `RHIBuffer::UpdateSubresource` 在**调用线程立即**执行 `glBufferSubData`，不进命令流；Multi 整帧先录制后 replay，于是任何录制期上传都排在"回放时才被读"的 draw 之前。屏幕空间 per-frame 块那次（世界消失）只是这块地基上最先塌的一处，机制本身仍在。
+- **接口：** `RHICommandList::UpdateBuffer(buffer, data, offset, size)`。录制期把 payload `memcpy` 进命令流，replay 时才在正确的顺序位置调用真正的上传原语；立即模式（Single / 非录制列表）原样直通——不拷贝、不排队，行为与改前逐字节相同。
+- **副本归属：** 命令列表自持 `std::vector<std::vector<uint8_t>>` 副本块（一次录制里一个块对应一次上传，块只增不减），`Reset/BeginRecording` 只把游标归零 → 池把同一个列表发给下一帧时块被复用，稳态帧不再分配，也没有每帧一次的堆申请。
+- **防回归：** 新增"录制窗口"（thread_local 计数，`BeginRecording` 进入、`Replay` 开头关闭、`Reset` 兜底退出）。后端原语（OpenGL/Vulkan `UpdateSubresource`）在窗口内被直接调用时计入 `RHICommandList::GetImmediateUploadWhileRecordingCount()` 并报一条 Error，指向 `UpdateBuffer`。之所以用计数+日志而不是 `__debugbreak`：断言宏只有硬陷一种档位（TD-042），一次无害的旧调用会直接杀掉进程。
+- **迁移：** per-frame / 灯光块（`ForwardRenderer::UpdatePerFrameUBO/UpdateLightUBO`）、屏幕 UI 块、后处理参数块、天空盒帧块（graph 与 Execute 两条路径）、debug 顶点流、`EngineSceneBindingSets` 的 per-object 与骨骼 ring（`WriteNextPerObjectModel` 补 `cmdList` 形参，`ShadowPass` 调用点跟进）、材质 scalar 参数块。**未迁移**：`ForwardRenderer::BuildShadowDrawCommands` 与 `ShadowUniformBuffers` ring 的写入——它们在 `BeginRecording` 之前执行，不在录制窗口内，此刻命令列表还是 Idle，没有可排的位置。
+- **红灯：** 先按旧写法（录制期直接 `UpdateSubresource`）写"上传 A → draw → 上传 B"，`rhi-command-list` 首例即失败：`CHECK( buffer.Text() == std::string(4u, '\0') ) is NOT correct! values: CHECK( BBBB == )` —— 录制还没结束，字节已经是 B，draw 只能读到 B。改到 `UpdateBuffer` 后 GREEN。
+- **测试：** `rhi-command-list` 4 例（顺序、payload 副本语义、立即模式不变、旁路计数），其中旁路计数一例用真实的 `OpenGLRHI` + 头显 GL 缓冲跑真后端原语，能看到窗口内一次 Error 且 replay 的那次上传不计。
+- **Verification:** `minEngineTests` / `Editor` 构建 exit 0；`rhi-command-list` 7 例 / 45 断言、`screen-ui-per-frame-ubo` 2/17、`material-proxy-data` 8/149、`scene-proxy-lifetime` 11/177、`scene-proxy-render-read` 3/59、`render-graph` 11/382 全绿；`test smoke` exit 0；导出 2998 → 3000（+2：`UpdateBuffer` 与 `GetImmediateUploadWhileRecordingCount`，snapshot 已重生成），无符号消失。
+- **残留：** 录制期直接调原语的检测只在后端原语处生效（Vulkan 的两个编译分支都接上了，但本机只有 OpenGL 配置实跑过）；录制命令捕获的是裸 `RHIBuffer*`，缓冲必须活到 replay（与既有 `SetVertexBuffer` 等命令同一约定）；帧录制开始前的阴影 UBO 预热仍是立即写，Multi 下与上一帧 replay 的跨帧窗口未处理。
+
 ## 2026-10-29 — 着色器延迟创建被消费者读成"加载失败"（两条真实错误）
 
 - **现象（真实日志，Multi 拓扑）：** `DebugDrawPass: failed to load DebugDraw shader.` / `SkyBoxPass: failed to load background SPIR-V shader.` 各一条 Error，天空盒与 debug 绘制整条被禁用，但程序在下一个帧首其实建成了。

@@ -67,7 +67,7 @@ namespace minEngine
          * Write next ring slot for ShadowPass (which uses a different set layout).
          * Returns byte offset into the per-object ring; caller builds its own binding set.
          */
-        uint32_t WriteNextPerObjectModel(const Matrix4& model);
+        uint32_t WriteNextPerObjectModel(RHICommandList& cmdList, const Matrix4& model);
 
         void BuildSceneSet1(
             RHICommandList& cmdList,

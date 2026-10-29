@@ -360,7 +360,7 @@ namespace minEngine
         }
         RHICommandList& cmdList = *cmdListPtr;
         cmdList.BeginRecording();
-        UpdatePerFrameUBO(ctx);
+        UpdatePerFrameUBO(cmdList, ctx);
 
         if (const bool texturesRecreated = EnsureManualTextures(*rhi, width, height); texturesRecreated)
         {
@@ -368,7 +368,7 @@ namespace minEngine
         }
 
         BindManualShadowTextures(ctx);
-        UpdateLightUBO(ctx);
+        UpdateLightUBO(cmdList, ctx);
 
         if (SkyBoxSceneProxy* skyProxy = ctx.Scene ? ctx.Scene->GetSkyBoxProxy() : nullptr)
         {

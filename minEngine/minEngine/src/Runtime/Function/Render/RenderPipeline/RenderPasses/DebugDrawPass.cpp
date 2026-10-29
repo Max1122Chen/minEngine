@@ -210,7 +210,7 @@ namespace minEngine
             EnsureVertexBufferCapacity(*cmdList, byteSize);
             if (m_VertexBuffer != nullptr)
             {
-                m_VertexBuffer->UpdateSubresource(vertices.data(), 0, byteSize);
+                cmdList->UpdateBuffer(m_VertexBuffer.get(), vertices.data(), 0, byteSize);
             }
         }
 

@@ -2,6 +2,7 @@
 #include "VulkanRHI.h"
 
 #include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
 #include <glm/detail/type_half.hpp>
@@ -1029,6 +1030,8 @@ namespace minEngine
         {
             return;
         }
+        // Host-visible memory means this write lands now, outside any command stream.
+        ReportImmediateBufferUpload("Vulkan buffer");
         if (offset + size > m_Desc.ByteSize)
         {
             ME_LOG(LogRHI, Error, 
@@ -1045,6 +1048,10 @@ namespace minEngine
 
     void VulkanRHIBuffer::UpdateSubresource(const void* data, uint32_t offset, uint32_t size)
     {
+        if (data != nullptr && size != 0)
+        {
+            ReportImmediateBufferUpload("Vulkan buffer");
+        }
         (void)data;
         (void)offset;
         (void)size;

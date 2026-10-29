@@ -1,11 +1,87 @@
 #include "RHICommandList.h"
 
 #include "Runtime/Core/Assert/Assert.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 
+#include <atomic>
+#include <cstring>
+
 namespace minEngine
 {
+    namespace
+    {
+        /**
+         * Recordings open on this thread. A write that lands while one is open is ordered before
+         * the draws that recording holds, so those draws read the newer bytes at Replay.
+         */
+        thread_local uint32_t t_OpenRecordingWindowCount = 0;
+
+        std::atomic<uint64_t> g_ImmediateUploadWhileRecordingCount{0};
+
+        void EnterRecordingWindow(bool& held)
+        {
+            if (held)
+            {
+                return;
+            }
+            held = true;
+            ++t_OpenRecordingWindowCount;
+        }
+
+        /** Closes a recording window a list holds, so Reset and Replay cannot count it twice. */
+        void LeaveRecordingWindow(bool& held)
+        {
+            if (!held)
+            {
+                return;
+            }
+            held = false;
+            ME_ASSERT(t_OpenRecordingWindowCount > 0, "recording window released without being entered");
+            --t_OpenRecordingWindowCount;
+        }
+
+        /**
+         * Storage for one recorded upload payload. The cursor reaches a block once per recording,
+         * so a block is never resized while a recorded command points into it, and the pool
+         * handing the same list back next frame reuses the block instead of allocating again.
+         */
+        uint8_t* AcquireUploadScratchBlock(
+            std::vector<std::vector<uint8_t>>& scratch, size_t& cursor, uint32_t size)
+        {
+            if (cursor == scratch.size())
+            {
+                scratch.emplace_back();
+            }
+
+            std::vector<uint8_t>& block = scratch[cursor++];
+            if (block.size() < size)
+            {
+                block.resize(size);
+            }
+            return block.data();
+        }
+    }
+
+    void ReportImmediateBufferUpload(const char* target)
+    {
+        if (t_OpenRecordingWindowCount == 0)
+        {
+            return;
+        }
+
+        const uint64_t count = g_ImmediateUploadWhileRecordingCount.fetch_add(1) + 1;
+        ME_LOG(
+            LogRender,
+            Error,
+            "Buffer upload ran immediately while a command list was recording ({}); it lands before "
+            "the draws that recording holds, which then read the newer bytes. Record-path uploads "
+            "belong on RHICommandList::UpdateBuffer. Bypasses so far: {}.",
+            target != nullptr ? target : "unknown buffer",
+            count);
+    }
+
     RHICommandList::RHICommandList(RHI* rhi)
         : m_RHI(rhi)
     {
@@ -44,7 +120,9 @@ namespace minEngine
         }
         ME_ASSERT(m_State == ERHICommandListState::Idle, "BeginRecording requires Idle");
         m_RecordedCommands.clear();
+        m_UploadScratchCursor = 0;
         m_State = ERHICommandListState::Recording;
+        EnterRecordingWindow(m_HoldsRecordingWindow);
     }
 
     void RHICommandList::FinishRecording()
@@ -65,6 +143,9 @@ namespace minEngine
         }
         ME_ASSERT(m_State == ERHICommandListState::Finished, "Replay requires Finished");
         ME_ASSERT(m_RHI != nullptr, "Replay requires an executing RHI");
+        // The window closes before the first command runs: those uploads are this stream's own and
+        // arrive exactly where they belong in it.
+        LeaveRecordingWindow(m_HoldsRecordingWindow);
         for (std::function<void()>& command : m_RecordedCommands)
         {
             if (command)
@@ -77,8 +158,34 @@ namespace minEngine
 
     void RHICommandList::Reset()
     {
+        LeaveRecordingWindow(m_HoldsRecordingWindow);
         m_RecordedCommands.clear();
+        m_UploadScratchCursor = 0;
         m_State = ERHICommandListState::Idle;
+    }
+
+    uint64_t RHICommandList::GetImmediateUploadWhileRecordingCount()
+    {
+        return g_ImmediateUploadWhileRecordingCount.load();
+    }
+
+    void RHICommandList::UpdateBuffer(RHIBuffer* buffer, const void* data, uint32_t offset, uint32_t size)
+    {
+        ME_ASSERT(buffer != nullptr, "UpdateBuffer requires a buffer");
+        if (buffer == nullptr || data == nullptr || size == 0)
+        {
+            return;
+        }
+
+        if (IsImmediate())
+        {
+            buffer->UpdateSubresource(data, offset, size);
+            return;
+        }
+
+        uint8_t* payload = AcquireUploadScratchBlock(m_UploadScratch, m_UploadScratchCursor, size);
+        std::memcpy(payload, data, size);
+        RecordOrExecute([buffer, payload, offset, size]() { buffer->UpdateSubresource(payload, offset, size); });
     }
 
     void RHICommandList::AssertCanIssueDrawCommand() const

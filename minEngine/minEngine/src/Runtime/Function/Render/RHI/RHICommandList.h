@@ -82,6 +82,28 @@ namespace minEngine
         void Draw(uint32_t vertexCount, uint32_t firstVertex = 0);
         void GenerateMips(RHITexture* texture);
 
+        /**
+         * Upload bytes to a buffer as a command.
+         *
+         * Immediate: exactly the write RHIBuffer::UpdateSubresource performs, right now, with no
+         * extra copy. Recording: the payload is copied into the command stream and written when
+         * that point of the stream is replayed, so a draw recorded between two uploads reads the
+         * first one. The caller's memory is not referenced after the call returns.
+         *
+         * Recording paths upload through here; the immediate primitive it wraps is not theirs to
+         * call, because a write that lands now is ordered before draws that only run later. The
+         * payload is copied, the buffer is not: it has to outlive the replay, like the resources of
+         * every other recorded command.
+         */
+        void UpdateBuffer(RHIBuffer* buffer, const void* data, uint32_t offset, uint32_t size);
+
+        /**
+         * Writes that landed immediately while a recording was open on the same thread, i.e.
+         * uploads that bypassed UpdateBuffer. A steady frame leaves it unchanged; anything else
+         * means a record-path call site went back to the immediate primitive.
+         */
+        static uint64_t GetImmediateUploadWhileRecordingCount();
+
         /** Sole draw submit path: PSO → binding sets → VB/IB → Draw. */
         void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
 
@@ -115,5 +137,22 @@ namespace minEngine
         /** -1 = Auto from FrameThreading; 0 = Recording; 1 = Immediate. */
         int8_t m_ImmediateOverride = -1;
         std::vector<std::function<void()>> m_RecordedCommands;
+        /**
+         * Copies of recorded upload payloads, one block per recorded upload. The pool hands the
+         * same lists back frame after frame, so the blocks are reused instead of reallocated. A
+         * block a recorded command points into is not touched again until that recording is reset.
+         */
+        std::vector<std::vector<uint8_t>> m_UploadScratch;
+        size_t m_UploadScratchCursor = 0;
+        /** True while this list keeps the current thread's recording window open. */
+        bool m_HoldsRecordingWindow = false;
     };
+
+    /**
+     * Engine-internal entry the backend primitive behind RHIBuffer::UpdateSubresource reports to,
+     * so a record-path upload that lands immediately becomes visible instead of silently running
+     * out of order. Deliberately not part of the export contract: nothing outside the engine DLL
+     * calls it.
+     */
+    void ReportImmediateBufferUpload(const char* target);
 }

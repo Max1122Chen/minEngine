@@ -138,7 +138,7 @@ namespace minEngine
         }
     }
 
-    uint32_t EngineSceneBindingSets::WriteNextPerObjectModel(const Matrix4& model)
+    uint32_t EngineSceneBindingSets::WriteNextPerObjectModel(RHICommandList& cmdList, const Matrix4& model)
     {
         if (!m_PerObjectRing)
         {
@@ -156,7 +156,7 @@ namespace minEngine
 
         const uint32_t slot = m_PerObjectWriteIndex++;
         const uint32_t offset = slot * m_PerObjectSlotStride;
-        m_PerObjectRing->UpdateSubresource(&model, offset, sizeof(Matrix4));
+        cmdList.UpdateBuffer(m_PerObjectRing, &model, offset, sizeof(Matrix4));
         return offset;
     }
 
@@ -174,7 +174,7 @@ namespace minEngine
         }
 
         const uint32_t slotBefore = m_PerObjectWriteIndex;
-        const uint32_t offset = WriteNextPerObjectModel(model);
+        const uint32_t offset = WriteNextPerObjectModel(cmdList, model);
         const uint32_t slot = slotBefore % kPerObjectRingSlots;
         const uint32_t boneSize = static_cast<uint32_t>(kBonePaletteMatrices * sizeof(Matrix4));
 
@@ -190,7 +190,7 @@ namespace minEngine
                 const uint32_t writeCount = std::min(boneCount, kBonePaletteMatrices);
                 if (writeCount == kBonePaletteMatrices)
                 {
-                    m_BonePaletteRing->UpdateSubresource(bonePalette, boneOffset, boneSize);
+                    cmdList.UpdateBuffer(m_BonePaletteRing, bonePalette, boneOffset, boneSize);
                 }
                 else
                 {
@@ -199,7 +199,7 @@ namespace minEngine
                         padded.data(),
                         bonePalette,
                         writeCount * static_cast<uint32_t>(sizeof(Matrix4)));
-                    m_BonePaletteRing->UpdateSubresource(padded.data(), boneOffset, boneSize);
+                    cmdList.UpdateBuffer(m_BonePaletteRing, padded.data(), boneOffset, boneSize);
                 }
             }
         }

@@ -68,7 +68,7 @@ namespace minEngine
         self.SetDepthStencilOutput(kRDGSceneDepth, MakeSceneDepthAttachment());
     }
 
-    void ScreenUIPass::BindIdentityCameraForScreenSpace()
+    void ScreenUIPass::BindIdentityCameraForScreenSpace(RHICommandList& cmdList)
     {
         if (m_ScreenSpacePerFrameUniformBuffer == nullptr || m_ViewportWidth == 0 || m_ViewportHeight == 0)
         {
@@ -78,7 +78,7 @@ namespace minEngine
         const PerFrameData perFrameData = MakeScreenSpacePerFrameData(
             static_cast<float>(m_ViewportWidth),
             static_cast<float>(m_ViewportHeight));
-        m_ScreenSpacePerFrameUniformBuffer->UpdateSubresource(&perFrameData, 0, sizeof(PerFrameData));
+        cmdList.UpdateBuffer(m_ScreenSpacePerFrameUniformBuffer, &perFrameData, 0, sizeof(PerFrameData));
     }
 
     void ScreenUIPass::Prepare(RenderGraph& graph)
@@ -117,7 +117,7 @@ namespace minEngine
             return;
         }
 
-        BindIdentityCameraForScreenSpace();
+        BindIdentityCameraForScreenSpace(cmdList);
 
         RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, false);
         cmdList.BeginRenderPass(passInfo);

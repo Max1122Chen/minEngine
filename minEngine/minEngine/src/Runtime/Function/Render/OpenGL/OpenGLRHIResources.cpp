@@ -2,6 +2,7 @@
 
 #include "OpenGLFunctionTable.h"
 #include "Log/LogSystem.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Core/Threading/ThreadIdentity.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
@@ -914,6 +915,10 @@ namespace minEngine
         {
             return;
         }
+
+        // This write lands now. A command list that is still recording has draws that will only
+        // run at Replay, and they would read bytes written after them.
+        ReportImmediateBufferUpload("OpenGL buffer");
 
         if (m_BufferId == 0)
         {

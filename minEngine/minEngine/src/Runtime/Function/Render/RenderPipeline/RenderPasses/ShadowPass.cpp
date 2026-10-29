@@ -197,7 +197,8 @@ namespace minEngine
                 continue;
             }
 
-            const uint32_t perObjectOffset = pipeline->GetSceneBindings().WriteNextPerObjectModel(drawCommand.m_ModelMatrix);
+            const uint32_t perObjectOffset =
+                pipeline->GetSceneBindings().WriteNextPerObjectModel(cmdList, drawCommand.m_ModelMatrix);
             std::vector<RHIShaderBinding> resources(3);
             resources[0] = {
                 RHIShaderBindingType::UniformBuffer,

@@ -315,7 +315,7 @@ namespace minEngine
         frameData.Projection = context.SceneContext->Camera->GetProjectionMatrix();
         frameData.View = context.SceneContext->Camera->GetViewMatrix();
         frameData.SkyIntensity = skyBoxProxy->m_SkyIntensity;
-        m_SkyFrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(SkyPassFrameUBO));
+        context.CommandList->UpdateBuffer(m_SkyFrameUniformBuffer.get(), &frameData, 0, sizeof(SkyPassFrameUBO));
 
         m_DrawPacket.PipelineState = m_SkyPipelineState;
         m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
@@ -384,7 +384,7 @@ namespace minEngine
         frameData.Projection = camera.GetProjectionMatrix();
         frameData.View = camera.GetViewMatrix();
         frameData.SkyIntensity = skyBox.m_SkyIntensity;
-        m_SkyFrameUniformBuffer->UpdateSubresource(&frameData, 0, sizeof(SkyPassFrameUBO));
+        cmdList.UpdateBuffer(m_SkyFrameUniformBuffer.get(), &frameData, 0, sizeof(SkyPassFrameUBO));
 
         MeshDrawPacket packet;
         packet.PipelineState = m_SkyPipelineState;

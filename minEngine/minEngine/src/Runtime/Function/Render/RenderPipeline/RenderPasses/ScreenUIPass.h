@@ -53,7 +53,7 @@ namespace minEngine
     private:
         friend class Testing::TestAccess<ScreenUIPass>;
 
-        void BindIdentityCameraForScreenSpace();
+        void BindIdentityCameraForScreenSpace(RHICommandList& cmdList);
 
         std::vector<MeshDrawPacket> m_DrawPackets;
     };

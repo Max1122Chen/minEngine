@@ -149,8 +149,8 @@ namespace minEngine
         bool m_bSortMeshDraws = true;
 
         void BindSceneRenderTarget(SceneRenderTarget& target);
-        void UpdatePerFrameUBO(const SceneRenderContext& ctx);
-        void UpdateLightUBO(const SceneRenderContext& ctx);
+        void UpdatePerFrameUBO(RHICommandList& cmdList, const SceneRenderContext& ctx);
+        void UpdateLightUBO(RHICommandList& cmdList, const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);
         void BuildShadowDrawCommands(SceneRenderContext& ctx);
         void BuildRenderQueue(SceneRenderContext& ctx);
