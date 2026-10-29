@@ -1,5 +1,6 @@
 #include "SceneManager.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Threading/RenderCommandPipe.h"
 #include "Runtime/Function/Framework/Components/Component.h"
@@ -29,6 +30,22 @@ namespace minEngine
         bool OwnsRenderRole()
         {
             return !FrameThreading::HasInstance() || FrameThreading::Get().IsInRenderingThread();
+        }
+
+        /**
+         * True when the teardown reached Shutdown with frame roles still running, i.e. the roles were
+         * not stopped before the scenes were taken down. Counts as one break of the shutdown
+         * entry's contract, on the same counter as an off-role caller: both say "this teardown was
+         * entered in a state it is not written for".
+         */
+        bool ShutdownReachedWithLiveFrameRoles()
+        {
+            if (!TaskSystem::HasInstance() || !TaskSystem::Get().AreFrameRolesRunning())
+            {
+                return false;
+            }
+            ObjectManager::NoteOffRoleCoreServiceCall(ECoreServiceEntry::SceneShutdown);
+            return true;
         }
     }
 
@@ -176,6 +193,23 @@ namespace minEngine
 
     void SceneManager::Shutdown()
     {
+        // Two premises this teardown has always rested on and neither used to be checked: it runs on
+        // the thread that owns the game role, and the frame roles are already stopped. Engine shutdown
+        // stops them first for exactly that reason - the teardown releases render state the role
+        // threads read, so a role still running here reads a scene that is being destroyed. Both are
+        // reported and counted; the teardown proceeds, because refusing it leaves the process holding
+        // every scene it owns.
+        ME_ENSURE(
+            !ObjectManager::NoteIfOffGameRole(ECoreServiceEntry::SceneShutdown),
+            "SceneManager::Shutdown ran off the game role: the teardown drives render commands that "
+            "only the game role may queue, and it destroys the scenes the game role owns. The "
+            "teardown still runs.");
+        ME_ENSURE(
+            !ShutdownReachedWithLiveFrameRoles(),
+            "SceneManager::Shutdown ran while the frame roles were still running: the teardown "
+            "releases render state a role thread may still be reading, so the roles must be stopped "
+            "first. The teardown still runs.");
+
         // The frame roles were stopped before shutdown reached here, so this thread owns the render
         // role and no boundary is left to apply the removals a retirement queued. Apply them now,
         // before the gate is asked to destroy: a Scene destroyed with its proxies still registered

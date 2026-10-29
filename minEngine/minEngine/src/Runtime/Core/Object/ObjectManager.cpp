@@ -1,14 +1,66 @@
 #include "ObjectManager.h"
 
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Resource/AssetManager.h"
 
+#include <atomic>
 #include <unordered_set>
 
 namespace minEngine
 {
     ObjectManager* ObjectManager::s_Instance = nullptr;
     std::unique_ptr<ObjectManager> ObjectManager::s_Owned;
+
+    namespace
+    {
+        /**
+         * One slot per guarded entry. Process-wide on purpose: the count answers "how often did the
+         * run do this", which does not belong to one registry instance and has to survive one being
+         * torn down and replaced.
+         */
+        std::atomic<uint64_t> g_OffRoleCoreServiceEntryCounts[static_cast<size_t>(ECoreServiceEntry::Count)]{};
+    }
+
+    void ObjectManager::NoteOffRoleCoreServiceCall(ECoreServiceEntry entry)
+    {
+        const size_t index = static_cast<size_t>(entry);
+        if (index >= static_cast<size_t>(ECoreServiceEntry::Count))
+        {
+            return;
+        }
+        g_OffRoleCoreServiceEntryCounts[index].fetch_add(1, std::memory_order_relaxed);
+    }
+
+    uint64_t ObjectManager::GetOffRoleCoreServiceCallCount(ECoreServiceEntry entry)
+    {
+        const size_t index = static_cast<size_t>(entry);
+        if (index >= static_cast<size_t>(ECoreServiceEntry::Count))
+        {
+            return 0;
+        }
+        return g_OffRoleCoreServiceEntryCounts[index].load(std::memory_order_relaxed);
+    }
+
+    uint64_t ObjectManager::GetOffRoleCoreServiceCallCountTotal()
+    {
+        uint64_t total = 0;
+        for (const std::atomic<uint64_t>& counter : g_OffRoleCoreServiceEntryCounts)
+        {
+            total += counter.load(std::memory_order_relaxed);
+        }
+        return total;
+    }
+
+    bool ObjectManager::NoteIfOffGameRole(ECoreServiceEntry entry)
+    {
+        if (!FrameThreading::HasInstance() || FrameThreading::Get().IsInGameThread())
+        {
+            return false;
+        }
+        NoteOffRoleCoreServiceCall(entry);
+        return true;
+    }
 
     void ObjectManager::SetInstance(ObjectManager* instance)
     {
@@ -144,6 +196,11 @@ namespace minEngine
 
     std::shared_ptr<MEObject> ObjectManager::FindObject(const GUID& guid) const
     {
+        ME_ENSURE(
+            !NoteIfOffGameRole(ECoreServiceEntry::FindObjectByGuid),
+            "ObjectManager::FindObject(GUID) was called off the game role: the registry it walks is "
+            "the one the game role inserts into, so a lookup here reads a map another thread is "
+            "rewriting. The lookup still runs.");
         if (guid.IsZero())
         {
             return nullptr;
@@ -160,6 +217,11 @@ namespace minEngine
 
     std::shared_ptr<MEObject> ObjectManager::FindObject(const std::string& name) const
     {
+        ME_ENSURE(
+            !NoteIfOffGameRole(ECoreServiceEntry::FindObjectByName),
+            "ObjectManager::FindObject(name) was called off the game role: a walk of the whole "
+            "registry is the call most sensitive to another thread inserting into it. The lookup "
+            "still runs.");
         for (const auto& [guid, weakObj] : m_ObjectsByGuid)
         {
             std::shared_ptr<MEObject> obj = weakObj.lock();
@@ -173,6 +235,11 @@ namespace minEngine
 
     std::vector<std::shared_ptr<MEObject>> ObjectManager::FindObjectsByClass(const Reflection::MEClass* classInfo) const
     {
+        ME_ENSURE(
+            !NoteIfOffGameRole(ECoreServiceEntry::FindObjectsByClass),
+            "ObjectManager::FindObjectsByClass was called off the game role: it copies the whole "
+            "registry into a result, and the game role may be inserting into it as it copies. The "
+            "query still runs.");
         std::vector<std::shared_ptr<MEObject>> result;
         for (const auto& [guid, weakObj] : m_ObjectsByGuid)
         {
@@ -188,6 +255,10 @@ namespace minEngine
     void ObjectManager::ForEachLiveObject(
         const std::function<void(const std::shared_ptr<MEObject>&)>& visitor) const
     {
+        ME_ENSURE(
+            !NoteIfOffGameRole(ECoreServiceEntry::ForEachLiveObject),
+            "ObjectManager::ForEachLiveObject was called off the game role: the visitor runs once per "
+            "live object while the registry may be changing underneath it. The visit still runs.");
         if (!visitor)
         {
             return;
@@ -209,6 +280,11 @@ namespace minEngine
         MEObject* inOuter,
         const GUID& inGuid)
     {
+        ME_ENSURE(
+            !NoteIfOffGameRole(ECoreServiceEntry::NewObject),
+            "ObjectManager::NewObject was called off the game role: the object registry is read and "
+            "written by the game role, so an object inserted here is an entry no other thread's view "
+            "of the registry contains. The object is still created.");
         if (classInfo == nullptr)
         {
             ME_LOG(LogCore, Error, "NewObject: classInfo is null.");
@@ -328,6 +404,13 @@ namespace minEngine
 
     void ObjectManager::CollectGarbage(const ObjectReachabilityRootVisitor& visitRoots)
     {
+        // CollectGarbageWithEngineRoots funnels through here, so this is the one gate the whole
+        // collection path shares: entering it twice would report one collection twice.
+        ME_ENSURE(
+            !NoteIfOffGameRole(ECoreServiceEntry::CollectGarbage),
+            "ObjectManager::CollectGarbage was called off the game role: it prunes the registry and "
+            "walks the engine roots (the asset cache and the active scene), all of which belong to "
+            "the game role. The collection still runs.");
         std::unordered_set<GUID, GUID::Hash> reachableGuids;
         if (visitRoots)
         {

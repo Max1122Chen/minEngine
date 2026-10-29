@@ -5,9 +5,11 @@
 
 #include "AssetManager.h"
 #include "AssetRegistryTypes.h"
+#include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
@@ -16,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 namespace minEngine
@@ -623,4 +626,52 @@ TEST_CASE("asset-manager: move and scene delete [full]")
     minEngine::EngineReflectionFixture fixture;
     REQUIRE(fixture.IsReflectionReady());
     CHECK(minEngine::RunAssetManagerFullTests(fixture.GetArgc(), fixture.GetArgv()));
+}
+
+TEST_CASE("asset-manager: a sync load off the game role is counted and still loads [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    REQUIRE(EnsureEnginePathsReady(fixture.GetArgc(), fixture.GetArgv()));
+
+    AssetManagerTestScope scope;
+    AssetManagerTestProject project;
+
+    AssetManager& assetManager = AssetManager::Get();
+    std::string createError;
+    std::shared_ptr<Material> created = std::dynamic_pointer_cast<Material>(
+        assetManager.CreateAssetByTypeId("Material", "OffRoleSyncLoadMat", "Assets/_P2UnitTest", createError));
+    REQUIRE(created != nullptr);
+
+    const AssetMeta* meta = assetManager.FindAssetMetaByPath(
+        created->GetMeta() != nullptr ? created->GetMeta()->AssetPath : std::string());
+    REQUIRE(meta != nullptr);
+
+    // Multi, so this thread owns the Game role and the worker below owns nothing: the wrong-thread
+    // caller is a real one, not a simulated role.
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    const uint64_t loadsBefore =
+        ObjectManager::GetOffRoleCoreServiceCallCount(ECoreServiceEntry::SyncAssetLoad);
+    const uint64_t recordsBefore = GetContractViolationCounters().Total();
+
+    std::shared_ptr<Asset> loaded;
+    std::string loadError;
+    std::thread worker([&assetManager, &loaded, &loadError, path = meta->AssetPath]() {
+        loaded = assetManager.LoadAssetByPath(path, loadError);
+    });
+    worker.join();
+
+    CHECK(ObjectManager::GetOffRoleCoreServiceCallCount(ECoreServiceEntry::SyncAssetLoad)
+        == loadsBefore + 1u);
+    CHECK(GetContractViolationCounters().Total() > recordsBefore);
+
+    // Behaviour unchanged: reported, not refused, so the load happened on the thread that asked.
+    REQUIRE(loaded != nullptr);
+    CHECK(loaded.get() == created.get());
+
+    threading.Shutdown();
 }

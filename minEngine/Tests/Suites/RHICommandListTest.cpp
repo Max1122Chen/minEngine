@@ -4,6 +4,8 @@
 #include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
 #include "Runtime/Function/Render/OpenGL/OpenGLRHIResources.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHICommandListPool.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
@@ -427,5 +429,34 @@ TEST_CASE("rhi-command-list: only a write that bypasses the recording is reporte
     // this stream and is not a bypass.
     cmdList.Replay();
     CHECK(RHICommandList::GetImmediateUploadWhileRecordingCount() == bypassesBefore + 1);
+}
+
+TEST_CASE("rhi-command-list: a list driven from a worker while the roles are stopped is refused [smoke]")
+{
+    // The state the defect needs, and the one a shutdown reaches: the Multi topology exists, so a
+    // list asks "are the frame roles running" and hears "no". That answer alone used to mean "run
+    // inline on this thread", whoever asked.
+    minEngine::FrameThreading threading;
+    threading.Initialize(minEngine::FrameThreadMode::Multi);
+    minEngine::TaskSystem tasks;
+    tasks.Init(1);
+
+    CountingRHI rhi;
+    const int drawsBefore = rhi.DrawCount;
+    const uint64_t refusalsBefore = RHICommandList::GetOffRoleCommandRefusalCount();
+
+    std::thread worker([&rhi]() {
+        RHICommandList cmdList(&rhi);
+        cmdList.Draw(3);
+    });
+    worker.join();
+
+    // Refused, not executed: the backend's calls never reach a thread that does not hold the
+    // graphics context.
+    CHECK(rhi.DrawCount == drawsBefore);
+    CHECK(RHICommandList::GetOffRoleCommandRefusalCount() == refusalsBefore + 1);
+
+    tasks.Shutdown();
+    threading.Shutdown();
 }
 

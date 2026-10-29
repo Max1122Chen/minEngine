@@ -437,6 +437,73 @@ namespace minEngine
         return instance;
     }
 
+    namespace
+    {
+        using SinkList = std::vector<std::shared_ptr<ILogSink>>;
+
+        /**
+         * The sinks, copied while the lock is held so the caller writes to them with it released.
+         *
+         * Writing under the lock is what made logging a serial bottleneck: every sink does I/O - a
+         * console write, a formatting pass, the session file - so one thread formatting a line stopped
+         * every other thread that wanted to log, and the whole process queued behind the slowest sink.
+         * The lock only ever protected the sink list, and a copy of it is all a writer needs.
+         */
+        SinkList SnapshotSinks()
+        {
+            LogSystemInternals& state = LogSystemInternals::Get();
+            std::lock_guard<std::mutex> lock(state.mutex);
+            return state.sinks;
+        }
+
+        void WriteToSinks(const SinkList& sinks, const LogRecord& record)
+        {
+            for (const std::shared_ptr<ILogSink>& sink : sinks)
+            {
+                if (sink != nullptr)
+                {
+                    sink->Write(record);
+                }
+            }
+        }
+
+        void FlushSinks(const SinkList& sinks)
+        {
+            for (const std::shared_ptr<ILogSink>& sink : sinks)
+            {
+                if (sink != nullptr)
+                {
+                    sink->Flush();
+                }
+            }
+        }
+
+        /**
+         * Flush for a record that is about to abort the process.
+         *
+         * Takes the lock only if it is free right now. The alternative - waiting for it - turns "log
+         * the fatal line and stop" into a hang the moment another thread is inside a sink, and a
+         * process that hangs on its last line is the one failure nobody can read afterwards. A flush
+         * that could not be taken is skipped: the process is already ending.
+         */
+        void FlushSinksWithoutWaiting()
+        {
+            LogSystemInternals& state = LogSystemInternals::Get();
+
+            SinkList sinks;
+            {
+                std::unique_lock<std::mutex> lock(state.mutex, std::try_to_lock);
+                if (!lock.owns_lock())
+                {
+                    return;
+                }
+                sinks = state.sinks;
+            }
+
+            FlushSinks(sinks);
+        }
+    }
+
     void LogSystem::AddSink(std::shared_ptr<ILogSink> sink)
     {
         if (sink == nullptr)
@@ -470,21 +537,13 @@ namespace minEngine
         record.threadId = LogSystemInternals::CurrentThreadId();
         record.EnsureLocalDisplayTime();
 
-        {
-            LogSystemInternals& state = LogSystemInternals::Get();
-            std::lock_guard<std::mutex> lock(state.mutex);
-            for (const std::shared_ptr<ILogSink>& sink : state.sinks)
-            {
-                if (sink != nullptr)
-                {
-                    sink->Write(record);
-                }
-            }
-        }
+        WriteToSinks(SnapshotSinks(), record);
 
         if (severity == LogSeverity::Fatal)
         {
-            Flush();
+            // One record, one flush, in that order: the line above is already written, so a flush that
+            // has to be skipped loses nothing that was not already lost in the abort.
+            FlushSinksWithoutWaiting();
             std::abort();
         }
     }
@@ -509,15 +568,7 @@ namespace minEngine
 
     void LogSystem::Flush()
     {
-        LogSystemInternals& state = LogSystemInternals::Get();
-        std::lock_guard<std::mutex> lock(state.mutex);
-        for (const std::shared_ptr<ILogSink>& sink : state.sinks)
-        {
-            if (sink != nullptr)
-            {
-                sink->Flush();
-            }
-        }
+        FlushSinks(SnapshotSinks());
     }
 
     void LogSystem::RegisterChannel(LogChannelBase& channel)

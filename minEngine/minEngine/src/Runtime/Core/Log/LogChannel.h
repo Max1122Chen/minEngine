@@ -2,6 +2,7 @@
 
 #include "EngineAPI.h"
 
+#include <atomic>
 #include <cstdint>
 
 namespace minEngine
@@ -26,7 +27,7 @@ namespace minEngine
         LogChannelBase& operator=(const LogChannelBase&) = delete;
 
         const char* GetName() const { return m_Name; }
-        LogSeverity GetSeverity() const { return m_RuntimeSeverity; }
+        LogSeverity GetSeverity() const { return m_RuntimeSeverity.load(std::memory_order_relaxed); }
         LogSeverity GetCompileTimeMaxSeverity() const { return m_CompileTimeMaxSeverity; }
 
         void SetSeverity(LogSeverity severity);
@@ -36,7 +37,13 @@ namespace minEngine
 
     private:
         const char* m_Name = "";
-        LogSeverity m_RuntimeSeverity = LogSeverity::Info;
+        /**
+         * Atomic because the two sides genuinely run on different threads: every thread that logs
+         * reads this on its own path, and the one that changes the threshold - an editor menu, a
+         * console command - writes it. Nothing pairs those writes with the readers, so a plain
+         * member was a data race on every log line in the process.
+         */
+        std::atomic<LogSeverity> m_RuntimeSeverity{LogSeverity::Info};
         LogSeverity m_CompileTimeMaxSeverity = LogSeverity::Trace;
     };
 

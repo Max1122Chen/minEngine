@@ -37,6 +37,15 @@ namespace minEngine
          * write still happens, because dropping an editor camera update is the worse bug.
          */
         uint64_t RenderWritesDuringFrame = 0;
+        /**
+         * Calls into a core service - the object registry, the synchronous asset load path, the scene
+         * teardown - made from a thread that does not hold the game role. Those entries did not refuse
+         * such a caller and did not mention it either, so the work still happened; what changed is
+         * that a frame which did it now says so.
+         */
+        uint64_t OffRoleCoreServiceCalls = 0;
+        /** Render commands refused because the caller does not own the graphics role. */
+        uint64_t OffRoleRenderCommands = 0;
 
         bool operator==(const FrameWorkLossCounters& other) const
         {
@@ -46,7 +55,9 @@ namespace minEngine
                 && FailedFrames == other.FailedFrames
                 && DroppedFrames == other.DroppedFrames
                 && ContractViolations == other.ContractViolations
-                && RenderWritesDuringFrame == other.RenderWritesDuringFrame;
+                && RenderWritesDuringFrame == other.RenderWritesDuringFrame
+                && OffRoleCoreServiceCalls == other.OffRoleCoreServiceCalls
+                && OffRoleRenderCommands == other.OffRoleRenderCommands;
         }
 
         bool operator!=(const FrameWorkLossCounters& other) const { return !(*this == other); }
@@ -86,6 +97,14 @@ namespace minEngine
             (current.RenderWritesDuringFrame > previous.RenderWritesDuringFrame)
             ? current.RenderWritesDuringFrame - previous.RenderWritesDuringFrame
             : 0u;
+        const uint64_t coreServiceDelta =
+            (current.OffRoleCoreServiceCalls > previous.OffRoleCoreServiceCalls)
+            ? current.OffRoleCoreServiceCalls - previous.OffRoleCoreServiceCalls
+            : 0u;
+        const uint64_t offRoleCommandDelta =
+            (current.OffRoleRenderCommands > previous.OffRoleRenderCommands)
+            ? current.OffRoleRenderCommands - previous.OffRoleRenderCommands
+            : 0u;
 
         std::string line;
         const auto append = [&line](uint64_t delta, const char* label) {
@@ -109,6 +128,8 @@ namespace minEngine
         append(droppedFrameDelta, "queued frame(s) discarded");
         append(contractDelta, "contract violation(s) recorded");
         append(renderWriteDelta, "render-side write(s) made while a frame was in flight");
+        append(coreServiceDelta, "core service call(s) made off the game role");
+        append(offRoleCommandDelta, "render command(s) refused off the graphics role");
 
         if (line.empty())
         {

@@ -23,6 +23,7 @@
 #include "Runtime/Resource/Loaders/StaticMeshLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
 #include "Runtime/Core/Object/MEObject.h"
+#include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Core/Serialization/Serializer.h"
@@ -1433,6 +1434,16 @@ namespace minEngine
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
     {
+        // Every synchronous load enters here - LoadAssetByPath, LoadAssetByMeta and LoadAssetByGUID -
+        // and the whole body is game-role state: it writes m_LoadedAssetCache and the object
+        // registry, and it joins an in-flight DataAsset load that a worker is assembling. The
+        // asynchronous entries refused an off-role caller; this path said nothing and loaded anyway.
+        // The load still runs, because a synchronous caller has no other way to get its asset.
+        ME_ENSURE(
+            !ObjectManager::NoteIfOffGameRole(ECoreServiceEntry::SyncAssetLoad),
+            "AssetManager::LoadAssetByPath was called off the game role: the synchronous load writes "
+            "the asset cache and the object registry, and joining an in-flight async load from "
+            "another thread races the worker assembling it. The asset is still loaded.");
         const std::string registryKey = NormalizeProjectRelativeAssetPath(meta.AssetPath);
         if (!registryKey.empty())
         {

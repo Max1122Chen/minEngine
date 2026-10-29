@@ -5,6 +5,7 @@
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Threading/ThreadIdentity.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
 
 #include <atomic>
 #include <cstdio>
@@ -24,6 +25,19 @@ namespace minEngine
         std::atomic<uint64_t> g_ImmediateUploadWhileRecordingCount{0};
 
         std::atomic<uint64_t> g_CommandOutsideRecordingCount{0};
+
+        std::atomic<uint64_t> g_OffRoleCommandRefusalCount{0};
+
+        /**
+         * The topology that makes every list record: Multi with the frame roles running. Every other
+         * topology - Single, headless, and Multi whose roles have stopped - lets a list run its
+         * commands inline, which is why the caller's thread matters in exactly those states.
+         */
+        bool RecordingTopologyActive()
+        {
+            return FrameThreading::HasInstance() && FrameThreading::Get().IsMulti()
+                && TaskSystem::HasInstance() && TaskSystem::Get().AreFrameRolesRunning();
+        }
 
         const char* CommandListStateName(ERHICommandListState state)
         {
@@ -146,12 +160,53 @@ namespace minEngine
             return m_ImmediateOverride != 0;
         }
         // Multi Recording is active only after TaskSystem frame roles are running.
-        if (FrameThreading::HasInstance() && FrameThreading::Get().IsMulti()
-            && TaskSystem::HasInstance() && TaskSystem::Get().AreFrameRolesRunning())
+        if (RecordingTopologyActive())
         {
             return false;
         }
-        return true;
+        // Nothing records, so this list would run its commands inline - and running inline means
+        // driving the graphics API from this thread, which only the graphics role may do. "The roles
+        // stopped" is not the same question as "this thread may talk to the device": once they stop,
+        // the old answer was yes for every thread, so a worker that built a list put the backend's
+        // calls on a thread that does not hold the context.
+        return RHIGraphicsRole::IsCurrent();
+    }
+
+    bool RHICommandList::IsOffRoleCaller() const
+    {
+        if (m_ImmediateOverride >= 0)
+        {
+            return false;
+        }
+        return !RecordingTopologyActive() && !RHIGraphicsRole::IsCurrent();
+    }
+
+    void RHICommandList::RefuseOffRoleCommand() const
+    {
+        // Reported, not asserted: the frame this call belongs to can still be drawn once the caller
+        // moves to the graphics role, and taking the process down over it would lose the session that
+        // has the reproduction in it.
+        const uint64_t refused = g_OffRoleCommandRefusalCount.fetch_add(1, std::memory_order_relaxed) + 1;
+        // The first one, then one in a hundred: a wrong-thread submission issues many commands, and a
+        // line per command would bury the first.
+        if (refused == 1 || refused % 100 == 0)
+        {
+            ME_LOG(
+                LogRender,
+                Error,
+                "RHICommandList command refused: this list was driven from a thread that does not own "
+                "the graphics role while no frame roles are running, so running it inline would send "
+                "the backend's calls to a thread that does not hold the graphics context. Build, "
+                "record and replay the list on the graphics role. {} command(s) refused so far; "
+                "caller:{}",
+                refused,
+                DescribeRecordingCaller());
+        }
+    }
+
+    uint64_t RHICommandList::GetOffRoleCommandRefusalCount()
+    {
+        return g_OffRoleCommandRefusalCount.load(std::memory_order_relaxed);
     }
 
     void RHICommandList::SetImmediateOverride(bool bImmediate)
@@ -168,6 +223,13 @@ namespace minEngine
     {
         if (IsImmediate())
         {
+            return;
+        }
+        if (IsOffRoleCaller())
+        {
+            // Recording is not a way around the role contract here: the stream this would open ends
+            // up replayed by whoever holds the list, and the caller that opened it never could.
+            RefuseOffRoleCommand();
             return;
         }
         ME_ASSERT(m_State == ERHICommandListState::Idle, "BeginRecording requires Idle");
@@ -191,6 +253,13 @@ namespace minEngine
     {
         if (IsImmediate())
         {
+            return;
+        }
+        if (IsOffRoleCaller())
+        {
+            // Replaying drives the backend exactly as an inline command does, so a stream handed to a
+            // thread that does not own the graphics role is refused, not run here.
+            RefuseOffRoleCommand();
             return;
         }
         ME_ASSERT(m_State == ERHICommandListState::Finished, "Replay requires Finished");
@@ -256,6 +325,12 @@ namespace minEngine
     {
         if (IsImmediate() || m_State == ERHICommandListState::Recording)
         {
+            return;
+        }
+
+        if (IsOffRoleCaller())
+        {
+            RefuseOffRoleCommand();
             return;
         }
 

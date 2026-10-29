@@ -102,7 +102,13 @@ namespace minEngine
         std::mutex CompletionMutex;
         std::vector<CompletionEvent> Completions;
 
-        bool bFrameRolesRunning = false;
+        /**
+         * Read from threads that hold neither RenderMutex nor any other lock: RHICommandList asks it
+         * on every command to decide between recording and running inline, and an off-role worker
+         * asks it while nobody is looking. As a plain bool that read was a data race against the
+         * start/stop writes.
+         */
+        std::atomic<bool> bFrameRolesRunning{false};
         bool bCombineGraphicsThreads = false;
         std::atomic<bool> bFrameRolesStop{false};
         /** Guarded by RenderMutex: false once shutdown started, so the queue can only shrink. */

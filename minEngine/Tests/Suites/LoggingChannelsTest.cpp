@@ -5,10 +5,13 @@
 
 #include "doctest.h"
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
+#include <thread>
 
 namespace
 {
@@ -50,6 +53,38 @@ namespace
         std::string LastMessage;
         minEngine::LogSeverity LastSeverity = minEngine::LogSeverity::Info;
         const minEngine::LogChannelBase* LastChannel = nullptr;
+    };
+
+    /**
+     * A sink that parks inside Write until the test releases it, and counts how many writers got in.
+     *
+     * Two writers inside Write at the same time is only possible when the log system is not holding
+     * its lock across the call: the second one would be waiting for the lock the first one took.
+     */
+    class OverlapSink final : public minEngine::ILogSink
+    {
+    public:
+        void Write(const minEngine::LogRecord&) override
+        {
+            Entered.fetch_add(1, std::memory_order_release);
+            if (!bHold.load(std::memory_order_acquire))
+            {
+                return;
+            }
+
+            // Bounded: a sink that parked forever would turn a failing case into a hung process,
+            // which is exactly the failure mode this test exists to rule out.
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            while (bHold.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+            {
+                std::this_thread::yield();
+            }
+        }
+
+        void Flush() override {}
+
+        std::atomic<bool> bHold{true};
+        std::atomic<int> Entered{0};
     };
 }
 
@@ -272,4 +307,94 @@ TEST_CASE("logging-channels: unwritable session directory skips the file sink [s
     }
 
     fs::remove_all(root);
+}
+
+TEST_CASE("logging-channels: a sink write does not hold the log lock [smoke]")
+{
+    using namespace minEngine;
+
+    LogSystem::Initialize();
+
+    auto sink = std::make_shared<OverlapSink>();
+    LogSystem::AddSink(sink);
+
+    // The first writer parks inside the sink. Until it is really in there, the question this case
+    // asks has not been reached yet, so wait for it rather than sleep for a guess.
+    std::thread first([&sink]() { ME_LOG(LogTest, Info, "log-lock-probe-first"); });
+    const auto enterDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (sink->Entered.load(std::memory_order_acquire) == 0
+        && std::chrono::steady_clock::now() < enterDeadline)
+    {
+        std::this_thread::yield();
+    }
+    REQUIRE(sink->Entered.load(std::memory_order_acquire) >= 1);
+
+    // The second writer is the probe: it reaches the same sink only if the log system released the
+    // lock before calling it. Held across the call, it waits for the first writer to come out.
+    std::thread second([&sink]() { ME_LOG(LogTest, Info, "log-lock-probe-second"); });
+
+    bool bBothWritersInside = false;
+    const auto overlapDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(750);
+    while (std::chrono::steady_clock::now() < overlapDeadline)
+    {
+        if (sink->Entered.load(std::memory_order_acquire) >= 2)
+        {
+            bBothWritersInside = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+    // Release before asserting: a failed check must not leave a writer parked in the sink.
+    sink->bHold.store(false, std::memory_order_release);
+    first.join();
+    second.join();
+
+    CHECK(bBothWritersInside);
+}
+
+TEST_CASE("logging-channels: concurrent severity reads and writes stay coherent [full]")
+{
+    using namespace minEngine;
+
+    LogSystem::Initialize();
+
+    const LogSeverity previous = LogTest.GetSeverity();
+    const LogSeverity toggles[] = {LogSeverity::Trace, LogSeverity::Error};
+
+    // Start from a value the writer publishes: the readers below begin before its first store lands,
+    // and reading the threshold from before this case would look like a write nobody made.
+    LogSystem::SetChannelSeverity(LogTest, toggles[0]);
+
+    std::atomic<bool> bStop{false};
+    std::atomic<bool> bSawUnpublished{false};
+
+    std::thread writer([&]() {
+        for (int round = 0; round < 20000 && !bStop.load(std::memory_order_acquire); ++round)
+        {
+            LogSystem::SetChannelSeverity(LogTest, toggles[round % 2]);
+        }
+        bStop.store(true, std::memory_order_release);
+    });
+
+    // Readers take the threshold the writer publishes. A value nobody stored - a read that landed
+    // between the halves of a write - shows up here as a severity outside the two the writer uses.
+    int reads = 0;
+    while (!bStop.load(std::memory_order_acquire))
+    {
+        const LogSeverity observed = LogTest.GetSeverity();
+        ++reads;
+        if (observed != toggles[0] && observed != toggles[1])
+        {
+            bSawUnpublished.store(true, std::memory_order_release);
+        }
+        LogTest.IsSuppressed(LogSeverity::Warn);
+    }
+
+    writer.join();
+    LogSystem::SetChannelSeverity(LogTest, previous);
+
+    CHECK(reads > 0);
+    CHECK_FALSE(bSawUnpublished.load(std::memory_order_acquire));
+    CHECK(LogTest.GetSeverity() == previous);
 }

@@ -12,9 +12,10 @@ namespace minEngine
         , m_RuntimeSeverity(defaultSeverity)
         , m_CompileTimeMaxSeverity(compileTimeMaxSeverity)
     {
-        if (static_cast<uint8_t>(m_RuntimeSeverity) < static_cast<uint8_t>(m_CompileTimeMaxSeverity))
+        if (static_cast<uint8_t>(m_RuntimeSeverity.load(std::memory_order_relaxed)) <
+            static_cast<uint8_t>(m_CompileTimeMaxSeverity))
         {
-            m_RuntimeSeverity = m_CompileTimeMaxSeverity;
+            m_RuntimeSeverity.store(m_CompileTimeMaxSeverity, std::memory_order_relaxed);
         }
         LogSystem::RegisterChannel(*this);
     }
@@ -28,15 +29,16 @@ namespace minEngine
     {
         if (static_cast<uint8_t>(severity) < static_cast<uint8_t>(m_CompileTimeMaxSeverity))
         {
-            m_RuntimeSeverity = m_CompileTimeMaxSeverity;
+            m_RuntimeSeverity.store(m_CompileTimeMaxSeverity, std::memory_order_relaxed);
             return;
         }
-        m_RuntimeSeverity = severity;
+        m_RuntimeSeverity.store(severity, std::memory_order_relaxed);
     }
 
     bool LogChannelBase::IsSuppressed(LogSeverity messageSeverity) const
     {
-        return static_cast<uint8_t>(messageSeverity) < static_cast<uint8_t>(m_RuntimeSeverity);
+        return static_cast<uint8_t>(messageSeverity) <
+            static_cast<uint8_t>(m_RuntimeSeverity.load(std::memory_order_relaxed));
     }
 
     const char* LogChannelBase::SeverityToString(LogSeverity severity)

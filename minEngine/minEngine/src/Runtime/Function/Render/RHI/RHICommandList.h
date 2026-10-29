@@ -105,6 +105,19 @@ namespace minEngine
         static uint64_t GetImmediateUploadWhileRecordingCount();
 
         /**
+         * Commands refused because the list was built and driven on a thread that does not own the
+         * graphics role.
+         *
+         * Running a command inline means driving the backend from the calling thread. When the frame
+         * roles are running the list records instead, so the question never comes up; when they are
+         * not, the old route was "immediate for any caller", and a worker thread that built a list
+         * put the backend's calls on a thread that does not hold the graphics context. Those calls
+         * are refused and counted here now, and the refusal is visible in the per-frame work-loss
+         * summary alongside the other lost render work.
+         */
+        static uint64_t GetOffRoleCommandRefusalCount();
+
+        /**
          * True while this thread holds an open recording window, i.e. a recorded stream that has
          * not been replayed yet.
          *
@@ -138,6 +151,15 @@ namespace minEngine
             std::initializer_list<RHIVertexElement> elements);
 
     private:
+        /**
+         * True when this list would run its commands inline but the caller does not own the graphics
+         * role: the state in which a command must be refused rather than handed to the backend.
+         * Always false while this list records, and always false while it carries an explicit
+         * immediate/recording override, because then the caller decided the route on purpose.
+         */
+        bool IsOffRoleCaller() const;
+        /** Counts one off-role refusal and reports it under the same budget as the other refusals. */
+        void RefuseOffRoleCommand() const;
         void RecordOrExecute(std::function<void()> command);
         /**
          * Reports a command issued outside a recording window and tells the caller whether it may

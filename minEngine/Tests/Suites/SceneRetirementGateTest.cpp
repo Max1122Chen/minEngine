@@ -756,3 +756,56 @@ TEST_CASE("scene-retirement: a queued orphan sweep reaches the render role and c
 
     frameRoles.Tasks().StopFrameRoles();
 }
+
+TEST_CASE("scene-retirement: shutdown off the game role is counted and still tears down [smoke]")
+{
+    FrameRoleScope frameRoles;
+    SceneLifecycleScope scenes;
+
+    const uint64_t shutdownsBefore = ObjectManager::GetOffRoleCoreServiceCallCount(
+        minEngine::ECoreServiceEntry::SceneShutdown);
+    const uint64_t recordsBefore = minEngine::GetContractViolationCounters().Total();
+
+    std::thread worker([]() { SceneManager::Get().Shutdown(); });
+    worker.join();
+
+    // Reported and counted, and the teardown ran anyway: refusing it would leave the process
+    // holding every scene it owns.
+    CHECK(ObjectManager::GetOffRoleCoreServiceCallCount(minEngine::ECoreServiceEntry::SceneShutdown)
+        == shutdownsBefore + 1u);
+    CHECK(minEngine::GetContractViolationCounters().Total() > recordsBefore);
+    CHECK(SceneManager::Get().GetCurrentActiveScene() == nullptr);
+}
+
+TEST_CASE("scene-retirement: shutdown before the frame roles stopped is counted [smoke]")
+{
+    FrameRoleScope frameRoles;
+    SceneLifecycleScope scenes;
+
+    frameRoles.Tasks().StartFrameRoles(
+        [](float) {},
+        []() {},
+        /*combineGraphicsThreads=*/true);
+
+    // The engine registers its TaskSystem while it runs, which is how a teardown asks whether frame
+    // roles are still ticking; a stack TaskSystem in a test has to say so itself.
+    TaskSystem::SetInstance(&frameRoles.Tasks());
+
+    const uint64_t shutdownsBefore = ObjectManager::GetOffRoleCoreServiceCallCount(
+        minEngine::ECoreServiceEntry::SceneShutdown);
+    const uint64_t recordsBefore = minEngine::GetContractViolationCounters().Total();
+
+    // Called from the game role, so the only broken premise is the order: the role threads are
+    // still running while the teardown destroys the scenes they may be reading.
+    SceneManager::Get().Shutdown();
+
+    const uint64_t shutdownsAfter = ObjectManager::GetOffRoleCoreServiceCallCount(
+        minEngine::ECoreServiceEntry::SceneShutdown);
+    const uint64_t recordsAfter = minEngine::GetContractViolationCounters().Total();
+
+    frameRoles.Tasks().StopFrameRoles();
+    TaskSystem::SetInstance(nullptr);
+
+    CHECK(shutdownsAfter == shutdownsBefore + 1u);
+    CHECK(recordsAfter > recordsBefore);
+}

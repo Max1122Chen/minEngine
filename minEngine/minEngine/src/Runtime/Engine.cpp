@@ -34,6 +34,7 @@
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Threading/RenderCommandPipe.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHICommandListPool.h"
 
 #include <vector>
@@ -340,6 +341,10 @@ namespace minEngine
             current.DroppedFrames = tasks.GetDroppedQueuedFrameCount();
             current.ContractViolations = GetContractViolationCounters().Total();
             current.RenderWritesDuringFrame = tasks.GetGameRoleRenderWriteCount();
+            // Both are process-wide totals, like the contract count above: a summed count keeps
+            // rising, so the delta in the line is what happened between two frames.
+            current.OffRoleCoreServiceCalls = ObjectManager::GetOffRoleCoreServiceCallCountTotal();
+            current.OffRoleRenderCommands = RHICommandList::GetOffRoleCommandRefusalCount();
 
             const std::string line = DescribeFrameWorkLossDelta(s_LastFrameWorkLoss, current);
             s_LastFrameWorkLoss = current;
@@ -898,6 +903,15 @@ namespace minEngine
 
         if (m_SceneManager)
         {
+            // The scene teardown assumes nothing is left that ticks the world: the frame roles were
+            // stopped at the top of this function and the pool and the TaskSystem are gone, so no
+            // role can be reading the scene graph as the teardown releases it. The order is decided
+            // here and nowhere else, which is why it is stated here.
+            ME_ENSURE(
+                m_TaskSystem == nullptr,
+                "Engine::ShutdownSystems reached the scene teardown with the TaskSystem still alive: "
+                "the frame roles may still be running, and the teardown releases render state they "
+                "read.");
             m_SceneManager->Shutdown();
             SceneManager::SetInstance(nullptr);
             m_SceneManager.reset();
