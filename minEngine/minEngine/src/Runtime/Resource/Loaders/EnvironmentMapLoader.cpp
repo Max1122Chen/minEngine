@@ -5,8 +5,6 @@
 #include "Runtime/Core/Serialization/JsonArchive.h"
 #include "Runtime/Core/Serialization/Serializer.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
-#include "Runtime/Function/Render/RHI/RHI.h"
-#include "Runtime/Function/Render/RenderSystem.h"
 #include "Runtime/Resource/AssetManager.h"
 
 namespace minEngine
@@ -43,25 +41,15 @@ namespace minEngine
             return nullptr;
         }
 
-        RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
-        if (rhi == nullptr)
-        {
-            ME_LOG(LogAsset, Warn, 
-                "EnvironmentMapLoader: RHI unavailable while loading {}; GPU resources deferred.",
-                meta.AssetPath);
-            return environmentMap;
-        }
-
-        if (!environmentMap->EnsureGPUResources(*rhi))
-        {
-            if (outError)
-            {
-                *outError = "failed to create EnvironmentMap GPU resources";
-            }
-            ME_LOG(LogAsset, Error, "EnvironmentMapLoader: EnsureGPUResources failed for {}.", meta.AssetPath);
-            return nullptr;
-        }
-
+        // Nothing GPU-side happens here. Loading runs on whichever thread asks for the asset, while
+        // the bake creates textures and submits command buffers, which only the graphics role may
+        // do: creating them here would leave every handle without a native half on any other
+        // thread. The renderer asks for them at a frame start instead, and a frame that arrives
+        // before that draws without a sky and says so.
+        ME_LOG(LogAsset, Info, 
+            "EnvironmentMapLoader: '{}' loaded; its GPU resources are created by the graphics role at "
+            "a frame start.",
+            meta.AssetPath);
         return environmentMap;
     }
 }

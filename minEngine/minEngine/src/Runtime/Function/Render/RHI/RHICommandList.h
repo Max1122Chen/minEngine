@@ -104,6 +104,17 @@ namespace minEngine
          */
         static uint64_t GetImmediateUploadWhileRecordingCount();
 
+        /**
+         * True while this thread holds an open recording window, i.e. a recorded stream that has
+         * not been replayed yet.
+         *
+         * A caller that submits work of its own (an immediate command buffer, a bake that renders
+         * into a texture and reads it back) cannot do it inside somebody else's window: the two
+         * streams would interleave in one command buffer. Such a caller asks this first and
+         * refuses instead of writing into a stream it does not own.
+         */
+        static bool IsRecordingWindowOpenOnThisThread();
+
         /** Sole draw submit path: PSO → binding sets → VB/IB → Draw. */
         void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
 
@@ -128,6 +139,10 @@ namespace minEngine
 
     private:
         void RecordOrExecute(std::function<void()> command);
+        /**
+         * Reports a command issued outside a recording window and tells the caller whether it may
+         * be recorded. Kept under its historical name because the engine exports it.
+         */
         void AssertCanIssueDrawCommand() const;
         void BindPacketDescriptorSets(const MeshDrawPacket& packet);
         void SubmitDrawBuffers(const MeshDrawPacket& packet);

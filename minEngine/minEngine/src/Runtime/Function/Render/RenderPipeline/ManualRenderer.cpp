@@ -346,6 +346,11 @@ namespace minEngine
             ClearUnusedShadowViewProjSlots(ctx);
         }
 
+        // Before the frame starts recording: the environment bake loads an asset and submits an
+        // immediate command buffer of its own, which cannot be spliced into a stream that is
+        // already being built.
+        PrepareSceneEnvironment(*rhi, ctx);
+
         RHICommandList stackList(rhi);
         const bool immediate = stackList.IsImmediate();
         RHICommandList* cmdListPtr = &stackList;
@@ -370,26 +375,8 @@ namespace minEngine
         BindManualShadowTextures(ctx);
         UpdateLightUBO(cmdList, ctx);
 
-        if (SkyBoxSceneProxy* skyProxy = ctx.Scene ? ctx.Scene->GetSkyBoxProxy() : nullptr)
-        {
-            if (skyProxy->m_EnvironmentMap && skyProxy->m_EnvironmentMap->EnsureGPUResources(*rhi))
-            {
-                EnvironmentMap* env = skyProxy->m_EnvironmentMap.get();
-                if (env->GetIrradiance() != nullptr)
-                {
-                    ctx.IblIrradianceTexture = env->GetIrradiance()->GetRHITexture();
-                }
-                if (env->GetPrefilter() != nullptr)
-                {
-                    ctx.IblPrefilterTexture = env->GetPrefilter()->GetRHITexture();
-                }
-                if (env->GetBrdfLUT() != nullptr)
-                {
-                    ctx.IblBrdfLutTexture = env->GetBrdfLUT()->GetRHITexture();
-                }
-            }
-        }
-
+        // The frame's IBL textures were published by PrepareSceneEnvironment above; recording only
+        // names what that step produced.
         m_SceneBindings.BeginFrame(
             cmdList,
             m_PerFrameUniformBuffer.get(),

@@ -12,6 +12,14 @@ set(MINENGINE_TEST_GLAD_SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/Third-Party/glad/src/glad.c
 )
 
+# The environment bake is engine-internal (it carries no MINENGINE_API), and the recording contract
+# it broke has to be driven against a device double. Compiling the translation unit into the test
+# binary is what lets the bake itself be the subject; nothing in it is exported by the DLL, so the
+# two copies cannot collide at link time.
+set(MINENGINE_TEST_ENGINE_INTERNAL_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src/Runtime/Function/Render/Environment/EnvMapCapture.cpp
+)
+
 # ED-F12: DebugCommand + PropertyPath live under Editor; tests compile them without the Editor exe.
 file(GLOB_RECURSE EDITOR_DEBUG_COMMAND_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/DebugCommand/*.cpp
@@ -63,6 +71,7 @@ add_executable(${MINENGINE_TESTS_NAME}
     EngineTestFixture.cpp
     DoctestSuiteRunner.cpp
     ${MINENGINE_TEST_GLAD_SOURCE}
+    ${MINENGINE_TEST_ENGINE_INTERNAL_SOURCES}
     ${TEST_SUITE_SOURCES}
     ${EDITOR_DEBUG_COMMAND_SOURCES}
     ${SPRITE_AUTHORING_EDITOR_SOURCES}

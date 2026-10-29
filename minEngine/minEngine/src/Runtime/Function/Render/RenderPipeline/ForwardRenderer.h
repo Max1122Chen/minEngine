@@ -149,6 +149,13 @@ namespace minEngine
         bool m_bSortMeshDraws = true;
 
         void BindSceneRenderTarget(SceneRenderTarget& target);
+        /**
+         * Produces the SkyBox proxy's environment resources and publishes the IBL textures the
+         * frame's PBR bindings sample. Runs before the frame opens its recording window: the bake
+         * loads assets and submits command buffers of its own, which cannot be spliced into a
+         * stream that is already being recorded.
+         */
+        void PrepareSceneEnvironment(RHI& rhi, SceneRenderContext& ctx);
         void UpdatePerFrameUBO(RHICommandList& cmdList, const SceneRenderContext& ctx);
         void UpdateLightUBO(RHICommandList& cmdList, const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);

@@ -689,6 +689,12 @@ namespace minEngine
 
         m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
 
+        // Everything that produces resources for this frame happens before it starts recording: the
+        // environment bake below loads an asset, draws six faces per mip level and submits an
+        // immediate command buffer of its own. A bake that ran inside the window would put that
+        // submit in the middle of a stream this frame is still building.
+        PrepareSceneEnvironment(*rhi, ctx);
+
         RHICommandList stackList(rhi);
         const bool immediate = stackList.IsImmediate();
         // A pooled list is held by the lease, so every early return below (including the frame-graph
@@ -724,30 +730,8 @@ namespace minEngine
 
         UpdateLightUBO(cmdList, ctx);
 
-        if (RHI* rhiForIbl = RenderSystem::Get().GetRHI())
-        {
-            if (SkyBoxSceneProxy* skyProxy = ctx.Scene ? ctx.Scene->GetSkyBoxProxy() : nullptr)
-            {
-                if (skyProxy->m_EnvironmentMap
-                    && skyProxy->m_EnvironmentMap->EnsureGPUResources(*rhiForIbl))
-                {
-                    EnvironmentMap* env = skyProxy->m_EnvironmentMap.get();
-                    if (env->GetIrradiance() != nullptr)
-                    {
-                        ctx.IblIrradianceTexture = env->GetIrradiance()->GetRHITexture();
-                    }
-                    if (env->GetPrefilter() != nullptr)
-                    {
-                        ctx.IblPrefilterTexture = env->GetPrefilter()->GetRHITexture();
-                    }
-                    if (env->GetBrdfLUT() != nullptr)
-                    {
-                        ctx.IblBrdfLutTexture = env->GetBrdfLUT()->GetRHITexture();
-                    }
-                }
-            }
-        }
-
+        // The frame's IBL textures were published by PrepareSceneEnvironment above; recording only
+        // names what that step produced.
         m_SceneBindings.BeginFrame(
             cmdList,
             m_PerFrameUniformBuffer.get(),
@@ -796,6 +780,36 @@ namespace minEngine
         }
 
         ++m_FrameIndex;
+    }
+
+    void ForwardRenderer::PrepareSceneEnvironment(RHI& rhi, SceneRenderContext& ctx)
+    {
+        SkyBoxSceneProxy* skyProxy = ctx.Scene != nullptr ? ctx.Scene->GetSkyBoxProxy() : nullptr;
+        if (skyProxy == nullptr || !skyProxy->m_EnvironmentMap)
+        {
+            return;
+        }
+
+        EnvironmentMap* environment = skyProxy->m_EnvironmentMap.get();
+        if (!environment->EnsureGPUResources(rhi))
+        {
+            // The bake reported why, and it will not be repeated on the next frame; the frame draws
+            // without the environment's light instead of stalling on it.
+            return;
+        }
+
+        if (environment->GetIrradiance() != nullptr)
+        {
+            ctx.IblIrradianceTexture = environment->GetIrradiance()->GetRHITexture();
+        }
+        if (environment->GetPrefilter() != nullptr)
+        {
+            ctx.IblPrefilterTexture = environment->GetPrefilter()->GetRHITexture();
+        }
+        if (environment->GetBrdfLUT() != nullptr)
+        {
+            ctx.IblBrdfLutTexture = environment->GetBrdfLUT()->GetRHITexture();
+        }
     }
 
     void ForwardRenderer::UpdatePerFrameUBO(RHICommandList& cmdList, const SceneRenderContext& ctx)

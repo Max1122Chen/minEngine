@@ -198,6 +198,31 @@ namespace minEngine
         return m_SkyShaderBindingSet != nullptr;
     }
 
+    bool SkyBoxPass::IsEnvironmentUsable(const EnvironmentMap& environmentMap)
+    {
+        if (environmentMap.IsReadyForSky())
+        {
+            m_EnvironmentMissingFrames = 0;
+            return true;
+        }
+
+        // A map whose bake is still waiting, or that failed and settled, is the ordinary case of a
+        // frame drawn without an environment. The bake reports a failure once on its own, so this
+        // line only has to keep a long stall visible.
+        ++m_EnvironmentMissingFrames;
+        if (m_EnvironmentMissingFrames == 1 || m_EnvironmentMissingFrames % 120 == 0)
+        {
+            ME_LOG(
+                LogRender,
+                Warn,
+                "SkyBoxPass: the environment map has no sky cubemap yet, so this frame draws without "
+                "one; a bake runs at the frame start, never inside the recording window this pass is "
+                "already in ({} frame(s) so far).",
+                m_EnvironmentMissingFrames);
+        }
+        return false;
+    }
+
     void SkyBoxPass::SetupDependencies(RenderPass& self, RenderGraph& graph)
     {
         (void)graph;
@@ -295,13 +320,9 @@ namespace minEngine
             return;
         }
 
-        RHI* rhi = context.CommandList->GetExecutingRHI();
-        if (rhi == nullptr)
-        {
-            return;
-        }
-
-        if (!environmentMap->EnsureGPUResources(*rhi) || !environmentMap->IsReadyForSky())
+        // Readiness only: this pass runs inside the frame's recording window, where a bake cannot
+        // run. The frame start produced the map before the window opened.
+        if (!IsEnvironmentUsable(*environmentMap))
         {
             return;
         }
@@ -367,10 +388,9 @@ namespace minEngine
             return;
         }
 
-        RHI* rhi = cmdList.GetExecutingRHI();
-        if (rhi == nullptr
-            || !skyBox.m_EnvironmentMap->EnsureGPUResources(*rhi)
-            || !skyBox.m_EnvironmentMap->IsReadyForSky())
+        // Readiness only: see the note in Prepare. The hand-pass renderer runs its bake before it
+        // opens the recording window, exactly like the graph one.
+        if (!IsEnvironmentUsable(*skyBox.m_EnvironmentMap))
         {
             return;
         }

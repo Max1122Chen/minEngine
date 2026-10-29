@@ -4,9 +4,12 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
+#include "Runtime/Core/Threading/ThreadIdentity.h"
 
 #include <atomic>
+#include <cstdio>
 #include <cstring>
+#include <string>
 
 namespace minEngine
 {
@@ -19,6 +22,55 @@ namespace minEngine
         thread_local uint32_t t_OpenRecordingWindowCount = 0;
 
         std::atomic<uint64_t> g_ImmediateUploadWhileRecordingCount{0};
+
+        std::atomic<uint64_t> g_CommandOutsideRecordingCount{0};
+
+        const char* CommandListStateName(ERHICommandListState state)
+        {
+            switch (state)
+            {
+            case ERHICommandListState::Idle:
+                return "Idle";
+            case ERHICommandListState::Recording:
+                return "Recording";
+            case ERHICommandListState::Finished:
+                return "Finished";
+            }
+            return "unknown";
+        }
+
+        /**
+         * Names the caller and the thread it ran on, plus the frames that lead to it.
+         *
+         * A single sentence says what was wrong but not who did it, and that is exactly the part a
+         * reader cannot recover from the message: the same command is correct in a recording window
+         * on one thread and a defect outside one, and the offending call site is one of hundreds.
+         * The addresses are printed un-symbolised, against the module that holds them, so the log
+         * line stays readable after a rebuild.
+         */
+        std::string DescribeRecordingCaller()
+        {
+            const ThreadIdentity identity = CaptureCurrentThreadIdentity();
+            char header[256]{};
+            std::snprintf(
+                header,
+                sizeof(header),
+                " thread=%u role=%s",
+                static_cast<unsigned>(identity.LogThreadId),
+                identity.RoleName);
+
+            std::string text(header);
+            void* frames[kDiagnosticFrameCount]{};
+            const std::size_t frameCount = CaptureDiagnosticFrames(frames, kDiagnosticFrameCount);
+            // The first frames are this helper, the reporter and the command entry point.
+            for (std::size_t frameIndex = 3; frameIndex < frameCount; ++frameIndex)
+            {
+                char location[320]{};
+                FormatAddressForLog(location, sizeof(location), frames[frameIndex]);
+                text += "\n    #" + std::to_string(frameIndex - 3) + " " + location;
+            }
+            return text;
+        }
 
         void EnterRecordingWindow(bool& held)
         {
@@ -169,6 +221,11 @@ namespace minEngine
         return g_ImmediateUploadWhileRecordingCount.load();
     }
 
+    bool RHICommandList::IsRecordingWindowOpenOnThisThread()
+    {
+        return t_OpenRecordingWindowCount != 0;
+    }
+
     void RHICommandList::UpdateBuffer(RHIBuffer* buffer, const void* data, uint32_t offset, uint32_t size)
     {
         ME_ASSERT(buffer != nullptr, "UpdateBuffer requires a buffer");
@@ -183,6 +240,13 @@ namespace minEngine
             return;
         }
 
+        AssertCanIssueDrawCommand();
+        if (m_State != ERHICommandListState::Recording)
+        {
+            // Refused and reported; a payload copy for a command that will never run is waste.
+            return;
+        }
+
         uint8_t* payload = AcquireUploadScratchBlock(m_UploadScratch, m_UploadScratchCursor, size);
         std::memcpy(payload, data, size);
         RecordOrExecute([buffer, payload, offset, size]() { buffer->UpdateSubresource(payload, offset, size); });
@@ -190,11 +254,31 @@ namespace minEngine
 
     void RHICommandList::AssertCanIssueDrawCommand() const
     {
-        if (IsImmediate())
+        if (IsImmediate() || m_State == ERHICommandListState::Recording)
         {
             return;
         }
-        ME_ASSERT(m_State == ERHICommandListState::Recording, "Draw commands require Recording when not Immediate");
+
+        // Reported, not asserted. A command issued outside a window has no place in a recorded
+        // stream, and taking the process down over it turns a mistimed frame into a lost session.
+        // It is refused at the call site instead: the caller sees the line, the count moves, and
+        // the frame that follows is still drawn.
+        const uint64_t refused = g_CommandOutsideRecordingCount.fetch_add(1, std::memory_order_relaxed) + 1;
+        // The first one, then one in a hundred: a frame that issues many has one cause, and a line
+        // per command would bury the first.
+        if (refused == 1 || refused % 100 == 0)
+        {
+            ME_LOG(
+                LogRender,
+                Error,
+                "RHICommandList command refused: the list is {} while this topology records commands "
+                "instead of running them immediately, so a command issued now has no recording to "
+                "belong to. Open the window with BeginRecording() and hand the stream over with "
+                "FinishRecording()/Replay(). {} command(s) refused so far; caller:{}",
+                CommandListStateName(m_State),
+                refused,
+                DescribeRecordingCaller());
+        }
     }
 
     void RHICommandList::RecordOrExecute(std::function<void()> command)
@@ -209,6 +293,10 @@ namespace minEngine
         }
 
         AssertCanIssueDrawCommand();
+        if (m_State != ERHICommandListState::Recording)
+        {
+            return;
+        }
         m_RecordedCommands.push_back(std::move(command));
     }
 

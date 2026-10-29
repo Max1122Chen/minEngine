@@ -28,6 +28,7 @@ namespace minEngine
     class RHITexture;
     class RenderGraph;
     class RenderPass;
+    class EnvironmentMap;
 
     class SkyBoxPass : public IRenderPass
     {
@@ -48,6 +49,19 @@ namespace minEngine
 
     private:
         bool BindEnvironmentTexture(RHICommandList& cmdList, RHITexture* environmentTexture);
+
+        /**
+         * True when the environment map has a sky cubemap this frame may sample.
+         *
+         * The bake itself belongs to the frame start, where the renderer runs it before it records;
+         * a pass that is already recording can only report that the map is not there yet. The
+         * report is rate limited, because a map that is still baking is an expected state and a map
+         * that failed is reported once by the bake itself.
+         */
+        bool IsEnvironmentUsable(const EnvironmentMap& environmentMap);
+
+        /** Frames this pass drew without an environment because the bake had not produced one. */
+        uint32_t m_EnvironmentMissingFrames = 0;
 
         std::shared_ptr<RHIShader> m_SkyShader;
         RHIBufferRef m_CubeVertexBuffer;

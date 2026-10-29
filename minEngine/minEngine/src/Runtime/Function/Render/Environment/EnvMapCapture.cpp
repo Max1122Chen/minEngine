@@ -111,9 +111,90 @@ namespace minEngine
             uint32_t VertexCount = 0;
         };
 
-        EnvMapMeshResources CreateEnvMapMesh(RHI& rhi)
+        /**
+         * One bake is a self-contained burst of draws that has to have run before the bake returns:
+         * the caller hands back the cubemap this burst wrote and never sees the commands.
+         *
+         * In a recording topology a list only accepts commands between BeginRecording and Replay, so
+         * the burst opens that window here and closes it where the bake says it is done. Immediate
+         * mode runs each command as it is issued and the window is a no-op.
+         *
+         * The burst stays on this thread's command buffer rather than borrowing a pooled list: a
+         * pooled list is submitted to the RHI role and replayed there, so the caller would get a
+         * cubemap back before anything had drawn into it.
+         */
+        class ScopedBakeRecording
         {
-            RHICommandList cmdList(&rhi);
+        public:
+            explicit ScopedBakeRecording(RHICommandList& cmdList)
+                : m_CmdList(cmdList)
+                , m_bImmediate(cmdList.IsImmediate())
+            {
+                if (!m_bImmediate)
+                {
+                    m_CmdList.BeginRecording();
+                }
+            }
+
+            ~ScopedBakeRecording() { Finish(); }
+
+            ScopedBakeRecording(const ScopedBakeRecording&) = delete;
+            ScopedBakeRecording& operator=(const ScopedBakeRecording&) = delete;
+
+            /**
+             * Runs the burst. Explicit at the point the bake stops recording, because what follows
+             * it - handing the result over, submitting the command buffer - must not overtake the
+             * commands; the destructor is only there for a path that returns before this call.
+             */
+            void Finish()
+            {
+                if (m_bFinished)
+                {
+                    return;
+                }
+                m_bFinished = true;
+                if (m_bImmediate)
+                {
+                    return;
+                }
+                m_CmdList.FinishRecording();
+                m_CmdList.Replay();
+            }
+
+        private:
+            RHICommandList& m_CmdList;
+            bool m_bImmediate = true;
+            bool m_bFinished = false;
+        };
+
+        /**
+         * Why a handle this bake has to draw into cannot be used, and whether trying again helps.
+         *
+         * A handle created on the graphics role is complete when the call returns, so a caller that
+         * still sees one of these states is drawing with something the create path deferred: naming
+         * it in a draw would name nothing, and the cubemap would come back empty with no error.
+         */
+        std::string DescribeUnusableHandle(
+            const char* what,
+            const RHIDeferredCreateTarget* handle,
+            EEnvMapCaptureStatus& outStatus)
+        {
+            if (handle == nullptr)
+            {
+                outStatus = EEnvMapCaptureStatus::Failed;
+                return std::string(what) + " was not created: the device returned no object for it";
+            }
+            if (handle->HasNativeCreateFailed())
+            {
+                outStatus = EEnvMapCaptureStatus::Failed;
+                return std::string(what) + " has no native object: the device refused to create it";
+            }
+            outStatus = EEnvMapCaptureStatus::RetryLater;
+            return std::string(what) + " is not created yet: it is still queued for the graphics role";
+        }
+
+        EnvMapMeshResources CreateEnvMapMesh(RHICommandList& cmdList)
+        {
             EnvMapMeshResources resources;
             const uint32_t vertexByteSize = static_cast<uint32_t>(sizeof(kCubeVertices));
             resources.VertexCount = vertexByteSize / (3 * sizeof(float));
@@ -275,14 +356,19 @@ namespace minEngine
         RHITexture& equirectTexture,
         const std::filesystem::path& engineDefaultAssetsRoot,
         uint32_t faceSize,
-        std::string* outError)
+        std::string* outError,
+        EEnvMapCaptureStatus* outStatus)
     {
-        auto reportError = [&](const std::string& message) -> std::shared_ptr<TextureCube>
+        auto reportError = [&](const std::string& message, EEnvMapCaptureStatus status) -> std::shared_ptr<TextureCube>
         {
             ME_LOG(LogRender, Error, "EnvMapCapture: {}", message);
             if (outError)
             {
                 *outError = message;
+            }
+            if (outStatus)
+            {
+                *outStatus = status;
             }
             SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
             return nullptr;
@@ -290,7 +376,7 @@ namespace minEngine
 
         if (faceSize == 0)
         {
-            return reportError("faceSize must be > 0.");
+            return reportError("faceSize must be > 0.", EEnvMapCaptureStatus::Failed);
         }
 
         const TextureFormat cubeFormat = TextureFormat::RGB16F;
@@ -305,41 +391,50 @@ namespace minEngine
             outError);
         if (!captureShader)
         {
-            return reportError("failed to load equirect_to_cubemap SPIR-V shader.");
+            return reportError(
+                "failed to load equirect_to_cubemap SPIR-V shader.",
+                EEnvMapCaptureStatus::Failed);
         }
         if (captureShader->HasNativeCreateFailed())
         {
             return reportError(
-                "the driver refused the equirect_to_cubemap SPIR-V shader: " + captureShader->GetCompileLog());
+                "the driver refused the equirect_to_cubemap SPIR-V shader: " + captureShader->GetCompileLog(),
+                EEnvMapCaptureStatus::Failed);
         }
         if (!captureShader->IsReady())
         {
-            // The capture records its draws and reads the result back in one call, so it cannot
-            // wait for a program the graphics role has not created yet. Off the graphics role the
-            // handle is complete while the program is only queued: that is a capture to retry
-            // later, not a shader that failed to load.
+            // The capture records its draws and reads the result back in one call, so it cannot wait
+            // for a program that is only queued: that is a capture to retry later, not a shader that
+            // failed to load.
             return reportError(
                 "the equirect_to_cubemap program is not created yet; the capture has to run after the "
-                "graphics role has created it.");
+                "graphics role has created it.",
+                EEnvMapCaptureStatus::RetryLater);
         }
 
         const uint32_t environmentMipCount =
             RHIBackendSelection::IsVulkan() ? 1u : ComputeTextureMipCount(faceSize);
         RHITextureRef environmentCube =
             TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat, environmentMipCount);
-        if (!environmentCube)
+        if (GetDeferredUse(environmentCube.get()) != RHIDeferredUse::Usable)
         {
-            return reportError("failed to allocate environment cubemap.");
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::Failed;
+            const std::string reason = DescribeUnusableHandle("the environment cubemap", environmentCube.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
         }
 
         RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
-        if (!depthTarget)
+        if (GetDeferredUse(depthTarget.get()) != RHIDeferredUse::Usable)
         {
-            return reportError("failed to allocate capture depth texture.");
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::Failed;
+            const std::string reason = DescribeUnusableHandle("the capture depth texture", depthTarget.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
         }
 
-        const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
+        // Creating the mesh and the pipeline objects drives the device directly and is synchronous
+        // on this thread; the recording window below is what the draws need.
         RHICommandList cmdList(&rhi);
+        const EnvMapMeshResources mesh = CreateEnvMapMesh(cmdList);
         RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &equirectTexture);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
@@ -354,6 +449,7 @@ namespace minEngine
             0.1f,
             10.0f);
 
+        ScopedBakeRecording recording(cmdList);
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
             const Matrix4 captureView = glm::lookAt(
@@ -384,9 +480,14 @@ namespace minEngine
 
         TransitionTextureToShaderRead(cmdList, environmentCube.get());
         cmdList.GenerateMips(environmentCube.get());
+        recording.Finish();
 
         auto environment = TextureCubeLoader::WrapTextureCube(std::move(environmentCube), faceSize, channels);
         SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
+        if (outStatus)
+        {
+            *outStatus = EEnvMapCaptureStatus::Succeeded;
+        }
         return environment;
     }
 
@@ -395,14 +496,19 @@ namespace minEngine
         RHITexture& environmentCube,
         const std::filesystem::path& engineDefaultAssetsRoot,
         uint32_t faceSize,
-        std::string* outError)
+        std::string* outError,
+        EEnvMapCaptureStatus* outStatus)
     {
-        auto reportError = [&](const std::string& message) -> std::shared_ptr<TextureCube>
+        auto reportError = [&](const std::string& message, EEnvMapCaptureStatus status) -> std::shared_ptr<TextureCube>
         {
             ME_LOG(LogRender, Error, "EnvMapCapture: {}", message);
             if (outError)
             {
                 *outError = message;
+            }
+            if (outStatus)
+            {
+                *outStatus = status;
             }
             SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
             return nullptr;
@@ -410,14 +516,16 @@ namespace minEngine
 
         if (faceSize == 0)
         {
-            return reportError("irradiance faceSize must be > 0.");
+            return reportError("irradiance faceSize must be > 0.", EEnvMapCaptureStatus::Failed);
         }
 
         const TextureFormat cubeFormat = environmentCube.GetDesc().Format;
         const uint32_t channels = ChannelsFromFormat(cubeFormat);
         if (channels == 0)
         {
-            return reportError("environment cubemap must be RGB16F or RGBA16F.");
+            return reportError(
+                "environment cubemap must be RGB16F or RGBA16F.",
+                EEnvMapCaptureStatus::Failed);
         }
 
         const std::filesystem::path shaderDirectory =
@@ -429,39 +537,47 @@ namespace minEngine
             outError);
         if (!irradianceShader)
         {
-            return reportError("failed to load irradiance_convolution SPIR-V shader.");
+            return reportError(
+                "failed to load irradiance_convolution SPIR-V shader.",
+                EEnvMapCaptureStatus::Failed);
         }
         if (irradianceShader->HasNativeCreateFailed())
         {
             return reportError(
-                "the driver refused the irradiance_convolution SPIR-V shader: " + irradianceShader->GetCompileLog());
+                "the driver refused the irradiance_convolution SPIR-V shader: " + irradianceShader->GetCompileLog(),
+                EEnvMapCaptureStatus::Failed);
         }
         if (!irradianceShader->IsReady())
         {
-            // The capture records its draws and reads the result back in one call, so it cannot
-            // wait for a program the graphics role has not created yet. Off the graphics role the
-            // handle is complete while the program is only queued: that is a capture to retry
-            // later, not a shader that failed to load.
+            // Queued rather than refused: a capture that runs later succeeds, and the caller backs
+            // off instead of treating the map as broken.
             return reportError(
                 "the irradiance_convolution program is not created yet; the capture has to run after the "
-                "graphics role has created it.");
+                "graphics role has created it.",
+                EEnvMapCaptureStatus::RetryLater);
         }
 
         RHITextureRef irradianceCube =
             TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat);
-        if (!irradianceCube)
+        if (GetDeferredUse(irradianceCube.get()) != RHIDeferredUse::Usable)
         {
-            return reportError("failed to allocate irradiance cubemap.");
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::Failed;
+            const std::string reason = DescribeUnusableHandle("the irradiance cubemap", irradianceCube.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
         }
 
         RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
-        if (!depthTarget)
+        if (GetDeferredUse(depthTarget.get()) != RHIDeferredUse::Usable)
         {
-            return reportError("failed to allocate capture depth texture.");
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::Failed;
+            const std::string reason = DescribeUnusableHandle("the capture depth texture", depthTarget.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
         }
 
-        const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
+        // Creating the mesh and the pipeline objects drives the device directly and is synchronous
+        // on this thread; the recording window below is what the draws need.
         RHICommandList cmdList(&rhi);
+        const EnvMapMeshResources mesh = CreateEnvMapMesh(cmdList);
         RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &environmentCube);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
@@ -476,6 +592,7 @@ namespace minEngine
             0.1f,
             10.0f);
 
+        ScopedBakeRecording recording(cmdList);
         for (uint32_t faceIndex = 0; faceIndex < 6; ++faceIndex)
         {
             const Matrix4 captureView = glm::lookAt(
@@ -505,6 +622,7 @@ namespace minEngine
         }
 
         TransitionTextureToShaderRead(cmdList, irradianceCube.get());
+        recording.Finish();
 
         ME_LOG(LogRender, Info, 
             "EnvMapCapture: convolved irradiance cubemap {}x{} from environment.",
@@ -513,6 +631,10 @@ namespace minEngine
 
         auto irradiance = TextureCubeLoader::WrapTextureCube(std::move(irradianceCube), faceSize, channels);
         SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
+        if (outStatus)
+        {
+            *outStatus = EEnvMapCaptureStatus::Succeeded;
+        }
         return irradiance;
     }
 
@@ -521,14 +643,19 @@ namespace minEngine
         RHITexture& environmentCube,
         const std::filesystem::path& engineDefaultAssetsRoot,
         uint32_t faceSize,
-        std::string* outError)
+        std::string* outError,
+        EEnvMapCaptureStatus* outStatus)
     {
-        auto reportError = [&](const std::string& message) -> std::shared_ptr<TextureCube>
+        auto reportError = [&](const std::string& message, EEnvMapCaptureStatus status) -> std::shared_ptr<TextureCube>
         {
             ME_LOG(LogRender, Error, "EnvMapCapture: {}", message);
             if (outError)
             {
                 *outError = message;
+            }
+            if (outStatus)
+            {
+                *outStatus = status;
             }
             SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
             return nullptr;
@@ -536,20 +663,24 @@ namespace minEngine
 
         if (faceSize == 0)
         {
-            return reportError("prefilter faceSize must be > 0.");
+            return reportError("prefilter faceSize must be > 0.", EEnvMapCaptureStatus::Failed);
         }
 
         const TextureFormat cubeFormat = environmentCube.GetDesc().Format;
         const uint32_t channels = ChannelsFromFormat(cubeFormat);
         if (channels == 0)
         {
-            return reportError("environment cubemap must be RGB16F or RGBA16F.");
+            return reportError(
+                "environment cubemap must be RGB16F or RGBA16F.",
+                EEnvMapCaptureStatus::Failed);
         }
 
         const uint32_t environmentResolution = environmentCube.GetDesc().Width;
         if (environmentResolution == 0)
         {
-            return reportError("environment cubemap has zero width.");
+            return reportError(
+                "environment cubemap has zero width.",
+                EEnvMapCaptureStatus::Failed);
         }
 
         const std::filesystem::path shaderDirectory =
@@ -561,40 +692,48 @@ namespace minEngine
             outError);
         if (!prefilterShader)
         {
-            return reportError("failed to load prefilter SPIR-V shader.");
+            return reportError(
+                "failed to load prefilter SPIR-V shader.",
+                EEnvMapCaptureStatus::Failed);
         }
         if (prefilterShader->HasNativeCreateFailed())
         {
             return reportError(
-                "the driver refused the prefilter SPIR-V shader: " + prefilterShader->GetCompileLog());
+                "the driver refused the prefilter SPIR-V shader: " + prefilterShader->GetCompileLog(),
+                EEnvMapCaptureStatus::Failed);
         }
         if (!prefilterShader->IsReady())
         {
-            // The capture records its draws and reads the result back in one call, so it cannot
-            // wait for a program the graphics role has not created yet. Off the graphics role the
-            // handle is complete while the program is only queued: that is a capture to retry
-            // later, not a shader that failed to load.
+            // Queued rather than refused: a capture that runs later succeeds, and the caller backs
+            // off instead of treating the map as broken.
             return reportError(
                 "the prefilter program is not created yet; the capture has to run after the "
-                "graphics role has created it.");
+                "graphics role has created it.",
+                EEnvMapCaptureStatus::RetryLater);
         }
 
         const uint32_t maxMipLevel = kMaterialPBRMaxReflectionLod;
         RHITextureRef prefilterCube =
             TextureCubeLoader::CreateRenderTargetCube(rhi, faceSize, cubeFormat, maxMipLevel + 1);
-        if (!prefilterCube)
+        if (GetDeferredUse(prefilterCube.get()) != RHIDeferredUse::Usable)
         {
-            return reportError("failed to allocate prefilter cubemap.");
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::Failed;
+            const std::string reason = DescribeUnusableHandle("the prefilter cubemap", prefilterCube.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
         }
 
         RHITextureRef depthTarget = rhi.RHICreateTexture2D(MakeDepthTextureDesc(faceSize, faceSize), nullptr);
-        if (!depthTarget)
+        if (GetDeferredUse(depthTarget.get()) != RHIDeferredUse::Usable)
         {
-            return reportError("failed to allocate capture depth texture.");
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::Failed;
+            const std::string reason = DescribeUnusableHandle("the capture depth texture", depthTarget.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
         }
 
-        const EnvMapMeshResources mesh = CreateEnvMapMesh(rhi);
+        // Creating the mesh and the pipeline objects drives the device directly and is synchronous
+        // on this thread; the recording window below is what the draws need.
         RHICommandList cmdList(&rhi);
+        const EnvMapMeshResources mesh = CreateEnvMapMesh(cmdList);
         RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &environmentCube);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
@@ -609,6 +748,7 @@ namespace minEngine
             0.1f,
             10.0f);
 
+        ScopedBakeRecording recording(cmdList);
         for (uint32_t mip = 0; mip <= maxMipLevel; ++mip)
         {
             const uint32_t mipWidth = std::max(1u, faceSize >> mip);
@@ -647,6 +787,7 @@ namespace minEngine
         }
 
         TransitionTextureToShaderRead(cmdList, prefilterCube.get());
+        recording.Finish();
 
         ME_LOG(LogRender, Info, 
             "EnvMapCapture: prefiltered environment cubemap {}x{} ({} mips) from environment.",
@@ -656,6 +797,10 @@ namespace minEngine
 
         auto prefilter = TextureCubeLoader::WrapTextureCube(std::move(prefilterCube), faceSize, channels);
         SubmitVulkanImmediateCommandsBeforeResourceDestroy(rhi);
+        if (outStatus)
+        {
+            *outStatus = EEnvMapCaptureStatus::Succeeded;
+        }
         return prefilter;
     }
 }

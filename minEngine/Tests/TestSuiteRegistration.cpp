@@ -76,6 +76,7 @@
 #include "Suites/RHIDeferredDestroyTest.h"
 #include "Suites/SceneProxyResourceLifetimeTest.h"
 #include "Suites/MaterialRenderProxyDataTest.h"
+#include "Suites/EnvMapBakeTest.h"
 
 namespace minEngine
 {
@@ -1399,6 +1400,21 @@ namespace minEngine
             }
         };
 
+        struct EnvMapBakeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"envmap-bake", "Environment Map Bake Contract", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'envmap-bake'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext("envmap-bake", context.GetCommandLine().TestKind);
+            }
+        };
+
         struct SceneProxyResourceLifetimeTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1668,6 +1684,7 @@ namespace minEngine
         using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
         using MaterialRenderProxyDataSuite = TypedTestSuite<MaterialRenderProxyDataTestSuiteTraits>;
         using ScreenUIPerFrameUboSuite = TypedTestSuite<ScreenUIPerFrameUboTestSuiteTraits>;
+        using EnvMapBakeSuite = TypedTestSuite<EnvMapBakeTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1762,6 +1779,7 @@ namespace minEngine
             registry.Register(MaterialCompileCacheSuite::Get());
             registry.Register(MaterialRenderProxyDataSuite::Get());
             registry.Register(ScreenUIPerFrameUboSuite::Get());
+            registry.Register(EnvMapBakeSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS
