@@ -1,4 +1,5 @@
 set(MINENGINE_TESTS_NAME minEngineTests)
+set(MINENGINE_CRASH_PROBE_NAME minEngineCrashProbe)
 
 file(GLOB TEST_SUITE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Suites/*.cpp
@@ -47,6 +48,15 @@ set(SCENE_PROPERTY_CODEC_EDITOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Services/Scene/ScenePropertyValueCodec.cpp
 )
 
+# The crash record cannot be observed from inside the process it is written for: the filter runs
+# because the process is going down. The probe is therefore a separate executable that faults on
+# request, and the suite reads the record it leaves behind. It compiles the editor's diagnostics
+# translation unit directly (the same source the editor DLL carries) so the recorded path is the
+# production one; nothing in it is exported, so the two copies cannot collide at link time.
+set(MINENGINE_CRASH_DIAGNOSTICS_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src/Platform/EditorCrashDiagnostics.cpp
+)
+
 # TEST-F05: optional external / extra suite sources (off by default).
 set(_MINENGINE_EXTRA_TEST_SOURCES "${MINENGINE_EXTRA_TEST_SOURCES}")
 if(NOT "${MINENGINE_EXTRA_TEST_DIR}" STREQUAL "")
@@ -77,8 +87,24 @@ add_executable(${MINENGINE_TESTS_NAME}
     ${SPRITE_AUTHORING_EDITOR_SOURCES}
     ${AUTOMATION_PIPE_EDITOR_SOURCES}
     ${SCENE_PROPERTY_CODEC_EDITOR_SOURCES}
+    ${MINENGINE_CRASH_DIAGNOSTICS_SOURCES}
     ${_MINENGINE_EXTRA_TEST_SOURCES}
 )
+
+# Built before the tests so the suite always finds its probe next to minEngineTests.exe.
+add_executable(${MINENGINE_CRASH_PROBE_NAME}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Fixtures/CrashRecordProbe/main.cpp
+    ${MINENGINE_CRASH_DIAGNOSTICS_SOURCES}
+)
+set_target_properties(${MINENGINE_CRASH_PROBE_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
+)
+target_include_directories(${MINENGINE_CRASH_PROBE_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Editor/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src
+)
+target_link_libraries(${MINENGINE_CRASH_PROBE_NAME} PRIVATE ${ENGINE_NAME})
+add_dependencies(${MINENGINE_CRASH_PROBE_NAME} ${ENGINE_NAME})
 
 set_target_properties(${MINENGINE_TESTS_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_PATH}
@@ -144,3 +170,4 @@ if(TARGET GameModuleStub)
 endif()
 
 add_dependencies(${MINENGINE_TESTS_NAME} ${ENGINE_NAME})
+add_dependencies(${MINENGINE_TESTS_NAME} ${MINENGINE_CRASH_PROBE_NAME})

@@ -1,286 +1,266 @@
 #include "Platform/EditorCrashDiagnostics.h"
 
-#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Threading/ThreadIdentity.h"
 
 #if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
-#include <tlhelp32.h>
+#include <winternl.h>
+#include <malloc.h>
 
+#include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <iomanip>
-#include <ostream>
 #include <string>
-#include <thread>
-#include <vector>
 #endif
 
+/**
+ * What the fault path is allowed to do, and why it is this small.
+ *
+ * The filter runs on a thread that has already failed, often while that thread holds a lock. A
+ * record path that allocates, formats through the C++ library, asks the log system for its mutex or
+ * walks the loader list under the loader lock turns "the process crashes" into "the process hangs,
+ * and the one artefact that would explain it is never written". So the fault path does exactly one
+ * thing: it copies the fault to static storage with plain stores and hands it to a thread that is
+ * waiting with a healthy stack. Everything else - formatting, the module list, the dump - happens
+ * there.
+ *
+ * The reserved set is small and fixed:
+ *   - one static record buffer, formatted by hand (no std::string, no std::ostream, no vector);
+ *   - one static copy of the exception record and the faulting CONTEXT;
+ *   - the loaded-module table, read straight out of the process environment block;
+ *   - one waiting thread with a stack of its own;
+ *   - the record file, written with WriteFile on a handle opened at fault time.
+ *
+ * Nothing on that list takes a lock the faulting thread could be holding, and nothing on it grows
+ * the heap.
+ */
 namespace minEngine
 {
 #if defined(_WIN32)
     namespace
     {
-        /**
-         * A crash record is only symbolisable against the exact binaries that were loaded: an address
-         * carries no identity of its own, so a reader needs the module it belongs to and proof that the
-         * file on disk is that same build. Every identity field below exists for that proof.
-         */
-        struct ImageIdentity
+        constexpr unsigned kRecordCapacity = 128 * 1024;
+        constexpr unsigned kMaxRecordedModules = 256;
+        constexpr unsigned kMaxModuleNameChars = 48;
+        constexpr unsigned kFaultStackWordCount = 48;
+        constexpr unsigned kFilterFrameCount = 32;
+        constexpr unsigned kPathChars = MAX_PATH * 2;
+        constexpr unsigned kThreadNameChars = 96;
+
+        // The faulting thread gives up rather than waiting for a worker that may itself be blocked:
+        // a record that is already on disk is worth more than a process that never ends.
+        constexpr DWORD kRecordWaitMs = 20000;
+        constexpr DWORD kDumpWaitMs = 30000;
+
+        // A thread that overflowed its stack needs a page back to even reach the hand-off.
+        constexpr ULONG kFaultStackGuaranteeBytes = 64 * 1024;
+        constexpr DWORD kRecordThreadStackBytes = 1024 * 1024;
+
+        /** The loader's own view of a module. Offsets are the x64 loader list layout. */
+        struct LoaderLinks
+        {
+            void* Flink;
+            void* Blink;
+        };
+
+        struct LoaderName
+        {
+            unsigned short Length;
+            unsigned short MaximumLength;
+            const wchar_t* Buffer;
+        };
+
+        struct LoaderEntry
+        {
+            LoaderLinks InLoadOrderLinks;
+            LoaderLinks InMemoryOrderLinks;
+            LoaderLinks InInitializationOrderLinks;
+            void* DllBase;
+            void* EntryPoint;
+            unsigned long SizeOfImage;
+            LoaderName FullDllName;
+            LoaderName BaseDllName;
+        };
+
+        struct PebLoaderData
+        {
+            unsigned long Length;
+            unsigned char Initialized;
+            unsigned char Padding[3];
+            void* SsHandle;
+            LoaderLinks InLoadOrderModuleList;
+            LoaderLinks InMemoryOrderModuleList;
+            LoaderLinks InInitializationOrderModuleList;
+        };
+
+        struct ProcessEnvironmentBlock
+        {
+            unsigned char Reserved[0x18];
+            void* LoaderData;
+        };
+
+        static_assert(offsetof(ProcessEnvironmentBlock, LoaderData) == 0x18, "PEB.Ldr sits at 0x18");
+        static_assert(offsetof(PebLoaderData, InMemoryOrderModuleList) == 0x20, "loader list layout");
+        static_assert(offsetof(LoaderEntry, DllBase) == 0x30, "loader entry layout");
+        static_assert(offsetof(LoaderEntry, SizeOfImage) == 0x40, "loader entry layout");
+        static_assert(offsetof(LoaderEntry, BaseDllName) == 0x58, "loader entry layout");
+
+        struct ModuleSpan
         {
             std::uintptr_t LoadBase = 0;
             std::uintptr_t PreferredBase = 0;
-            std::uint64_t ImageSize = 0;
-            std::uint32_t TimeStamp = 0;
-            bool Valid = false;
+            unsigned long long ImageSize = 0;
+            unsigned long TimeStamp = 0;
+            char Name[kMaxModuleNameChars]{};
         };
 
-        ImageIdentity ReadImageIdentity(HMODULE module)
-        {
-            ImageIdentity identity{};
-            if (module == nullptr)
-            {
-                return identity;
-            }
-
-            const auto* base = reinterpret_cast<const std::uint8_t*>(module);
-            const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
-            if (dos->e_magic != IMAGE_DOS_SIGNATURE)
-            {
-                return identity;
-            }
-
-            const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
-            if (nt->Signature != IMAGE_NT_SIGNATURE)
-            {
-                return identity;
-            }
-
-            identity.LoadBase = reinterpret_cast<std::uintptr_t>(module);
-            identity.PreferredBase = static_cast<std::uintptr_t>(nt->OptionalHeader.ImageBase);
-            identity.ImageSize = nt->OptionalHeader.SizeOfImage;
-            identity.TimeStamp = nt->FileHeader.TimeDateStamp;
-            identity.Valid = true;
-            return identity;
-        }
-
-        std::string ModuleFileName(HMODULE module)
-        {
-            char path[MAX_PATH]{};
-            const DWORD length = GetModuleFileNameA(module, path, MAX_PATH);
-            if (length == 0 || length >= MAX_PATH)
-            {
-                return std::string();
-            }
-            return std::filesystem::path(path).filename().string();
-        }
-
         /**
-         * The process loads the debug-flavoured images (libminEngined.dll / libMaximumEditord.dll), so
-         * looking names up by their release spelling answers "not loaded" and leaves the record with no
-         * base for the module that faulted. Enumerate what the loader actually holds instead.
+         * Everything the record needs, in storage that outlives the fault: a thread that faulted
+         * cannot be assumed to return, so the record must not live in its frame.
          */
-        void WriteLoadedModules(std::ostream& out)
+        struct CrashState
         {
-            const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetCurrentProcessId());
-            if (snapshot == INVALID_HANDLE_VALUE)
+            wchar_t DirectoryW[kPathChars]{};
+            wchar_t RecordPathW[kPathChars]{};
+            wchar_t DumpPathW[kPathChars]{};
+            char RecordPathA[kPathChars]{};
+
+            HANDLE FaultEvent = nullptr;
+            HANDLE RecordWrittenEvent = nullptr;
+            HANDLE RecordDoneEvent = nullptr;
+            HANDLE RecordThread = nullptr;
+            DWORD RecordThreadId = 0;
+            bool Installed = false;
+
+            // Written by the faulting thread before it signals, read by the record thread after.
+            EXCEPTION_RECORD Exception{};
+            CONTEXT Context{};
+            bool HasContext = false;
+            DWORD FaultThreadId = 0;
+            std::uint32_t FaultLogThreadId = 0;
+            const char* FaultRoleName = "none";
+            void* FilterFrames[kFilterFrameCount]{};
+            unsigned FilterFrameCount = 0;
+
+            // Written by the record thread.
+            ModuleSpan Modules[kMaxRecordedModules]{};
+            unsigned ModuleCount = 0;
+            char Record[kRecordCapacity]{};
+            bool RecordFileWritten = false;
+
+            // The once guard: one record path per process, never nested.
+            volatile LONG FaultPathLatch = 0;
+            volatile LONG Admitted = 0;
+            volatile LONG Rejected = 0;
+            volatile LONG SelfCheckReentry = 0;
+        };
+
+        CrashState& State()
+        {
+            // Never destroyed: the record thread may still be reading it while the process exits.
+            static CrashState state;
+            return state;
+        }
+
+        // ---- text built by hand, into the reserved buffer -----------------------
+
+        struct TextBuffer
+        {
+            char* Data = nullptr;
+            unsigned Capacity = 0;
+            unsigned Size = 0;
+            bool Truncated = false;
+        };
+
+        void AppendChar(TextBuffer& buffer, char value)
+        {
+            if (buffer.Data == nullptr || buffer.Size + 1 >= buffer.Capacity)
             {
-                out << "LoadedModules: <snapshot unavailable, error " << GetLastError() << ">\n";
+                buffer.Truncated = true;
                 return;
             }
-
-            std::vector<std::string> lines;
-            MODULEENTRY32 entry{};
-            entry.dwSize = sizeof(entry);
-            if (Module32First(snapshot, &entry))
-            {
-                do
-                {
-                    const ImageIdentity identity =
-                        ReadImageIdentity(reinterpret_cast<HMODULE>(entry.modBaseAddr));
-                    if (!identity.Valid)
-                    {
-                        continue;
-                    }
-
-                    char line[512]{};
-                    std::snprintf(
-                        line,
-                        sizeof(line),
-                        "  %s base=0x%llX imagebase=0x%llX size=0x%llX timestamp=0x%08lX\n",
-                        entry.szModule,
-                        static_cast<unsigned long long>(identity.LoadBase),
-                        static_cast<unsigned long long>(identity.PreferredBase),
-                        static_cast<unsigned long long>(identity.ImageSize),
-                        static_cast<unsigned long>(identity.TimeStamp));
-                    lines.emplace_back(line);
-                } while (Module32Next(snapshot, &entry));
-            }
-            CloseHandle(snapshot);
-
-            out << "LoadedModules (" << lines.size() << "):\n";
-            for (const std::string& line : lines)
-            {
-                out << line;
-            }
+            buffer.Data[buffer.Size++] = value;
+            buffer.Data[buffer.Size] = '\0';
         }
 
-        /**
-         * Frames only become engine or driver frames once the reader knows which module each address
-         * belongs to, so the record names the loaded image next to the offset into it.
-         */
-        void WriteModuleName(std::ostream& out, const void* address)
+        void AppendText(TextBuffer& buffer, const char* text)
         {
-            HMODULE moduleHandle = nullptr;
-            if (!GetModuleHandleExA(
-                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                    static_cast<LPCSTR>(address),
-                    &moduleHandle)
-                || moduleHandle == nullptr)
-            {
-                out << "unknown";
-                return;
-            }
-
-            const std::string name = ModuleFileName(moduleHandle);
-            if (name.empty())
-            {
-                out << "unknown";
-                return;
-            }
-
-            const auto base = reinterpret_cast<std::uintptr_t>(moduleHandle);
-            const auto addr = reinterpret_cast<std::uintptr_t>(address);
-            out << name << "+0x" << std::hex << std::uppercase << (addr - base) << std::dec;
-        }
-
-        void WriteAddress(std::ostream& out, std::uintptr_t address)
-        {
-            out << "0x" << std::hex << std::uppercase << address << std::dec << " (";
-            WriteModuleName(out, reinterpret_cast<const void*>(address));
-            out << ")";
-        }
-
-        /**
-         * The thread's entry point is the closest thing to its creation site that survives inside the
-         * process: the loader keeps it for the life of the thread and it resolves like any other frame.
-         */
-        std::uintptr_t QueryThreadStartAddress(HANDLE thread)
-        {
-            using NtQueryInformationThreadFn = LONG(WINAPI*)(HANDLE, int, void*, ULONG, ULONG*);
-            const HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-            if (ntdll == nullptr)
-            {
-                return 0;
-            }
-
-            const auto query = reinterpret_cast<NtQueryInformationThreadFn>(
-                GetProcAddress(ntdll, "NtQueryInformationThread"));
-            if (query == nullptr)
-            {
-                return 0;
-            }
-
-            // ThreadQuerySetWin32StartAddress: the address passed to CreateThread/RtlUserThreadStart.
-            constexpr int kThreadQuerySetWin32StartAddress = 9;
-            void* startAddress = nullptr;
-            if (query(GetCurrentThread(), kThreadQuerySetWin32StartAddress, &startAddress, sizeof(startAddress), nullptr) != 0)
-            {
-                return 0;
-            }
-            return reinterpret_cast<std::uintptr_t>(startAddress);
-        }
-
-        std::string QueryThreadName(HANDLE thread)
-        {
-            using GetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PWSTR*);
-            const HMODULE kernel32 = GetModuleHandleA("kernel32.dll");
-            if (kernel32 == nullptr)
-            {
-                return std::string();
-            }
-
-            const auto getDescription = reinterpret_cast<GetThreadDescriptionFn>(
-                GetProcAddress(kernel32, "GetThreadDescription"));
-            if (getDescription == nullptr)
-            {
-                return std::string();
-            }
-
-            PWSTR description = nullptr;
-            if (FAILED(getDescription(thread, &description)) || description == nullptr)
-            {
-                return std::string();
-            }
-
-            std::string name;
-            for (const wchar_t* cursor = description; *cursor != L'\0'; ++cursor)
-            {
-                name.push_back(*cursor < 0x80 ? static_cast<char>(*cursor) : '?');
-            }
-            LocalFree(description);
-            return name;
-        }
-
-        void WriteFaultThread(std::ostream& out, DWORD threadId)
-        {
-            const HANDLE thread = OpenThread(THREAD_QUERY_INFORMATION, FALSE, threadId);
-            const std::uintptr_t startAddress =
-                thread != nullptr ? QueryThreadStartAddress(thread) : std::uintptr_t{0};
-            const std::string name = thread != nullptr ? QueryThreadName(thread) : std::string();
-            if (thread != nullptr)
-            {
-                CloseHandle(thread);
-            }
-
-            const ThreadIdentity identity = CaptureCurrentThreadIdentity();
-            out << "FaultThread: id=" << std::dec << threadId
-                << " logid=" << identity.LogThreadId
-                << " role=" << identity.RoleName
-                << " name=\"" << (name.empty() ? "unnamed" : name) << "\" start=";
-            if (startAddress == 0)
-            {
-                out << "<unavailable>";
-            }
-            else
-            {
-                WriteAddress(out, startAddress);
-            }
-            out << '\n';
-        }
-
-        void WriteContextRegisters(std::ostream& out, CONTEXT* context)
-        {
-            if (context == nullptr)
+            if (text == nullptr)
             {
                 return;
             }
-
-            out << "FaultRIP=";
-            WriteAddress(out, context->Rip);
-            out << '\n';
-            out << "RAX=0x" << std::hex << std::uppercase << context->Rax
-                << " RCX=0x" << context->Rcx
-                << " RDX=0x" << context->Rdx
-                << " RBX=0x" << context->Rbx << std::dec << '\n';
-            out << "RSP=0x" << std::hex << std::uppercase << context->Rsp
-                << " RBP=0x" << context->Rbp
-                << " RSI=0x" << context->Rsi
-                << " RDI=0x" << context->Rdi << std::dec << '\n';
-            out << "R8=0x" << std::hex << std::uppercase << context->R8
-                << " R9=0x" << context->R9
-                << " R10=0x" << context->R10
-                << " R11=0x" << context->R11 << std::dec << '\n';
+            for (const char* cursor = text; *cursor != '\0'; ++cursor)
+            {
+                AppendChar(buffer, *cursor);
+            }
         }
 
+        void AppendHex(TextBuffer& buffer, unsigned long long value)
+        {
+            char digits[16]{};
+            int used = 0;
+            do
+            {
+                const int digit = static_cast<int>(value & 0xFULL);
+                digits[used++] = static_cast<char>(digit < 10 ? '0' + digit : 'A' + digit - 10);
+                value >>= 4;
+            } while (value != 0);
+
+            while (used > 0)
+            {
+                AppendChar(buffer, digits[--used]);
+            }
+        }
+
+        void AppendDecimal(TextBuffer& buffer, unsigned long long value, unsigned width)
+        {
+            char digits[24]{};
+            int used = 0;
+            do
+            {
+                digits[used++] = static_cast<char>('0' + value % 10);
+                value /= 10;
+            } while (value != 0);
+
+            while (static_cast<unsigned>(used) < width)
+            {
+                digits[used++] = '0';
+            }
+            while (used > 0)
+            {
+                AppendChar(buffer, digits[--used]);
+            }
+        }
+
+        void AppendWideText(char* destination, unsigned capacity, const wchar_t* text, unsigned length)
+        {
+            if (destination == nullptr || capacity == 0 || text == nullptr)
+            {
+                return;
+            }
+            unsigned written = 0;
+            for (unsigned index = 0; index < length && written + 1 < capacity; ++index)
+            {
+                const wchar_t wide = text[index];
+                destination[written++] = wide < 0x80 ? static_cast<char>(wide) : '?';
+            }
+            destination[written] = '\0';
+        }
+
+        /** Reads are the only thing the record may still do to memory it does not own. */
         bool IsReadableAddress(const void* address, size_t byteCount)
         {
+            if (address == nullptr)
+            {
+                return false;
+            }
+
             MEMORY_BASIC_INFORMATION info{};
             if (::VirtualQuery(address, &info, sizeof(info)) == 0)
             {
@@ -296,60 +276,399 @@ namespace minEngine
                 || protect == PAGE_EXECUTE_WRITECOPY;
         }
 
-        // CaptureStackBackTrace walks from *this* filter frame and is useless when RIP is
-        // already null/garbage. Dump the faulting CONTEXT registers and the words on the
-        // faulting stack — those return addresses survive even when RIP itself does not.
-        void WriteFaultingStackWords(std::ostream& out, CONTEXT* context)
+        // ---- the loaded-module table -------------------------------------------
+
+        bool ReadImageIdentity(const void* base, ModuleSpan& span)
         {
-            if (context == nullptr)
+            if (!IsReadableAddress(base, sizeof(IMAGE_DOS_HEADER)))
+            {
+                return false;
+            }
+
+            const auto* dos = static_cast<const IMAGE_DOS_HEADER*>(base);
+            if (dos->e_magic != IMAGE_DOS_SIGNATURE || dos->e_lfanew <= 0)
+            {
+                return false;
+            }
+
+            const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(
+                static_cast<const std::uint8_t*>(base) + dos->e_lfanew);
+            if (!IsReadableAddress(nt, sizeof(IMAGE_NT_HEADERS64)) || nt->Signature != IMAGE_NT_SIGNATURE)
+            {
+                return false;
+            }
+
+            span.Name[0] = '\0';
+            span.LoadBase = reinterpret_cast<std::uintptr_t>(base);
+            span.PreferredBase = static_cast<std::uintptr_t>(nt->OptionalHeader.ImageBase);
+            span.ImageSize = nt->OptionalHeader.SizeOfImage;
+            span.TimeStamp = nt->FileHeader.TimeDateStamp;
+            return true;
+        }
+
+        /**
+         * Enumerated from the loader's own list instead of a toolhelp snapshot: the snapshot
+         * allocates and synchronises with the loader lock, and a fault raised while that lock is
+         * held would then cost the whole record.
+         */
+        void CaptureLoadedModules()
+        {
+            CrashState& state = State();
+            state.ModuleCount = 0;
+
+            const auto* peb = reinterpret_cast<const ProcessEnvironmentBlock*>(
+                ::NtCurrentTeb()->ProcessEnvironmentBlock);
+            if (!IsReadableAddress(peb, sizeof(*peb)))
             {
                 return;
             }
 
-            constexpr int kWordCount = 48;
-            out << "FaultStackWords (" << kWordCount << " from RSP):\n";
-            for (int wordIndex = 0; wordIndex < kWordCount; ++wordIndex)
+            const auto* loader = reinterpret_cast<const PebLoaderData*>(peb->LoaderData);
+            if (!IsReadableAddress(loader, sizeof(*loader)))
             {
-                const auto* slot = reinterpret_cast<const std::uintptr_t*>(context->Rsp) + wordIndex;
-                if (!IsReadableAddress(slot, sizeof(std::uintptr_t)))
+                return;
+            }
+
+            const LoaderLinks* head = &loader->InMemoryOrderModuleList;
+            const void* cursor = head->Flink;
+            while (cursor != nullptr && cursor != head && state.ModuleCount < kMaxRecordedModules)
+            {
+                const auto* entry = reinterpret_cast<const LoaderEntry*>(
+                    static_cast<const std::uint8_t*>(cursor) - offsetof(LoaderEntry, InMemoryOrderLinks));
+                if (!IsReadableAddress(entry, sizeof(*entry)))
                 {
-                    out << "  [" << wordIndex << "] <unreadable>\n";
                     break;
                 }
 
-                const std::uintptr_t word = *slot;
-                out << "  [" << wordIndex << "] ";
-                WriteAddress(out, word);
-                out << '\n';
+                ModuleSpan& span = state.Modules[state.ModuleCount];
+                if (ReadImageIdentity(entry->DllBase, span))
+                {
+                    const unsigned length = entry->BaseDllName.Length / sizeof(wchar_t);
+                    if (IsReadableAddress(entry->BaseDllName.Buffer, entry->BaseDllName.Length))
+                    {
+                        AppendWideText(span.Name, kMaxModuleNameChars, entry->BaseDllName.Buffer, length);
+                    }
+                    else
+                    {
+                        const char* placeholder = "<unnamed>";
+                        for (unsigned index = 0; placeholder[index] != '\0' && index + 1 < kMaxModuleNameChars;
+                             ++index)
+                        {
+                            span.Name[index] = placeholder[index];
+                        }
+                    }
+                    ++state.ModuleCount;
+                }
+
+                cursor = entry->InMemoryOrderLinks.Flink;
             }
         }
 
-        void WriteStackTrace(std::ostream& out, CONTEXT* context)
+        const ModuleSpan* FindModule(std::uintptr_t address)
         {
-            WriteContextRegisters(out, context);
-            WriteFaultingStackWords(out, context);
-
-            void* frames[64]{};
-            const USHORT frameCount = CaptureStackBackTrace(0, 64, frames, nullptr);
-
-            out << "FilterStack (" << frameCount << " frames, CaptureStackBackTrace):\n";
-            for (USHORT frameIndex = 0; frameIndex < frameCount; ++frameIndex)
+            const CrashState& state = State();
+            for (unsigned index = 0; index < state.ModuleCount; ++index)
             {
-                out << "  #" << frameIndex << " ";
-                WriteAddress(out, reinterpret_cast<std::uintptr_t>(frames[frameIndex]));
-                out << '\n';
+                const ModuleSpan& span = state.Modules[index];
+                if (span.LoadBase != 0 && address >= span.LoadBase
+                    && address < span.LoadBase + span.ImageSize)
+                {
+                    return &span;
+                }
             }
+            return nullptr;
+        }
+
+        void AppendAddress(TextBuffer& buffer, std::uintptr_t address)
+        {
+            AppendText(buffer, "0x");
+            AppendHex(buffer, address);
+            AppendText(buffer, " (");
+            const ModuleSpan* owner = FindModule(address);
+            if (owner == nullptr)
+            {
+                AppendText(buffer, "unknown");
+            }
+            else
+            {
+                AppendText(buffer, owner->Name);
+                AppendText(buffer, "+0x");
+                AppendHex(buffer, address - owner->LoadBase);
+            }
+            AppendText(buffer, ")");
+        }
+
+        // ---- what only the faulting thread could answer ------------------------
+
+        std::uintptr_t QueryThreadStartAddress(HANDLE thread)
+        {
+            using NtQueryInformationThreadFn = LONG(WINAPI*)(HANDLE, int, void*, ULONG, ULONG*);
+            const HMODULE ntdll = ::GetModuleHandleA("ntdll.dll");
+            if (ntdll == nullptr)
+            {
+                return 0;
+            }
+
+            const auto query = reinterpret_cast<NtQueryInformationThreadFn>(
+                ::GetProcAddress(ntdll, "NtQueryInformationThread"));
+            if (query == nullptr)
+            {
+                return 0;
+            }
+
+            // ThreadQuerySetWin32StartAddress: the address passed to CreateThread/RtlUserThreadStart,
+            // which is the closest thing to the thread's creation site that survives in-process.
+            constexpr int kThreadQuerySetWin32StartAddress = 9;
+            void* startAddress = nullptr;
+            if (query(thread, kThreadQuerySetWin32StartAddress, &startAddress, sizeof(startAddress), nullptr) != 0)
+            {
+                return 0;
+            }
+            return reinterpret_cast<std::uintptr_t>(startAddress);
+        }
+
+        void QueryThreadName(HANDLE thread, char* destination, unsigned capacity)
+        {
+            if (destination == nullptr || capacity == 0)
+            {
+                return;
+            }
+            destination[0] = '\0';
+
+            using GetThreadDescriptionFn = HRESULT(WINAPI*)(HANDLE, PWSTR*);
+            const HMODULE kernel32 = ::GetModuleHandleA("kernel32.dll");
+            if (kernel32 == nullptr)
+            {
+                return;
+            }
+
+            const auto getDescription = reinterpret_cast<GetThreadDescriptionFn>(
+                ::GetProcAddress(kernel32, "GetThreadDescription"));
+            if (getDescription == nullptr)
+            {
+                return;
+            }
+
+            PWSTR description = nullptr;
+            if (FAILED(getDescription(thread, &description)) || description == nullptr)
+            {
+                return;
+            }
+
+            unsigned length = 0;
+            while (description[length] != L'\0')
+            {
+                ++length;
+            }
+            AppendWideText(destination, capacity, description, length);
+            ::LocalFree(description);
+        }
+
+        // ---- the record --------------------------------------------------------
+
+        void AppendTimestamp(TextBuffer& buffer)
+        {
+            SYSTEMTIME crashedAt{};
+            ::GetLocalTime(&crashedAt);
+            AppendDecimal(buffer, crashedAt.wYear, 4);
+            AppendChar(buffer, '-');
+            AppendDecimal(buffer, crashedAt.wMonth, 2);
+            AppendChar(buffer, '-');
+            AppendDecimal(buffer, crashedAt.wDay, 2);
+            AppendChar(buffer, ' ');
+            AppendDecimal(buffer, crashedAt.wHour, 2);
+            AppendChar(buffer, ':');
+            AppendDecimal(buffer, crashedAt.wMinute, 2);
+            AppendChar(buffer, ':');
+            AppendDecimal(buffer, crashedAt.wSecond, 2);
+            AppendChar(buffer, '.');
+            AppendDecimal(buffer, crashedAt.wMilliseconds, 3);
+        }
+
+        void AppendLoadedModules(TextBuffer& buffer)
+        {
+            const CrashState& state = State();
+            AppendText(buffer, "LoadedModules (");
+            AppendDecimal(buffer, state.ModuleCount, 1);
+            AppendText(buffer, "):\n");
+
+            if (state.ModuleCount == 0)
+            {
+                AppendText(buffer, "  <loader list unreadable>\n");
+                return;
+            }
+
+            for (unsigned index = 0; index < state.ModuleCount; ++index)
+            {
+                const ModuleSpan& span = state.Modules[index];
+                AppendText(buffer, "  ");
+                AppendText(buffer, span.Name);
+                AppendText(buffer, " base=0x");
+                AppendHex(buffer, span.LoadBase);
+                AppendText(buffer, " imagebase=0x");
+                AppendHex(buffer, span.PreferredBase);
+                AppendText(buffer, " size=0x");
+                AppendHex(buffer, span.ImageSize);
+                AppendText(buffer, " timestamp=0x");
+                AppendHex(buffer, span.TimeStamp);
+                AppendChar(buffer, '\n');
+            }
+        }
+
+        void AppendFaultThread(TextBuffer& buffer)
+        {
+            const CrashState& state = State();
+
+            std::uintptr_t startAddress = 0;
+            char name[kThreadNameChars]{};
+            const HANDLE thread = ::OpenThread(THREAD_QUERY_INFORMATION, FALSE, state.FaultThreadId);
+            if (thread != nullptr)
+            {
+                startAddress = QueryThreadStartAddress(thread);
+                QueryThreadName(thread, name, sizeof(name));
+                ::CloseHandle(thread);
+            }
+
+            AppendText(buffer, "FaultThread: id=");
+            AppendDecimal(buffer, state.FaultThreadId, 1);
+            AppendText(buffer, " logid=");
+            AppendDecimal(buffer, state.FaultLogThreadId, 1);
+            AppendText(buffer, " role=");
+            AppendText(buffer, state.FaultRoleName);
+            AppendText(buffer, " name=\"");
+            AppendText(buffer, name[0] != '\0' ? name : "unnamed");
+            AppendText(buffer, "\" start=");
+            if (startAddress == 0)
+            {
+                AppendText(buffer, "<unavailable>");
+            }
+            else
+            {
+                AppendAddress(buffer, startAddress);
+            }
+            AppendChar(buffer, '\n');
+        }
+
+        void AppendContextRegisters(TextBuffer& buffer)
+        {
+            const CrashState& state = State();
+            if (!state.HasContext)
+            {
+                return;
+            }
+
+            const CONTEXT& context = state.Context;
+            AppendText(buffer, "FaultRIP=");
+            AppendAddress(buffer, context.Rip);
+            AppendChar(buffer, '\n');
+
+            AppendText(buffer, "RAX=0x");
+            AppendHex(buffer, context.Rax);
+            AppendText(buffer, " RCX=0x");
+            AppendHex(buffer, context.Rcx);
+            AppendText(buffer, " RDX=0x");
+            AppendHex(buffer, context.Rdx);
+            AppendText(buffer, " RBX=0x");
+            AppendHex(buffer, context.Rbx);
+            AppendChar(buffer, '\n');
+
+            AppendText(buffer, "RSP=0x");
+            AppendHex(buffer, context.Rsp);
+            AppendText(buffer, " RBP=0x");
+            AppendHex(buffer, context.Rbp);
+            AppendText(buffer, " RSI=0x");
+            AppendHex(buffer, context.Rsi);
+            AppendText(buffer, " RDI=0x");
+            AppendHex(buffer, context.Rdi);
+            AppendChar(buffer, '\n');
+
+            AppendText(buffer, "R8=0x");
+            AppendHex(buffer, context.R8);
+            AppendText(buffer, " R9=0x");
+            AppendHex(buffer, context.R9);
+            AppendText(buffer, " R10=0x");
+            AppendHex(buffer, context.R10);
+            AppendText(buffer, " R11=0x");
+            AppendHex(buffer, context.R11);
+            AppendChar(buffer, '\n');
         }
 
         /**
-         * A minidump carries the full thread table, stacks and the loaded module list, which is the only
-         * artefact that survives a fault raised inside a driver's own worker thread: those frames exist
-         * nowhere in the process until the debugger walks the dump.
-         *
-         * dbghelp.dll is loaded at crash time rather than linked: it ships with Windows, so the editor
-         * gains no new dependency, nothing to redistribute, and a missing dbghelp costs a log line
-         * instead of the whole record.
+         * CaptureStackBackTrace walks from the filter frame, so it says little about a fault whose
+         * RIP is already garbage. The words on the faulting stack are the part that survives: those
+         * return addresses are still there even when the faulting frame is not.
          */
+        void AppendFaultingStackWords(TextBuffer& buffer)
+        {
+            const CrashState& state = State();
+            if (!state.HasContext)
+            {
+                return;
+            }
+
+            AppendText(buffer, "FaultStackWords (");
+            AppendDecimal(buffer, kFaultStackWordCount, 1);
+            AppendText(buffer, " from RSP):\n");
+
+            for (unsigned wordIndex = 0; wordIndex < kFaultStackWordCount; ++wordIndex)
+            {
+                const auto* slot = reinterpret_cast<const std::uintptr_t*>(state.Context.Rsp) + wordIndex;
+                if (!IsReadableAddress(slot, sizeof(std::uintptr_t)))
+                {
+                    AppendText(buffer, "  [");
+                    AppendDecimal(buffer, wordIndex, 1);
+                    AppendText(buffer, "] <unreadable>\n");
+                    break;
+                }
+
+                AppendText(buffer, "  [");
+                AppendDecimal(buffer, wordIndex, 1);
+                AppendText(buffer, "] ");
+                AppendAddress(buffer, *slot);
+                AppendChar(buffer, '\n');
+            }
+        }
+
+        void AppendFilterStack(TextBuffer& buffer)
+        {
+            const CrashState& state = State();
+            AppendText(buffer, "FilterStack (");
+            AppendDecimal(buffer, state.FilterFrameCount, 1);
+            AppendText(buffer, " frames, CaptureStackBackTrace):\n");
+            for (unsigned frameIndex = 0; frameIndex < state.FilterFrameCount; ++frameIndex)
+            {
+                AppendText(buffer, "  #");
+                AppendDecimal(buffer, frameIndex, 1);
+                AppendChar(buffer, ' ');
+                AppendAddress(buffer, reinterpret_cast<std::uintptr_t>(state.FilterFrames[frameIndex]));
+                AppendChar(buffer, '\n');
+            }
+        }
+
+        void AppendExceptionFacts(TextBuffer& buffer)
+        {
+            const CrashState& state = State();
+            const EXCEPTION_RECORD& record = state.Exception;
+
+            AppendText(buffer, "ExceptionCode=0x");
+            AppendHex(buffer, record.ExceptionCode);
+            AppendChar(buffer, '\n');
+            AppendText(buffer, "ExceptionAddress=0x");
+            AppendHex(buffer, reinterpret_cast<std::uintptr_t>(record.ExceptionAddress));
+            AppendChar(buffer, '\n');
+
+            if (record.ExceptionCode == EXCEPTION_ACCESS_VIOLATION && record.NumberParameters >= 2)
+            {
+                AppendText(buffer, "AV operation=");
+                AppendDecimal(buffer, record.ExceptionInformation[0], 1);
+                AppendText(buffer, " address=0x");
+                AppendHex(buffer, record.ExceptionInformation[1]);
+                AppendChar(buffer, '\n');
+            }
+        }
+
+        // ---- the dump, off the faulting stack ----------------------------------
+
         struct MiniDumpExceptionInformation
         {
             DWORD ThreadId;
@@ -361,210 +680,483 @@ namespace minEngine
             HANDLE, DWORD, HANDLE, int, MiniDumpExceptionInformation*, void*, void*);
 
         /**
-         * Returns the path that was written, or why nothing was: a dump that silently does not exist
-         * is worse than no dump at all, because the record then claims evidence it does not have.
+         * A minidump carries the thread table, the stacks and the module list, which is the only
+         * artefact that survives a fault raised inside a driver's own worker thread.
+         *
+         * dbghelp.dll is loaded here rather than linked: it ships with Windows, so the editor gains
+         * no dependency and a missing dbghelp costs a line instead of the record. Loading it takes
+         * the loader lock - which is exactly why this runs after the record is already on disk and
+         * on a thread whose stack is intact.
          */
-        std::string WriteMiniDump(
-            const std::filesystem::path& path,
-            EXCEPTION_POINTERS* exceptionPointers,
-            DWORD threadId)
+        void AppendMiniDumpLine(TextBuffer& status, const wchar_t* dumpPath)
         {
-            const HMODULE dbghelp = LoadLibraryW(L"dbghelp.dll");
+            const HMODULE dbghelp = ::LoadLibraryW(L"dbghelp.dll");
             if (dbghelp == nullptr)
             {
-                return "<not written: dbghelp.dll unavailable, error "
-                    + std::to_string(GetLastError()) + ">";
+                AppendText(status, "<not written: dbghelp.dll unavailable, error ");
+                AppendDecimal(status, ::GetLastError(), 1);
+                AppendText(status, ">");
+                return;
             }
 
             const auto writeDump = reinterpret_cast<MiniDumpWriteDumpFn>(
-                GetProcAddress(dbghelp, "MiniDumpWriteDump"));
+                ::GetProcAddress(dbghelp, "MiniDumpWriteDump"));
             if (writeDump == nullptr)
             {
-                FreeLibrary(dbghelp);
-                return "<not written: MiniDumpWriteDump not exported>";
+                ::FreeLibrary(dbghelp);
+                AppendText(status, "<not written: MiniDumpWriteDump not exported>");
+                return;
             }
 
-            const HANDLE file = CreateFileW(
-                path.c_str(),
-                GENERIC_WRITE,
-                0,
-                nullptr,
-                CREATE_ALWAYS,
-                FILE_ATTRIBUTE_NORMAL,
-                nullptr);
+            const HANDLE file = ::CreateFileW(
+                dumpPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
             if (file == INVALID_HANDLE_VALUE)
             {
-                const DWORD error = GetLastError();
-                FreeLibrary(dbghelp);
-                return "<not written: cannot create the file, error " + std::to_string(error) + ">";
+                const DWORD error = ::GetLastError();
+                ::FreeLibrary(dbghelp);
+                AppendText(status, "<not written: cannot create the file, error ");
+                AppendDecimal(status, error, 1);
+                AppendText(status, ">");
+                return;
             }
 
-            // MiniDumpNormal plus thread info: every thread's stack, no heap, so the dump stays small
-            // enough to attach to a report while still holding the frames this record cannot name.
+            // MiniDumpNormal plus thread info: every thread's stack, no heap, so the dump stays
+            // small enough to attach while still holding the frames the record cannot name.
             constexpr int kMiniDumpNormal = 0x00000000;
             constexpr int kMiniDumpWithThreadInfo = 0x00001000;
 
+            CrashState& state = State();
+            EXCEPTION_POINTERS pointers{&state.Exception, state.HasContext ? &state.Context : nullptr};
             MiniDumpExceptionInformation info{};
-            info.ThreadId = threadId;
-            info.ExceptionPointers = exceptionPointers;
+            info.ThreadId = state.FaultThreadId;
+            info.ExceptionPointers = state.HasContext ? &pointers : nullptr;
             info.ClientPointers = FALSE;
 
             // Some dbghelp builds refuse the exception record of a process dumping itself, so the
-            // attempt degrades instead of losing the stacks: the thread table is the part that
-            // matters for a fault raised inside a driver worker thread.
+            // attempt degrades instead of losing the stacks.
             BOOL written = writeDump(
-                GetCurrentProcess(),
-                GetCurrentProcessId(),
+                ::GetCurrentProcess(),
+                ::GetCurrentProcessId(),
                 file,
                 kMiniDumpNormal | kMiniDumpWithThreadInfo,
                 &info,
                 nullptr,
                 nullptr);
-            DWORD error = written != FALSE ? 0 : GetLastError();
+            DWORD error = written != FALSE ? 0 : ::GetLastError();
             if (written == FALSE)
             {
                 info.ExceptionPointers = nullptr;
                 written = writeDump(
-                    GetCurrentProcess(),
-                    GetCurrentProcessId(),
+                    ::GetCurrentProcess(),
+                    ::GetCurrentProcessId(),
                     file,
                     kMiniDumpNormal | kMiniDumpWithThreadInfo,
                     &info,
                     nullptr,
                     nullptr);
-                error = written != FALSE ? 0 : GetLastError();
+                error = written != FALSE ? 0 : ::GetLastError();
             }
             if (written == FALSE)
             {
                 written = writeDump(
-                    GetCurrentProcess(),
-                    GetCurrentProcessId(),
+                    ::GetCurrentProcess(),
+                    ::GetCurrentProcessId(),
                     file,
                     kMiniDumpNormal,
                     nullptr,
                     nullptr,
                     nullptr);
-                error = written != FALSE ? 0 : GetLastError();
+                error = written != FALSE ? 0 : ::GetLastError();
             }
-            CloseHandle(file);
-            FreeLibrary(dbghelp);
+
+            ::CloseHandle(file);
+            ::FreeLibrary(dbghelp);
+
             if (written == FALSE)
             {
-                return "<not written: MiniDumpWriteDump failed, error "
-                    + std::to_string(error) + ">";
-            }
-            return path.string();
-        }
-
-        std::filesystem::path ResolveCrashLogPath()
-        {
-            wchar_t modulePath[MAX_PATH]{};
-            const DWORD length = GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
-            if (length == 0 || length >= MAX_PATH)
-            {
-                return std::filesystem::path("ed_crash.log");
+                AppendText(status, "<not written: MiniDumpWriteDump failed, error ");
+                AppendDecimal(status, error, 1);
+                AppendText(status, ">");
+                return;
             }
 
-            std::filesystem::path path(modulePath);
-            path.remove_filename();
-            path /= "ed_crash.log";
-            return path;
+            // The path as ANSI, from the wide path the fault path prepared.
+            for (unsigned index = 0; dumpPath[index] != L'\0' && index < kPathChars; ++index)
+            {
+                AppendChar(status, dumpPath[index] < 0x80 ? static_cast<char>(dumpPath[index]) : '?');
+            }
         }
 
-        std::string TimestampForFile(const char* timestamp)
+        // ---- writing the record ------------------------------------------------
+
+        bool AppendToRecordFile(const char* data, unsigned size)
         {
-            std::string name(timestamp);
-            for (char& ch : name)
+            const CrashState& state = State();
+            const HANDLE file = ::CreateFileW(
+                state.RecordPathW,
+                FILE_APPEND_DATA,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                nullptr,
+                OPEN_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL,
+                nullptr);
+            if (file == INVALID_HANDLE_VALUE)
             {
-                if (ch == ' ' || ch == ':' || ch == '.')
+                return false;
+            }
+
+            DWORD written = 0;
+            const BOOL ok = ::WriteFile(file, data, size, &written, nullptr);
+            ::CloseHandle(file);
+            return ok != FALSE && written == size;
+        }
+
+        void BuildDumpPath()
+        {
+            CrashState& state = State();
+
+            unsigned index = 0;
+            for (; state.DirectoryW[index] != L'\0' && index < kPathChars - 1; ++index)
+            {
+                state.DumpPathW[index] = state.DirectoryW[index];
+            }
+
+            const wchar_t* stem = L"ed_crash_";
+            for (unsigned stemIndex = 0; stem[stemIndex] != L'\0' && index < kPathChars - 1; ++stemIndex)
+            {
+                state.DumpPathW[index++] = stem[stemIndex];
+            }
+
+            // The file name carries the same wall clock as the record, so a dump is found by
+            // reading the record rather than by comparing file times.
+            SYSTEMTIME crashedAt{};
+            ::GetLocalTime(&crashedAt);
+            const WORD parts[7] = {crashedAt.wYear, crashedAt.wMonth, crashedAt.wDay, crashedAt.wHour,
+                crashedAt.wMinute, crashedAt.wSecond, crashedAt.wMilliseconds};
+            const unsigned widths[7] = {4, 2, 2, 2, 2, 2, 3};
+            for (int part = 0; part < 7; ++part)
+            {
+                if (part != 0 && index < kPathChars - 1)
                 {
-                    ch = '-';
+                    state.DumpPathW[index++] = L'-';
+                }
+                wchar_t digits[8]{};
+                int used = 0;
+                WORD value = parts[part];
+                do
+                {
+                    digits[used++] = static_cast<wchar_t>(L'0' + value % 10);
+                    value = static_cast<WORD>(value / 10);
+                } while (value != 0);
+                while (static_cast<unsigned>(used) < widths[part])
+                {
+                    digits[used++] = L'0';
+                }
+                while (used > 0 && index < kPathChars - 1)
+                {
+                    state.DumpPathW[index++] = digits[--used];
                 }
             }
-            return name;
+
+            const wchar_t* suffix = L".dmp";
+            for (unsigned suffixIndex = 0; suffix[suffixIndex] != L'\0' && index < kPathChars - 1; ++suffixIndex)
+            {
+                state.DumpPathW[index++] = suffix[suffixIndex];
+            }
+            state.DumpPathW[index] = L'\0';
+        }
+
+        /** Raises a second fault from inside the record path: the once guard has to turn it away. */
+        LONG WINAPI EditorUnhandledExceptionFilter(EXCEPTION_POINTERS* exceptionPointers);
+
+        void ProvokeReentryForSelfCheck()
+        {
+            if (::InterlockedExchange(&State().SelfCheckReentry, 0) == 0)
+            {
+                return;
+            }
+
+            EXCEPTION_RECORD record{};
+            record.ExceptionCode = EXCEPTION_ACCESS_VIOLATION;
+            record.ExceptionAddress = reinterpret_cast<void*>(&ProvokeReentryForSelfCheck);
+            record.NumberParameters = 2;
+            record.ExceptionInformation[0] = 1;
+            record.ExceptionInformation[1] = 0x10;
+
+            CONTEXT context;
+            ::RtlCaptureContext(&context);
+            EXCEPTION_POINTERS pointers{&record, &context};
+
+            // The latch is already taken by the record that is being written right now, so this
+            // call must return without touching the record.
+            EditorUnhandledExceptionFilter(&pointers);
+        }
+
+        void WriteRecordOnHealthyStack()
+        {
+            CrashState& state = State();
+
+            ProvokeReentryForSelfCheck();
+            CaptureLoadedModules();
+
+            TextBuffer out{state.Record, kRecordCapacity, 0u, false};
+            AppendText(out, "\n=== Editor crash ");
+            AppendTimestamp(out);
+            AppendText(out, " ===\n");
+            AppendLoadedModules(out);
+            AppendFaultThread(out);
+            AppendExceptionFacts(out);
+            AppendContextRegisters(out);
+            AppendFaultingStackWords(out);
+            AppendFilterStack(out);
+
+            state.RecordFileWritten = AppendToRecordFile(state.Record, out.Size);
+
+            // The record is on disk before the dump is attempted: the dump is the part that takes
+            // the loader lock and cannot be bounded, and it must not be able to cost the record.
+            ::SetEvent(state.RecordWrittenEvent);
+
+            BuildDumpPath();
+            TextBuffer dumpStatus{state.Record, kRecordCapacity, 0u, false};
+            AppendMiniDumpLine(dumpStatus, state.DumpPathW);
+
+            char line[kPathChars]{};
+            TextBuffer lineBuffer{line, static_cast<unsigned>(sizeof(line)), 0u, false};
+            AppendText(lineBuffer, "MiniDump: ");
+            AppendText(lineBuffer, dumpStatus.Data != nullptr ? dumpStatus.Data : "");
+            AppendChar(lineBuffer, '\n');
+            AppendToRecordFile(line, lineBuffer.Size);
+
+            ::SetEvent(state.RecordDoneEvent);
+        }
+
+        DWORD WINAPI CrashRecordThread(void*)
+        {
+            const HANDLE faultEvent = State().FaultEvent;
+            ::WaitForSingleObject(faultEvent, INFINITE);
+            WriteRecordOnHealthyStack();
+            return 0;
+        }
+
+        // ---- the fault path ----------------------------------------------------
+
+        bool IsRecordedCode(DWORD code)
+        {
+            return code == EXCEPTION_ACCESS_VIOLATION || code == EXCEPTION_ILLEGAL_INSTRUCTION
+                || code == EXCEPTION_STACK_OVERFLOW || code == EXCEPTION_INT_DIVIDE_BY_ZERO;
+        }
+
+        void StashFaultReport(EXCEPTION_POINTERS* exceptionPointers)
+        {
+            CrashState& state = State();
+            const EXCEPTION_RECORD* record = exceptionPointers->ExceptionRecord;
+
+            state.Exception = *record;
+            state.HasContext = exceptionPointers->ContextRecord != nullptr;
+            if (state.HasContext)
+            {
+                state.Context = *exceptionPointers->ContextRecord;
+            }
+
+            // Identity and the filter stack are thread-local answers: they can only be taken here,
+            // by the thread that faulted, and must be read from static storage afterwards.
+            state.FaultThreadId = ::GetCurrentThreadId();
+            const ThreadIdentity identity = CaptureCurrentThreadIdentity();
+            state.FaultLogThreadId = identity.LogThreadId;
+            state.FaultRoleName = identity.RoleName != nullptr ? identity.RoleName : "none";
+            state.FilterFrameCount =
+                ::CaptureStackBackTrace(0, kFilterFrameCount, state.FilterFrames, nullptr);
         }
 
         LONG WINAPI EditorUnhandledExceptionFilter(EXCEPTION_POINTERS* exceptionPointers)
         {
-            if (exceptionPointers == nullptr || exceptionPointers->ExceptionRecord == nullptr)
+            CrashState& state = State();
+            if (!state.Installed || exceptionPointers == nullptr
+                || exceptionPointers->ExceptionRecord == nullptr)
             {
                 return EXCEPTION_CONTINUE_SEARCH;
             }
 
-            const DWORD code = exceptionPointers->ExceptionRecord->ExceptionCode;
-            if (code != EXCEPTION_ACCESS_VIOLATION && code != EXCEPTION_ILLEGAL_INSTRUCTION
-                && code != EXCEPTION_STACK_OVERFLOW && code != EXCEPTION_INT_DIVIDE_BY_ZERO)
+            if (!IsRecordedCode(exceptionPointers->ExceptionRecord->ExceptionCode))
             {
                 return EXCEPTION_CONTINUE_SEARCH;
             }
 
-            const auto logPath = ResolveCrashLogPath();
-            std::ofstream log(logPath, std::ios::out | std::ios::app);
-            if (!log.is_open())
+            // One fault path per process. A second fault - inside the record path itself, or on
+            // another thread while the first is still recording - is turned away here instead of
+            // nesting on storage and stacks that are already in use.
+            if (::InterlockedCompareExchange(&state.FaultPathLatch, 1, 0) != 0)
             {
+                ::InterlockedIncrement(&state.Rejected);
+                // Waiting for the record this very thread is writing would only deadlock it.
+                if (::GetCurrentThreadId() != state.RecordThreadId)
+                {
+                    ::WaitForSingleObject(state.RecordWrittenEvent, kRecordWaitMs);
+                }
+                return EXCEPTION_CONTINUE_SEARCH;
+            }
+            ::InterlockedIncrement(&state.Admitted);
+
+            if (state.RecordThread == nullptr)
+            {
+                // No prepared stack to hand the fault to: waiting here would only add a stall to
+                // the crash, so let the process go down as it would have without the filter.
                 return EXCEPTION_CONTINUE_SEARCH;
             }
 
-            SYSTEMTIME crashedAt{};
-            GetLocalTime(&crashedAt);
-            char timestamp[64]{};
-            std::snprintf(
-                timestamp,
-                sizeof(timestamp),
-                "%04u-%02u-%02u %02u:%02u:%02u.%03u",
-                crashedAt.wYear,
-                crashedAt.wMonth,
-                crashedAt.wDay,
-                crashedAt.wHour,
-                crashedAt.wMinute,
-                crashedAt.wSecond,
-                crashedAt.wMilliseconds);
-
-            log << "\n=== Editor crash " << timestamp << " ===\n";
-            WriteLoadedModules(log);
-
-            const DWORD faultingThreadId = GetCurrentThreadId();
-            WriteFaultThread(log, faultingThreadId);
-            log << "ExceptionCode=0x" << std::hex << std::uppercase << code << std::dec << '\n';
-            log << "ExceptionAddress=0x" << std::hex << std::uppercase
-                << reinterpret_cast<std::uintptr_t>(exceptionPointers->ExceptionRecord->ExceptionAddress)
-                << std::dec << '\n';
-
-            if (code == EXCEPTION_ACCESS_VIOLATION
-                && exceptionPointers->ExceptionRecord->NumberParameters >= 2)
+            // A thread that has overflowed its stack has no room left for anything. Restoring the
+            // guard page gives it one page back, which is enough to reach the hand-off.
+            if (exceptionPointers->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW)
             {
-                const auto* params = exceptionPointers->ExceptionRecord->ExceptionInformation;
-                log << "AV operation=" << params[0] << " address=0x" << std::hex << std::uppercase
-                    << params[1] << std::dec << '\n';
+                _resetstkoflw();
             }
 
-            WriteStackTrace(log, exceptionPointers->ContextRecord);
+            StashFaultReport(exceptionPointers);
 
-            std::filesystem::path dumpPath = logPath;
-            dumpPath.remove_filename();
-            dumpPath /= "ed_crash_" + TimestampForFile(timestamp) + ".dmp";
-            log << "MiniDump: " << WriteMiniDump(dumpPath, exceptionPointers, faultingThreadId) << '\n';
-            log.flush();
-
-            ME_LOG(LogEditor, Error,
-                "Unhandled exception 0x{:08X} at {:p} on thread {}. See '{}'.",
-                code,
-                exceptionPointers->ExceptionRecord->ExceptionAddress,
-                faultingThreadId,
-                logPath.string());
+            // Everything below is a kernel transition on already-created handles: no allocation, no
+            // lock the faulting thread could be holding, no formatting on this stack.
+            ::SetEvent(state.FaultEvent);
+            ::WaitForSingleObject(state.RecordWrittenEvent, kRecordWaitMs);
+            ::WaitForSingleObject(state.RecordDoneEvent, kDumpWaitMs);
 
             return EXCEPTION_CONTINUE_SEARCH;
+        }
+
+        // ---- installation ------------------------------------------------------
+
+        void PreparePaths()
+        {
+            CrashState& state = State();
+
+            wchar_t modulePath[kPathChars]{};
+            const DWORD length = ::GetModuleFileNameW(nullptr, modulePath, kPathChars);
+            unsigned directoryLength = 0;
+            if (length != 0 && length < kPathChars)
+            {
+                for (unsigned index = 0; index < length; ++index)
+                {
+                    if (modulePath[index] == L'\\' || modulePath[index] == L'/')
+                    {
+                        directoryLength = index + 1;
+                    }
+                }
+            }
+
+            for (unsigned index = 0; index < directoryLength && index < kPathChars - 1; ++index)
+            {
+                state.DirectoryW[index] = modulePath[index];
+            }
+            state.DirectoryW[directoryLength] = L'\0';
+
+            unsigned pathIndex = 0;
+            for (; pathIndex < directoryLength && pathIndex < kPathChars - 1; ++pathIndex)
+            {
+                state.RecordPathW[pathIndex] = state.DirectoryW[pathIndex];
+            }
+
+            const wchar_t* name = L"ed_crash.log";
+            for (unsigned index = 0; name[index] != L'\0' && pathIndex < kPathChars - 1; ++index)
+            {
+                state.RecordPathW[pathIndex++] = name[index];
+            }
+            state.RecordPathW[pathIndex] = L'\0';
+
+            const int narrowLength = ::WideCharToMultiByte(
+                CP_UTF8, 0, state.RecordPathW, -1, state.RecordPathA, kPathChars, nullptr, nullptr);
+            if (narrowLength <= 0)
+            {
+                state.RecordPathA[0] = '\0';
+            }
+        }
+
+        void ReserveFaultStackForCurrentThread()
+        {
+            // Only this thread can be prepared from here; a thread created elsewhere keeps the
+            // system default and relies on the hand-off being as small as it is.
+            ULONG guarantee = kFaultStackGuaranteeBytes;
+            ::SetThreadStackGuarantee(&guarantee);
+        }
+
+        void StartRecordThread()
+        {
+            CrashState& state = State();
+
+            state.FaultEvent = ::CreateEventW(nullptr, FALSE, FALSE, nullptr);
+            state.RecordWrittenEvent = ::CreateEventW(nullptr, FALSE, FALSE, nullptr);
+            state.RecordDoneEvent = ::CreateEventW(nullptr, FALSE, FALSE, nullptr);
+            if (state.FaultEvent == nullptr || state.RecordWrittenEvent == nullptr
+                || state.RecordDoneEvent == nullptr)
+            {
+                return;
+            }
+
+            DWORD threadId = 0;
+            state.RecordThread = ::CreateThread(
+                nullptr, kRecordThreadStackBytes, CrashRecordThread, nullptr, 0, &threadId);
+            if (state.RecordThread == nullptr)
+            {
+                return;
+            }
+
+            // The record has to run while the faulting thread is still alive, whatever priority it
+            // was given.
+            ::SetThreadPriority(state.RecordThread, THREAD_PRIORITY_TIME_CRITICAL);
+            state.RecordThreadId = threadId;
         }
     }
 #endif
 
-    void InstallEditorCrashDiagnostics()
+    std::string InstallEditorCrashDiagnostics()
     {
 #if defined(_WIN32)
-        SetUnhandledExceptionFilter(EditorUnhandledExceptionFilter);
-        ME_LOG(LogEditor, Info, "Editor crash diagnostics: logging to ed_crash.log beside MaximumEditor.exe.");
+        CrashState& state = State();
+        if (state.Installed)
+        {
+            return std::string(state.RecordPathA);
+        }
+
+        PreparePaths();
+        ReserveFaultStackForCurrentThread();
+        StartRecordThread();
+        state.Installed = true;
+        ::SetUnhandledExceptionFilter(EditorUnhandledExceptionFilter);
+        return std::string(state.RecordPathA);
 #else
-        ME_LOG(LogEditor, Warn, "Editor crash diagnostics: Windows-only; not installed.");
+        return std::string();
 #endif
+    }
+
+    CrashRecordSelfCheckResult RunCrashRecordSelfCheck(bool provokeReentry)
+    {
+        CrashRecordSelfCheckResult result;
+#if defined(_WIN32)
+        CrashState& state = State();
+        if (!state.Installed)
+        {
+            return result;
+        }
+
+        result.RecordPath.assign(state.RecordPathA);
+        ::InterlockedExchange(&state.SelfCheckReentry, provokeReentry ? 1 : 0);
+
+        EXCEPTION_RECORD record{};
+        record.ExceptionCode = EXCEPTION_ACCESS_VIOLATION;
+        record.ExceptionAddress = reinterpret_cast<void*>(&RunCrashRecordSelfCheck);
+        record.NumberParameters = 2;
+        record.ExceptionInformation[0] = 1;
+        record.ExceptionInformation[1] = reinterpret_cast<ULONG_PTR>(&state.Record);
+
+        CONTEXT context;
+        ::RtlCaptureContext(&context);
+        EXCEPTION_POINTERS pointers{&record, &context};
+
+        // Waits for the record to be on disk, then returns: the caller is still alive and keeps it.
+        EditorUnhandledExceptionFilter(&pointers);
+
+        result.RecordWritten = state.RecordFileWritten;
+        result.Admitted = ::InterlockedCompareExchange(&state.Admitted, 0, 0);
+        result.Rejected = ::InterlockedCompareExchange(&state.Rejected, 0, 0);
+#endif
+        return result;
     }
 }

@@ -422,7 +422,13 @@ namespace minEngine
         }
 
         ImGui::CreateContext();
-        InstallEditorCrashDiagnostics();
+        // The crash path takes no locks and writes no log records, so the install is what states
+        // where a record will land: after a fault there is nobody left to write the log line.
+        const std::string crashRecordPath = InstallEditorCrashDiagnostics();
+        if (!crashRecordPath.empty())
+        {
+            ME_LOG(LogEditor, Info, "Editor crash diagnostics: records go to '{}'.", crashRecordPath);
+        }
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
