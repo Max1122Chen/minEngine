@@ -110,8 +110,7 @@ namespace minEngine
 
         for (int i = 0; i < 3; ++i)
         {
-            m_ThreadBound[i] = false;
-            m_ThreadIds[i] = {};
+            m_ThreadIds[i].store(std::thread::id{}, std::memory_order_relaxed);
         }
 
         if (m_Mode == FrameThreadMode::Multi)
@@ -138,8 +137,7 @@ namespace minEngine
         m_Initialized = false;
         for (int i = 0; i < 3; ++i)
         {
-            m_ThreadBound[i] = false;
-            m_ThreadIds[i] = {};
+            m_ThreadIds[i].store(std::thread::id{}, std::memory_order_relaxed);
         }
         s_Instance = nullptr;
         // Nothing owns a frame role any more: a report from here on must say so rather than name a
@@ -153,9 +151,12 @@ namespace minEngine
         // binding stays inert (every IsInFrameThread answers no), which is the same answer the
         // caller already gets from an unbound role.
         ME_ENSURE(m_Initialized, "FrameThreading::BindCurrentThread before Initialize");
+        // An owner claims its role outright: the caller is the thread that runs this role's work -
+        // TaskSystem starts every frame-role thread with this call - so there is nothing to arbitrate
+        // and no earlier owner to protect. A temporary claim from a thread that does not own the
+        // role goes through ScopedFrameThreadKind, which will not take a role another thread holds.
         const size_t index = static_cast<size_t>(kind);
-        m_ThreadIds[index] = std::this_thread::get_id();
-        m_ThreadBound[index] = true;
+        m_ThreadIds[index].store(std::this_thread::get_id(), std::memory_order_release);
     }
 
     void FrameThreading::BindCurrentThreadAsAllRoles()
@@ -171,12 +172,13 @@ namespace minEngine
         {
             return false;
         }
-        const size_t index = static_cast<size_t>(kind);
-        if (!m_ThreadBound[index])
+        const std::thread::id owner =
+            m_ThreadIds[static_cast<size_t>(kind)].load(std::memory_order_acquire);
+        if (owner == std::thread::id{})
         {
             return false;
         }
-        return m_ThreadIds[index] == std::this_thread::get_id();
+        return owner == std::this_thread::get_id();
     }
 
     void FrameThreading::AssertIsFrameThread(FrameThreadKind kind, const char* context) const
@@ -199,7 +201,7 @@ namespace minEngine
 
     std::thread::id FrameThreading::GetThreadId(FrameThreadKind kind) const
     {
-        return m_ThreadIds[static_cast<size_t>(kind)];
+        return m_ThreadIds[static_cast<size_t>(kind)].load(std::memory_order_acquire);
     }
 
     void FrameThreading::LogStartupIdentity() const
@@ -214,9 +216,9 @@ namespace minEngine
             Info,
             "FrameThreading: mode={} GameTid={:#x} RenderTid={:#x} RHITid={:#x}",
             ModeToString(m_Mode),
-            hashId(m_ThreadIds[static_cast<size_t>(FrameThreadKind::Game)]),
-            hashId(m_ThreadIds[static_cast<size_t>(FrameThreadKind::Render)]),
-            hashId(m_ThreadIds[static_cast<size_t>(FrameThreadKind::RHI)]));
+            hashId(GetThreadId(FrameThreadKind::Game)),
+            hashId(GetThreadId(FrameThreadKind::Render)),
+            hashId(GetThreadId(FrameThreadKind::RHI)));
     }
 
     ScopedFrameThreadKind::ScopedFrameThreadKind(FrameThreadKind kind)
@@ -228,27 +230,79 @@ namespace minEngine
         }
 
         FrameThreading& threading = FrameThreading::Get();
-        if (threading.IsInFrameThread(kind))
+        std::atomic<std::thread::id>& slot = threading.m_ThreadIds[static_cast<size_t>(kind)];
+        const std::thread::id self = std::this_thread::get_id();
+
+        std::thread::id owner = slot.load(std::memory_order_acquire);
+        if (owner == self)
         {
-            m_HadPrevious = false;
+            // This thread already holds the role: the enclosing claim releases it, and a nested one
+            // must not release what it did not take.
             return;
         }
 
-        m_PreviousId = threading.GetThreadId(kind);
-        m_HadPrevious = true;
-        threading.BindCurrentThread(kind);
+        if (owner != std::thread::id{})
+        {
+            // Refused, not stolen. The role stays with the thread that runs it, so no role gate can
+            // be answered by two threads at once.
+            ME_ENSURE(
+                false,
+                "ScopedFrameThreadKind(%s) refused: the role is held by %s",
+                FrameThreading::KindToString(kind),
+                FrameThreadRoleName(threading, owner));
+            return;
+        }
+
+        // The load above is a check, this exchange is the claim: together they let two threads race
+        // for one free role and give it to exactly one of them.
+        if (!slot.compare_exchange_strong(owner, self, std::memory_order_acq_rel, std::memory_order_acquire))
+        {
+            ME_ENSURE(
+                false,
+                "ScopedFrameThreadKind(%s) refused: another thread claimed the role while this one "
+                "waited for it",
+                FrameThreading::KindToString(kind));
+            return;
+        }
+
+        m_Owner = &threading;
     }
 
     ScopedFrameThreadKind::~ScopedFrameThreadKind()
     {
-        if (!m_HadPrevious || !FrameThreading::HasInstance())
+        if (m_Owner == nullptr)
         {
             return;
         }
 
-        // Single-mode startup binds all roles to one tid; restoring a prior id is uncommon.
-        // Re-bind current thread if we temporarily claimed this kind on another thread (future Multi).
-        (void)m_Kind;
-        (void)m_PreviousId;
+        // The claim is released against the table that granted it: a shutdown in between clears
+        // every role, so there is nothing left to release and nothing that can be corrupted.
+        FrameThreading* const grantingInstance =
+            FrameThreading::HasInstance() ? &FrameThreading::Get() : nullptr;
+        if (grantingInstance != m_Owner)
+        {
+            ME_ENSURE(
+                false,
+                "ScopedFrameThreadKind(%s) outlived the FrameThreading instance that granted it; the "
+                "release was skipped",
+                FrameThreading::KindToString(m_Kind));
+            return;
+        }
+
+        std::atomic<std::thread::id>& slot = grantingInstance->m_ThreadIds[static_cast<size_t>(m_Kind)];
+        std::thread::id owner = std::this_thread::get_id();
+        if (slot.compare_exchange_strong(owner, std::thread::id{}, std::memory_order_acq_rel, std::memory_order_acquire))
+        {
+            return;
+        }
+
+        // Writing this scope's idea of the owner back would take the role from whoever holds it now,
+        // so the role is left where it is and the broken pairing is reported instead.
+        ME_ENSURE(
+            false,
+            "ScopedFrameThreadKind(%s) released nothing: the role is now held by %s",
+            FrameThreading::KindToString(m_Kind),
+            owner == std::thread::id{} ? "nobody (it was already released)"
+                                       : FrameThreadRoleName(*grantingInstance, owner));
     }
 }

@@ -1,5 +1,7 @@
 #include "FrameThreadingTest.h"
 
+#include "Runtime/Core/Assert/Assert.h"
+#include "Runtime/Core/Assert/AssertLog.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Core/Threading/RenderCommandPipe.h"
@@ -7,10 +9,12 @@
 #include "doctest.h"
 
 #include <atomic>
+#include <cstdint>
 #include <thread>
 
 using minEngine::FrameThreadKind;
 using minEngine::RenderCommandPipe;
+using minEngine::ScopedFrameThreadKind;
 using minEngine::FrameThreadMode;
 using minEngine::FrameThreading;
 using minEngine::TaskSystem;
@@ -205,4 +209,193 @@ TEST_CASE("frame-threading: game role publishes the frame and the render role on
 
     tasks.StopFrameRoles();
     tasks.Shutdown();
+}
+
+TEST_CASE("frame-threading: a scoped role is returned to unowned when the scope ends [smoke]")
+{
+    FrameThreadingScope scope(FrameThreadMode::Multi);
+    FrameThreading& threading = scope.Threading;
+
+    const std::thread::id callerId = std::this_thread::get_id();
+    REQUIRE(threading.IsInGameThread());
+    // Nothing holds the graphics roles yet: TaskSystem claims them on the threads it starts.
+    CHECK(threading.GetThreadId(FrameThreadKind::Render) == std::thread::id{});
+    CHECK(threading.GetThreadId(FrameThreadKind::RHI) == std::thread::id{});
+
+    {
+        ScopedFrameThreadKind renderRole(FrameThreadKind::Render);
+        // Inside the scope this thread is the Render role, and no other role moved.
+        CHECK(threading.GetThreadId(FrameThreadKind::Render) == callerId);
+        CHECK(threading.IsInRenderingThread());
+        CHECK_FALSE(threading.IsInRHIThread());
+        CHECK(threading.IsInGameThread());
+    }
+
+    // The scope is over: the role is unowned again, not left pointing at this thread. A role left
+    // behind here would let this thread pass every Render-side contract for the rest of the run.
+    CHECK(threading.GetThreadId(FrameThreadKind::Render) == std::thread::id{});
+    CHECK_FALSE(threading.IsInRenderingThread());
+    CHECK(threading.IsInGameThread());
+}
+
+TEST_CASE("frame-threading: nested scopes release one level at a time [smoke]")
+{
+    FrameThreadingScope scope(FrameThreadMode::Multi);
+    FrameThreading& threading = scope.Threading;
+
+    const std::thread::id callerId = std::this_thread::get_id();
+
+    {
+        ScopedFrameThreadKind renderRole(FrameThreadKind::Render);
+        REQUIRE(threading.IsInRenderingThread());
+        {
+            ScopedFrameThreadKind rhiRole(FrameThreadKind::RHI);
+            CHECK(threading.GetThreadId(FrameThreadKind::Render) == callerId);
+            CHECK(threading.GetThreadId(FrameThreadKind::RHI) == callerId);
+            CHECK(threading.IsInRenderingThread());
+            CHECK(threading.IsInRHIThread());
+        }
+        // The inner scope released RHI and left Render alone.
+        CHECK(threading.IsInRenderingThread());
+        CHECK_FALSE(threading.IsInRHIThread());
+        CHECK(threading.GetThreadId(FrameThreadKind::RHI) == std::thread::id{});
+
+        {
+            // Re-entrant claim of a role this thread already holds: entering and leaving it must
+            // not drop the role the outer scope granted.
+            ScopedFrameThreadKind renderAgain(FrameThreadKind::Render);
+            CHECK(threading.IsInRenderingThread());
+        }
+        CHECK(threading.IsInRenderingThread());
+        CHECK(threading.GetThreadId(FrameThreadKind::Render) == callerId);
+    }
+
+    CHECK_FALSE(threading.IsInRenderingThread());
+    CHECK_FALSE(threading.IsInRHIThread());
+    CHECK(threading.GetThreadId(FrameThreadKind::Render) == std::thread::id{});
+    CHECK(threading.GetThreadId(FrameThreadKind::RHI) == std::thread::id{});
+    CHECK(threading.IsInGameThread());
+}
+
+TEST_CASE("frame-threading: concurrent claims and queries never read a half-written identity [smoke]")
+{
+    FrameThreadingScope scope(FrameThreadMode::Multi);
+    FrameThreading& threading = scope.Threading;
+
+    constexpr int kClaimCount = 2000;
+    std::atomic<std::thread::id> claimantId{};
+    std::atomic<bool> claimantFinished{false};
+    std::atomic<std::uint64_t> tornReads{0};
+    std::atomic<std::uint64_t> heldReads{0};
+    std::atomic<std::uint64_t> unheldReads{0};
+    std::atomic<std::uint64_t> claimsWithoutRole{0};
+
+    std::thread claimant([&]() {
+        claimantId.store(std::this_thread::get_id(), std::memory_order_release);
+        for (int claim = 0; claim < kClaimCount; ++claim)
+        {
+            ScopedFrameThreadKind renderRole(FrameThreadKind::Render);
+            if (!threading.IsInFrameThread(FrameThreadKind::Render))
+            {
+                // The claim was granted and the table does not say so: an identity that is only
+                // half published is the failure this case exists for.
+                claimsWithoutRole.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+        claimantFinished.store(true, std::memory_order_release);
+    });
+
+    const auto query = [&]() {
+        while (!claimantFinished.load(std::memory_order_acquire))
+        {
+            const std::thread::id claimant = claimantId.load(std::memory_order_acquire);
+            if (claimant == std::thread::id{})
+            {
+                std::this_thread::yield();
+                continue;
+            }
+
+            const std::thread::id reported = threading.GetThreadId(FrameThreadKind::Render);
+            if (reported == std::thread::id{})
+            {
+                unheldReads.fetch_add(1, std::memory_order_relaxed);
+            }
+            else if (reported == claimant)
+            {
+                heldReads.fetch_add(1, std::memory_order_relaxed);
+            }
+            else
+            {
+                // Held by a thread that never claimed it: ownership and identity disagree.
+                tornReads.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            // A thread that never held this role must never be told it holds it.
+            if (threading.IsInFrameThread(FrameThreadKind::Render))
+            {
+                tornReads.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+    };
+
+    std::thread firstReader(query);
+    std::thread secondReader(query);
+    std::thread thirdReader(query);
+
+    claimant.join();
+    firstReader.join();
+    secondReader.join();
+    thirdReader.join();
+
+    CHECK(claimsWithoutRole.load(std::memory_order_relaxed) == 0);
+    CHECK(tornReads.load(std::memory_order_relaxed) == 0);
+    // The readers saw both states, so the two checks above ran across live transitions.
+    CHECK(heldReads.load(std::memory_order_relaxed) > 0);
+    CHECK(unheldReads.load(std::memory_order_relaxed) > 0);
+}
+
+TEST_CASE("frame-threading: a temporary claim on a role another thread holds is refused and counted [smoke]")
+{
+    FrameThreadingScope scope(FrameThreadMode::Multi);
+    FrameThreading& threading = scope.Threading;
+
+    std::atomic<std::thread::id> ownerId{};
+    std::atomic<bool> ownerHoldsRole{false};
+    std::atomic<bool> ownerMayLeave{false};
+    std::thread owner([&]() {
+        threading.BindCurrentThread(FrameThreadKind::Render);
+        ownerId.store(std::this_thread::get_id(), std::memory_order_release);
+        ownerHoldsRole.store(true, std::memory_order_release);
+        while (!ownerMayLeave.load(std::memory_order_acquire))
+        {
+            std::this_thread::yield();
+        }
+    });
+    while (!ownerHoldsRole.load(std::memory_order_acquire))
+    {
+        std::this_thread::yield();
+    }
+
+    minEngine::ResetContractViolationCounters();
+    (void)minEngine::DrainContractViolations();
+
+    {
+        ScopedFrameThreadKind claimant(FrameThreadKind::Render);
+        // One role, one owner: the claim is refused, so the role stays where it was.
+        CHECK_FALSE(threading.IsInRenderingThread());
+        CHECK(threading.GetThreadId(FrameThreadKind::Render) == ownerId.load(std::memory_order_acquire));
+    }
+
+    const minEngine::ContractViolationCounters after = minEngine::GetContractViolationCounters();
+    CHECK_MESSAGE(after.RecordedOnContinue == 1, "counted ", after.RecordedOnContinue, " violations, not 1");
+    CHECK_MESSAGE(after.RecordedOnTrap == 0, "a refused claim was counted as a trap");
+    CHECK(threading.GetThreadId(FrameThreadKind::Render) == ownerId.load(std::memory_order_acquire));
+    CHECK_FALSE(threading.IsInRenderingThread());
+
+    ownerMayLeave.store(true, std::memory_order_release);
+    owner.join();
+
+    // The counters and the staging area are process-wide: a record left staged here would be
+    // published by whichever suite drains next, and counted against that suite's own violation.
+    (void)minEngine::DrainContractViolations();
 }

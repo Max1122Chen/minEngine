@@ -739,6 +739,11 @@ namespace minEngine
                     leftover);
             }
 
+            // The role threads are joined, so the topology is the single-threaded one the process
+            // started from: the caller runs graphics work inline from here (editor teardown, asset
+            // release) and every role gate has to answer for it. This is a handover, not a steal -
+            // the previous owners provably no longer run - and it is logged so a reader of the log
+            // can see when the caller became every role.
             if (FrameThreading::HasInstance())
             {
                 FrameThreading::Get().BindCurrentThreadAsAllRoles();
@@ -748,7 +753,7 @@ namespace minEngine
                 WindowSystem::Get().MakeGraphicsContextCurrent();
             }
 
-            ME_LOG(LogCore, Info, "TaskSystem: frame roles stopped.");
+            ME_LOG(LogCore, Info, "TaskSystem: frame roles stopped; the calling thread now holds Game/Render/RHI.");
         }
 
         void StartFrameRolesInternal(

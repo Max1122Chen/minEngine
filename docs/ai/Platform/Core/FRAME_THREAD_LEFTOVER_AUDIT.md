@@ -87,3 +87,9 @@
 - `TaskSystem` 完成队列：worker 只 Publish，执行只在游戏角色 Drain；先 Publish 再 signal。
 - `AssetManager` 异步装配：worker 只解析进自己的结构，装配与回调都在 Drain 里。
 - `RHICommandList` 的录制窗口计数（判据 2 的可观测钩子）与 `RHIDeferredConsumerGate`（Pending/Unusable 分流）。
+
+## 落实状态（2026-10-29 更新）
+
+- **A6 / 修复顺序 5 已落地。** `ScopedFrameThreadKind` 现在是真正的 RAII：只认领无人持有的角色，作用域结束即交还，嵌套按层释放（同一角色嵌套为 no-op，由外层释放）；对别的线程持有的角色只报 `ME_ENSURE` 并拒绝，不再静默抢占。身份表从 `tid + bound` 两字段改成每个角色一个 `std::atomic<std::thread::id>`，"无人持有"由默认构造的 id 表示，绑定 release 存、查询 acquire 读、认领/交还走 acq_rel compare-exchange，因此"已绑定 + 旧 id"的撕裂态不再可能。
+- **仍保留的：** `StopFrameRoles` 在 join 之后把调用线程绑成三角色。理由是关停后进程回到单线程拓扑，编辑器 teardown 的合法内联图形工作必须能过角色门禁；它与身份表无关，与本条不同类——代价（关停后调用线程的角色断言恒真）改为在停帧日志里写明。
+- **本条未覆盖的：** 身份表只存 tid，分不出"持有者已退出"与"持有者活着"，所以一个角色线程若退出而不交还角色，之后的临时认领会按抢占被拒；角色门禁的越界调用仍然靠调用方自觉，没有强制手段。
