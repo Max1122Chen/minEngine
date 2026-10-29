@@ -17,13 +17,12 @@ namespace minEngine
             return;
         }
 
+        // The identity token is written only by the removal command on the render role. A clear
+        // here would take the key that command matches on, and the sky would stay installed until
+        // the scene it belongs to is torn down.
         if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveSkyBox(this);
-        }
-        else if (m_SkyBoxSceneProxy)
-        {
-            m_SkyBoxSceneProxy->m_SkyBoxComponent = nullptr;
         }
 
         DetachSceneProxy();
@@ -85,13 +84,14 @@ namespace minEngine
             return;
         }
 
+        // Same rule as the destructor: the proxy keeps its token, so the removal queued for it -
+        // here, or by a scene teardown that still knows this component - still finds it.
         if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveSkyBox(this);
         }
-        else if (m_SkyBoxSceneProxy)
+        else
         {
-            m_SkyBoxSceneProxy->m_SkyBoxComponent = nullptr;
             DetachSceneProxy();
         }
 

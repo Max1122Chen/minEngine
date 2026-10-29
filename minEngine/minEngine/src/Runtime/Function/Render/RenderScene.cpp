@@ -230,6 +230,7 @@ namespace minEngine
         discarded += (scene.m_SkyBoxProxyOwner ? 1u : 0u);
         discarded += (scene.m_PendingDeleteSkyBoxSceneProxy ? 1u : 0u);
         scene.m_SkyBoxProxy = nullptr;
+        scene.m_SkyBoxOwnerComponent = nullptr;
         scene.m_SkyBoxProxyOwner.reset();
         scene.m_PendingDeleteSkyBoxSceneProxy.reset();
 
@@ -467,6 +468,7 @@ namespace minEngine
             return;
         }
 
+        proxy->m_bPendingRemove = true;
         m_DirectionalLightSceneProxies.erase(
             std::remove_if(
                 m_DirectionalLightSceneProxies.begin(),
@@ -512,6 +514,31 @@ namespace minEngine
         if (!lightComponent)
         {
             return;
+        }
+
+        // Marked before it leaves the draw lists, exactly like the single-proxy removal: the flag
+        // is what tells a reader the proxy is on its way out, and the identity token stays the key
+        // this command matches on.
+        for (LightSceneProxy* proxy : m_DirectionalLightSceneProxies)
+        {
+            if (proxy != nullptr && proxy->m_LightComponent == lightComponent)
+            {
+                proxy->m_bPendingRemove = true;
+            }
+        }
+        for (LightSceneProxy* proxy : m_PointLightSceneProxies)
+        {
+            if (proxy != nullptr && proxy->m_LightComponent == lightComponent)
+            {
+                proxy->m_bPendingRemove = true;
+            }
+        }
+        for (LightSceneProxy* proxy : m_SpotLightSceneProxies)
+        {
+            if (proxy != nullptr && proxy->m_LightComponent == lightComponent)
+            {
+                proxy->m_bPendingRemove = true;
+            }
         }
 
         m_DirectionalLightSceneProxies.erase(
@@ -647,9 +674,13 @@ namespace minEngine
 
         if (LightSceneProxy* oldProxy = lightComponent->GetSceneProxy())
         {
-            oldProxy->m_LightComponent = nullptr;
+            // The old proxy keeps its identity token until this command runs: the light that may
+            // still be recorded before the apply skips it through the removal flag, never by
+            // reading game-role state.
             lightComponent->DetachSceneProxy();
             EnqueueRenderCommand([this, oldProxy]() {
+                oldProxy->m_bPendingRemove = true;
+                oldProxy->m_LightComponent = nullptr;
                 ApplyRemoveLightProxy_RT(oldProxy);
             });
         }
@@ -678,6 +709,11 @@ namespace minEngine
         if (m_SkyBoxProxy && m_SkyBoxProxy != proxy)
         {
             ME_LOG(LogRender, Warn, "RenderScene: replacing existing SkyBox (only one allowed per scene).");
+            // Two sets of one scene's sky were queued in the same frame, so the earlier proxy is
+            // being displaced here rather than by its own removal command: it takes the same mark
+            // and loses its token, on the render role, where the removal runs.
+            m_SkyBoxProxy->m_bPendingRemove = true;
+            m_SkyBoxProxy->m_SkyBoxComponent = nullptr;
             m_SkyBoxProxy = nullptr;
             ParkSkyBoxForFrameEndDelete(
                 this,
@@ -700,6 +736,9 @@ namespace minEngine
         {
             return;
         }
+        // Both facts a removal establishes are written here, on the render role, and nowhere else:
+        // the mark that stops the draw and the cleared token the match above just used.
+        m_SkyBoxProxy->m_bPendingRemove = true;
         m_SkyBoxProxy->m_SkyBoxComponent = nullptr;
         m_SkyBoxProxy = nullptr;
         ParkSkyBoxForFrameEndDelete(
@@ -722,9 +761,13 @@ namespace minEngine
             return;
         }
 
-        if (m_SkyBoxProxy && m_SkyBoxProxy->m_SkyBoxComponent != skyBoxComponent)
+        // Only one sky per scene: the component that installs its own takes the place of the one
+        // installed before it, whose game-role link has to go. Which component that is comes from
+        // the game-role record below, not from the proxy: the token on the proxy belongs to the
+        // render role and this side may not read it.
+        if (m_SkyBoxOwnerComponent != nullptr && m_SkyBoxOwnerComponent != skyBoxComponent)
         {
-            RemoveSkyBox(m_SkyBoxProxy->m_SkyBoxComponent);
+            RemoveSkyBox(m_SkyBoxOwnerComponent);
         }
 
         SkyBoxSceneProxy* proxy = skyBoxComponent->CreateSceneProxy();
@@ -732,6 +775,7 @@ namespace minEngine
         {
             return;
         }
+        m_SkyBoxOwnerComponent = skyBoxComponent;
         EnqueueRenderCommand([this, proxy]() {
             ApplySetSkyBox_RT(proxy);
         });
@@ -759,6 +803,11 @@ namespace minEngine
             return;
         }
 
+        if (m_SkyBoxOwnerComponent == skyBoxComponent)
+        {
+            m_SkyBoxOwnerComponent = nullptr;
+        }
+
         skyBoxComponent->DetachSceneProxy();
         EnqueueRenderCommand([this, skyBoxComponent]() {
             ApplyRemoveSkyBox_RT(skyBoxComponent);
@@ -782,6 +831,7 @@ namespace minEngine
             return;
         }
 
+        proxy->m_bPendingRemove = true;
         m_WidgetSceneProxies.erase(
             std::remove(m_WidgetSceneProxies.begin(), m_WidgetSceneProxies.end(), proxy),
             m_WidgetSceneProxies.end());
@@ -803,6 +853,14 @@ namespace minEngine
         if (!widgetComponent)
         {
             return;
+        }
+
+        for (WidgetSceneProxy* proxy : m_WidgetSceneProxies)
+        {
+            if (proxy != nullptr && proxy->m_WidgetComponent == widgetComponent)
+            {
+                proxy->m_bPendingRemove = true;
+            }
         }
 
         m_WidgetSceneProxies.erase(
@@ -888,6 +946,10 @@ namespace minEngine
         // The draw lists only: an owner leaves this scene through a removal command, which parks it
         // for the frame-end delete instead of destroying it here. Dropping an owner in this sweep
         // would destroy a proxy a recorded draw command may still name.
+        //
+        // Entries are dropped on the removal mark, never on a cleared identity token: the token is
+        // written only by the removal commands, so a cleared one means "that removal already ran",
+        // not "the component let go of this proxy".
         m_PrimitiveSceneProxies.erase(
             std::remove_if(
                 m_PrimitiveSceneProxies.begin(),
@@ -905,7 +967,7 @@ namespace minEngine
                 m_DirectionalLightSceneProxies.end(),
                 [](DirectionalLightSceneProxy* proxy)
                 {
-                    return (proxy == nullptr) || (proxy->m_LightComponent == nullptr);
+                    return (proxy == nullptr) || proxy->m_bPendingRemove;
                 }),
             m_DirectionalLightSceneProxies.end());
 
@@ -915,7 +977,7 @@ namespace minEngine
                 m_PointLightSceneProxies.end(),
                 [](PointLightSceneProxy* proxy)
                 {
-                    return (proxy == nullptr) || (proxy->m_LightComponent == nullptr);
+                    return (proxy == nullptr) || proxy->m_bPendingRemove;
                 }),
             m_PointLightSceneProxies.end());
 
@@ -925,7 +987,7 @@ namespace minEngine
                 m_SpotLightSceneProxies.end(),
                 [](SpotLightSceneProxy* proxy)
                 {
-                    return (proxy == nullptr) || (proxy->m_LightComponent == nullptr);
+                    return (proxy == nullptr) || proxy->m_bPendingRemove;
                 }),
             m_SpotLightSceneProxies.end());
 
@@ -935,7 +997,7 @@ namespace minEngine
                 m_WidgetSceneProxies.end(),
                 [](WidgetSceneProxy* proxy)
                 {
-                    return (proxy == nullptr) || (proxy->m_WidgetComponent == nullptr);
+                    return (proxy == nullptr) || proxy->m_bPendingRemove;
                 }),
             m_WidgetSceneProxies.end());
     }
@@ -1020,6 +1082,9 @@ namespace minEngine
                     continue;
                 }
                 ME_ASSERT(
+                    parked->m_bPendingRemove,
+                    "a parked widget proxy carries the removal mark before the frame end frees it");
+                ME_ASSERT(
                     !bStillDrawable(scene->m_WidgetSceneProxies, parked.get()),
                     "a parked widget proxy is off the draw list before the frame end frees it");
             }
@@ -1031,11 +1096,18 @@ namespace minEngine
                     continue;
                 }
                 ME_ASSERT(
+                    parked->m_bPendingRemove,
+                    "a parked light proxy carries the removal mark before the frame end frees it");
+                ME_ASSERT(
                     !bStillDrawable(scene->m_DirectionalLightSceneProxies, parked.get()) &&
                         !bStillDrawable(scene->m_PointLightSceneProxies, parked.get()) &&
                         !bStillDrawable(scene->m_SpotLightSceneProxies, parked.get()),
                     "a parked light proxy is off the draw list before the frame end frees it");
             }
+            ME_ASSERT(
+                scene->m_PendingDeleteSkyBoxSceneProxy == nullptr ||
+                    scene->m_PendingDeleteSkyBoxSceneProxy->m_bPendingRemove,
+                "a parked skybox proxy carries the removal mark before the frame end frees it");
             ME_ASSERT(
                 scene->m_PendingDeleteSkyBoxSceneProxy == nullptr ||
                     scene->m_SkyBoxProxy != scene->m_PendingDeleteSkyBoxSceneProxy.get(),

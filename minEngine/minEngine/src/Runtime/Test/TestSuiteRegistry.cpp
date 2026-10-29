@@ -71,6 +71,7 @@ namespace minEngine
             "deferred-release",
             "scene-proxy-lifetime",
             "scene-proxy-render-read",
+            "scene-proxy-identity",
             "scene-debug-draw-snapshot",
         };
 

@@ -32,6 +32,15 @@ namespace minEngine
         WidgetComponent* m_WidgetComponent = nullptr;
 
         /**
+         * Set by a removal command on the render role once the proxy must stop producing a draw.
+         *
+         * Written only there. A game-role clear of the token above would leave the already-queued
+         * removal nothing to match, and the widget would stay registered - and drawn - until the
+         * scene it belongs to is torn down.
+         */
+        bool m_bPendingRemove = false;
+
+        /**
          * Canvas context captured while the component was alive on the game role.
          *
          * A widget draws under the nearest canvas ancestor: whether that canvas is active, how it

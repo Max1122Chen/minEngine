@@ -31,6 +31,17 @@ namespace minEngine
          */
         bool m_Enabled = true;
 
+        /**
+         * Set by a removal command on the render role once the proxy must stop contributing light.
+         *
+         * The identity token below used to double as this state: a game-role teardown path cleared
+         * it, and a reader treated "no component" as "removed". That made a game-role pointer write
+         * the render role's notion of a half-applied removal - and left the removal command that
+         * was already queued with nothing to match. The flag carries that state instead and is
+         * written only where the removal commands run.
+         */
+        bool m_bPendingRemove = false;
+
         LightComponent* m_LightComponent;
     };
 }

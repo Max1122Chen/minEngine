@@ -167,6 +167,16 @@ namespace minEngine
 
         std::unique_ptr<SkyBoxSceneProxy> m_SkyBoxProxyOwner;
 
+        /**
+         * The component whose sky is the one installed, as far as the game role knows.
+         *
+         * Only one sky is allowed per scene, so installing another has to take the previous one
+         * out - and that means detaching the component that owns it, which is game-role state. The
+         * proxy's own identity token answers the same question, but it belongs to the render role
+         * and is cleared there, so this side keeps its own record instead of reading it.
+         */
+        SkyBoxComponent* m_SkyBoxOwnerComponent = nullptr;
+
         friend void DiscardRenderSceneProxiesForTeardown(RenderScene& scene);
     };
 

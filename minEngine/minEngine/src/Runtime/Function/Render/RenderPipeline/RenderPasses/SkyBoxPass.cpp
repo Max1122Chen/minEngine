@@ -309,7 +309,7 @@ namespace minEngine
         }
 
         SkyBoxSceneProxy* skyBoxProxy = context.SceneContext->Scene->GetSkyBoxProxy();
-        if (skyBoxProxy == nullptr || !skyBoxProxy->m_Enabled || skyBoxProxy->m_SkyBoxComponent == nullptr)
+        if (skyBoxProxy == nullptr || !skyBoxProxy->m_Enabled || skyBoxProxy->m_bPendingRemove)
         {
             return;
         }

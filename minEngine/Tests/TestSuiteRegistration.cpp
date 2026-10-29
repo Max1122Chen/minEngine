@@ -76,6 +76,7 @@
 #include "Suites/RHIDeferredCreateTest.h"
 #include "Suites/RHIDeferredDestroyTest.h"
 #include "Suites/SceneProxyResourceLifetimeTest.h"
+#include "Suites/SceneProxyIdentityTest.h"
 #include "Suites/MaterialRenderProxyDataTest.h"
 #include "Suites/EnvMapBakeTest.h"
 #include "Suites/SceneDebugDrawSnapshotTest.h"
@@ -1483,6 +1484,28 @@ namespace minEngine
             }
         };
 
+        struct SceneProxyIdentityTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "scene-proxy-identity",
+                    "Scene Proxy Identity Token Ownership",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-proxy-identity'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "scene-proxy-identity",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct SceneProxyRenderReadTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1755,6 +1778,7 @@ namespace minEngine
         using RHIDeferredDestroySuite = TypedTestSuite<RHIDeferredDestroyTestSuiteTraits>;
         using SceneProxyResourceLifetimeSuite = TypedTestSuite<SceneProxyResourceLifetimeTestSuiteTraits>;
         using SceneProxyRenderReadSuite = TypedTestSuite<SceneProxyRenderReadTestSuiteTraits>;
+        using SceneProxyIdentitySuite = TypedTestSuite<SceneProxyIdentityTestSuiteTraits>;
         using SceneRetirementGateSuite = TypedTestSuite<SceneRetirementGateTestSuiteTraits>;
         using MaterialCompileCacheSuite = TypedTestSuite<MaterialCompileCacheTestSuiteTraits>;
         using MaterialRenderProxyDataSuite = TypedTestSuite<MaterialRenderProxyDataTestSuiteTraits>;
@@ -1853,6 +1877,7 @@ namespace minEngine
             registry.Register(RHIDeferredDestroySuite::Get());
             registry.Register(SceneProxyResourceLifetimeSuite::Get());
             registry.Register(SceneProxyRenderReadSuite::Get());
+        registry.Register(SceneProxyIdentitySuite::Get());
             registry.Register(SceneRetirementGateSuite::Get());
             registry.Register(MaterialCompileCacheSuite::Get());
             registry.Register(MaterialRenderProxyDataSuite::Get());

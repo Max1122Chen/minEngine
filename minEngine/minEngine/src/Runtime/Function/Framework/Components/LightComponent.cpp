@@ -18,16 +18,14 @@ namespace minEngine
             return;
         }
 
-        bool removedFromScene = false;
+        // Nothing is written to the proxy here. Its identity token is the key a queued removal
+        // matches on, and that removal runs after this destructor; clearing the token would leave
+        // it matching nothing and the light registered until the scene it belongs to is torn down.
+        // A removal this side cannot queue - because the Scene that owned the render scene is
+        // already gone - also has nothing left to draw for: the render scene goes with it.
         if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveLight(this);
-            removedFromScene = true;
-        }
-
-        if (!removedFromScene)
-        {
-            m_LightSceneProxy->m_LightComponent = nullptr;
         }
 
         m_LightSceneProxy = nullptr;
@@ -155,16 +153,11 @@ namespace minEngine
             return;
         }
 
-        bool removedFromScene = false;
+        // Same rule as the destructor: the proxy is left exactly as the render role last saw it,
+        // because the removal queued here is matched against this very pointer once it runs.
         if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveLight(this);
-            removedFromScene = true;
-        }
-
-        if (!removedFromScene)
-        {
-            m_LightSceneProxy->m_LightComponent = nullptr;
         }
 
         m_LightSceneProxy = nullptr;

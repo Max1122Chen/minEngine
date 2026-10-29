@@ -121,14 +121,12 @@ namespace minEngine
             return;
         }
 
+        // Nothing is written to the proxy here: its identity token is the key the queued removal
+        // matches on, and that removal runs after this destructor.
         RenderScene* renderScene = GetOwningRenderSceneIfPresent();
         if (renderScene)
         {
             renderScene->RemoveWidget(this);
-        }
-        else if (m_WidgetSceneProxy)
-        {
-            m_WidgetSceneProxy->m_WidgetComponent = nullptr;
         }
 
         DetachSceneProxy();
@@ -327,13 +325,14 @@ namespace minEngine
             return;
         }
 
+        // Same rule as the destructor: the proxy keeps its token, so the removal queued for it -
+        // here, or by a scene teardown that still knows this component - still finds it.
         if (RenderScene* renderScene = GetOwningRenderSceneIfPresent())
         {
             renderScene->RemoveWidget(this);
         }
-        else if (m_WidgetSceneProxy)
+        else
         {
-            m_WidgetSceneProxy->m_WidgetComponent = nullptr;
             DetachSceneProxy();
         }
 

@@ -68,14 +68,14 @@ namespace minEngine
     namespace
     {
         /**
-         * A light contributes only while it is active and visible. A hidden light keeps its proxy
-         * and keeps ticking; it simply produces no illumination and no shadow. The answer travels
-         * on the proxy, which the game thread fills, so this side stays read-only.
+         * A light contributes only while it is active and visible and not on its way out. A hidden
+         * light keeps its proxy and keeps ticking; it simply produces no illumination and no
+         * shadow. Both answers travel on the proxy, so this side stays read-only - and the removal
+         * state is the proxy's own mark, never a game-role clear of its identity token.
          */
         bool ContributesLight(const LightSceneProxy* lightProxy)
         {
-            return lightProxy != nullptr && lightProxy->m_LightComponent != nullptr &&
-                lightProxy->m_Enabled;
+            return lightProxy != nullptr && !lightProxy->m_bPendingRemove && lightProxy->m_Enabled;
         }
     }
 
