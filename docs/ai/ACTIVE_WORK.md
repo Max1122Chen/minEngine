@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-25（`master`：合入 feat/core + feat/render）
+Last updated: 2026-10-29（`feat/render`：RND-F29/F30 Design Draft；worktree 已 ff→master tip）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -21,6 +21,8 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Done**（S00–S03；S04 吸收进 F46） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | RND-F27 | RDG RegisterExternal（SceneColor 外部物理绑定） | **Done**（S01；S02 可选） | [Design](./Render/RND-F27_RDG_REGISTER_EXTERNAL_DESIGN.md) |
 | — | RND-F28 | Texture2DRenderTarget + Offscreen SetColorTarget | **Done**（S01–S02；S03/S04 可选） | [Design](./Render/RND-F28_TEXTURE2D_RENDER_TARGET_DESIGN.md) |
+| 2 | RND-F29 | Orthographic Camera（投影模式 + OrthoHeight） | **In Progress**（S01/S02） | [Design](./Render/RND-F29_ORTHOGRAPHIC_CAMERA_DESIGN.md) · `feat/render` · `test frustum` |
+| 3 | RND-F30 | DebugDraw 索引线网 + AlwaysVisible 补全 | **In Progress**（S01/S02） | [Design](./Render/RND-F30_DEBUG_DRAW_INDEXED_LINES_DESIGN.md) · 续 F11 · 描边默认 Tested |
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done** | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
@@ -192,7 +194,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | `D:/Dev/GitRepo/minEngine-animation` | `feat/animation` | 可归档或留给下一动画切片 |
 | `D:/Dev/GitRepo/minEngine-editor` | `feat/editor` | 可与 master 对齐；`ProjectRoot` 本地指向本树 |
 | `D:/Dev/GitRepo/minEngine-gameplay` | `feat/gameplay-framework` | 可归档 |
-| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 2026-10-24 已 ff→`master`（`a0626b67`）；当前 **RND-F26** Draft |
+| `D:/Dev/GitRepo/minEngine-render` | **`feat/render`** | 2026-10-29 ff→`master`（`4bb56d13`）；**RND-F29 / RND-F30** Design Draft |
 
 `MyMEProject.meproject` 的 `ProjectRoot` 须指向**当前工作树**的 `MyMEProject`（主仓：`…/minEngine/minEngine/MyMEProject`）。
 

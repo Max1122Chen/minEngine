@@ -43,14 +43,16 @@ namespace minEngine
         RHIBufferRef m_VertexBuffer;
         RHIVertexInputLayoutRef m_VertexLayout;
         std::shared_ptr<RHIShader> m_Shader;
-        std::shared_ptr<RHIGraphicsPipelineState> m_PipelineState;
+        std::shared_ptr<RHIGraphicsPipelineState> m_PipelineStateDepthTested;
+        std::shared_ptr<RHIGraphicsPipelineState> m_PipelineStateAlwaysVisible;
         std::shared_ptr<RHIShaderBindingSetLayout> m_BindingSetLayout;
         std::shared_ptr<RHIPipelineLayout> m_PipelineLayout;
         RHIShaderBindingSetRef m_ShaderBindingSet;
         RHIDeferredConsumerGate m_ResourceGate;
 
         uint32_t m_VertexBufferCapacityBytes = 0;
-        uint32_t m_DrawVertexCount = 0;
+        uint32_t m_DrawVertexCountDepthTested = 0;
+        uint32_t m_DrawVertexCountAlwaysVisible = 0;
         bool m_ShouldRender = false;
         bool m_IsReady = false;
     };

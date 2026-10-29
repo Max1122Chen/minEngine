@@ -1,3 +1,19 @@
+## 2026-10-29 — RND-F29 / RND-F30 实现落地（`feat/render`）
+
+- **RND-F29 S01/S02：** `ECameraProjectionMode` + `m_OrthoHeight`；`RenderCamera::UpdateProjectionMatrix` / 正交平行 `ScreenPointToRay`；`CameraComponent` 模式与 OrthoHeight 推送。
+- **RND-F30 S01/S02：** `DebugDraw::IndexedLines`（两重载，`MINENGINE_API`）+ `DebugIndexedLinesCommand`；CPU 展开；`DebugDrawPass` 双 PSO（Tested depth-test / AlwaysVisible depth-off），同 VB 分区 `Draw`；Snapshot 含 IndexedLines。
+- **Tests：** `frustum` 10/10（含正交 Proj + 平行射线）；`scene-debug-draw-snapshot` 5/5（含 IndexedLines Tested / AlwaysVisible）。
+- **Exports：** 3003 → 3008（+5）：`CameraComponent::SetOrthoHeight` / `SetProjectionMode`；`DebugDraw::IndexedLines`×2；`RenderCamera::GetForwardDirection`。snapshot 已重写。构建 cache 将 `MINENGINE_EXPORT_BUDGET` 对齐 3500（旧 cache 卡在 3000）。
+- **Next：** 可选收口 Done（Inspector / ImGuizmo）；commit 前主人验收；minCraft 可用 `Box` 或 `IndexedLines` + `Tested` 描边。
+
+## 2026-10-29 — RND-F29 / RND-F30 Design Draft（`feat/render`）
+
+- **Branch / tree：** `minEngine-render` 上 `feat/render` fast-forward 到主树 tip `4bb56d13`；文档与 Registry 在此树推进。
+- **RND-F29：** 正交相机补充设计 — `ECameraProjectionMode` + OrthoHeight；复用 `RHIClipSpace::MakeOrthographic`；正交 `ScreenPointToRay` 平行射线。[Design](./Render/RND-F29_ORTHOGRAPHIC_CAMERA_DESIGN.md)
+- **RND-F30：** DebugDraw `IndexedLines`（顶点+索引 → CPU 展开 LineList）+ Pass 双 PSO 补全 `AlwaysVisible`；瞄准描边默认 `Tested`（读深度、不写）。锚点：UE `DrawDebugHelpers.h`（`DrawDebugLine` / `DrawDebugMesh`）。[Design](./Render/RND-F30_DEBUG_DRAW_INDEXED_LINES_DESIGN.md)
+- **Registry / ACTIVE_WORK：** 两行 Draft 已挂；实现顺序 F29 → F30（正常顺序）。
+- **Next：** 主人确认 Draft → Planned 后开工 S01；编码前可不跑 design-review 仪式（均为 L1）。
+
 ## 2026-10-29 — 录制期上传成为命令：`RHICommandList::UpdateBuffer`（TD-045 收口）
 
 - **根因：** `RHIBuffer::UpdateSubresource` 在**调用线程立即**执行 `glBufferSubData`，不进命令流；Multi 整帧先录制后 replay，于是任何录制期上传都排在"回放时才被读"的 draw 之前。屏幕空间 per-frame 块那次（世界消失）只是这块地基上最先塌的一处，机制本身仍在。

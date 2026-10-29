@@ -75,4 +75,48 @@ namespace minEngine::DebugDraw
         command.DepthMode = depthMode;
         DebugDrawService::Get().EnqueueCapsule(command);
     }
+
+    void IndexedLines(
+        const DebugVertex* vertices,
+        const uint32_t vertexCount,
+        const uint32_t* indices,
+        const uint32_t indexCount,
+        const EDebugDepthMode depthMode)
+    {
+        if (vertices == nullptr || indices == nullptr || vertexCount == 0u || indexCount == 0u)
+        {
+            return;
+        }
+
+        DebugIndexedLinesCommand command;
+        command.Vertices.assign(vertices, vertices + vertexCount);
+        command.Indices.assign(indices, indices + indexCount);
+        command.DepthMode = depthMode;
+        DebugDrawService::Get().EnqueueIndexedLines(command);
+    }
+
+    void IndexedLines(
+        const Vector3* positions,
+        const uint32_t positionCount,
+        const uint32_t* indices,
+        const uint32_t indexCount,
+        const Vector4& color,
+        const EDebugDepthMode depthMode)
+    {
+        if (positions == nullptr || indices == nullptr || positionCount == 0u || indexCount == 0u)
+        {
+            return;
+        }
+
+        DebugIndexedLinesCommand command;
+        command.Vertices.resize(positionCount);
+        for (uint32_t i = 0; i < positionCount; ++i)
+        {
+            command.Vertices[i].Position = positions[i];
+            command.Vertices[i].Color = color;
+        }
+        command.Indices.assign(indices, indices + indexCount);
+        command.DepthMode = depthMode;
+        DebugDrawService::Get().EnqueueIndexedLines(command);
+    }
 }

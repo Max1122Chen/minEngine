@@ -292,3 +292,64 @@ TEST_CASE("scene-debug-draw-snapshot: the published geometry outlives the scene 
     service.ClearFrameQueues();
     service.BuildFrameGeometry();
 }
+
+TEST_CASE("scene-debug-draw-snapshot: IndexedLines expands to tested LineList [smoke]")
+{
+    using minEngine::Math::Vector3;
+    using minEngine::Math::Vector4;
+
+    DebugDrawService& service = DebugDrawService::Get();
+    service.ClearFrameQueues();
+
+    minEngine::DebugIndexedLinesCommand command;
+    command.Vertices = {
+        {Vector3(0.0f, 0.0f, 0.0f), Vector4(1.0f, 0.0f, 0.0f, 1.0f)},
+        {Vector3(1.0f, 0.0f, 0.0f), Vector4(1.0f, 0.0f, 0.0f, 1.0f)},
+        {Vector3(1.0f, 1.0f, 0.0f), Vector4(0.0f, 1.0f, 0.0f, 1.0f)},
+        {Vector3(0.0f, 1.0f, 0.0f), Vector4(0.0f, 1.0f, 0.0f, 1.0f)},
+    };
+    command.Indices = {0, 1, 1, 2, 2, 3, 3, 0};
+    command.DepthMode = EDebugDepthMode::Tested;
+    service.EnqueueIndexedLines(command);
+    service.BuildFrameGeometry();
+
+    CHECK(service.GetVertexCount(EDebugDepthMode::Tested) == 8u);
+    CHECK(service.GetVertexCount(EDebugDepthMode::AlwaysVisible) == 0u);
+    const std::vector<DebugVertex>& tested = service.GetVertices(EDebugDepthMode::Tested);
+    REQUIRE(tested.size() == 8u);
+    CHECK(tested[0].Position.x == doctest::Approx(0.0f));
+    CHECK(tested[1].Position.x == doctest::Approx(1.0f));
+    CHECK(tested[0].Color.x == doctest::Approx(1.0f));
+
+    service.ClearFrameQueues();
+    service.BuildFrameGeometry();
+}
+
+TEST_CASE("scene-debug-draw-snapshot: IndexedLines AlwaysVisible lands in the visible bucket [smoke]")
+{
+    using minEngine::Math::Vector3;
+    using minEngine::Math::Vector4;
+
+    DebugDrawService& service = DebugDrawService::Get();
+    service.ClearFrameQueues();
+
+    minEngine::DebugIndexedLinesCommand command;
+    command.Vertices = {
+        {Vector3(0.0f, 0.0f, 0.0f), Vector4(0.2f, 0.4f, 0.6f, 1.0f)},
+        {Vector3(0.0f, 2.0f, 0.0f), Vector4(0.2f, 0.4f, 0.6f, 1.0f)},
+    };
+    command.Indices = {0, 1};
+    command.DepthMode = EDebugDepthMode::AlwaysVisible;
+    service.EnqueueIndexedLines(command);
+    service.BuildFrameGeometry();
+
+    CHECK(service.GetVertexCount(EDebugDepthMode::Tested) == 0u);
+    CHECK(service.GetVertexCount(EDebugDepthMode::AlwaysVisible) == 2u);
+    const std::vector<DebugVertex>& always = service.GetVertices(EDebugDepthMode::AlwaysVisible);
+    REQUIRE(always.size() == 2u);
+    CHECK(always[1].Position.y == doctest::Approx(2.0f));
+    CHECK(always[0].Color.z == doctest::Approx(0.6f));
+
+    service.ClearFrameQueues();
+    service.BuildFrameGeometry();
+}

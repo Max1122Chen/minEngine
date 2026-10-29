@@ -23,6 +23,7 @@ namespace minEngine
         m_Boxes.clear();
         m_Spheres.clear();
         m_Capsules.clear();
+        m_IndexedLines.clear();
     }
 
     void DebugDrawService::ApplyFrameSnapshot(const DebugDrawSnapshotRef& snapshot)
@@ -36,6 +37,10 @@ namespace minEngine
         m_Boxes.insert(m_Boxes.end(), snapshot->Boxes.begin(), snapshot->Boxes.end());
         m_Spheres.insert(m_Spheres.end(), snapshot->Spheres.begin(), snapshot->Spheres.end());
         m_Capsules.insert(m_Capsules.end(), snapshot->Capsules.begin(), snapshot->Capsules.end());
+        m_IndexedLines.insert(
+            m_IndexedLines.end(),
+            snapshot->IndexedLines.begin(),
+            snapshot->IndexedLines.end());
     }
 
     void DebugDrawService::BuildFrameGeometry()
@@ -120,6 +125,49 @@ namespace minEngine
                     command.Segments);
             });
         }
+
+        for (const DebugIndexedLinesCommand& command : m_IndexedLines)
+        {
+            if ((command.Indices.size() % 2u) != 0u)
+            {
+                ME_LOG(
+                    LogRender,
+                    Warn,
+                    "DebugDrawService: IndexedLines index count {} is odd; skipping command.",
+                    command.Indices.size());
+                continue;
+            }
+
+            std::vector<DebugVertex>* vertices = command.DepthMode == EDebugDepthMode::AlwaysVisible
+                ? &m_VerticesAlwaysVisible
+                : &m_VerticesDepthTested;
+            appendWithLimit(*vertices, [&](std::vector<DebugVertex>& out)
+            {
+                const uint32_t vertexCount = static_cast<uint32_t>(command.Vertices.size());
+                for (size_t i = 0; i + 1 < command.Indices.size(); i += 2)
+                {
+                    const uint32_t i0 = command.Indices[i];
+                    const uint32_t i1 = command.Indices[i + 1];
+                    if (i0 >= vertexCount || i1 >= vertexCount)
+                    {
+                        ME_LOG(
+                            LogRender,
+                            Warn,
+                            "DebugDrawService: IndexedLines index out of range ({}, {}); skipping segment.",
+                            i0,
+                            i1);
+                        continue;
+                    }
+
+                    // LineList expansion uses the start vertex colour for the whole segment.
+                    DebugGeometry::AppendLine(
+                        out,
+                        command.Vertices[i0].Position,
+                        command.Vertices[i1].Position,
+                        command.Vertices[i0].Color);
+                }
+            });
+        }
     }
 
     const std::vector<DebugVertex>& DebugDrawService::GetVertices(EDebugDepthMode mode) const
@@ -164,5 +212,10 @@ namespace minEngine
     void DebugDrawService::EnqueueCapsule(const DebugCapsuleCommand& command)
     {
         m_Capsules.push_back(command);
+    }
+
+    void DebugDrawService::EnqueueIndexedLines(const DebugIndexedLinesCommand& command)
+    {
+        m_IndexedLines.push_back(command);
     }
 }

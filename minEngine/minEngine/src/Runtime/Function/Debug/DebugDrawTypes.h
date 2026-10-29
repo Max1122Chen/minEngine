@@ -74,6 +74,15 @@ namespace minEngine
         EDebugLifetime Lifetime = EDebugLifetime::Transient;
     };
 
+    /** Caller-owned vertices + index pairs expanded to LineList at BuildFrameGeometry time. */
+    struct DebugIndexedLinesCommand
+    {
+        std::vector<DebugVertex> Vertices;
+        std::vector<uint32_t> Indices;
+        EDebugDepthMode DepthMode = EDebugDepthMode::Tested;
+        EDebugLifetime Lifetime = EDebugLifetime::Transient;
+    };
+
     /**
      * One frame of debug geometry, produced where the world is owned and read where it is drawn.
      *
@@ -86,8 +95,12 @@ namespace minEngine
         std::vector<DebugBoxCommand> Boxes;
         std::vector<DebugSphereCommand> Spheres;
         std::vector<DebugCapsuleCommand> Capsules;
+        std::vector<DebugIndexedLinesCommand> IndexedLines;
 
-        bool IsEmpty() const { return Boxes.empty() && Spheres.empty() && Capsules.empty(); }
+        bool IsEmpty() const
+        {
+            return Boxes.empty() && Spheres.empty() && Capsules.empty() && IndexedLines.empty();
+        }
     };
 
     /** Shared by value; a consumer holds it for exactly as long as it needs the geometry. */

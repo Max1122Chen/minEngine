@@ -2,11 +2,10 @@
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
+#include "Runtime/Function/Render/RenderCamera.h"
 
 namespace minEngine
 {
-    class RenderCamera;
-
     ME_CLASS()
     class MINENGINE_API CameraComponent : public SceneComponent
     {
@@ -24,8 +23,14 @@ namespace minEngine
         void SetSetAsMainCameraOnBeginPlay(bool value) { m_bSetAsMainCameraOnBeginPlay = value; }
         bool GetSetAsMainCameraOnBeginPlay() const { return m_bSetAsMainCameraOnBeginPlay; }
 
+        ECameraProjectionMode GetProjectionMode() const { return m_ProjectionMode; }
+        void SetProjectionMode(ECameraProjectionMode mode);
+
         float GetFieldOfView() const { return m_FOV; }
         void SetFieldOfView(float degrees);
+
+        float GetOrthoHeight() const { return m_OrthoHeight; }
+        void SetOrthoHeight(float height);
 
         float GetNearPlane() const { return m_zNear; }
         void SetNearPlane(float nearPlane);
@@ -41,7 +46,7 @@ namespace minEngine
         void ClearOtherMainCamerasInScene();
         bool IsSoleActiveCameraInOwningScene() const;
         void TryPushEditViewportPreview();
-        /** Push FOV / near / far from component fields onto m_RenderCamera. */
+        /** Push projection mode / FOV / ortho height / near / far onto m_RenderCamera. */
         void ApplyLensToRenderCamera();
 
         std::shared_ptr<RenderCamera> m_RenderCamera;
@@ -51,7 +56,9 @@ namespace minEngine
         ME_PROPERTY(EditAnywhere)
         bool m_bSetAsMainCameraOnBeginPlay{ false };
 
+        ECameraProjectionMode m_ProjectionMode{ ECameraProjectionMode::Perspective };
         float m_FOV{ 45.0f };
+        float m_OrthoHeight{ 10.0f };
         float m_AspectRatio{ 16.0f / 9.0f };
         float m_zNear{ 0.1f };
         float m_zFar{ 1000.0f };

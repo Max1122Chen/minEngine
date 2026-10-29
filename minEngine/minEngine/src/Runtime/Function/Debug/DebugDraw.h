@@ -34,4 +34,20 @@ namespace minEngine::DebugDraw
         float halfHeight,
         const Vector4& color,
         EDebugDepthMode depthMode = EDebugDepthMode::Tested);
+
+    /** Index pairs map to line segments (indexCount must be even). Expanded to LineList on the CPU. */
+    MINENGINE_API void IndexedLines(
+        const DebugVertex* vertices,
+        uint32_t vertexCount,
+        const uint32_t* indices,
+        uint32_t indexCount,
+        EDebugDepthMode depthMode = EDebugDepthMode::Tested);
+
+    MINENGINE_API void IndexedLines(
+        const Vector3* positions,
+        uint32_t positionCount,
+        const uint32_t* indices,
+        uint32_t indexCount,
+        const Vector4& color,
+        EDebugDepthMode depthMode = EDebugDepthMode::Tested);
 }

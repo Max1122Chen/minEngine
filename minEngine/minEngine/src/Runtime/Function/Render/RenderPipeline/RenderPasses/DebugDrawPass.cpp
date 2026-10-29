@@ -40,6 +40,26 @@ namespace minEngine
             info.Format = TextureFormat::DEPTH24STENCIL8;
             return info;
         }
+
+        RHIGraphicsPSODesc MakeDebugDrawPsoDesc(
+            RHIPipelineLayout* pipelineLayout,
+            RHIShader* shader,
+            RHIVertexInputLayout* vertexLayout,
+            const bool depthTestEnabled)
+        {
+            RHIGraphicsPSODesc psoDesc;
+            psoDesc.PipelineLayout = pipelineLayout;
+            psoDesc.VertexShader = shader;
+            psoDesc.PixelShader = shader;
+            psoDesc.VertexInputLayout = vertexLayout;
+            psoDesc.PrimitiveType = RHIPrimitiveType::LineList;
+            psoDesc.RasterizerState.bCullEnabled = false;
+            psoDesc.RasterizerState.CullMode = RHICullMode::None;
+            psoDesc.DepthStencilState.bDepthTestEnabled = depthTestEnabled;
+            psoDesc.DepthStencilState.bDepthWriteEnabled = false;
+            psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
+            return psoDesc;
+        }
     }
 
     void DebugDrawPass::Initialize()
@@ -84,18 +104,16 @@ namespace minEngine
 
         m_PipelineLayout = cmdList.CreatePipelineLayout({m_BindingSetLayout.get()});
 
-        RHIGraphicsPSODesc psoDesc;
-        psoDesc.PipelineLayout = m_PipelineLayout.get();
-        psoDesc.VertexShader = m_Shader.get();
-        psoDesc.PixelShader = m_Shader.get();
-        psoDesc.VertexInputLayout = m_VertexLayout.get();
-        psoDesc.PrimitiveType = RHIPrimitiveType::LineList;
-        psoDesc.RasterizerState.bCullEnabled = false;
-        psoDesc.RasterizerState.CullMode = RHICullMode::None;
-        psoDesc.DepthStencilState.bDepthTestEnabled = true;
-        psoDesc.DepthStencilState.bDepthWriteEnabled = false;
-        psoDesc.DepthStencilState.DepthCompare = RHIDepthCompareFunc::Less;
-        m_PipelineState = cmdList.CreateGraphicsPipelineState(psoDesc);
+        m_PipelineStateDepthTested = cmdList.CreateGraphicsPipelineState(MakeDebugDrawPsoDesc(
+            m_PipelineLayout.get(),
+            m_Shader.get(),
+            m_VertexLayout.get(),
+            true));
+        m_PipelineStateAlwaysVisible = cmdList.CreateGraphicsPipelineState(MakeDebugDrawPsoDesc(
+            m_PipelineLayout.get(),
+            m_Shader.get(),
+            m_VertexLayout.get(),
+            false));
 
         RHIBufferCreateDesc vbDesc;
         vbDesc.Usage = RHIBufferUsage::Vertex;
@@ -105,20 +123,23 @@ namespace minEngine
         m_VertexBuffer = cmdList.CreateBuffer(vbDesc);
         m_VertexBufferCapacityBytes = vbDesc.ByteSize;
 
-        m_IsReady = m_VertexBuffer != nullptr && m_PipelineState != nullptr && m_BindingSetLayout != nullptr;
+        m_IsReady = m_VertexBuffer != nullptr && m_PipelineStateDepthTested != nullptr
+            && m_PipelineStateAlwaysVisible != nullptr && m_BindingSetLayout != nullptr;
     }
 
     void DebugDrawPass::Shutdown()
     {
         m_ShaderBindingSet.reset();
-        m_PipelineState.reset();
+        m_PipelineStateDepthTested.reset();
+        m_PipelineStateAlwaysVisible.reset();
         m_PipelineLayout.reset();
         m_BindingSetLayout.reset();
         m_VertexLayout.reset();
         m_VertexBuffer.reset();
         m_Shader.reset();
         m_VertexBufferCapacityBytes = 0;
-        m_DrawVertexCount = 0;
+        m_DrawVertexCountDepthTested = 0;
+        m_DrawVertexCountAlwaysVisible = 0;
         m_ShouldRender = false;
         m_IsReady = false;
     }
@@ -139,7 +160,8 @@ namespace minEngine
     void DebugDrawPass::Prepare(RenderGraph& graph)
     {
         m_ShouldRender = false;
-        m_DrawVertexCount = 0;
+        m_DrawVertexCountDepthTested = 0;
+        m_DrawVertexCountAlwaysVisible = 0;
 
         if (!m_IsReady || pipeline == nullptr)
         {
@@ -151,7 +173,8 @@ namespace minEngine
         const RHIDeferredConsumerGate::Decision resources = m_ResourceGate.Query({
             m_Shader.get(),
             m_VertexBuffer.get(),
-            m_PipelineState.get(),
+            m_PipelineStateDepthTested.get(),
+            m_PipelineStateAlwaysVisible.get(),
             m_BindingSetLayout.get(),
             m_VertexLayout.get(),
         });
@@ -200,17 +223,38 @@ namespace minEngine
         DebugDrawService& debugDrawService = DebugDrawService::Get();
         debugDrawService.BuildFrameGeometry();
 
-        const std::vector<DebugVertex>& vertices =
+        const std::vector<DebugVertex>& tested =
             debugDrawService.GetVertices(EDebugDepthMode::Tested);
-        m_DrawVertexCount = static_cast<uint32_t>(vertices.size());
+        const std::vector<DebugVertex>& alwaysVisible =
+            debugDrawService.GetVertices(EDebugDepthMode::AlwaysVisible);
+        m_DrawVertexCountDepthTested = static_cast<uint32_t>(tested.size());
+        m_DrawVertexCountAlwaysVisible = static_cast<uint32_t>(alwaysVisible.size());
 
-        if (m_DrawVertexCount > 0)
+        const uint32_t totalCount = m_DrawVertexCountDepthTested + m_DrawVertexCountAlwaysVisible;
+        if (totalCount > 0)
         {
-            const uint32_t byteSize = m_DrawVertexCount * static_cast<uint32_t>(sizeof(DebugVertex));
+            const uint32_t byteSize = totalCount * static_cast<uint32_t>(sizeof(DebugVertex));
             EnsureVertexBufferCapacity(*cmdList, byteSize);
             if (m_VertexBuffer != nullptr)
             {
-                cmdList->UpdateBuffer(m_VertexBuffer.get(), vertices.data(), 0, byteSize);
+                if (m_DrawVertexCountDepthTested > 0)
+                {
+                    cmdList->UpdateBuffer(
+                        m_VertexBuffer.get(),
+                        tested.data(),
+                        0,
+                        m_DrawVertexCountDepthTested * static_cast<uint32_t>(sizeof(DebugVertex)));
+                }
+                if (m_DrawVertexCountAlwaysVisible > 0)
+                {
+                    const uint32_t offsetBytes =
+                        m_DrawVertexCountDepthTested * static_cast<uint32_t>(sizeof(DebugVertex));
+                    cmdList->UpdateBuffer(
+                        m_VertexBuffer.get(),
+                        alwaysVisible.data(),
+                        offsetBytes,
+                        m_DrawVertexCountAlwaysVisible * static_cast<uint32_t>(sizeof(DebugVertex)));
+                }
             }
         }
 
@@ -220,7 +264,8 @@ namespace minEngine
         RHIBuffer* perFrameBuffer = forwardRenderer->GetPerFrameUniformBuffer();
         if (perFrameBuffer == nullptr)
         {
-            m_DrawVertexCount = 0;
+            m_DrawVertexCountDepthTested = 0;
+            m_DrawVertexCountAlwaysVisible = 0;
             return;
         }
 
@@ -228,12 +273,13 @@ namespace minEngine
             m_BindingSetLayout.get(),
             {{RHIShaderBindingType::UniformBuffer, perFrameBuffer, nullptr}});
 
-        m_ShouldRender = m_DrawVertexCount > 0 && m_VertexBuffer != nullptr && m_ShaderBindingSet != nullptr;
+        m_ShouldRender = totalCount > 0 && m_VertexBuffer != nullptr && m_ShaderBindingSet != nullptr;
     }
 
     void DebugDrawPass::BuildRenderPass(RHICommandList& cmdList, RenderGraph& graph)
     {
-        if (!m_ShouldRender || m_PipelineState == nullptr)
+        if (!m_ShouldRender || m_PipelineStateDepthTested == nullptr
+            || m_PipelineStateAlwaysVisible == nullptr)
         {
             return;
         }
@@ -248,11 +294,20 @@ namespace minEngine
         RHIRenderPassInfo passInfo = MakeSceneRenderPassInfo(colorTexture, depthTexture, false);
         cmdList.BeginRenderPass(passInfo);
         cmdList.SetViewport(0, 0, colorTexture->GetDesc().Width, colorTexture->GetDesc().Height);
-
-        cmdList.SetGraphicsPipelineState(m_PipelineState.get());
         cmdList.SetShaderBindingSet(0, m_ShaderBindingSet.get());
         cmdList.SetVertexBuffer(m_VertexBuffer.get());
-        cmdList.Draw(m_DrawVertexCount, 0);
+
+        if (m_DrawVertexCountDepthTested > 0)
+        {
+            cmdList.SetGraphicsPipelineState(m_PipelineStateDepthTested.get());
+            cmdList.Draw(m_DrawVertexCountDepthTested, 0);
+        }
+
+        if (m_DrawVertexCountAlwaysVisible > 0)
+        {
+            cmdList.SetGraphicsPipelineState(m_PipelineStateAlwaysVisible.get());
+            cmdList.Draw(m_DrawVertexCountAlwaysVisible, m_DrawVertexCountDepthTested);
+        }
 
         cmdList.EndRenderPass();
     }

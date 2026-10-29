@@ -102,6 +102,8 @@ Purpose: **single source of truth** for `<DOMAIN>-F<nn>` IDs. Avoid duplicate or
 | `RND-F26` | View-Aware Mesh Collect（Proxy 子 mesh / Section 剔除钩子） | **Done** | — | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) · L2 · `feat/render` · `test frustum` 8/8 · minCraft Chunk 已跟进 |
 | `RND-F27` | RDG RegisterExternal（外部物理纹理绑定 · SceneColor） | **Done** | — | [Design](./Render/RND-F27_RDG_REGISTER_EXTERNAL_DESIGN.md) · L2 · `feat/render` · S01；S02 Depth/alias 可选 |
 | `RND-F28` | Texture2DRenderTarget 子类 + Offscreen SetColorTarget/RenderInto | **Done** | — | [Design](./Render/RND-F28_TEXTURE2D_RENDER_TARGET_DESIGN.md) · L2 · 依赖 F27 · S01–S02；S03/S04 可选 |
+| `RND-F29` | Orthographic Camera（投影模式 + OrthoHeight + 正交拾取射线） | **In Progress** | — | [Design](./Render/RND-F29_ORTHOGRAPHIC_CAMERA_DESIGN.md) · L1 · `feat/render` · S01/S02 landed · `test frustum` |
+| `RND-F30` | DebugDraw 索引线网 + AlwaysVisible 绘制补全 | **In Progress** | — | [Design](./Render/RND-F30_DEBUG_DRAW_INDEXED_LINES_DESIGN.md) · L1 · 续 RND-F11 · `feat/render` · S01/S02 landed · `test scene-debug-draw-snapshot` |
 | `MAT-F01` | Material Runtime Productization（UE 式运行时产品面 **路线图**） | **Done** | — | [Roadmap](./Render/Material/MAT-F01_MATERIAL_RUNTIME_PRODUCTIZATION_ROADMAP.md) |
 | `MAT-F02` | MaterialRenderProxy（Draw 绑定真源） | **Done** | — | [Design](./Render/Material/MAT-F02_MATERIAL_RENDER_PROXY_DESIGN.md) |
 | `MAT-F03` | MaterialInterface + Material 迁入 | **Done** | — | [Design](./Render/Material/MAT-F03_MATERIAL_INTERFACE_DESIGN.md) |
