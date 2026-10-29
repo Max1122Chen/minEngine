@@ -6,6 +6,7 @@
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
+#include "Runtime/Engine.h"
 
 #include "doctest.h"
 
@@ -116,6 +117,30 @@ namespace
         ME_ENSURE(false, "a violation that fires every frame");
     }
 
+    /** Raised between two frames of a host that drives its own loop instead of calling Run. */
+    void ViolateAtTheEditorBoundary()
+    {
+        ME_ENSURE(false, "a violation raised between two editor frames");
+    }
+
+    /** Same shape, distinct site: a site keeps its own report budget. */
+    void ViolateAtTheSecondBoundary()
+    {
+        ME_ENSURE(false, "a violation raised before a repeated frame boundary");
+    }
+
+    std::size_t CountMessagesContaining(const std::vector<std::string>& messages, const char* needle)
+    {
+        std::size_t count = 0;
+        for (const std::string& message : messages)
+        {
+            if (message.find(needle) != std::string::npos)
+            {
+                ++count;
+            }
+        }
+        return count;
+    }
 
     std::string ExecutableDirectory()
     {
@@ -440,6 +465,76 @@ TEST_CASE("contract-violations: the frame summary reports the contract count [sm
     // A frame that broke no contract stays silent, which is what makes the line worth reading.
     CHECK(minEngine::DescribeFrameWorkLossDelta(current, current).empty());
     CHECK(minEngine::FrameWorkLossCounters{} != current);
+}
+
+/**
+ * The editor drives its own frame loop - TickLogicalFrame / TickRendererFrame /
+ * CompleteFrameReleases - and never calls Engine::Run, so a diagnostic that only Run reached was
+ * reported by nothing at all in the editor: the records went to standard error and the log stayed
+ * empty. This case drives the editor's frame boundary, in the editor's order and without Run, and
+ * reads the log afterwards.
+ */
+TEST_CASE("contract-violations: the editor's frame boundary publishes the violation without Run [smoke]")
+{
+    // A host that owns no task pool and never starts Run: the same shape as Editor::Run, which
+    // drives every frame itself.
+    minEngine::Engine engine;
+
+    minEngine::ResetContractViolationCounters();
+    (void)minEngine::DrainContractViolations();
+
+    // One frame with nothing staged: the work-loss line reports a delta, so the baseline has to be
+    // this frame's counters rather than whatever the previous case left behind.
+    engine.CompleteFrameReleases();
+
+    Recorder().Begin();
+    ViolateAtTheEditorBoundary();
+    engine.CompleteFrameReleases();
+    Recorder().End();
+
+    const std::vector<std::string> messages = Recorder().Messages();
+    REQUIRE_MESSAGE(!messages.empty(), "the editor's frame boundary published nothing to the log");
+
+    // The staged record, with the file, thread and role it carries: the same text the failing
+    // thread wrote to standard error.
+    CHECK_MESSAGE(
+        CountMessagesContaining(messages, "ContractViolationsTest.cpp") == 1,
+        "the log received ", messages.size(), " record(s) and none names the failing site");
+    CHECK_MESSAGE(
+        CountMessagesContaining(messages, "a violation raised between two editor frames") == 1,
+        "the log did not carry the violation message");
+
+    // And the frame summary, which no editor frame printed before this boundary owned it.
+    CHECK_MESSAGE(
+        CountMessagesContaining(messages, "contract violation(s) recorded") == 1,
+        "the frame summary never named the contract count");
+}
+
+/**
+ * The release boundary is the frame's reporting point, so a host that reaches it twice in one frame
+ * - or a future path that ends up calling both it and the release check - must not publish the same
+ * record twice, and must not print the same summary twice.
+ */
+TEST_CASE("contract-violations: a repeated frame boundary publishes nothing twice [smoke]")
+{
+    minEngine::Engine engine;
+
+    minEngine::ResetContractViolationCounters();
+    (void)minEngine::DrainContractViolations();
+    engine.CompleteFrameReleases();
+
+    Recorder().Begin();
+    ViolateAtTheSecondBoundary();
+    engine.CompleteFrameReleases();
+    const std::size_t afterFirst = Recorder().Messages().size();
+    engine.CompleteFrameReleases();
+    const std::size_t afterSecond = Recorder().Messages().size();
+    Recorder().End();
+
+    REQUIRE_MESSAGE(afterFirst > 0, "the first boundary published nothing");
+    CHECK_MESSAGE(
+        afterSecond == afterFirst,
+        "a second boundary in the same frame added ", afterSecond - afterFirst, " record(s)");
 }
 
 TEST_CASE("contract-violations: a fatal assert still stops the process")

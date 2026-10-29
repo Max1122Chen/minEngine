@@ -528,6 +528,59 @@ TEST_CASE("rhi-deferred-destroy: the handle carries no queue, so the live device
     CHECK(probe->Destroyed.load() == 1);
 }
 
+/**
+ * One registry for the whole process, observed across the module boundary.
+ *
+ * The runtime module is a separate binary that includes the same header, so a header-local static
+ * gives it a registry of its own. That is invisible from inside either module and looks exactly like
+ * a lifetime bug: a host installs its queue into its own copy, and every handle a live device owns
+ * that is released inside the runtime module is then counted as "dropped while no RHI was alive".
+ * Installing through the entry point a device uses and reading the storage the runtime module
+ * compiled is what makes the single instance observable.
+ */
+TEST_CASE("rhi-deferred-destroy: the active queue registry is one copy for the whole process [smoke]")
+{
+    const std::shared_ptr<RHIDeferredDestroyQueue> queue = std::make_shared<RHIDeferredDestroyQueue>();
+
+    RHIDeferredDestroyQueue::InstallActiveQueue(queue);
+    const std::shared_ptr<RHIDeferredDestroyQueue> observed =
+        minEngine::RHIDeferredDestroyState::ActiveQueueSlot().lock();
+
+    CHECK_MESSAGE(observed.get() == queue.get(), "the runtime module holds no queue after this one installed one");
+    CHECK(RHIDeferredDestroyQueue::GetActiveQueue().get() == queue.get());
+
+    RHIDeferredDestroyQueue::UninstallActiveQueue(queue.get());
+    CHECK(minEngine::RHIDeferredDestroyState::ActiveQueueSlot().expired());
+    CHECK(RHIDeferredDestroyQueue::GetActiveQueue() == nullptr);
+
+    // The refusal counter is part of the same registry: the entry point this module calls has to
+    // move the number the runtime module keeps, or a host that reads it always reads zero.
+    const uint64_t before = minEngine::RHIDeferredDestroyState::PostedWithoutQueueCounter().load();
+    CHECK_FALSE(RHIDeferredDestroyQueue::PostToActiveQueue([]() { return true; }, "module-state probe"));
+    CHECK_MESSAGE(
+        minEngine::RHIDeferredDestroyState::PostedWithoutQueueCounter().load() == before + 1,
+        "the refusal was counted in a copy the runtime module does not hold");
+    CHECK(RHIDeferredDestroyQueue::GetPostedWithoutQueueCount() == before + 1);
+}
+
+/**
+ * The instance serial is a cache key, so two devices handed the same number would serve each other's
+ * cached objects. A counter in the header would restart at one in every module; this asks the number
+ * the runtime module keeps after this module constructed a device.
+ */
+TEST_CASE("rhi-deferred-destroy: an RHI takes its serial from the runtime module [smoke]")
+{
+    const uint64_t before = minEngine::RHIRegistry::CurrentInstanceSerial();
+
+    HeadlessRHI rhi;
+
+    CHECK_MESSAGE(
+        minEngine::RHIRegistry::CurrentInstanceSerial() == rhi.GetInstanceSerial(),
+        "this module handed out serial ", rhi.GetInstanceSerial(),
+        " while the runtime module's counter stands at ", minEngine::RHIRegistry::CurrentInstanceSerial());
+    CHECK(rhi.GetInstanceSerial() > before);
+}
+
 TEST_CASE("rhi-deferred-destroy: a release from inside a destroy callback waits for the next batch [smoke]")
 {
     HeadlessRHI rhi;

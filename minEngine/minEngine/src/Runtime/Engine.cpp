@@ -319,11 +319,18 @@ namespace minEngine
         FrameWorkLossCounters s_LastFrameWorkLoss;
 
         /**
-         * At most one line per frame saying what the frame roles lost since the previous frame, so a
-         * frame that dropped N commands shows up in the log as N instead of as N lines - or, as it
-         * used to be, as nothing at all. A frame that lost nothing logs nothing.
+         * The frame's one reporting point, and the reason the contract records survive outside
+         * Engine::Run: publishing a staged violation needs a moment with no log lock held, and a
+         * host that drives the frame itself - the editor does - never reaches that loop.
+         *
+         * Publishes the violations staged since the previous frame, then at most one line saying
+         * what the frame roles lost in the same interval, so a frame that dropped N commands shows
+         * up in the log as N instead of as N lines. A frame that lost nothing logs nothing.
+         *
+         * tasks is null on a host that owns no task pool; the violations are still published, and
+         * only the counters that pool owns stay at zero.
          */
-        void ReportFrameWorkLoss(const TaskSystem& tasks)
+        void ReportFrameWorkLoss(const TaskSystem* tasks)
         {
             // The frame boundary owns the one moment with no log lock held, so it is where the
             // violations recorded since the previous frame become log records.
@@ -337,10 +344,13 @@ namespace minEngine
                 current.DroppedViewIntents = pipe.DroppedStaleViewIntents + pipe.DroppedFullViewIntents;
                 current.ApplyFailures = pipe.FlushFailureCount;
             }
-            current.FailedFrames = tasks.GetFailedFrameCount();
-            current.DroppedFrames = tasks.GetDroppedQueuedFrameCount();
+            if (tasks != nullptr)
+            {
+                current.FailedFrames = tasks->GetFailedFrameCount();
+                current.DroppedFrames = tasks->GetDroppedQueuedFrameCount();
+                current.RenderWritesDuringFrame = tasks->GetGameRoleRenderWriteCount();
+            }
             current.ContractViolations = GetContractViolationCounters().Total();
-            current.RenderWritesDuringFrame = tasks.GetGameRoleRenderWriteCount();
             // Both are process-wide totals, like the contract count above: a summed count keeps
             // rising, so the delta in the line is what happened between two frames.
             current.OffRoleCoreServiceCalls = ObjectManager::GetOffRoleCoreServiceCallCountTotal();
@@ -392,9 +402,16 @@ namespace minEngine
                     m_TaskSystem->SubmitRenderFrameTask(deltaTime, bReleasesPending);
                     if (bReleasesPending)
                     {
+                        // The release boundary reports the frame's diagnostics along with the release.
                         CompleteFrameReleases();
                     }
-                    ReportFrameWorkLoss(*m_TaskSystem);
+                    else
+                    {
+                        // Nothing had to be released, so the boundary above is not reached this
+                        // frame. The diagnostics hang off the frame, not off a queue that happened
+                        // to be non-empty, so they are reported here instead.
+                        ReportFrameWorkLoss(m_TaskSystem.get());
+                    }
                 }
                 Profile::EndFrame();
             }
@@ -550,6 +567,12 @@ namespace minEngine
         {
             m_SceneManager->FlushRetiredScenes();
         }
+
+        // The frame's diagnostics belong to this boundary, not to Engine::Run: a host that drives
+        // its own frame loop - the editor does, in both topologies - reaches exactly this call per
+        // frame, and everything it staged during the frame (contract records, work lost by the frame
+        // roles) becomes log records here.
+        ReportFrameWorkLoss(m_TaskSystem.get());
     }
 
     void Engine::TickOneFrame(float deltaTime)
@@ -576,11 +599,8 @@ namespace minEngine
             {
                 WindowSystem::Get().SwapBuffers();
             }
+            // Also the frame's one reporting point, so it is not repeated here.
             CompleteFrameReleases();
-            if (m_TaskSystem)
-            {
-                ReportFrameWorkLoss(*m_TaskSystem);
-            }
         }
         Profile::EndFrame();
     }

@@ -71,11 +71,14 @@ namespace minEngine
         void TickRendererFrame(float deltaTime);
         /**
          * Game-role frame boundary. Call it once per frame, after that frame's RHI work is known to
-         * be finished: it destroys the Scenes retired for the frame and drains the objects the
-         * render roles handed over for game-role destruction.
+         * be finished: it destroys the Scenes retired for the frame, drains the objects the render
+         * roles handed over for game-role destruction, and publishes the frame's diagnostics (the
+         * contract records staged during the frame, and one line for what the frame roles lost).
          *
          * The topology only decides *when* that point is reached (Multi: after a submission that
          * waited for its completion; Single: after present); what happens at it is the same call.
+         * It is also the reason a host that never calls Run still gets those diagnostics: the frame
+         * loop it drives itself ends here, whatever the topology.
          */
         void CompleteFrameReleases();
         /**

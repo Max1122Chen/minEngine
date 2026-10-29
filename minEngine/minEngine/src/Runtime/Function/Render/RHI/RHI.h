@@ -47,10 +47,29 @@ namespace minEngine
 
     struct RHITextureTransitionInfo;
 
+    /**
+     * The serial that names one RHI instance for the life of the process.
+     *
+     * It is a cache key: a cache that was filled against one device is dropped when a device with
+     * another serial appears, and two devices that were handed the same number would keep drawing
+     * with objects the other one made. A counter kept in this header would be instantiated once per
+     * module, so the first device of every module would be serial 1 and every cross-device cache
+     * check would compare 1 with 1. It is therefore defined in the runtime module and handed out
+     * from there.
+     */
+    namespace RHIRegistry
+    {
+        /** The next serial, from the one counter the whole process shares. */
+        MINENGINE_API uint64_t NextInstanceSerial();
+
+        /** The serial handed out most recently; 0 before the first device exists. */
+        MINENGINE_API uint64_t CurrentInstanceSerial();
+    }
+
     class RHI
     {
     public:
-        RHI() : m_InstanceSerial(NextInstanceSerial())
+        RHI() : m_InstanceSerial(RHIRegistry::NextInstanceSerial())
         {
             // A resource destructor does not know which device it belongs to, so the void left by
             // this RHI's death is the queue's own business: register the one queue late destructors
@@ -290,12 +309,6 @@ namespace minEngine
             std::make_shared<RHIDeferredDestroyQueue>();
         std::shared_ptr<RHIDeferredCreateQueue> m_DeferredCreateQueue =
             std::make_shared<RHIDeferredCreateQueue>();
-
-        static uint64_t NextInstanceSerial()
-        {
-            static std::atomic<uint64_t> s_NextSerial{0};
-            return ++s_NextSerial;
-        }
 
         uint64_t m_InstanceSerial = 0;
     };

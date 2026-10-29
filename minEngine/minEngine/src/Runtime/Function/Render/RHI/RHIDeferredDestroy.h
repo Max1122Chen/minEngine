@@ -17,6 +17,32 @@
 
 namespace minEngine
 {
+    class RHIDeferredDestroyQueue;
+
+    /**
+     * The registry a resource destructor posts through: one instance for the whole process, not one
+     * per module.
+     *
+     * A function-local static in this header is instantiated by every module that includes it, so
+     * the runtime module and the executable that loads it would each hold their own "the queue of
+     * the live device" and their own refusal counter. A host would install its queue into its own
+     * copy, every resource released inside the runtime module would post into an empty copy of its
+     * own, and the result reads like a lifetime bug ("last reference dropped while no RHI was alive"
+     * for handles a live device owns) when the device was never gone. The storage therefore lives in
+     * one translation unit of the runtime module and is reached through these accessors.
+     */
+    namespace RHIDeferredDestroyState
+    {
+        /** Serialises registration against lookup, so a post never sees half an installation. */
+        MINENGINE_API std::mutex& RegistryMutex();
+
+        /** The queue the live RHI registered; empty while no device is alive. */
+        MINENGINE_API std::weak_ptr<RHIDeferredDestroyQueue>& ActiveQueueSlot();
+
+        /** Handles dropped while no RHI was alive; a process-wide total, like the contract counters. */
+        MINENGINE_API std::atomic<std::uint64_t>& PostedWithoutQueueCounter();
+    }
+
     /**
      * Deferred destruction of the native half of a GPU object.
      *
@@ -274,8 +300,9 @@ namespace minEngine
          */
         static void InstallActiveQueue(const std::shared_ptr<RHIDeferredDestroyQueue>& queue)
         {
-            std::lock_guard<std::mutex> lock(RegistryMutex());
-            std::shared_ptr<RHIDeferredDestroyQueue> previous = s_ActiveQueue.lock();
+            std::lock_guard<std::mutex> lock(RHIDeferredDestroyState::RegistryMutex());
+            std::weak_ptr<RHIDeferredDestroyQueue>& active = RHIDeferredDestroyState::ActiveQueueSlot();
+            std::shared_ptr<RHIDeferredDestroyQueue> previous = active.lock();
             if (previous && previous != queue)
             {
                 ME_LOG(
@@ -284,25 +311,26 @@ namespace minEngine
                     "RHIDeferredDestroyQueue: a second RHI registered while another was still "
                     "alive; native handles of the older device now route to the newer queue.");
             }
-            s_ActiveQueue = queue;
+            active = queue;
         }
 
         /** Called by the owning RHI while it is being torn down, before its queue is abandoned. */
         static void UninstallActiveQueue(const RHIDeferredDestroyQueue* queue)
         {
-            std::lock_guard<std::mutex> lock(RegistryMutex());
-            std::shared_ptr<RHIDeferredDestroyQueue> current = s_ActiveQueue.lock();
+            std::lock_guard<std::mutex> lock(RHIDeferredDestroyState::RegistryMutex());
+            std::weak_ptr<RHIDeferredDestroyQueue>& active = RHIDeferredDestroyState::ActiveQueueSlot();
+            std::shared_ptr<RHIDeferredDestroyQueue> current = active.lock();
             if (current && current.get() == queue)
             {
-                s_ActiveQueue.reset();
+                active.reset();
             }
         }
 
         /** The queue a resource destructor should post to, or null when no RHI is alive. */
         static std::shared_ptr<RHIDeferredDestroyQueue> GetActiveQueue()
         {
-            std::lock_guard<std::mutex> lock(RegistryMutex());
-            return s_ActiveQueue.lock();
+            std::lock_guard<std::mutex> lock(RHIDeferredDestroyState::RegistryMutex());
+            return RHIDeferredDestroyState::ActiveQueueSlot().lock();
         }
 
         /**
@@ -323,7 +351,7 @@ namespace minEngine
                 return true;
             }
 
-            s_PostedWithoutQueueCount.fetch_add(1, std::memory_order_relaxed);
+            RHIDeferredDestroyState::PostedWithoutQueueCounter().fetch_add(1, std::memory_order_relaxed);
             ME_LOG(
                 LogRHI,
                 Error,
@@ -336,7 +364,7 @@ namespace minEngine
         /** Handles that were dropped with no live RHI at all; refused, never destroyed. */
         static uint64_t GetPostedWithoutQueueCount()
         {
-            return s_PostedWithoutQueueCount.load(std::memory_order_relaxed);
+            return RHIDeferredDestroyState::PostedWithoutQueueCounter().load(std::memory_order_relaxed);
         }
 
     private:
@@ -463,12 +491,6 @@ namespace minEngine
             return destroyed;
         }
 
-        static std::mutex& RegistryMutex()
-        {
-            static std::mutex s_Mutex;
-            return s_Mutex;
-        }
-
         /** Default long enough that an ordinary hitch is silent and a stalled loop is not. */
         static constexpr uint64_t kDefaultStallWarnIntervalMs = 2000;
 
@@ -484,9 +506,6 @@ namespace minEngine
         std::atomic<uint64_t> m_AbandonedCount{ 0 };
         std::atomic<uint64_t> m_SkippedSubmitCount{ 0 };
         std::atomic<uint64_t> m_StallWarnCount{ 0 };
-
-        inline static std::weak_ptr<RHIDeferredDestroyQueue> s_ActiveQueue;
-        inline static std::atomic<uint64_t> s_PostedWithoutQueueCount{ 0 };
     };
 
     /**
