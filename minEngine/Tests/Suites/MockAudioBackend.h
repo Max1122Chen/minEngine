@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Runtime/Function/Audio/AudioClipLease.h"
 #include "Runtime/Function/Audio/Backend/IAudioBackend.h"
 #include "Runtime/Resource/AudioClip.h"
 
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -21,11 +23,21 @@ namespace minEngine
             Vector3 Position{};
             AudioSpatialSettings Spatial{};
             bool bSpatializationEnabled{true};
+
+            // What a real device thread would read from, held the same way the miniaudio backend holds
+            // it: the lease owns the clip, and the sample pointer is only borrowed from the lease.
+            AudioClipLease Lease{};
+            uint32_t PcmReadCount{0};
         };
 
         bool Initialize() override { return true; }
         void Shutdown() override
         {
+            for (VoiceRecord& voice : m_Voices)
+            {
+                voice.Lease.Reset();
+            }
+
             m_Voices.clear();
             m_CreateVoiceCount = 0;
             m_DestroyVoiceCount = 0;
@@ -33,9 +45,14 @@ namespace minEngine
 
         void Update() override {}
 
-        BackendVoiceHandle CreateVoice(const AudioClip& clip) override
+        BackendVoiceHandle CreateVoice(std::shared_ptr<const AudioClip> clip) override
         {
-            (void)clip;
+            AudioClipLease lease(std::move(clip));
+            if (!lease.IsValid())
+            {
+                return BackendVoiceHandle{};
+            }
+
             ++m_CreateVoiceCount;
 
             for (uint32_t index = 0; index < static_cast<uint32_t>(m_Voices.size()); ++index)
@@ -44,6 +61,7 @@ namespace minEngine
                 {
                     m_Voices[index] = VoiceRecord{};
                     m_Voices[index].bAllocated = true;
+                    m_Voices[index].Lease = std::move(lease);
                     return BackendVoiceHandle{index};
                 }
             }
@@ -51,6 +69,7 @@ namespace minEngine
             const uint32_t index = static_cast<uint32_t>(m_Voices.size());
             m_Voices.push_back(VoiceRecord{});
             m_Voices.back().bAllocated = true;
+            m_Voices.back().Lease = std::move(lease);
             return BackendVoiceHandle{index};
         }
 
@@ -65,6 +84,7 @@ namespace minEngine
             ++m_DestroyVoiceCount;
             voice->bAllocated = false;
             voice->bPlaying = false;
+            voice->Lease.Reset();
         }
 
         bool IsVoicePlaying(BackendVoiceHandle handle) const override
@@ -152,6 +172,62 @@ namespace minEngine
         }
 
         uint32_t GetCreateVoiceCount() const { return m_CreateVoiceCount; }
+
+        // A device thread reaches the end of a buffer on its own; this is the smoke suite driving
+        // that edge so the natural-end path can be observed without waiting on real audio.
+        void SimulatePlaybackEnd(BackendVoiceHandle handle)
+        {
+            VoiceRecord* voice = GetVoice(handle);
+            if (voice != nullptr)
+            {
+                voice->bPlaying = false;
+            }
+        }
+
+        // Reads the buffer the way the device thread would: through the leased pointer, at head and
+        // tail so a caller cannot pass a truncated buffer off as the whole clip.
+        bool ReadBorrowedSamples(BackendVoiceHandle handle, float& firstSample, float& lastSample)
+        {
+            VoiceRecord* voice = GetVoice(handle);
+            if (voice == nullptr || !voice->Lease.IsValid())
+            {
+                return false;
+            }
+
+            const float* const pcm = voice->Lease.GetPcmData();
+            const size_t sampleCount = voice->Lease.GetSampleCount();
+            if (pcm == nullptr || sampleCount == 0)
+            {
+                return false;
+            }
+
+            ++voice->PcmReadCount;
+            firstSample = pcm[0];
+            lastSample = pcm[sampleCount - 1];
+            return true;
+        }
+
+        // The clip a voice is currently reading samples from, or null when no voice borrows anything.
+        const AudioClip* GetBorrowedClipAddress(BackendVoiceHandle handle) const
+        {
+            const VoiceRecord* voice = GetVoice(handle);
+            return voice != nullptr && voice->Lease.IsValid() ? voice->Lease.GetClip() : nullptr;
+        }
+
+        // The exact sample address the voice reads from; a caller compares it against the clip it
+        // believes it still owns.
+        const float* GetBorrowedPcm(BackendVoiceHandle handle) const
+        {
+            const VoiceRecord* voice = GetVoice(handle);
+            return voice != nullptr && voice->Lease.IsValid() ? voice->Lease.GetPcmData() : nullptr;
+        }
+
+        uint32_t GetBorrowedReadCount(BackendVoiceHandle handle) const
+        {
+            const VoiceRecord* voice = GetVoice(handle);
+            return voice != nullptr ? voice->PcmReadCount : 0;
+        }
+
         uint32_t GetDestroyVoiceCount() const { return m_DestroyVoiceCount; }
         const AudioListenerState& GetListener() const { return m_Listener; }
 

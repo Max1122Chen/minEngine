@@ -37,13 +37,12 @@ namespace minEngine
             return true;
         }
 
-        const std::shared_ptr<AudioClip> clip = m_Clip.lock();
-        if (!clip || !clip->IsValid())
+        if (m_Clip == nullptr || !m_Clip->IsValid())
         {
             return false;
         }
 
-        m_BackendHandle = backend.CreateVoice(*clip);
+        m_BackendHandle = backend.CreateVoice(m_Clip);
         if (!m_BackendHandle.IsValid())
         {
             return false;
@@ -56,16 +55,17 @@ namespace minEngine
         return true;
     }
 
-    void AudioVoice::Play(IAudioBackend& backend, const AudioMixer& mixer)
+    bool AudioVoice::Play(IAudioBackend& backend, const AudioMixer& mixer)
     {
         if (!EnsureBackendVoice(backend))
         {
-            return;
+            return false;
         }
 
         backend.PlayVoice(m_BackendHandle, m_bLoop);
         m_State = EAudioVoiceState::Playing;
         RefreshGain(backend, mixer);
+        return true;
     }
 
     void AudioVoice::Stop(IAudioBackend& backend)
@@ -81,6 +81,9 @@ namespace minEngine
         m_State = EAudioVoiceState::Stopped;
         m_OwnerComponent = nullptr;
         m_OwnerScene = nullptr;
+
+        // Last, and only after the backend voice is gone: while the device can still read the samples
+        // this reference is what keeps them allocated.
         m_Clip.reset();
     }
 

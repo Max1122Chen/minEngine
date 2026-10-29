@@ -17,7 +17,7 @@ namespace minEngine
         void Shutdown() override;
         void Update() override;
 
-        BackendVoiceHandle CreateVoice(const AudioClip& clip) override;
+        BackendVoiceHandle CreateVoice(std::shared_ptr<const AudioClip> clip) override;
         void DestroyVoice(BackendVoiceHandle handle) override;
         bool IsVoicePlaying(BackendVoiceHandle handle) const override;
 

@@ -3,6 +3,8 @@
 #include "Runtime/Function/Audio/AudioTypes.h"
 #include "Runtime/Function/Audio/Backend/AudioBackendTypes.h"
 
+#include <memory>
+
 namespace minEngine
 {
     class IAudioBackend;
@@ -38,7 +40,7 @@ namespace minEngine
             AudioComponent* ownerComponent,
             Scene* ownerScene);
 
-        void Play(IAudioBackend& backend, const AudioMixer& mixer);
+        bool Play(IAudioBackend& backend, const AudioMixer& mixer);
         void Stop(IAudioBackend& backend);
         void Pause(IAudioBackend& backend);
         void Resume(IAudioBackend& backend);
@@ -63,7 +65,11 @@ namespace minEngine
         bool EnsureBackendVoice(IAudioBackend& backend);
 
         AudioVoiceId m_Id{InvalidAudioVoiceId};
-        std::weak_ptr<AudioClip> m_Clip{};
+
+        // A device reads the samples of this clip for as long as the voice can play, so the voice owns
+        // the clip rather than observing it: the caller that started playback is free to drop its own
+        // handle. Released on stop, on natural end, and when the voice is reset.
+        std::shared_ptr<AudioClip> m_Clip{};
 
         EAudioBusId m_Bus{EAudioBusId::SFX};
         float m_Volume{1.0f};

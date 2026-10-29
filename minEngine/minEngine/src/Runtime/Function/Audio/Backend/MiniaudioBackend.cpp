@@ -1,6 +1,7 @@
 #include "Runtime/Function/Audio/Backend/MiniaudioBackend.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Audio/AudioClipLease.h"
 #include "Runtime/Function/Audio/AudioLimits.h"
 #include "Runtime/Resource/AudioClip.h"
 
@@ -13,12 +14,19 @@ namespace minEngine
 {
     struct MiniaudioBackend::Impl
     {
+        // ma_sound keeps a pointer to the buffer of the slot that created it, and ma_audio_buffer
+        // keeps the sample pointer the slot was handed. The pool is sized once in the constructor and
+        // never resized, so a slot address stays valid for the life of the backend.
         struct VoiceSlot
         {
             bool bAllocated{false};
             ma_audio_buffer Buffer{};
             ma_sound Sound{};
             bool bSoundInitialized{false};
+
+            // The clip whose samples this slot reads. Held for exactly as long as the buffer above can
+            // be read on the device thread, because miniaudio does not copy the samples.
+            AudioClipLease ClipLease{};
         };
 
         ma_engine Engine{};
@@ -100,6 +108,7 @@ namespace minEngine
             }
 
             ma_audio_buffer_uninit(&slot.Buffer);
+            slot.ClipLease.Reset();
             slot.bAllocated = false;
         }
 
@@ -112,11 +121,18 @@ namespace minEngine
         // miniaudio drives playback on its own thread; nothing required on the main thread for MVP.
     }
 
-    BackendVoiceHandle MiniaudioBackend::CreateVoice(const AudioClip& clip)
+    BackendVoiceHandle MiniaudioBackend::CreateVoice(std::shared_ptr<const AudioClip> clip)
     {
         BackendVoiceHandle invalidHandle;
-        if (!m_Impl->bEngineInitialized || !clip.IsValid())
+        if (!m_Impl->bEngineInitialized)
         {
+            return invalidHandle;
+        }
+
+        AudioClipLease lease(std::move(clip));
+        if (!lease.IsValid())
+        {
+            ME_LOG(LogAudio, Error, "MiniaudioBackend: refusing a voice for a clip that cannot be leased.");
             return invalidHandle;
         }
 
@@ -133,18 +149,28 @@ namespace minEngine
         const size_t slotIndex = static_cast<size_t>(std::distance(m_Impl->Voices.begin(), freeSlotIt));
         Impl::VoiceSlot& slot = m_Impl->Voices[slotIndex];
 
-        const AudioClipFormat& format = clip.GetFormat();
-        const std::vector<float>& pcm = clip.GetPcmData();
-        const ma_uint64 frameCount = clip.GetFrameCount();
-        const ma_uint32 channels = format.ChannelCount;
+        // The lease is handed to the slot before the buffer is initialised: from here on the device
+        // thread can read these samples, and the slot is what keeps them allocated.
+        slot.ClipLease = std::move(lease);
+
+        const ma_uint64 frameCount = slot.ClipLease.GetFrameCount();
+        const ma_uint32 channels = slot.ClipLease.GetChannelCount();
+        const float* const pcm = slot.ClipLease.GetPcmData();
+        if (pcm == nullptr)
+        {
+            slot.ClipLease.Reset();
+            ME_LOG(LogAudio, Error, "MiniaudioBackend: clip lease has no readable pcm buffer.");
+            return invalidHandle;
+        }
 
         ma_audio_buffer_config bufferConfig =
-            ma_audio_buffer_config_init(ma_format_f32, channels, frameCount, pcm.data(), nullptr);
-        bufferConfig.sampleRate = format.SampleRate;
+            ma_audio_buffer_config_init(ma_format_f32, channels, frameCount, pcm, nullptr);
+        bufferConfig.sampleRate = slot.ClipLease.GetSampleRate();
 
         ma_result bufferResult = ma_audio_buffer_init(&bufferConfig, &slot.Buffer);
         if (bufferResult != MA_SUCCESS)
         {
+            slot.ClipLease.Reset();
             ME_LOG(LogAudio, Error, "MiniaudioBackend: ma_audio_buffer_init failed ({})", static_cast<int>(bufferResult));
             return invalidHandle;
         }
@@ -156,6 +182,7 @@ namespace minEngine
         if (soundResult != MA_SUCCESS)
         {
             ma_audio_buffer_uninit(&slot.Buffer);
+            slot.ClipLease.Reset();
             ME_LOG(LogAudio, Error, "MiniaudioBackend: ma_sound_init_ex failed ({})", static_cast<int>(soundResult));
             return invalidHandle;
         }
@@ -179,7 +206,10 @@ namespace minEngine
             slot->bSoundInitialized = false;
         }
 
+        // The buffer has to be gone before the clip is released, or the device thread could still hold
+        // a sample pointer into freed memory.
         ma_audio_buffer_uninit(&slot->Buffer);
+        slot->ClipLease.Reset();
         slot->bAllocated = false;
     }
 

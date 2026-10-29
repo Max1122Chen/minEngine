@@ -163,7 +163,16 @@ namespace minEngine
             params.WorldPosition,
             params.OwnerComponent,
             params.OwnerScene);
-        voice->Play(*m_Backend, m_Mixer);
+
+        if (!voice->Play(*m_Backend, m_Mixer))
+        {
+            // The voice holds the clip for as long as it plays; a voice that never played would keep
+            // the clip alive with nothing driving it, so it is freed here instead of waiting for a tick
+            // that only looks at playing voices.
+            StopAndFreeVoice(voice);
+            result.ErrorMessage = "failed to start a backend voice for the clip";
+            return result;
+        }
 
         result.Voice = AudioVoiceHandle{voice->GetId()};
         result.bSuccess = true;

@@ -3,6 +3,8 @@
 #include "Runtime/Function/Audio/AudioTypes.h"
 #include "Runtime/Function/Audio/Backend/AudioBackendTypes.h"
 
+#include <memory>
+
 namespace minEngine
 {
     class AudioClip;
@@ -16,7 +18,9 @@ namespace minEngine
         virtual void Shutdown() = 0;
         virtual void Update() = 0;
 
-        virtual BackendVoiceHandle CreateVoice(const AudioClip& clip) = 0;
+        // Ownership, not a reference: a device reads the samples through a pointer the backend
+        // keeps for the lifetime of the voice, so the backend has to hold the clip that owns them.
+        virtual BackendVoiceHandle CreateVoice(std::shared_ptr<const AudioClip> clip) = 0;
         virtual void DestroyVoice(BackendVoiceHandle handle) = 0;
         virtual bool IsVoicePlaying(BackendVoiceHandle handle) const = 0;
 
