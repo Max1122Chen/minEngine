@@ -1,5 +1,7 @@
 #include "RenderCommandPipeTest.h"
 
+#include "Access/RenderCommandPipeTestAccess.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Threading/RenderCommandPipe.h"
 #include "Runtime/Function/Render/SceneDrawDesc.h"
 
@@ -7,6 +9,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -31,6 +35,66 @@ namespace
             Pipe.Shutdown();
         }
     };
+
+    /** Counts the pipe's own reports while it is armed, so a silent discard is a failed check. */
+    class PipeReportSink final : public minEngine::ILogSink
+    {
+    public:
+        void Write(const minEngine::LogRecord& record) override
+        {
+            if (!m_bArmed.load(std::memory_order_acquire))
+            {
+                return;
+            }
+            if (record.severity != minEngine::LogSeverity::Warn)
+            {
+                return;
+            }
+            if (record.message.find(m_Substring) == std::string::npos)
+            {
+                return;
+            }
+            m_Matches.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void Arm(const std::string& substring)
+        {
+            m_Substring = substring;
+            m_Matches.store(0, std::memory_order_relaxed);
+            m_bArmed.store(true, std::memory_order_release);
+        }
+
+        uint32_t Disarm()
+        {
+            m_bArmed.store(false, std::memory_order_release);
+            return m_Matches.load(std::memory_order_relaxed);
+        }
+
+    private:
+        std::atomic<bool> m_bArmed{ false };
+        std::atomic<uint32_t> m_Matches{ 0 };
+        std::string m_Substring;
+    };
+
+    PipeReportSink& Reports()
+    {
+        static PipeReportSink s_Sink;
+        return s_Sink;
+    }
+
+    /** Registers the report sink once per process; the log system owns the reference. */
+    void InstallReportSink()
+    {
+        static std::once_flag s_Once;
+        std::call_once(s_Once, []() {
+            minEngine::LogSystem::AddSink(std::shared_ptr<minEngine::ILogSink>(
+                &Reports(),
+                [](minEngine::ILogSink*) {
+                    // Process-lifetime probe: the log system keeps the reference, so it outlives
+                    // every sink call including the ones after static destruction.
+                }));
+        });
+    }
 }
 
 TEST_CASE("render-command-pipe: drain applies every frame up to the target in order [smoke]")
@@ -321,4 +385,127 @@ TEST_CASE("render-command-pipe: counters stay consistent with a concurrent produ
     CHECK(applied.load() == kCommandCount);
     CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
     CHECK(pipe.GetCounters().DroppedFullCommands == 0);
+}
+
+TEST_CASE("render-command-pipe: a producer that samples the tag mid-publish keeps its command [smoke]")
+{
+    RenderCommandPipeScope scope;
+    RenderCommandPipe& pipe = scope.Pipe;
+    pipe.PublishGameFrame(0, 1);
+
+    // The pair a producer samples when it lands between the publisher's two stores, with the drain
+    // target already moved on: frame 1 is complete and the tag still says 1.
+    minEngine::Testing::TestAccess<RenderCommandPipe>::StorePublishedFrames(pipe, /*completed*/ 1, /*current*/ 1);
+
+    // The render role drains the frame it just saw completed.
+    CHECK(pipe.FlushApplyForFrameChecked(pipe.GetCompletedGameFrame()));
+    CHECK(pipe.GetDrawnFrame() == 1);
+
+    int applied = 0;
+    pipe.Enqueue([&applied]() { ++applied; });
+
+    // The command belongs to a frame the drain has not reached yet, so it must be kept. Dropping it
+    // here is how one scene change disappears while the game object it belonged to stays.
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
+    CHECK(applied == 0);
+
+    // Kept, not lost: the drain that reaches its frame applies it, in order, once.
+    pipe.PublishGameFrame(2, 3);
+    CHECK(pipe.FlushApplyForFrameChecked(2));
+    CHECK(applied == 1);
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
+}
+
+TEST_CASE("render-command-pipe: a view intent filed mid-publish is taken by the next frame [smoke]")
+{
+    RenderCommandPipeScope scope;
+    RenderCommandPipe& pipe = scope.Pipe;
+    pipe.PublishGameFrame(0, 1);
+
+    // Same window, intent queue: the drain has taken frame 1 while the tag still says 1.
+    minEngine::Testing::TestAccess<RenderCommandPipe>::StorePublishedFrames(pipe, /*completed*/ 1, /*current*/ 1);
+
+    std::vector<SceneDrawDesc> taken;
+    pipe.TakeViewIntents(pipe.GetCompletedGameFrame(), taken);
+    CHECK(taken.empty());
+
+    SceneDrawDesc desc{};
+    desc.ViewId = 42;
+    pipe.SubmitViewIntent(desc);
+
+    // The intent is for the next frame, not for the one that is already over.
+    CHECK(pipe.GetCounters().DroppedStaleViewIntents == 0);
+
+    pipe.PublishGameFrame(2, 3);
+    pipe.TakeViewIntents(2, taken);
+    REQUIRE(taken.size() == 1);
+    CHECK(taken[0].ViewId == 42);
+    CHECK(pipe.GetCounters().DroppedStaleViewIntents == 0);
+}
+
+TEST_CASE("render-command-pipe: shutdown counts the queued work it discards [smoke]")
+{
+    InstallReportSink();
+    RenderCommandPipeScope scope;
+    RenderCommandPipe& pipe = scope.Pipe;
+    pipe.PublishGameFrame(0, 1);
+
+    int applied = 0;
+    pipe.Enqueue([&applied]() { ++applied; });
+    pipe.Enqueue([&applied]() { ++applied; });
+    pipe.Enqueue([&applied]() { ++applied; });
+    SceneDrawDesc desc{};
+    desc.ViewId = 7;
+    pipe.SubmitViewIntent(desc);
+
+    // Scene teardown has enqueued these after the render role recorded its last frame: shutting the
+    // pipe down throws the work away, and the depth is the only record that it ever existed.
+    Reports().Arm("shut down with");
+    pipe.Shutdown();
+    const uint32_t reports = Reports().Disarm();
+
+    CHECK(applied == 0);
+    CHECK(reports == 1);
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 3);
+    CHECK(pipe.GetCounters().DroppedStaleViewIntents == 1);
+
+    // Shutting down twice reports nothing twice: the counters stay where the first one left them.
+    pipe.Shutdown();
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 3);
+    CHECK(pipe.GetCounters().DroppedStaleViewIntents == 1);
+}
+
+TEST_CASE("render-command-pipe: enqueue and intent submission are refused after shutdown [smoke]")
+{
+    InstallReportSink();
+    RenderCommandPipeScope scope;
+    RenderCommandPipe& pipe = scope.Pipe;
+    pipe.Shutdown();
+
+    int applied = 0;
+    Reports().Arm("command refused");
+    pipe.Enqueue([&applied]() { ++applied; });
+    CHECK(Reports().Disarm() == 1);
+
+    // Refused, not run on the caller's thread and not lost in silence.
+    CHECK(applied == 0);
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 1);
+
+    SceneDrawDesc desc{};
+    desc.ViewId = 3;
+    Reports().Arm("view intent refused");
+    pipe.SubmitViewIntent(desc);
+    CHECK(Reports().Disarm() == 1);
+    CHECK(pipe.GetCounters().DroppedStaleViewIntents == 1);
+
+    std::vector<SceneDrawDesc> taken;
+    pipe.TakeViewIntents(0, taken);
+    CHECK(taken.empty());
+
+    // The pipe's own API refuses; the free enqueue is a different case and stays as it is: with no
+    // pipe in the process it runs the command inline, which is the only drain a headless caller has.
+    // A caller that never had a pipe and a caller whose engine has shut down are indistinguishable
+    // from there, so the refusal cannot be narrowed to the second.
+    minEngine::EnqueueRenderCommand([&applied]() { ++applied; });
+    CHECK(applied == 1);
 }

@@ -47,11 +47,19 @@ namespace minEngine
         /** Queue health. Each counter names an event that used to be silent (or a hang). */
         struct Counters
         {
-            /** Command tagged with a frame the render side already drained; discarded, never applied. */
+            /**
+             * Command discarded without ever being applied: tagged with a frame the render side
+             * already drained, left in the queue when the pipe shut down, or refused because the
+             * pipe was no longer running.
+             */
             uint64_t DroppedStaleCommands = 0;
             /** Command given up because no slot freed within kEnqueueWaitTimeoutMs. */
             uint64_t DroppedFullCommands = 0;
-            /** View intent tagged with an already drained frame; discarded on take. */
+            /**
+             * View intent discarded without ever being taken: filed under an already drained frame,
+             * left in the queue when the pipe shut down, or refused because it was no longer
+             * running.
+             */
             uint64_t DroppedStaleViewIntents = 0;
             /** View intent evicted because the intent queue was full (the oldest one loses). */
             uint64_t DroppedFullViewIntents = 0;
@@ -63,6 +71,14 @@ namespace minEngine
         static RenderCommandPipe& Get();
 
         void Initialize();
+
+        /**
+         * Discards whatever is still queued - a shutdown follows scene teardown, whose commands and
+         * intents arrive after the render role recorded its last frame - counting the discarded
+         * depth into DroppedStaleCommands / DroppedStaleViewIntents and reporting it once. Enqueue
+         * and SubmitViewIntent are refused from here on and counted the same way; a queued callable
+         * is never run on the caller's thread instead.
+         */
         void Shutdown();
 
         /**
@@ -71,6 +87,16 @@ namespace minEngine
          * commands and intents will be tagged with. Callers keep
          * currentFrame == completedFrame + 1; the first announcement uses UINT64_MAX ("no frame
          * completed yet") with currentFrame 0.
+         *
+         * Both counters are published under the two queue locks, so a producer sampling inside
+         * either queue sees one whole published pair and never this call half-way. They are stored
+         * in that order - tag first, drain target second - so a reader outside those locks (the
+         * render role reads the drain target before it drains, and Get*GameFrame() is open to
+         * anyone) can only observe a tag ahead of the drain target, never behind it. A tag ahead of
+         * the drain target is harmless: an entry is discarded only when its frame is at or behind
+         * the frame the render side has already drained, and a frame that has not been published as
+         * complete cannot have been drained, so the entry waits in FIFO order for the drain that
+         * reaches it.
          */
         void PublishGameFrame(uint64_t completedFrame, uint64_t currentFrame);
 
@@ -99,12 +125,19 @@ namespace minEngine
         bool CheckPublishedGenerationForDrawnFrame(std::string* outDiagnostic) const;
 
         /**
-         * Enqueue a render-role callable tagged with the frame the Game role currently announces
-         * (read under the same lock as the queue, so the tag cannot belong to a frame the render
-         * side already drained). When the queue is full the producer waits at most
-         * kEnqueueWaitTimeoutMs, then the command is dropped and counted instead of blocking
-         * forever. A command tagged with a frame that is already behind the drain is dropped and
-         * counted on the spot: it could never be applied in order.
+         * Enqueue a render-role callable tagged with the frame new commands belong to.
+         *
+         * The tag is sampled under the queue lock - the lock the render role writes its drain
+         * progress under, and the lock PublishGameFrame publishes the frame pair under - and it is
+         * taken from the newer of the two published counters, so it cannot end up on a frame the
+         * render side already drained: that comparison and the queue insert are one step.
+         *
+         * When the queue is full the producer waits at most kEnqueueWaitTimeoutMs, then the command
+         * is dropped and counted instead of blocking forever. A command whose tag is nevertheless at
+         * or behind the drain - a caller that drained further than the Game role announced - is
+         * dropped and counted on the spot: it could never be applied in order. Once the pipe has
+         * shut down the call is refused and counted, and the callable never runs on the caller's
+         * thread.
          */
         void Enqueue(std::function<void()> command);
 
@@ -121,18 +154,28 @@ namespace minEngine
         /** Same, discarding the verdict (callers that do not report frame completeness). */
         void FlushApplyForFrame(uint64_t frameIndex);
 
+        /**
+         * Tagged the same way a command is: sampled under the intent queue lock and taken from the
+         * newer of the two published counters, so an intent cannot be filed under a frame the render
+         * side has already taken. The queue is bounded and the producer never blocks; the oldest
+         * intent is the one that loses, because the renderer draws the newest per view.
+         */
         void SubmitViewIntent(const SceneDrawDesc& desc);
 
         /**
          * Take every intent tagged with a frame at or below frameIndex, in submission order, and
          * leave the later frames queued (the renderer keeps the newest intent per view).
-         * frameIndex == UINT64_MAX means no game frame has completed yet: nothing is taken.
+         * frameIndex == UINT64_MAX means no game frame has completed yet: nothing is taken. An
+         * intent filed under a frame that was already taken is discarded and counted: it could never
+         * be drawn in order.
          */
         void TakeViewIntents(uint64_t frameIndex, std::vector<SceneDrawDesc>& outIntents);
 
         Counters GetCounters() const;
 
     private:
+        friend class Testing::TestAccess<RenderCommandPipe>;
+
         static RenderCommandPipe* s_Instance;
 
         struct CommandEntry

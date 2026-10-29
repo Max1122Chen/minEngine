@@ -14,6 +14,29 @@ namespace minEngine
 {
     RenderCommandPipe* RenderCommandPipe::s_Instance = nullptr;
 
+    namespace
+    {
+        /**
+         * The frame a new queue entry belongs to.
+         *
+         * Both counters are monotonic and are published one after the other, so a producer can
+         * sample them a moment apart - the drain target already moved on while the tag still shows
+         * the frame before it. Taking the newer of the two keeps the entry on the frame that is
+         * really current: the tag can never drop to a frame the render role may already have
+         * drained. When the two counters agree, which is every state PublishGameFrame leaves
+         * behind, the result is exactly the announced tag.
+         */
+        uint64_t NewEntryFrame(uint64_t currentFrame, uint64_t completedFrame)
+        {
+            if (completedFrame == UINT64_MAX)
+            {
+                // No game frame completed yet: the announced tag is the only number there is.
+                return currentFrame;
+            }
+            return currentFrame > completedFrame ? currentFrame : completedFrame + 1;
+        }
+    }
+
     bool RenderCommandPipe::HasInstance()
     {
         return s_Instance != nullptr;
@@ -60,18 +83,39 @@ namespace minEngine
             return;
         }
 
+        uint64_t discardedCommands = 0;
+        uint64_t discardedIntents = 0;
         {
             std::lock_guard<std::mutex> lock(m_CommandMutex);
+            discardedCommands = static_cast<uint64_t>(m_Commands.size());
             m_Commands.clear();
         }
         m_CommandSpaceCv.notify_all();
         {
             std::lock_guard<std::mutex> lock(m_IntentMutex);
+            discardedIntents = static_cast<uint64_t>(m_Intents.size());
             m_Intents.clear();
         }
 
         m_Initialized = false;
         s_Instance = nullptr;
+
+        if (discardedCommands != 0 || discardedIntents != 0)
+        {
+            // Shutdown follows scene teardown, and the commands that teardown enqueued arrive after
+            // the render role recorded its last frame - nobody will ever drain them. Counting the
+            // depth is what turns "the queue was emptied" into "this much work never happened"; one
+            // line per shutdown is enough to find it, and per-entry logging would drown it.
+            m_DroppedStaleCommands += discardedCommands;
+            m_DroppedStaleViewIntents += discardedIntents;
+            ME_LOG(
+                LogCore,
+                Warn,
+                "RenderCommandPipe: shut down with {} queued command(s) and {} queued view intent(s) "
+                "discarded and never applied.",
+                discardedCommands,
+                discardedIntents);
+        }
     }
 
     void RenderCommandPipe::PublishGameFrame(uint64_t completedFrame, uint64_t currentFrame)
@@ -90,10 +134,21 @@ namespace minEngine
                 (completedFrame != UINT64_MAX && currentFrame == completedFrame + 1),
             "PublishGameFrame expects currentFrame == completedFrame + 1");
 
-        // Publish the drain target before the tag new commands will carry: a producer that samples
-        // the tag mid-update must never end up ahead of the frame the render role may drain.
-        m_CompletedGameFrame.store(completedFrame, std::memory_order_release);
+        // Both stores happen under the two queue locks, so a producer sampling inside either queue
+        // sees one whole published pair instead of this call half-way.
+        std::scoped_lock publishLock(m_CommandMutex, m_IntentMutex);
+
+        // The order still carries the danger for readers outside those locks - the render role reads
+        // the drain target before it drains, and Get*GameFrame() is open to anyone. The tag is
+        // therefore published first and the drain target second: a lock-free reader can then only
+        // observe a tag ahead of the drain target, never behind it.
+        //
+        // A tag ahead of the drain target is harmless. An entry is discarded only when its frame is
+        // at or behind the frame the render role has already drained, and a frame that has not been
+        // published as complete cannot have been drained - so the entry simply waits in FIFO order
+        // (FlushApplyForFrameChecked leaves later frames queued) for the drain that reaches it.
         m_CurrentGameFrame.store(currentFrame, std::memory_order_release);
+        m_CompletedGameFrame.store(completedFrame, std::memory_order_release);
     }
 
     void RenderCommandPipe::SetPublishedWorldGen(uint64_t generation)
@@ -110,24 +165,34 @@ namespace minEngine
 
     void RenderCommandPipe::Enqueue(std::function<void()> command)
     {
-        ME_ASSERT(m_Initialized, "RenderCommandPipe::Enqueue before Initialize");
+        if (!m_Initialized)
+        {
+            // Shut down, or never started. There is no drain left that could apply this command, and
+            // running it on the caller's thread would touch a render side that is being torn down -
+            // so it is refused and counted rather than applied out of band or dropped in silence.
+            ++m_DroppedStaleCommands;
+            ME_LOG(
+                LogCore,
+                Warn,
+                "RenderCommandPipe: command refused and discarded - the pipe is not running "
+                "(shut down or never initialized), so no drain would ever apply it.");
+            return;
+        }
         ME_ASSERT(static_cast<bool>(command), "EnqueueRenderCommand requires a callable");
 
-        // Dedicated Render OS thread (Multi, later): run inline when already on Render.
-        if (FrameThreading::HasInstance())
-        {
-            FrameThreading& threading = FrameThreading::Get();
-            if (threading.IsMulti() && threading.IsInRenderingThread() && !threading.IsInGameThread())
-            {
-                command();
-                return;
-            }
-        }
+        // No inline pass-through for a producer that happens to be on the render thread. Every
+        // topology runs the scene mutations that produce these commands from the game role; running
+        // one here instead would bypass the frame tag, the drain comparison and the FIFO order this
+        // queue exists to keep, and a caller that really does need something applied immediately has
+        // to say so at that call site. Queueing is safe from any thread - the wait for a slot below is
+        // bounded, so it cannot deadlock whatever the topology turns out to be.
 
-        // Read the tag under the queue lock: a frame index sampled outside it can already be older
-        // than the frame the render side is draining, and that entry would then never be applied.
+        // The tag is sampled under the queue lock, together with the drain progress the render role
+        // writes under it, and repaired by NewEntryFrame so it cannot name a frame the drain passed.
         std::unique_lock<std::mutex> lock(m_CommandMutex);
-        const uint64_t frameIndex = m_CurrentGameFrame.load(std::memory_order_relaxed);
+        const uint64_t frameIndex = NewEntryFrame(
+            m_CurrentGameFrame.load(std::memory_order_relaxed),
+            m_CompletedGameFrame.load(std::memory_order_relaxed));
         const uint64_t drawnFrame = m_DrawnFrame.load(std::memory_order_relaxed);
         if (drawnFrame != UINT64_MAX && frameIndex <= drawnFrame)
         {
@@ -285,10 +350,25 @@ namespace minEngine
 
     void RenderCommandPipe::SubmitViewIntent(const SceneDrawDesc& desc)
     {
-        ME_ASSERT(m_Initialized, "RenderCommandPipe::SubmitViewIntent before Initialize");
+        if (!m_Initialized)
+        {
+            // Same rule as a command: an intent nobody will take must not sit in a queue that is
+            // being torn down, and it must not disappear without a record either.
+            ++m_DroppedStaleViewIntents;
+            ME_LOG(
+                LogCore,
+                Warn,
+                "RenderCommandPipe: view intent refused and discarded - the pipe is not running "
+                "(shut down or never initialized), so no render frame would ever take it.");
+            return;
+        }
 
         std::lock_guard<std::mutex> lock(m_IntentMutex);
-        const uint64_t frameIndex = m_CurrentGameFrame.load(std::memory_order_relaxed);
+        // Tagged exactly like a command: sampled under the queue lock and repaired by NewEntryFrame,
+        // so an intent can never be filed under a frame the render role already took.
+        const uint64_t frameIndex = NewEntryFrame(
+            m_CurrentGameFrame.load(std::memory_order_relaxed),
+            m_CompletedGameFrame.load(std::memory_order_relaxed));
         if (m_Intents.size() >= kMaxPendingViewIntents)
         {
             // The producer is the game thread and must never block here: the intent the renderer
@@ -411,15 +491,22 @@ namespace minEngine
 
     void EnqueueRenderCommand(std::function<void()> command)
     {
-        if (!RenderCommandPipe::HasInstance())
+        if (RenderCommandPipe::HasInstance())
         {
-            // Unit tests / tooling without Engine frame pipe: run inline.
-            if (command)
-            {
-                command();
-            }
+            RenderCommandPipe::Get().Enqueue(std::move(command));
             return;
         }
-        RenderCommandPipe::Get().Enqueue(std::move(command));
+
+        // No frame pipe in this process at all: unit tests, tooling and headless scenes run the
+        // command inline, which is the only drain they have. That fallback deliberately does not
+        // depend on why the pipe is missing - a caller that never had one and a caller whose engine
+        // has already shut down look the same from here, and refusing the second would take the
+        // first down with it. What must not run inline any more is decided one level down: a pipe
+        // that still exists but is no longer running refuses and counts in Enqueue, and Shutdown
+        // accounts for the work it discards, so nothing is dropped without a record.
+        if (command)
+        {
+            command();
+        }
     }
 }
