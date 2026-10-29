@@ -6,6 +6,7 @@
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredDestroy.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -444,3 +445,76 @@ TEST_CASE("editor-imgui-texture: a release queued before the backend went away c
     CHECK(probe->Releases.load() == 0);
     CHECK(EditorImGuiTextureRegistry::GetCounters().ReleasesDropped == before.ReleasesDropped + 1);
 }
+
+TEST_CASE("editor-imgui-texture: a request a frame cannot use yet is still built by the graphics role [smoke]")
+{
+    FrameThreadingScope threading(FrameThreadMode::Multi);
+    HeadlessRHI rhi;
+    const std::shared_ptr<GpuProbe> probe = std::make_shared<GpuProbe>();
+    EditorImGuiTextureRegistry::InstallBackendOps(MakeOps(probe));
+
+    ProbeTexture texture;
+    EditorRHIImGuiTexturePin pin;
+    const std::uint64_t notNeededBefore = rhi.GetDeferredCreateQueue().GetNotNeededCount();
+
+    // A frame that cannot draw with an identifier the graphics role has not built yet gives the
+    // pin back - a viewport showing "not ready" does exactly this until the identifier appears.
+    // The request has to outlive that frame: the queue only builds a request somebody still
+    // references, so a pin that let go of it would never see it again.
+    ImTextureID identifier = ImTextureID_Invalid;
+    for (int frame = 0; frame < 3 && identifier == ImTextureID_Invalid; ++frame)
+    {
+        identifier = pin.Pin(&rhi, &texture);
+        if (identifier == ImTextureID_Invalid)
+        {
+            pin.Reset(&rhi);
+        }
+
+        std::thread graphicsThread([&rhi]() {
+            ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+            rhi.RHIDrainDeferredCreates();
+        });
+        graphicsThread.join();
+    }
+
+    // One skipped frame, not a permanent answer: the request the first frame could not use was
+    // still held, so the graphics role built it at the next frame start.
+    REQUIRE(identifier != ImTextureID_Invalid);
+    CHECK(probe->Creates.load() == 1);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == notNeededBefore);
+    CHECK(EditorImGuiTextureRegistry::GetLiveBindingCount() == 1);
+
+    pin.Reset(&rhi);
+}
+
+TEST_CASE("editor-imgui-texture: a release reaches the queue of the device that owns the identifier [smoke]")
+{
+    HeadlessRHI rhi;
+    const std::shared_ptr<GpuProbe> probe = std::make_shared<GpuProbe>();
+    EditorImGuiTextureRegistry::InstallBackendOps(MakeOps(probe));
+
+    ProbeTexture texture;
+    EditorRHIImGuiTexturePin pin;
+    REQUIRE(pin.Pin(&rhi, &texture) != ImTextureID_Invalid);
+
+    // The editor links as its own module, and the process-wide destroy route is header state that
+    // every module owns a copy of: the copy this code runs against never sees the RHI's
+    // registration. With that route unavailable and the device still alive, the release has to
+    // reach the device the identifier was allocated on.
+    minEngine::RHIDeferredDestroyQueue::UninstallActiveQueue(&rhi.GetDeferredDestroyQueue());
+
+    const EditorImGuiTextureRegistry::Counters before = EditorImGuiTextureRegistry::GetCounters();
+    const std::uint64_t leaksBefore = minEngine::RHIDeferredDestroyQueue::GetPostedWithoutQueueCount();
+
+    pin.Reset(&rhi);
+
+    CHECK(rhi.GetDeferredDestroyQueue().GetPendingCount() == 1);
+    const EditorImGuiTextureRegistry::Counters after = EditorImGuiTextureRegistry::GetCounters();
+    CHECK(after.ReleasesRetired == before.ReleasesRetired + 1);
+    CHECK(after.ReleasesDropped == before.ReleasesDropped);
+    CHECK(minEngine::RHIDeferredDestroyQueue::GetPostedWithoutQueueCount() == leaksBefore);
+
+    CHECK(DrainBatchTail(rhi) == 1);
+    CHECK(probe->Releases.load() == 1);
+}
+

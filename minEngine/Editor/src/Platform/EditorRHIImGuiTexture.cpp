@@ -423,29 +423,51 @@ namespace minEngine
     {
         const std::uint64_t identifier = m_Identifier.exchange(0, std::memory_order_acq_rel);
         m_IsReady.store(false, std::memory_order_release);
-        EditorImGuiTextureRegistry::UnregisterLiveBinding(this);
 
         if (identifier == 0)
         {
+            // Nothing was built for this request yet, so there is nothing to hand back. It stays
+            // registered: a device teardown still has to find it, and the pin that is waiting for
+            // it can still take it over when the graphics role materializes it.
             return;
         }
 
-        RHI* rhi = m_Rhi;
-        const std::function<void(RHI*, std::uint64_t)> release =
-            EditorImGuiTextureRegistry::GetReleaseIdentifierOp();
-        if (rhi == nullptr || !release)
+        EditorImGuiTextureRegistry::UnregisterLiveBinding(this);
+
+        if (m_Rhi == nullptr)
         {
-            // No backend left that could free it: the device objects it belonged to are the only
-            // thing that will, and the count says so instead of pretending it was released.
             EditorImGuiTextureRegistry::NoteReleaseDropped();
             return;
         }
 
+        const std::function<void(RHI*, std::uint64_t)> release =
+            EditorImGuiTextureRegistry::GetReleaseIdentifierOp();
+        if (!release)
+        {
+            // The renderer backend is gone and its device objects went with it: the identifier is
+            // not leaked, it died with the pool that owned it. Normal at shutdown, so it is
+            // counted and not reported.
+            EditorImGuiTextureRegistry::NoteReleaseDropped();
+            return;
+        }
+
+        // Straight to the queue of the device the identifier was allocated on - the same route a
+        // deferred create takes. The process-wide entry point is deliberately not used here: it is
+        // header state, and the editor links as its own module, so the copy this code runs against
+        // never sees the RHI's registration. Posting through it found no queue, reported a leak
+        // and dropped the identifier for good.
+        //
+        // The device is alive here by construction: the backend ops above are uninstalled by
+        // EditorImGuiBackend::Shutdown, which the editor runs before it shuts the engine - and
+        // with it the RHI - down.
         const std::uint64_t generation = EditorImGuiTextureRegistry::GetDeviceObjectsGeneration();
-        const bool bPosted = PostNativeDestroy(
-            [release, rhi, identifier, generation]() {
+        m_Rhi->GetDeferredDestroyQueue().Post(
+            [release, rhi = m_Rhi, identifier, generation]() {
                 if (EditorImGuiTextureRegistry::GetDeviceObjectsGeneration() != generation)
                 {
+                    // The descriptor pool this identifier lived in was replaced after the release
+                    // was posted: freeing into the pool that replaced it would be worse than the
+                    // accounting says.
                     EditorImGuiTextureRegistry::NoteReleaseDropped();
                     return true;
                 }
@@ -453,15 +475,7 @@ namespace minEngine
                 return true;
             },
             "editor ImGui texture identifier");
-        if (bPosted)
-        {
-            EditorImGuiTextureRegistry::NoteReleaseRetired();
-        }
-        else
-        {
-            // No RHI alive to destroy it; the queue has reported the leak it cannot defer.
-            EditorImGuiTextureRegistry::NoteReleaseDropped();
-        }
+        EditorImGuiTextureRegistry::NoteReleaseRetired();
     }
 
     bool EditorRHIImGuiTexture::DiscardIdentifier()
@@ -494,14 +508,16 @@ namespace minEngine
 
         if (m_Binding && m_Binding->Matches(rhi, texture))
         {
-            // Same texture as last frame: the identifier is whatever the graphics role settled on,
-            // including "not yet" for the frame in which it was first asked for.
+            // The same texture as the last frame that asked for it - including a request the
+            // graphics role has not turned into an identifier yet. Holding on to it is what makes
+            // the wait finite: the graphics role materializes a request only while somebody
+            // references it, so a pin that let go would turn "not ready yet" into "never".
             return m_Binding->GetTextureId();
         }
 
-        Reset(rhi);
-        m_BoundRhi = rhi;
-        m_BoundTexture = texture;
+        // A different texture, or a registration whose device objects were rebuilt: assigning the
+        // new request is what drops the old binding, and a binding that still owns an identifier
+        // retires it on the way out.
         m_Binding = EditorRHIImGuiTexture::Request(rhi, texture);
         return m_Binding != nullptr ? m_Binding->GetTextureId() : ImTextureID_Invalid;
     }
@@ -509,15 +525,25 @@ namespace minEngine
     void EditorRHIImGuiTexturePin::Reset(RHI* rhi)
     {
         (void)rhi;
-        if (m_Binding)
+        if (!m_Binding)
         {
-            // The identifier outlives this call by one submitted batch on purpose: the frame that
-            // drew it may still be in flight.
-            m_Binding->RequestRelease();
-            m_Binding.reset();
+            return;
         }
-        m_BoundRhi = nullptr;
-        m_BoundTexture = nullptr;
+
+        // Only a registration that has something behind it is given back here. A request the
+        // graphics role has not run yet is kept: a caller that draws nothing this frame - an
+        // extent-less render target, an identifier that is not ready yet - still needs it to
+        // materialize, and the queue drops a request nobody holds. Replacing the binding, or this
+        // pin going away, is what hands the request back instead.
+        if (!m_Binding->IsReady() && !m_Binding->HasNativeCreateFailed())
+        {
+            return;
+        }
+
+        // The identifier outlives this call by one submitted batch on purpose: the frame that drew
+        // it may still be in flight.
+        m_Binding->RequestRelease();
+        m_Binding.reset();
     }
 
     void EditorRHIImGuiTexturePin::InvalidateAllBindings()

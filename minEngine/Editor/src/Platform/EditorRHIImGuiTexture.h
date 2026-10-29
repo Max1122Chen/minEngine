@@ -44,8 +44,11 @@ namespace minEngine
      *   at the start of the next render frame. The identifier therefore appears one frame after the
      *   UI first asks for it, so every caller has to cope with "not ready yet"
      *   (EditorRHIImGuiTexturePin::Pin returns ImTextureID_Invalid until then).
-     * - A release is posted to the deferred-destroy queue, which runs it at the tail of the next
-     *   submitted batch - after every batch that could still name the identifier.
+     * - A release is posted to the deferred-destroy queue of the device the identifier belongs
+     *   to, which runs it at the tail of the next submitted batch - after every batch that could
+     *   still name the identifier. That queue is reached through the RHI the binding was created
+     *   with, not through header state: the editor is its own module, and a static registry in a
+     *   header is a different copy per module.
      * - A font atlas rebuild is a request flag; the graphics role destroys and recreates the device
      *   objects at the next submit, which is also where the new atlas texture is uploaded.
      *
@@ -128,7 +131,8 @@ namespace minEngine
      * The identifier is created on the graphics role, so a binding created on another thread is a
      * pending request for one frame: IsReady() answers false until the graphics role has run
      * CreateNativeResources(). Creating it is safe to repeat, and a binding nobody references any
-     * more is dropped by the queue instead of being created.
+     * more is dropped by the queue instead of being created - which is why whoever waits for an
+     * identifier has to keep holding the binding until it exists.
      */
     class EditorRHIImGuiTexture final : public RHIDeferredCreateTarget
     {
@@ -199,14 +203,28 @@ namespace minEngine
          * still has the registration queued. Textures registered before keep their identifier.
          */
         ImTextureID Pin(RHI* rhi, RHITexture* texture);
+
+        /**
+         * End the claim on the texture: an identifier that exists is retired at a later batch
+         * tail.
+         *
+         * A request the graphics role has not materialized yet is kept rather than dropped, so a
+         * caller that draws nothing this frame - an extent-less render target, an identifier that
+         * is not ready yet - gets it on a later frame instead of never. Replacing the binding or
+         * destroying this pin is what hands such a request back.
+         */
         void Reset(RHI* rhi);
 
         /** Retire every registered binding, e.g. after the swapchain - the samplers - changed. */
         static void InvalidateAllBindings();
 
     private:
+        /**
+         * The registration this pin holds, and the answer to "what keeps a pending request
+         * alive". A pin that is given back before the identifier exists keeps the binding, so the
+         * graphics role still finds it if the frame asks again - which is what a caller showing
+         * "not ready" does, frame after frame, until the identifier appears.
+         */
         std::shared_ptr<EditorRHIImGuiTexture> m_Binding;
-        RHI* m_BoundRhi = nullptr;
-        RHITexture* m_BoundTexture = nullptr;
     };
 }

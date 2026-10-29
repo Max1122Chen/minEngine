@@ -4,6 +4,7 @@
 #include "EditorHostGameModule.h"
 
 #include "Platform/EditorCrashDiagnostics.h"
+#include "Platform/EditorRHIImGuiTexture.h"
 #include "SubEditor/Material/MaterialEditor.h"
 #include "SubEditor/Material/MaterialEditorSession.h"
 #include "SubEditor/AnimationGraph/AnimationGraphEditor.h"
@@ -22,6 +23,7 @@
 #include "Runtime/Resource/AssetMeta.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Function/Render/RenderSystem.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBackend.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHICommandListPool.h"
@@ -602,8 +604,37 @@ namespace minEngine
         m_ViewportRegistry.Clear();
         m_ContextMenu.Shutdown();
 
+        // The identifiers are allocations of the backend that is about to be torn down: shutting it
+        // down drops them with its device objects, and the engine - with the RHI whose queue a
+        // release is posted to - is destroyed after this point, not before.
         m_ImGuiBackend.Shutdown();
         ImGui::DestroyContext();
+
+        // One line that answers "did an identifier leak or get dropped" from the log alone, taken
+        // while every pin is still alive and the RHI can still be asked. The registry counts what
+        // it retired and what went down with the device objects; the create queue counts the
+        // requests the graphics role built and the ones nobody waited for.
+        if (RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr)
+        {
+            const EditorImGuiTextureRegistry::Counters counts =
+                EditorImGuiTextureRegistry::GetCounters();
+            const RHIDeferredCreateQueue& creates = rhi->GetDeferredCreateQueue();
+            ME_LOG(
+                LogEditor,
+                Info,
+                "EditorImGuiTextureRegistry: {} registration(s), {} retired at a batch tail, {} "
+                "dropped, {} discarded with the device objects; deferred creates: {} posted, {} "
+                "created, {} not needed, {} failed, {} abandoned.",
+                counts.Registered,
+                counts.ReleasesRetired,
+                counts.ReleasesDropped,
+                counts.IdentifiersDiscarded,
+                creates.GetPostedCount(),
+                creates.GetCreatedCount(),
+                creates.GetNotNeededCount(),
+                creates.GetFailedCount(),
+                creates.GetAbandonedCount());
+        }
 
         if (m_Engine)
         {
