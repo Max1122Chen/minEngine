@@ -5,7 +5,6 @@
 #include "ColliderComponent.h"
 #include "SphereColliderComponent.h"
 
-#include "Runtime/Function/Debug/DebugDraw.h"
 #include "Runtime/Function/Framework/Components/SceneComponent.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -13,14 +12,31 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <atomic>
+
 namespace minEngine::PhysicsDebugDraw
 {
     namespace
     {
-        const Options& GetDefaultOptions()
+        // Plain counters: the reading and the reading-back can happen on different roles, and a
+        // caller that only wants "did this interval read anything" must not need a lock.
+        std::atomic<uint64_t> s_SceneWalks{0};
+        std::atomic<uint64_t> s_GameObjectReads{0};
+        std::atomic<uint64_t> s_ColliderReads{0};
+
+        void CountSceneWalk()
         {
-            static const Options kDefaultOptions;
-            return kDefaultOptions;
+            s_SceneWalks.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void CountGameObjectRead()
+        {
+            s_GameObjectReads.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void CountColliderRead()
+        {
+            s_ColliderReads.fetch_add(1, std::memory_order_relaxed);
         }
 
         Matrix4 BuildColliderWorldTransform(const SceneComponent& rootComponent)
@@ -47,57 +63,77 @@ namespace minEngine::PhysicsDebugDraw
             }
         }
 
-        void SubmitCollider(
+        void AppendCollider(
             const ColliderComponent& colliderComponent,
-            const SceneComponent& rootComponent)
+            const SceneComponent& rootComponent,
+            DebugDrawSnapshot& outSnapshot)
         {
+            CountColliderRead();
+
             const Matrix4 worldTransform = BuildColliderWorldTransform(rootComponent);
             const Vector4 color = GetColorForChannel(colliderComponent.GetObjectChannel());
 
             if (colliderComponent.IsA(BoxColliderComponent::StaticClass()))
             {
                 const auto& boxCollider = static_cast<const BoxColliderComponent&>(colliderComponent);
-                DebugDraw::Box(worldTransform, boxCollider.GetHalfExtent(), color);
+                DebugBoxCommand command;
+                command.WorldTransform = worldTransform;
+                command.HalfExtent = boxCollider.GetHalfExtent();
+                command.Color = color;
+                outSnapshot.Boxes.push_back(command);
                 return;
             }
 
             if (colliderComponent.IsA(SphereColliderComponent::StaticClass()))
             {
                 const auto& sphereCollider = static_cast<const SphereColliderComponent&>(colliderComponent);
-                DebugDraw::Sphere(worldTransform, sphereCollider.GetRadius(), color);
+                DebugSphereCommand command;
+                command.WorldTransform = worldTransform;
+                command.Radius = sphereCollider.GetRadius();
+                command.Color = color;
+                outSnapshot.Spheres.push_back(command);
                 return;
             }
 
             if (colliderComponent.IsA(CapsuleColliderComponent::StaticClass()))
             {
                 const auto& capsuleCollider = static_cast<const CapsuleColliderComponent&>(colliderComponent);
-                DebugDraw::Capsule(
-                    worldTransform,
-                    capsuleCollider.GetRadius(),
-                    capsuleCollider.GetHalfHeight(),
-                    color);
+                DebugCapsuleCommand command;
+                command.WorldTransform = worldTransform;
+                command.Radius = capsuleCollider.GetRadius();
+                command.HalfHeight = capsuleCollider.GetHalfHeight();
+                command.Color = color;
+                outSnapshot.Capsules.push_back(command);
             }
         }
     }
 
-    const Options& GetOptions()
+    AccessProbe ProbeGameObjectAccess()
     {
-        return GetDefaultOptions();
+        AccessProbe probe;
+        probe.SceneWalks = s_SceneWalks.load(std::memory_order_relaxed);
+        probe.GameObjectReads = s_GameObjectReads.load(std::memory_order_relaxed);
+        probe.ColliderReads = s_ColliderReads.load(std::memory_order_relaxed);
+        return probe;
     }
 
-    void SubmitScene(const Scene& scene, const Options& options)
+    DebugDrawSnapshotRef BuildSnapshot(const Scene& scene, const Options& options)
     {
         if (!options.bDrawColliders)
         {
-            return;
+            return nullptr;
         }
 
+        DebugDrawSnapshot snapshot;
+        CountSceneWalk();
         for (const std::shared_ptr<GameObject>& gameObject : scene.GetAllGameObjects())
         {
             if (!gameObject)
             {
                 continue;
             }
+
+            CountGameObjectRead();
 
             SceneComponent* rootComponent = gameObject->GetRootComponent();
             if (rootComponent == nullptr)
@@ -112,9 +148,15 @@ namespace minEngine::PhysicsDebugDraw
                     continue;
                 }
 
-                const auto& colliderComponent = static_cast<const ColliderComponent&>(*component);
-                SubmitCollider(colliderComponent, *rootComponent);
+                AppendCollider(static_cast<const ColliderComponent&>(*component), *rootComponent, snapshot);
             }
         }
+
+        if (snapshot.IsEmpty())
+        {
+            return nullptr;
+        }
+
+        return std::make_shared<const DebugDrawSnapshot>(std::move(snapshot));
     }
 }

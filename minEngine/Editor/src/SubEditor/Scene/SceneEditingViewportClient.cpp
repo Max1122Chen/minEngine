@@ -28,6 +28,7 @@
 #include "Render/RenderScene.h"
 
 #include "Runtime/Core/Log/LogSystem.h"
+#include "Runtime/Function/Physics/PhysicsDebugDraw.h"
 #include "Runtime/Function/Input/InputSystem.h"
 #include "Runtime/Function/Pointer/PointerPolicyService.h"
 #include "Runtime/Function/UI/UISystem.h"
@@ -205,7 +206,17 @@ namespace minEngine
         }
 
         SceneDrawDesc drawDesc = desc;
-        drawDesc.GameplayScene = GetViewTargetScene();
+        if (HasSceneDrawFlag(flags, SceneDrawFlags::EnableDebugDraw))
+        {
+            // The world side reads its own scene and hands the drawing side plain geometry. What
+            // crosses the frame boundary here are values, so the scene stays free to keep changing
+            // while the frame is recorded.
+            Scene* const viewTargetScene = GetViewTargetScene();
+            if (viewTargetScene != nullptr)
+            {
+                drawDesc.DebugSnapshot = PhysicsDebugDraw::BuildSnapshot(*viewTargetScene);
+            }
+        }
 
         const SceneRenderTarget* renderTarget = drawDesc.RenderTarget;
         if (renderTarget->GetWidth() == 0 || renderTarget->GetHeight() == 0)

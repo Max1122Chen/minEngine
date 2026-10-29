@@ -25,6 +25,19 @@ namespace minEngine
         m_Capsules.clear();
     }
 
+    void DebugDrawService::ApplyFrameSnapshot(const DebugDrawSnapshotRef& snapshot)
+    {
+        ClearFrameQueues();
+        if (snapshot == nullptr)
+        {
+            return;
+        }
+
+        m_Boxes.insert(m_Boxes.end(), snapshot->Boxes.begin(), snapshot->Boxes.end());
+        m_Spheres.insert(m_Spheres.end(), snapshot->Spheres.begin(), snapshot->Spheres.end());
+        m_Capsules.insert(m_Capsules.end(), snapshot->Capsules.begin(), snapshot->Capsules.end());
+    }
+
     void DebugDrawService::BuildFrameGeometry()
     {
         m_VerticesDepthTested.clear();

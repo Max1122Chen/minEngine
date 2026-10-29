@@ -14,6 +14,14 @@ namespace minEngine
         void ClearFrameQueues();
         void BuildFrameGeometry();
 
+        /**
+         * Drawing side: drop whatever the previous frame queued and take this frame's geometry from
+         * the snapshot the world side published. The commands are copied out, so the snapshot is not
+         * retained and nothing outlives the frame it was published for. A null snapshot is a frame
+         * with no debug geometry to draw.
+         */
+        void ApplyFrameSnapshot(const DebugDrawSnapshotRef& snapshot);
+
         const std::vector<DebugVertex>& GetVertices(EDebugDepthMode mode) const;
         uint32_t GetVertexCount(EDebugDepthMode mode) const;
         bool HasAnyGeometry() const;

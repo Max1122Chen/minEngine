@@ -77,6 +77,7 @@
 #include "Suites/SceneProxyResourceLifetimeTest.h"
 #include "Suites/MaterialRenderProxyDataTest.h"
 #include "Suites/EnvMapBakeTest.h"
+#include "Suites/SceneDebugDrawSnapshotTest.h"
 
 namespace minEngine
 {
@@ -1622,6 +1623,33 @@ namespace minEngine
             }
         };
 
+        /**
+         * Debug geometry crossing from the world side to the drawing side: the snapshot the physics
+         * debug module publishes, and the frame step that turns it into vertices. No GPU and no
+         * window: the queues and the geometry builder are pure data.
+         */
+        struct SceneDebugDrawSnapshotTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "scene-debug-draw-snapshot",
+                    "Scene debug draw snapshot",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'scene-debug-draw-snapshot'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "scene-debug-draw-snapshot",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         using ObjectManagerSuite = TypedTestSuite<ObjectManagerTestSuiteTraits>;
         using SerializationArchiveSuite = TypedTestSuite<SerializationArchiveTestSuiteTraits>;
         using AssetManagerSuite = TypedTestSuite<AssetManagerTestSuiteTraits>;
@@ -1708,6 +1736,7 @@ namespace minEngine
         using MaterialRenderProxyDataSuite = TypedTestSuite<MaterialRenderProxyDataTestSuiteTraits>;
         using ScreenUIPerFrameUboSuite = TypedTestSuite<ScreenUIPerFrameUboTestSuiteTraits>;
         using EnvMapBakeSuite = TypedTestSuite<EnvMapBakeTestSuiteTraits>;
+        using SceneDebugDrawSnapshotSuite = TypedTestSuite<SceneDebugDrawSnapshotTestSuiteTraits>;
 
         void RegisterAllTestSuites()
         {
@@ -1804,6 +1833,7 @@ namespace minEngine
             registry.Register(MaterialRenderProxyDataSuite::Get());
             registry.Register(ScreenUIPerFrameUboSuite::Get());
             registry.Register(EnvMapBakeSuite::Get());
+            registry.Register(SceneDebugDrawSnapshotSuite::Get());
             s_Registered = true;
 
 #if defined(MINENGINE_ENABLE_EXTRA_TESTS) && MINENGINE_ENABLE_EXTRA_TESTS

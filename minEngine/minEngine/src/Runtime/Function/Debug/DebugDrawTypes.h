@@ -4,6 +4,7 @@
 #include "Runtime/Core/Math/Math.h"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace minEngine
@@ -72,4 +73,23 @@ namespace minEngine
         EDebugDepthMode DepthMode = EDebugDepthMode::Tested;
         EDebugLifetime Lifetime = EDebugLifetime::Transient;
     };
+
+    /**
+     * One frame of debug geometry, produced where the world is owned and read where it is drawn.
+     *
+     * It holds plain values only - transform matrices, extents, colours - so the drawing side can
+     * consume it while the producing side keeps mutating the scene it came from. Nothing here
+     * points at a scene, a game object or a component, which is what makes that safe.
+     */
+    struct DebugDrawSnapshot
+    {
+        std::vector<DebugBoxCommand> Boxes;
+        std::vector<DebugSphereCommand> Spheres;
+        std::vector<DebugCapsuleCommand> Capsules;
+
+        bool IsEmpty() const { return Boxes.empty() && Spheres.empty() && Capsules.empty(); }
+    };
+
+    /** Shared by value; a consumer holds it for exactly as long as it needs the geometry. */
+    using DebugDrawSnapshotRef = std::shared_ptr<const DebugDrawSnapshot>;
 }

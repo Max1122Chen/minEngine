@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Function/Debug/DebugDrawTypes.h"
 #include "Runtime/Function/Framework/Scene/SceneTypes.h"
 #include "Runtime/Function/Render/RHI/RHITexture.h"
 
@@ -36,7 +37,6 @@ namespace minEngine
     struct SceneDrawDesc
     {
         RenderScene* Scene = nullptr;
-        class Scene* GameplayScene = nullptr;
         RenderCamera* Camera = nullptr;
         SceneRenderTarget* RenderTarget = nullptr;
         /** stable view identity from SceneViewport; 0 = invalid. */
@@ -47,6 +47,13 @@ namespace minEngine
         float ClearColor[4] = {0.18f, 0.32f, 0.48f, 1.0f};
         /** Clear depth applied to the scene depth target. */
         float DepthClear = 1.0f;
+
+        /**
+         * Debug geometry the world side built for this view's frame. The drawing side copies the
+         * commands out of it and never reaches the scene they were read from, so a frame can be
+         * drawn while the world keeps changing. Empty = nothing to draw.
+         */
+        DebugDrawSnapshotRef DebugSnapshot;
 
         /**
          * Optional caller-owned SceneColor. When set, ForwardRenderer registers it as an RDG

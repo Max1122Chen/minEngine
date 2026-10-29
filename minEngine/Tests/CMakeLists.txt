@@ -13,12 +13,16 @@ set(MINENGINE_TEST_GLAD_SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/Third-Party/glad/src/glad.c
 )
 
-# The environment bake is engine-internal (it carries no MINENGINE_API), and the recording contract
-# it broke has to be driven against a device double. Compiling the translation unit into the test
-# binary is what lets the bake itself be the subject; nothing in it is exported by the DLL, so the
-# two copies cannot collide at link time.
+# Two engine-internal translation units are the subject of a suite, and neither carries
+# MINENGINE_API: the environment bake (its recording contract is driven against a device double)
+# and the debug draw queues (the world side fills them, the debug draw pass drains them, and that
+# drain is what the snapshot suite drives directly). Compiling them into the test binary is what
+# makes that possible; nothing in them is exported by the DLL, so the two copies cannot collide at
+# link time.
 set(MINENGINE_TEST_ENGINE_INTERNAL_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src/Runtime/Function/Render/Environment/EnvMapCapture.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src/Runtime/Function/Debug/DebugDrawService.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../minEngine/src/Runtime/Function/Debug/DebugGeometry.cpp
 )
 
 # ED-F12: DebugCommand + PropertyPath live under Editor; tests compile them without the Editor exe.

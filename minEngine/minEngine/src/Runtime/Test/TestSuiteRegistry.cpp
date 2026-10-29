@@ -71,6 +71,7 @@ namespace minEngine
             "deferred-release",
             "scene-proxy-lifetime",
             "scene-proxy-render-read",
+            "scene-debug-draw-snapshot",
         };
 
         std::vector<ITestSuite*> ordered;

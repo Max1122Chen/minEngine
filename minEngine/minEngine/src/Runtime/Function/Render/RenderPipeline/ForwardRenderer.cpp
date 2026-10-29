@@ -34,7 +34,6 @@
 #include "Render/SkyBoxSceneProxies/SkyBoxSceneProxy.h"
 #include "Render/Environment/EnvironmentMap.h"
 #include "Runtime/Function/Debug/DebugDrawService.h"
-#include "Runtime/Function/Physics/PhysicsDebugDraw.h"
 #include "Math/Geometry/AABB.h"
 #include "Math/Geometry/Frustum.h"
 #include "Render/RHI/RHIClipSpace.h"
@@ -651,10 +650,11 @@ namespace minEngine
             return;
         }
 
-        if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableDebugDraw) && desc.GameplayScene != nullptr)
+        if (HasSceneDrawFlag(desc.Flags, SceneDrawFlags::EnableDebugDraw))
         {
-            DebugDrawService::Get().ClearFrameQueues();
-            PhysicsDebugDraw::SubmitScene(*desc.GameplayScene, PhysicsDebugDraw::GetOptions());
+            // The geometry arrives as values the world side already read; this frame only copies
+            // them out of the snapshot and never reaches the scene they describe.
+            DebugDrawService::Get().ApplyFrameSnapshot(desc.DebugSnapshot);
         }
 
         BindSceneRenderTarget(*sceneTarget);
