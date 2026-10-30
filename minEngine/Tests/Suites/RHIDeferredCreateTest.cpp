@@ -405,8 +405,9 @@ namespace
     };
 
     /**
-     * Records every log record that matches one substring while it is armed. Used to count the
-     * reports a failed creation produces: exactly one is the property under test.
+     * Records every log record that matches one substring, at one severity, while it is armed. Used
+     * to count the reports a failure or a dropped request produces: exactly one is the property
+     * under test.
      */
     class MatchingLogSink final : public minEngine::ILogSink
     {
@@ -417,7 +418,7 @@ namespace
             {
                 return;
             }
-            if (record.severity != minEngine::LogSeverity::Error)
+            if (record.severity != m_Severity)
             {
                 return;
             }
@@ -428,9 +429,10 @@ namespace
             m_Matches.fetch_add(1, std::memory_order_relaxed);
         }
 
-        void Arm(const std::string& substring)
+        void Arm(const std::string& substring, minEngine::LogSeverity severity = minEngine::LogSeverity::Error)
         {
             m_Substring = substring;
+            m_Severity = severity;
             m_Matches.store(0, std::memory_order_relaxed);
             m_bArmed.store(true, std::memory_order_release);
         }
@@ -444,6 +446,7 @@ namespace
     private:
         std::atomic<bool> m_bArmed{ false };
         std::atomic<uint32_t> m_Matches{ 0 };
+        minEngine::LogSeverity m_Severity = minEngine::LogSeverity::Error;
         std::string m_Substring;
     };
 
@@ -1203,3 +1206,63 @@ TEST_CASE("rhi-deferred-create: a program the driver refuses still ends the pass
     threading.Shutdown();
 }
 
+TEST_CASE("rhi-deferred-create: a request nobody holds any more is counted by kind and reported once [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    const std::shared_ptr<NativeCreateLog> log = std::make_shared<NativeCreateLog>();
+    HeadlessRHI rhi(log);
+
+    EnsureLogSinkInstalled();
+    MatchingLogSink& sink = GetSharedLogSink();
+    sink.Arm("dropped", minEngine::LogSeverity::Warn);
+
+    {
+        const std::shared_ptr<RHIBuffer> dropped = rhi.RHICreateBuffer(MakeProbeBufferDesc(), nullptr);
+        CHECK(rhi.GetDeferredCreateQueue().GetPendingCount() == 1);
+    }
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        CHECK(rhi.RHIDrainDeferredCreates() == 0);
+    }
+
+    // The total says one request was dropped; the kind says which object stopped being wanted, and
+    // the draw that still names it is found by searching for that kind instead of for a shutdown
+    // total.
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == 1);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount("probe buffer") == 1);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount("probe sampler") == 0);
+    CHECK(sink.Disarm() == 1);
+
+    // A second drop of the same kind is counted and stays quiet: the first one already reported it.
+    sink.Arm("dropped", minEngine::LogSeverity::Warn);
+    {
+        const std::shared_ptr<RHIBuffer> dropped = rhi.RHICreateBuffer(MakeProbeBufferDesc(), nullptr);
+    }
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        CHECK(rhi.RHIDrainDeferredCreates() == 0);
+    }
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount("probe buffer") == 2);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == 2);
+    CHECK(sink.Disarm() == 0);
+
+    // A different kind is a different question, and it reports on its own.
+    sink.Arm("dropped", minEngine::LogSeverity::Warn);
+    {
+        const std::shared_ptr<RHISampler> droppedSampler = rhi.RHIGetOrCreateSampler(RHISamplerDesc{});
+        CHECK(rhi.GetDeferredCreateQueue().GetPendingCount() == 1);
+    }
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        CHECK(rhi.RHIDrainDeferredCreates() == 0);
+    }
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount("probe sampler") == 1);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount("probe buffer") == 2);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == 3);
+    CHECK(sink.Disarm() == 1);
+
+    threading.Shutdown();
+}

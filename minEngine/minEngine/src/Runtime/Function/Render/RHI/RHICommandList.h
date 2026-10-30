@@ -223,6 +223,15 @@ namespace minEngine
         bool m_HoldsRecordingWindow = false;
         /** Sets this list's unreplayed commands keep alive; given back by Reset. */
         uint32_t m_RecordedBindingSetHolds = 0;
+        /**
+         * Geometry this list's unreplayed commands keep alive, one entry per held handle.
+         *
+         * The packet that filled a draw owns its buffers, but a packet is usually a temporary that
+         * dies with the recording call, while the stream is replayed later - on another thread in
+         * the frame-threaded topology. Holding the handles here is what makes the recorded draw
+         * name geometry that still exists when it finally runs.
+         */
+        std::vector<RHIBufferRef> m_RecordedGeometryHolds;
     };
 
     /**

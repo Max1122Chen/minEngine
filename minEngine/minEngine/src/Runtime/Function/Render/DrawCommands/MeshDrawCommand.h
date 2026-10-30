@@ -1,6 +1,7 @@
 #pragma once
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Math/Geometry/AABB.h"
 
 namespace minEngine
@@ -32,6 +33,18 @@ namespace minEngine
         MeshDrawCommand() = default;
         virtual ~MeshDrawCommand() = default;
 
+        /**
+         * The geometry this command draws, as owning handles.
+         *
+         * A command is collected in one step and submitted in a later one, and a pass may keep it
+         * until the next frame. Holding the handles here is what makes the command safe to keep:
+         * the proxy that emitted it can be removed in between, and the buffers must not be freed
+         * with it while this command still names them.
+         */
+        RHIBufferRef m_VertexBufferRef;
+        RHIBufferRef m_IndexBufferRef;
+
+        /** Frame views of the handles above; nothing else owns them through these. */
         RHIBuffer* m_VertexBuffer = nullptr;
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;
         RHIBuffer* m_IndexBuffer = nullptr;
@@ -54,4 +67,3 @@ namespace minEngine
         MeshDrawCommandSortKey m_SortKey;
     };
 }
-

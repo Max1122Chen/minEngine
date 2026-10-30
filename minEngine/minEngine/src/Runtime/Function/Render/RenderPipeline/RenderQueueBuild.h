@@ -153,6 +153,10 @@ namespace minEngine
             UIDrawCommand command;
             command.StableOrder = widgetProxy->m_StableOrder;
             command.CanvasSortOrder = widgetProxy->m_CanvasSortOrder;
+            // The handles travel with the command: the proxy can be removed before this draw is
+            // submitted, and the geometry it names has to outlive it.
+            command.Draw.m_VertexBufferRef = widgetProxy->m_VertexBufferRef;
+            command.Draw.m_IndexBufferRef = widgetProxy->m_IndexBufferRef;
             command.Draw.m_VertexBuffer = widgetProxy->m_VertexBuffer;
             command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
             command.Draw.m_IndexCount = widgetProxy->m_IndexCount;

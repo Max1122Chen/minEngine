@@ -24,10 +24,12 @@ namespace minEngine
     namespace
     {
         /**
-         * A draw names native objects, and a buffer whose GL name is 0 was never created: its creating
-         * thread held no context, so the driver knows nothing about it. Binding such a name names no
-         * data, and the driver answers the resulting draw by faulting rather than by raising an error.
-         * Refusing the draw keeps that state away from the driver and reports it once per kind.
+         * A draw names native objects, and a buffer whose GL name is 0 names none: either its creating
+         * thread held no context, or the draw ran before the graphics role created it - a handle is
+         * usable as a value from the moment it is returned, while its native half waits for that
+         * role's frame start. Binding such a name names no data, and the driver answers the resulting
+         * draw by faulting rather than by raising an error. Refusing the draw keeps that state away
+         * from the driver and reports it once per kind.
          */
         /**
          * Names the caller and its thread. Which thread drew is half the answer; the other half is
@@ -68,9 +70,10 @@ namespace minEngine
                     LogRHI,
                     Error,
                     "OpenGL draw skipped: the bound {} ({:p}) has no native name, so the draw would "
-                    "name no data ({} requested). Such a buffer was created on a thread that held no "
-                    "graphics context; the creation site was reported with its thread and call stack, "
-                    "and the pointer here identifies that object. Drawing thread and call site:{} "
+                    "name no data ({} requested). Either the creation has not run on the graphics role "
+                    "yet, or it ran where that role did not hold the context; the pointer here "
+                    "identifies the handle, and the handle's creation site reports its own thread and "
+                    "call stack. Drawing thread and call site:{} "
                     "{} draw(s) refused so far.",
                     kind,
                     object,

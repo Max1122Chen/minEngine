@@ -21,6 +21,8 @@ namespace minEngine
     MeshDrawCommand MeshPassProcessor::MakeDrawCommand(const MeshBatch& batch)
     {
         MeshDrawCommand command;
+        command.m_VertexBufferRef = batch.m_VertexBufferRef;
+        command.m_IndexBufferRef = batch.m_IndexBufferRef;
         command.m_VertexBuffer = batch.m_VertexBuffer;
         command.m_VertexInputLayout = batch.m_VertexInputLayout;
         command.m_IndexBuffer = batch.m_IndexBuffer;

@@ -193,6 +193,7 @@ TEST_CASE("draw-packet-lifetime: a recorded set is held until the stream is repl
     CHECK(probe->NativesDestroyed.load() == 2);
     CHECK(probe->NativesRefused.load() == 0);
 }
+
 TEST_CASE("draw-packet-lifetime: the geometry a packet names is still built after its producer lets go [smoke]")
 {
     // The topology where a buffer cannot be created by the caller: the handle comes back complete
@@ -203,15 +204,16 @@ TEST_CASE("draw-packet-lifetime: the geometry a packet names is still built afte
     HeadlessTestRHI rhi;
     InstallDeferredBufferFactory(rhi);
 
+    MeshDrawPacket packet = MakePacket(rhi);
+
     RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
     REQUIRE(indexBuffer != nullptr);
     CHECK(!indexBuffer->IsReady());
     CHECK(rhi.GetDeferredCreateQueue().GetPendingCount() == 1);
 
     MeshDrawCommand command;
-    command.m_IndexBuffer = indexBuffer.get();
+    command.m_IndexBufferRef = indexBuffer;
     command.m_IndexCount = 36;
-    MeshDrawPacket packet;
     packet.BindDrawCommand(command);
 
     // The producer hands the geometry to the frame and stops holding it. What the packet names is
@@ -225,7 +227,17 @@ TEST_CASE("draw-packet-lifetime: the geometry a packet names is still built afte
     }
 
     CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == 0);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount("probe geometry buffer") == 0);
     CHECK(rhi.GetDeferredCreateQueue().GetCreatedCount() == 1);
+    REQUIRE(packet.IndexBuffer != nullptr);
+
+    // What the packet held was created, so the draw of it names data rather than nothing.
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+    cmdList.SubmitMeshDrawPacket(packet);
+    REQUIRE(rhi.Draws.size() == 1u);
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(rhi.Draws[0].IndexBuffer == packet.IndexBuffer);
 
     threading.Shutdown();
 }
@@ -243,7 +255,7 @@ TEST_CASE("draw-packet-lifetime: a draw whose geometry has no native object is n
     REQUIRE(!indexBuffer->IsReady());
 
     MeshDrawCommand command;
-    command.m_IndexBuffer = indexBuffer.get();
+    command.m_IndexBufferRef = indexBuffer;
     command.m_IndexCount = 36;
 
     MeshDrawPacket packet = MakePacket(rhi);
@@ -271,6 +283,55 @@ TEST_CASE("draw-packet-lifetime: a draw whose geometry has no native object is n
     CHECK(rhi.Draws[0].bIndexed);
     CHECK(rhi.Draws[0].Count == 36u);
     CHECK(rhi.Draws[0].IndexBuffer == indexBuffer.get());
+
+    threading.Shutdown();
+}
+TEST_CASE("draw-packet-lifetime: a frame that cannot name its geometry keeps the request alive for the next one [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(false);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    REQUIRE(!indexBuffer->IsReady());
+
+    // The packet is a temporary that dies with the recording call, exactly as a pass builds one per
+    // frame. Only the stream names the geometry from here on, and the stream is replayed later - so
+    // the stream is what has to hold it, or the request is dropped as unwanted before the frame
+    // that waits for it can run.
+    {
+        MeshDrawPacket packet = MakePacket(rhi);
+        MeshDrawCommand command;
+        command.m_IndexBufferRef = indexBuffer;
+        command.m_IndexCount = 36;
+        packet.BindDrawCommand(command);
+
+        cmdList.BeginRecording();
+        cmdList.SubmitMeshDrawPacket(packet);
+        cmdList.FinishRecording();
+    }
+    indexBuffer.reset();
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+
+    // The frame that could not name it submitted nothing, and the request it was waiting for was
+    // not dropped while it waited.
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == 0);
+    CHECK(rhi.GetDeferredCreateQueue().GetCreatedCount() == 1);
+
+    cmdList.Replay();
+    CHECK(rhi.NamelessDraws == 0);
 
     threading.Shutdown();
 }

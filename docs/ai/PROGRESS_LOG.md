@@ -1,3 +1,13 @@
+## 2026-10-30 — 绘制借用的几何不再活得比所有者长（"索引缓冲没有 native name"）
+
+- **现象：** PIE 退出、大量 GameObject 销毁之后、`frame roles stopped` 之前一条 `OpenGL draw skipped: the bound index buffer (…) has no native name (36 requested)`；同一次会话的关停计数器 `4253 posted, 3761 created, 492 not needed`。
+- **判定（"被吞的请求"与"用失效对象"是同一件事）：** 队列的 `NotNeeded` 判据是 `target.use_count() == 1`，即**队列自己是最后一个持有者**，那一刻句柄被释放。所以一个被判 `NotNeeded` 的句柄之后还能被绘制，只可能来自**活得比所有者长的借用**（裸指针），而不是"等下一帧创建"。绘制侧有两处借用谁都没持住：`MeshDrawPacket::VertexBuffer/IndexBuffer`（同文件对 `RHIShaderBindingSetRef` 已经写清了这条契约，几何没跟上），以及 `RHICommandList::m_RecordedCommands` 里捕获的裸 `RHIBuffer*`。链路上还有跨帧容器：`BasePass::m_DrawPackets`/`m_DrawCommands` 只在 `BasePass::Prepare` 里被 `clear()`，帧图在 Setup 阶段 bail 时它们仍命名上一帧（已随两段式删除释放）的几何。OpenGL 侧读到 `GetBufferId() == 0` 因此自洽：该对象从未实体化就被释放了。
+- **修法（谁持、持到什么时候）：** 几何句柄沿链路一路持有 —— proxy 已有 `m_VertexBufferRef/m_IndexBufferRef`，现补到 `MeshBatch` → `MeshDrawCommand` → `MeshDrawPacket`（`BindDrawCommand` 从命令取句柄，裸指针降为帧视图）；录制的流自身也持（`m_RecordedGeometryHolds`，`Reset` 归还），因为 packet 往往是随录制调用结束就销毁的临时对象。**不改 NotNeeded 判定**：那条语义仍然正确（没人要的请求不必建），错的是绘制侧没人持住它——与 ImGui 纹理那次同族。
+- **第二半：不能命名的绘制不提交。** `SubmitDrawBuffers` 先问 `GetDeferredUse`：native 对象尚未创建（Pending）或已失败（Unusable）就跳过这次绘制，并按 100 条限频报一次（`Draw not submitted: the bound index buffer (…) is still waiting…`）。`RHIDeferredCreateQueue` 同时按 kind 计数并通过 `GetNotNeededCount(kind)` 暴露：某个 kind 第一次被丢弃时报一条、之后每 100 条一条，把"请求被吞"从关停总数变成可按类型追查的事实。
+- **红灯：** `draw-packet-lifetime` 两例先红：`CHECK( GetNotNeededCount() == 0 )` → `values: CHECK( 1 == 0 )`（所有者放手后请求被吞，而 packet 仍命名它）；`CHECK( rhi.Draws.empty() )` → `CHECK( false )`（没有 native 对象的索引缓冲被提交给后端）。修复后两例转绿，另加两例：按 kind 计数与限频报告；录制的流持住几何、被跳过的帧不吞请求。
+- **验证：** `minEngineTests` / `Editor` 构建 exit 0；`draw-packet-lifetime` 5 例 / 56 断言、`rhi-deferred-create` 19 / 170、`scene-proxy-lifetime` 11 / 179、`scene-proxy-render-read` 3 / 59、`scene-retirement` 14 / 257、`editor-imgui-texture` 9 / 72、`render-command-pipe` 13、`rhi-command-list` 13、`gpu-static-lifetime` 2、`screen-ui-text` 1、`sprite-translucency` 2、`material-proxy-data` 8 全 PASS；`test smoke` exit 0（34 套件）。导出 3037 → 3037（增量 0，无符号消失，快照未改）。构建 cache 里 `MINENGINE_EXPORT_BUDGET` 卡在 3000，按仓库默认对齐 3500（本树链接才通）。
+- **遗留：** 顶点/索引缓冲已强持有，**顶点输入布局仍是裸指针**（`MeshBatch`/`MeshDrawCommand`；两处生产者都返回进程级缓存，故暂不动）；只填裸指针的 packet（第三方/测试构造）仍只能靠提交侧 readiness gate 兜住；`BasePass::m_DrawPackets` 的跨帧残留现在会**保住**旧几何而不是悬垂，代价是帧图持续在 Setup 阶段 bail 时多留一帧引用。
+
 ## 2026-10-30 — 录制窗口作用域化 + 阴影 UBO 走命令流（TD-045 收尾）
 
 - **问题：** 帧录制窗口靠调用方手写 `FinishRecording`/`Reset` 关闭；一旦帧内 early return（帧图 Setup 失败即例子），窗口留在录制线程上，下一帧在 `BeginRecording` 之前写的阴影 UBO 预热就被判成"录制期立即上传"（实测 8 条 `Buffer upload ran immediately while a command list was recording`）。另有跨线程关窗：`Replay` 在 RHI 角色线程执行，录制线程的窗口计数因此永不回落。

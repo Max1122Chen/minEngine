@@ -31,6 +31,61 @@ namespace minEngine
         /** Sets that recorded streams of the live lists keep alive (see GetRecordedBindingSetHoldCount). */
         std::atomic<uint64_t> g_RecordedBindingSetHoldCount{0};
 
+        /** Draws refused because the geometry they named had no native object yet. */
+        std::atomic<uint64_t> g_DrawWithoutNativeGeometryCount{0};
+
+        /**
+         * Whether a draw may name this handle, reported once per hundred refusals.
+         *
+         * A buffer created off the graphics role exists as a handle at once and as a native object
+         * only after that role's frame start. Submitting the draw before that point names nothing:
+         * the backend then either skips the draw or, worse, hands the driver a name that identifies
+         * no data. The frame is skipped instead, and the count is what makes a steady stream of
+         * skipped frames visible instead of a silent hole in the picture.
+         */
+        bool CanNameGeometry(const RHIDeferredCreateTarget* target, const char* kind, uint32_t count)
+        {
+            const RHIDeferredUse use = GetDeferredUse(target);
+            if (use == RHIDeferredUse::Usable)
+            {
+                return true;
+            }
+
+            const uint64_t refused =
+                g_DrawWithoutNativeGeometryCount.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (refused != 1 && refused % 100 != 0)
+            {
+                return false;
+            }
+
+            if (use == RHIDeferredUse::Unusable)
+            {
+                ME_LOG(
+                    LogRender,
+                    Error,
+                    "Draw not submitted: the bound {} ({:p}) has no native object and none is coming, "
+                    "so the draw would name no data ({} requested). {} draw(s) refused so far.",
+                    kind,
+                    static_cast<const void*>(target),
+                    count,
+                    refused);
+                return false;
+            }
+
+            ME_LOG(
+                LogRender,
+                Warn,
+                "Draw not submitted: the bound {} ({:p}) is still waiting for the graphics role to "
+                "create its native object, so this frame would name no data ({} requested). The "
+                "creation runs at the frame start of the graphics role; the draw resumes on the "
+                "frame after it. {} draw(s) refused so far.",
+                kind,
+                static_cast<const void*>(target),
+                count,
+                refused);
+            return false;
+        }
+
         /**
          * The topology that makes every list record: Multi with the frame roles running. Every other
          * topology - Single, headless, and Multi whose roles have stopped - lets a list run its
@@ -296,6 +351,8 @@ namespace minEngine
             g_RecordedBindingSetHoldCount.fetch_sub(m_RecordedBindingSetHolds, std::memory_order_relaxed);
             m_RecordedBindingSetHolds = 0;
         }
+        // The geometry goes with the commands that named it, live or never replayed.
+        m_RecordedGeometryHolds.clear();
         m_RecordedCommands.clear();
         m_UploadScratchCursor = 0;
         m_State = ERHICommandListState::Idle;
@@ -539,9 +596,39 @@ namespace minEngine
         // a borrowed object for its size is exactly the dereference a lifetime contract must make
         // impossible. A packet with no range has nothing to draw, and drawing it anyway would
         // submit an unbounded draw.
+        //
+        // A recorded stream outlives the packet that filled it - and outlives the frame that
+        // recorded it when replay happens on another thread - so the geometry the stream names is
+        // held here, before anything can be skipped. A skipped frame is exactly when the handle
+        // would otherwise be released while its creation is still queued for the graphics role.
+        if (!IsImmediate() && m_State == ERHICommandListState::Recording)
+        {
+            if (packet.VertexBufferRef)
+            {
+                m_RecordedGeometryHolds.push_back(packet.VertexBufferRef);
+            }
+            if (packet.IndexBufferRef)
+            {
+                m_RecordedGeometryHolds.push_back(packet.IndexBufferRef);
+            }
+        }
+
         if (packet.IndexBuffer)
         {
             if (packet.IndexCount == 0)
+            {
+                return;
+            }
+
+            // A handle whose native object does not exist yet would name no data. Which frame can
+            // name it is the frame that starts after the graphics role created it, so this one is
+            // skipped rather than handed to the backend.
+            if (!CanNameGeometry(packet.IndexBuffer, "index buffer", packet.IndexCount))
+            {
+                return;
+            }
+            if (packet.VertexBuffer != nullptr &&
+                !CanNameGeometry(packet.VertexBuffer, "vertex buffer", packet.IndexCount))
             {
                 return;
             }
@@ -556,6 +643,11 @@ namespace minEngine
         }
 
         if (packet.VertexBuffer == nullptr || packet.VertexCount == 0)
+        {
+            return;
+        }
+
+        if (!CanNameGeometry(packet.VertexBuffer, "vertex buffer", packet.VertexCount))
         {
             return;
         }

@@ -12,6 +12,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <mutex>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -309,6 +310,9 @@ namespace minEngine
             size_t created = 0;
             size_t notNeeded = 0;
             size_t failed = 0;
+            // Requests dropped as unwanted, per kind, for this drain only: the kind is what tells a
+            // reader which object stopped being wanted, and a bare total cannot.
+            std::vector<std::pair<std::string, size_t>> swallowed;
             for (Entry& entry : batch)
             {
                 switch (entry.Create ? entry.Create() : RHICreateOutcome::Created)
@@ -318,6 +322,7 @@ namespace minEngine
                     break;
                 case RHICreateOutcome::NotNeeded:
                     ++notNeeded;
+                    AddKindCount(swallowed, entry.Kind);
                     break;
                 case RHICreateOutcome::Failed:
                     // Whoever could not create the object has said so in the log with the reason
@@ -353,6 +358,7 @@ namespace minEngine
             m_CreatedCount.fetch_add(static_cast<uint64_t>(created), std::memory_order_relaxed);
             m_NotNeededCount.fetch_add(static_cast<uint64_t>(notNeeded), std::memory_order_relaxed);
             m_FailedCount.fetch_add(static_cast<uint64_t>(failed), std::memory_order_relaxed);
+            ReportSwallowed(swallowed);
             return created;
         }
 
@@ -408,6 +414,31 @@ namespace minEngine
         uint64_t GetCreatedCount() const { return m_CreatedCount.load(std::memory_order_relaxed); }
         /** Requests that produced nothing because nobody held the handle any more. */
         uint64_t GetNotNeededCount() const { return m_NotNeededCount.load(std::memory_order_relaxed); }
+
+        /**
+         * The same count, for one kind of object.
+         *
+         * A total says something was dropped; the kind says what to go and look at. A kind that is
+         * dropped while its draw still names it is the defect this counter exists to expose, and a
+         * shutdown total cannot tell the two apart.
+         */
+        uint64_t GetNotNeededCount(const char* kind) const
+        {
+            if (kind == nullptr)
+            {
+                return 0;
+            }
+
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            for (const std::pair<std::string, uint64_t>& entry : m_NotNeededByKind)
+            {
+                if (entry.first == kind)
+                {
+                    return entry.second;
+                }
+            }
+            return 0;
+        }
         /** Attempts that had to be repeated at a later frame start. */
         uint64_t GetRetriedCount() const { return m_RetriedCount.load(std::memory_order_relaxed); }
         /** Requests whose native creation failed for good; each was reported by its own object once. */
@@ -448,6 +479,89 @@ namespace minEngine
             std::function<RHICreateOutcome()> Create;
             const char* Kind = "gpu object";
         };
+
+        /** Counts one dropped request under the kind its caller posted it with. */
+        static void AddKindCount(std::vector<std::pair<std::string, size_t>>& counts, const char* kind)
+        {
+            const std::string name = kind != nullptr ? kind : "gpu object";
+            for (std::pair<std::string, size_t>& entry : counts)
+            {
+                if (entry.first == name)
+                {
+                    ++entry.second;
+                    return;
+                }
+            }
+            counts.emplace_back(name, 1);
+        }
+
+        /**
+         * Adds a drain's dropped requests to the per-kind totals and reports the kind once.
+         *
+         * Silent dropping is how a swallowed request stayed invisible: the totals line at shutdown
+         * shows "492 not needed" and nothing else. The first drop of a kind reports, so a new kind
+         * going unwanted is never silent; after that the count speaks, one line per report interval
+         * per kind, so a steady stream cannot bury the first.
+         */
+        void ReportSwallowed(const std::vector<std::pair<std::string, size_t>>& counts)
+        {
+            if (counts.empty())
+            {
+                return;
+            }
+
+            for (const std::pair<std::string, size_t>& dropped : counts)
+            {
+                uint64_t total = 0;
+                bool bReport = false;
+                {
+                    std::lock_guard<std::mutex> lock(m_Mutex);
+                    uint64_t& slot = FindKindSlot(dropped.first);
+                    const uint64_t before = slot;
+                    slot += static_cast<uint64_t>(dropped.second);
+                    total = slot;
+
+                    if (before == 0)
+                    {
+                        bReport = true;
+                    }
+                    else if (slot / kNotNeededReportInterval > before / kNotNeededReportInterval)
+                    {
+                        bReport = true;
+                    }
+                }
+
+                if (!bReport)
+                {
+                    continue;
+                }
+
+                ME_LOG(
+                    LogRHI,
+                    Warn,
+                    "RHIDeferredCreateQueue: dropped {} creation request(s) of kind '{}' because "
+                    "nothing referenced the handle any more ({} dropped for this kind so far). A "
+                    "request is only dropped when the queue is its last holder, so no frame can name "
+                    "it afterwards: a draw that still does was holding a handle nobody owned.",
+                    dropped.second,
+                    dropped.first,
+                    total);
+            }
+        }
+
+        /** The per-kind total for one kind, created on first use. Caller holds the mutex. */
+        uint64_t& FindKindSlot(const std::string& kind)
+        {
+            for (std::pair<std::string, uint64_t>& entry : m_NotNeededByKind)
+            {
+                if (entry.first == kind)
+                {
+                    return entry.second;
+                }
+            }
+            m_NotNeededByKind.emplace_back(kind, 0);
+            return m_NotNeededByKind.back().second;
+        }
 
         static uint64_t NowMilliseconds()
         {
@@ -519,6 +633,10 @@ namespace minEngine
         std::atomic<uint64_t> m_RefusedDrainCount{ 0 };
         std::atomic<uint64_t> m_AbandonedCount{ 0 };
         std::atomic<uint64_t> m_StallWarnCount{ 0 };
+        /** Requests dropped as unwanted, per kind; guarded by m_Mutex. */
+        std::vector<std::pair<std::string, uint64_t>> m_NotNeededByKind;
+        /** One report per kind per this many dropped requests. */
+        static constexpr uint64_t kNotNeededReportInterval = 100;
         /** Default long enough that an ordinary hitch is silent and a stalled loop is not. */
         static constexpr uint64_t kDefaultStallWarnIntervalMs = 2000;
         uint64_t m_LastStallWarnMs = 0;

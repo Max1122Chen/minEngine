@@ -15,6 +15,8 @@ namespace minEngine
         }
 
         MeshBatch batch;
+        batch.m_VertexBufferRef = m_VertexBufferRef;
+        batch.m_IndexBufferRef = m_IndexBufferRef;
         batch.m_VertexBuffer = m_VertexBuffer;
         batch.m_VertexInputLayout = m_VertexInputLayout;
         batch.m_IndexBuffer = m_IndexBuffer;

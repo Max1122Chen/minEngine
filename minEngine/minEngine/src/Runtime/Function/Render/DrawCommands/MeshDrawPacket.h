@@ -29,6 +29,20 @@ namespace minEngine
          */
         std::array<RHIShaderBindingSetRef, kMaxShaderBindingSets> ShaderBindingSets{};
 
+        /**
+         * The geometry this packet names, owned for as long as the packet exists.
+         *
+         * Same gap as the sets above, one layer lower: a packet is prepared in one step and
+         * submitted in another, and a recorded stream that names a buffer can be replayed later
+         * still. A packet that only borrowed the address let the producer drop the last handle in
+         * between - the frame-start creation then decided nobody wanted the native object, and the
+         * submission either named nothing or dereferenced what was already gone. Holding the
+         * handles is what makes the packet the owner of the geometry it draws.
+         */
+        RHIBufferRef VertexBufferRef;
+        RHIBufferRef IndexBufferRef;
+
+        /** Frame views of the handles above; the packet owns them through the refs. */
         RHIBuffer* VertexBuffer = nullptr;
         RHIBuffer* IndexBuffer = nullptr;
 
@@ -45,8 +59,12 @@ namespace minEngine
          */
         void BindDrawCommand(const MeshDrawCommand& command)
         {
-            VertexBuffer = command.m_VertexBuffer;
-            IndexBuffer = command.m_IndexBuffer;
+            VertexBufferRef = command.m_VertexBufferRef;
+            IndexBufferRef = command.m_IndexBufferRef;
+            // A command without handles still names what it was built from; the packet then only
+            // borrows that, which is the state the readiness gate at submission has to cover.
+            VertexBuffer = VertexBufferRef ? VertexBufferRef.get() : command.m_VertexBuffer;
+            IndexBuffer = IndexBufferRef ? IndexBufferRef.get() : command.m_IndexBuffer;
             IndexCount = command.m_IndexCount;
             VertexCount = command.m_VertexCount;
         }

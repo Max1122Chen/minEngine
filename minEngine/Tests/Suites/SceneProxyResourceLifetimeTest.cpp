@@ -283,15 +283,21 @@ TEST_CASE("scene-proxy-lifetime: proxy keeps mesh buffers alive after the asset 
     // The render thread can still build a batch from what the proxy holds.
     const std::shared_ptr<minEngine::Material> material = std::make_shared<minEngine::Material>();
     proxy->SetMaterialSource(material);
-    MeshBatchCollector collector;
-    MeshCollectContext context;
-    proxy->GetMeshBatches(collector, context);
-    CHECK(collector.GetBatches().size() == 1u);
+    {
+        MeshBatchCollector collector;
+        MeshCollectContext context;
+        proxy->GetMeshBatches(collector, context);
+        CHECK(collector.GetBatches().size() == 1u);
 
-    component->DetachSceneProxy();
-    delete proxy;
+        // The collected batch is an owner in its own right: a draw is built here and submitted
+        // later, so the geometry it names has to outlive the proxy that produced it.
+        component->DetachSceneProxy();
+        delete proxy;
+        CHECK_FALSE(vertexBufferWeak.expired());
+        CHECK_FALSE(indexBufferWeak.expired());
+    }
 
-    // Releasing the proxy is what releases the resources.
+    // Releasing the last thing that named the geometry is what releases it.
     CHECK(vertexBufferWeak.expired());
     CHECK(layoutWeak.expired());
     CHECK(indexBufferWeak.expired());
@@ -890,4 +896,3 @@ TEST_CASE("scene-proxy-lifetime: a frame that applied a removal records nothing 
     CHECK(loaded.renderScene->m_ProxyDeleteCount == deletesBefore + 1);
     CHECK_FALSE(loaded.renderScene->HasPendingProxyWork());
 }
-

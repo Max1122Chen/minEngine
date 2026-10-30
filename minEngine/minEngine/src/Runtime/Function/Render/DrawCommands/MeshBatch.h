@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Math/Geometry/AABB.h"
 
 namespace minEngine
@@ -15,6 +16,18 @@ namespace minEngine
     class MeshBatch
     {
     public:
+        /**
+         * The geometry this batch draws, as owning handles.
+         *
+         * The proxy that emits the batch holds these too, but the batch is what travels: it becomes
+         * a draw command, that command becomes a packet, and the packet is submitted after the
+         * proxy may already be gone. Carrying the handles along the way is what lets every one of
+         * those owners keep the geometry alive instead of assuming the previous one still does.
+         */
+        RHIBufferRef m_VertexBufferRef;
+        RHIBufferRef m_IndexBufferRef;
+
+        /** Frame views of the handles above; nothing else owns them through these. */
         RHIBuffer* m_VertexBuffer = nullptr;
         RHIVertexInputLayout* m_VertexInputLayout = nullptr;
         RHIBuffer* m_IndexBuffer = nullptr;
