@@ -22,9 +22,12 @@ namespace minEngine
     {
         MeshDrawCommand command;
         command.m_VertexBufferRef = batch.m_VertexBufferRef;
+        command.m_VertexInputLayoutRef = batch.m_VertexInputLayoutRef;
         command.m_IndexBufferRef = batch.m_IndexBufferRef;
         command.m_VertexBuffer = batch.m_VertexBuffer;
-        command.m_VertexInputLayout = batch.m_VertexInputLayout;
+        command.m_VertexInputLayout = batch.m_VertexInputLayoutRef
+            ? batch.m_VertexInputLayoutRef.get()
+            : batch.m_VertexInputLayout;
         command.m_IndexBuffer = batch.m_IndexBuffer;
         command.m_IndexCount = batch.m_IndexCount;
         command.m_VertexCount = batch.m_VertexCount;

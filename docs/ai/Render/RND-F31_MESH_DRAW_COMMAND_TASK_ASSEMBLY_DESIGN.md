@@ -247,13 +247,15 @@ ShadowCasterQueue = (chunk[0..n-1].ShadowFromMainVisible 依片序)
 |---|---|---|---|
 | `MeshDrawPacket::PipelineState` | `RHIGraphicsPipelineStateRef`（owned） | 不变（装配阶段不产 packet） | 否 |
 | `MeshDrawPacket::ShaderBindingSets` | `RHIShaderBindingSetRef`（owned，`MeshDrawPacket.h:19-30`） | 不变（在串行提交阶段填） | 否 |
-| `MeshDrawCommand::m_VertexBuffer` / `m_IndexBuffer` | **借用**的裸指针 | 仍然借用 | 否，但寿命论证要写死（见 2） |
+| `MeshDrawCommand::m_VertexBufferRef` / `m_IndexBufferRef` / `m_VertexInputLayoutRef` | `RHIBufferRef` / `RHIVertexInputLayoutRef`（owned；同名裸指针降为帧视图） | 不变 | 否 |
 | `MeshDrawCommand::m_BonePalette` | `const Matrix4*` 指向代理里的 `std::vector`（`SkeletalMeshSceneProxy.cpp:28-31`） | 仍然借用 | **否，但成为「命令不得跨帧」的强约束**（见 3） |
 
 **借用为什么今天安全、并行后仍然安全：**
 
-1. `m_VertexBufferRef` / `m_IndexBufferRef` / `m_VertexInputLayoutRef` 由代理强持
-   （`PrimitiveSceneProxy.h:79-81`），代理在帧内不会死（H2 两段式）。装配 + 提交 + 录制这一段的借用成立。
+1. 几何沿 `MeshBatch → MeshDrawCommand → MeshDrawPacket → 录制流` 全程由 `RHIBufferRef` /
+   `RHIVertexInputLayoutRef` 强持（`MeshDrawCommand.h`、`MeshDrawPacket.h` 的 ref 成员），裸指针只是
+   帧视图；代理另持一份（`PrimitiveSceneProxy.h`）。所以装配 + 提交 + 录制这一段的借用**不依赖代理寿命**，
+   worker 读到的句柄也不会因为代理被移除而失效。
 2. `m_BonePalette` 指向代理 vector 的数据。它在注册**之前**由游戏角色写入
    （`SkeletalMeshComponent.cpp:363` 在 `SyncSceneProxy` 里，而 `SyncSceneProxy` 只由 `CreateSceneProxy`
    调用，`CreateSceneProxy` 只由 `RenderScene::AddPrimitive` 在游戏角色上调用，`RenderScene.cpp:349`），
@@ -676,7 +678,7 @@ S01 ──► S02 ──► S03 ──► S04
 3. **不做 GPU 驱动剔除 / Nanite / GPU Scene**。
 4. **不新增剔除层级**（层级 / 实例化 / HISM 式）；子 mesh 剔除仍由 game 侧 proxy 决定（`RND-F26` 契约）。
 5. **不改排序语义**、不新增排序键、不把 `stable_sort` 换成不稳定排序。
-6. **不把 chunk 产物跨帧缓存**：`m_BonePalette` 与 `RHIBuffer*` 都是借用（§4.4），产物寿命 = 本帧。
+6. **不把 chunk 产物跨帧缓存**：`m_BonePalette` 是借用（§4.4），产物寿命 = 本帧。几何句柄与布局句柄虽由命令自己持有（跨帧不悬垂），但 per-object 绑定集是立刻写入的，所以"本帧消费"这条约束照旧。
 7. **不做「本帧装配 N+1、录制 N」的流水**（§6.2）。
 8. **不并行化** `CollectOrphanedSceneProxies` / `FlushPendingProxyDeletes` / PSO 创建 / ring 槽位写入 /
    UBO 上传 / RDG `Bake` / 任何 `RHICommandList` 调用。

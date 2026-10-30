@@ -420,7 +420,7 @@ namespace minEngine
             SpriteQuadMesh& quad = SpriteQuadMesh::Get();
             proxy.SetMeshResources(
                 quad.GetVertexBufferRef(),
-                quad.GetVertexInputLayout(),
+                quad.GetVertexInputLayoutRef(),
                 quad.GetIndexBufferRef(),
                 SpriteQuadMesh::IndexCount,
                 SpriteQuadMesh::VertexCount);

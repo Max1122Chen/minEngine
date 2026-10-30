@@ -161,7 +161,12 @@ namespace minEngine
             command.Draw.m_IndexBuffer = widgetProxy->m_IndexBuffer;
             command.Draw.m_IndexCount = widgetProxy->m_IndexCount;
             command.Draw.m_VertexCount = widgetProxy->m_VertexCount;
-            command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayout;
+            // Same rule one level down: the layout says how the vertex buffer is read, and a
+            // recorded stream names it after this proxy is gone.
+            command.Draw.m_VertexInputLayoutRef = widgetProxy->m_VertexInputLayoutRef;
+            command.Draw.m_VertexInputLayout = widgetProxy->m_VertexInputLayoutRef
+                ? widgetProxy->m_VertexInputLayoutRef.get()
+                : widgetProxy->m_VertexInputLayout;
             command.Draw.m_MaterialProxy = widgetProxy->GetMaterialProxy();
             if (widgetProxy->m_bLocalPixelMesh)
             {

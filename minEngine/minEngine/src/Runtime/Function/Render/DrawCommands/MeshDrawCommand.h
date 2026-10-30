@@ -34,7 +34,8 @@ namespace minEngine
         virtual ~MeshDrawCommand() = default;
 
         /**
-         * The geometry this command draws, as owning handles.
+         * The geometry this command draws, as owning handles - the buffers and the layout that says
+         * how the vertex buffer is read.
          *
          * A command is collected in one step and submitted in a later one, and a pass may keep it
          * until the next frame. Holding the handles here is what makes the command safe to keep:
@@ -42,6 +43,7 @@ namespace minEngine
          * with it while this command still names them.
          */
         RHIBufferRef m_VertexBufferRef;
+        RHIVertexInputLayoutRef m_VertexInputLayoutRef;
         RHIBufferRef m_IndexBufferRef;
 
         /** Frame views of the handles above; nothing else owns them through these. */

@@ -40,10 +40,12 @@ namespace minEngine
          * handles is what makes the packet the owner of the geometry it draws.
          */
         RHIBufferRef VertexBufferRef;
+        RHIVertexInputLayoutRef VertexInputLayoutRef;
         RHIBufferRef IndexBufferRef;
 
         /** Frame views of the handles above; the packet owns them through the refs. */
         RHIBuffer* VertexBuffer = nullptr;
+        RHIVertexInputLayout* VertexInputLayout = nullptr;
         RHIBuffer* IndexBuffer = nullptr;
 
         uint32_t IndexCount = 0;
@@ -60,10 +62,14 @@ namespace minEngine
         void BindDrawCommand(const MeshDrawCommand& command)
         {
             VertexBufferRef = command.m_VertexBufferRef;
+            VertexInputLayoutRef = command.m_VertexInputLayoutRef;
             IndexBufferRef = command.m_IndexBufferRef;
             // A command without handles still names what it was built from; the packet then only
             // borrows that, which is the state the readiness gate at submission has to cover.
             VertexBuffer = VertexBufferRef ? VertexBufferRef.get() : command.m_VertexBuffer;
+            VertexInputLayout = VertexInputLayoutRef
+                ? VertexInputLayoutRef.get()
+                : command.m_VertexInputLayout;
             IndexBuffer = IndexBufferRef ? IndexBufferRef.get() : command.m_IndexBuffer;
             IndexCount = command.m_IndexCount;
             VertexCount = command.m_VertexCount;

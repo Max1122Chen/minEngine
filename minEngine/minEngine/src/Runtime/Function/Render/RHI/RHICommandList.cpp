@@ -353,6 +353,7 @@ namespace minEngine
         }
         // The geometry goes with the commands that named it, live or never replayed.
         m_RecordedGeometryHolds.clear();
+        m_RecordedLayoutHolds.clear();
         m_RecordedCommands.clear();
         m_UploadScratchCursor = 0;
         m_State = ERHICommandListState::Idle;
@@ -611,11 +612,24 @@ namespace minEngine
             {
                 m_RecordedGeometryHolds.push_back(packet.IndexBufferRef);
             }
+            if (packet.VertexInputLayoutRef)
+            {
+                m_RecordedLayoutHolds.push_back(packet.VertexInputLayoutRef);
+            }
         }
 
         if (packet.IndexBuffer)
         {
             if (packet.IndexCount == 0)
+            {
+                return;
+            }
+
+            // The layout is the vertex state the draw runs with: without a native object behind it
+            // the backend has no vertex array to bind, and the draw names nothing. It is checked
+            // before the buffers because a packet can only draw them through it, and a packet with
+            // no layout at all is a producer that never bound one.
+            if (!CanNameGeometry(packet.VertexInputLayout, "vertex input layout", packet.IndexCount))
             {
                 return;
             }
@@ -643,6 +657,11 @@ namespace minEngine
         }
 
         if (packet.VertexBuffer == nullptr || packet.VertexCount == 0)
+        {
+            return;
+        }
+
+        if (!CanNameGeometry(packet.VertexInputLayout, "vertex input layout", packet.VertexCount))
         {
             return;
         }

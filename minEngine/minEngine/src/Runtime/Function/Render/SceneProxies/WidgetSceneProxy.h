@@ -70,10 +70,13 @@ namespace minEngine
          * buffers - and the material's render object rather than the material - alive instead of
          * pointing at whatever the game thread leaves behind.
          *
-         * The vertex input layout is not held: both producers hand out a layout cached for the
-         * process lifetime (SpriteQuadMesh for the shared quad, TextMeshBuilder for glyphs).
+         * The vertex input layout is held the same way where its producer owns a handle - the
+         * shared quad does. A glyph layout comes from a process-level cache the builder releases
+         * explicitly at render teardown, so there is no handle to share; that one travels as the
+         * frame view below and submission refuses it rather than naming it if it is not there.
          */
         RHIBufferRef m_VertexBufferRef;
+        RHIVertexInputLayoutRef m_VertexInputLayoutRef;
         RHIBufferRef m_IndexBufferRef;
 
         /** The render-side material object this widget draws with; see PrimitiveSceneProxy. */
@@ -97,7 +100,32 @@ namespace minEngine
         uint32_t m_IndexCount = 0;
         uint32_t m_VertexCount = 0;
 
-        /** Binds the geometry and its draw ranges; the proxy takes ownership of the buffer refs. */
+        /** Binds the geometry and its draw ranges; the proxy takes ownership of every handle. */
+        void SetMeshResources(
+            const RHIBufferRef& vertexBuffer,
+            const RHIVertexInputLayoutRef& vertexInputLayout,
+            const RHIBufferRef& indexBuffer,
+            uint32_t indexCount,
+            uint32_t vertexCount)
+        {
+            m_VertexBufferRef = vertexBuffer;
+            m_VertexInputLayoutRef = vertexInputLayout;
+            m_IndexBufferRef = indexBuffer;
+
+            m_VertexBuffer = m_VertexBufferRef.get();
+            m_IndexBuffer = m_IndexBufferRef.get();
+            m_VertexInputLayout = m_VertexInputLayoutRef.get();
+
+            m_IndexCount = indexCount;
+            m_VertexCount = vertexCount;
+        }
+
+        /**
+         * Binds a layout whose producer hands out no handle it could share: the glyph layout is a
+         * process-level cache, released at render teardown rather than by whoever drew last. The
+         * proxy keeps the address as the frame view only, and submission refuses a draw whose
+         * layout is missing instead of naming it.
+         */
         void SetMeshResources(
             const RHIBufferRef& vertexBuffer,
             RHIVertexInputLayout* vertexInputLayout,
@@ -106,6 +134,7 @@ namespace minEngine
             uint32_t vertexCount)
         {
             m_VertexBufferRef = vertexBuffer;
+            m_VertexInputLayoutRef.reset();
             m_IndexBufferRef = indexBuffer;
 
             m_VertexBuffer = m_VertexBufferRef.get();
@@ -117,7 +146,19 @@ namespace minEngine
         }
 
         /** Drops the geometry binding, and with it the references that kept it alive. */
-        void ClearMeshResources() { SetMeshResources(nullptr, nullptr, nullptr, 0, 0); }
+        void ClearMeshResources()
+        {
+            m_VertexBufferRef.reset();
+            m_VertexInputLayoutRef.reset();
+            m_IndexBufferRef.reset();
+
+            m_VertexBuffer = nullptr;
+            m_IndexBuffer = nullptr;
+            m_VertexInputLayout = nullptr;
+
+            m_IndexCount = 0;
+            m_VertexCount = 0;
+        }
 
         /** Binds the material's render object; GetMaterialProxy() follows it. */
         void SetMaterialSource(const std::shared_ptr<MaterialInterface>& material)

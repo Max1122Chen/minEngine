@@ -17,7 +17,8 @@ namespace minEngine
     {
     public:
         /**
-         * The geometry this batch draws, as owning handles.
+         * The geometry this batch draws, as owning handles - the buffers and the layout that says
+         * how the vertex buffer is read.
          *
          * The proxy that emits the batch holds these too, but the batch is what travels: it becomes
          * a draw command, that command becomes a packet, and the packet is submitted after the
@@ -25,6 +26,7 @@ namespace minEngine
          * those owners keep the geometry alive instead of assuming the previous one still does.
          */
         RHIBufferRef m_VertexBufferRef;
+        RHIVertexInputLayoutRef m_VertexInputLayoutRef;
         RHIBufferRef m_IndexBufferRef;
 
         /** Frame views of the handles above; nothing else owns them through these. */

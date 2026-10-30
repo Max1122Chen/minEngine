@@ -83,6 +83,17 @@ namespace
         return desc;
     }
 
+    /**
+     * A layout handle whose native object already exists: the vertex state a real draw always
+     * carries, so a case that is about the geometry does not also exercise the layout gate.
+     */
+    minEngine::RHIVertexInputLayoutRef MakeReadyLayout(HeadlessTestRHI& rhi)
+    {
+        return rhi.RHICreateVertexInputLayout({
+            minEngine::RHIVertexElement("a_Position", minEngine::VertexElementType::Float3),
+        });
+    }
+
     /** Routes every buffer this device hands out through the deferred-create policy. */
     void InstallDeferredBufferFactory(HeadlessTestRHI& rhi)
     {
@@ -210,10 +221,13 @@ TEST_CASE("draw-packet-lifetime: the geometry a packet names is still built afte
     REQUIRE(indexBuffer != nullptr);
     CHECK(!indexBuffer->IsReady());
     CHECK(rhi.GetDeferredCreateQueue().GetPendingCount() == 1);
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
 
     MeshDrawCommand command;
     command.m_IndexBufferRef = indexBuffer;
     command.m_IndexCount = 36;
+    command.m_VertexInputLayoutRef = layout;
+    command.m_VertexInputLayout = layout.get();
     packet.BindDrawCommand(command);
 
     // The producer hands the geometry to the frame and stops holding it. What the packet names is
@@ -253,10 +267,13 @@ TEST_CASE("draw-packet-lifetime: a draw whose geometry has no native object is n
     RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
     REQUIRE(indexBuffer != nullptr);
     REQUIRE(!indexBuffer->IsReady());
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
 
     MeshDrawCommand command;
     command.m_IndexBufferRef = indexBuffer;
     command.m_IndexCount = 36;
+    command.m_VertexInputLayoutRef = layout;
+    command.m_VertexInputLayout = layout.get();
 
     MeshDrawPacket packet = MakePacket(rhi);
     packet.BindDrawCommand(command);
@@ -297,6 +314,7 @@ TEST_CASE("draw-packet-lifetime: a frame that cannot name its geometry keeps the
     RHICommandList cmdList(&rhi);
     cmdList.SetImmediateOverride(false);
 
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
     RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
     REQUIRE(indexBuffer != nullptr);
     REQUIRE(!indexBuffer->IsReady());
@@ -310,6 +328,8 @@ TEST_CASE("draw-packet-lifetime: a frame that cannot name its geometry keeps the
         MeshDrawCommand command;
         command.m_IndexBufferRef = indexBuffer;
         command.m_IndexCount = 36;
+        command.m_VertexInputLayoutRef = layout;
+        command.m_VertexInputLayout = layout.get();
         packet.BindDrawCommand(command);
 
         cmdList.BeginRecording();
@@ -331,6 +351,136 @@ TEST_CASE("draw-packet-lifetime: a frame that cannot name its geometry keeps the
     CHECK(rhi.GetDeferredCreateQueue().GetCreatedCount() == 1);
 
     cmdList.Replay();
+    CHECK(rhi.NamelessDraws == 0);
+
+    threading.Shutdown();
+}
+
+namespace
+{
+    /**
+     * A layout handle whose native object arrives with the graphics role, like a backend vertex
+     * array object: it exists as a handle at once and as something drawable only after creation.
+     */
+    class DeferredVertexInputLayout final : public minEngine::RHIVertexInputLayout
+    {
+    public:
+        DeferredVertexInputLayout()
+        {
+            m_Elements.emplace_back("a_Position", minEngine::VertexElementType::Float3);
+        }
+
+        const std::vector<minEngine::RHIVertexElement>& GetElements() const override { return m_Elements; }
+        uint32_t GetStride() const override { return 12u; }
+
+        bool CreateNativeResources() override
+        {
+            m_bNativeObject = true;
+            return true;
+        }
+        bool IsReady() const override { return m_bNativeObject; }
+
+    private:
+        std::vector<minEngine::RHIVertexElement> m_Elements;
+        bool m_bNativeObject = false;
+    };
+}
+
+TEST_CASE("draw-packet-lifetime: a draw whose vertex layout is not materialized is not submitted [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+
+    std::shared_ptr<DeferredVertexInputLayout> layout = std::make_shared<DeferredVertexInputLayout>();
+    REQUIRE(!layout->IsReady());
+
+    MeshDrawCommand command;
+    command.m_VertexInputLayoutRef = layout;
+    command.m_VertexInputLayout = layout.get();
+    command.m_IndexBufferRef = indexBuffer;
+    command.m_IndexBuffer = indexBuffer.get();
+    command.m_IndexCount = 36;
+
+    MeshDrawPacket packet = MakePacket(rhi);
+    packet.BindDrawCommand(command);
+    REQUIRE(packet.VertexInputLayout == layout.get());
+    REQUIRE(packet.VertexInputLayoutRef.get() == layout.get());
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+    REQUIRE(indexBuffer->IsReady());
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+
+    // The geometry is ready but the vertex state it is interpreted through is not: the draw would
+    // bind a vertex array object that does not exist yet, so this frame has to be skipped.
+    cmdList.SubmitMeshDrawPacket(packet);
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+
+    layout->CreateNativeResources();
+    cmdList.SubmitMeshDrawPacket(packet);
+    REQUIRE(rhi.Draws.size() == 1u);
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(rhi.Draws[0].IndexBuffer == indexBuffer.get());
+
+    threading.Shutdown();
+}
+
+TEST_CASE("draw-packet-lifetime: a recorded stream holds the vertex layout it names until it is replayed [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    indexBuffer->CreateNativeResources();
+    REQUIRE(indexBuffer->IsReady());
+
+    minEngine::RHIVertexInputLayoutRef layout = rhi.RHICreateVertexInputLayout({
+        minEngine::RHIVertexElement("a_Position", minEngine::VertexElementType::Float3),
+    });
+    REQUIRE(layout != nullptr);
+    REQUIRE(layout->IsReady());
+    const std::weak_ptr<minEngine::RHIVertexInputLayout> layoutWeak = layout;
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(false);
+    {
+        // The packet is a temporary that dies with the recording call, exactly as a pass builds one
+        // per frame. Only the stream names the layout from here on, and the stream is replayed
+        // later, so the stream is what has to hold it.
+        MeshDrawPacket packet = MakePacket(rhi);
+        MeshDrawCommand command;
+        command.m_VertexInputLayoutRef = layout;
+        command.m_VertexInputLayout = layout.get();
+        command.m_IndexBufferRef = indexBuffer;
+        command.m_IndexBuffer = indexBuffer.get();
+        command.m_IndexCount = 36;
+        packet.BindDrawCommand(command);
+
+        cmdList.BeginRecording();
+        cmdList.SubmitMeshDrawPacket(packet);
+        cmdList.FinishRecording();
+    }
+    layout.reset();
+
+    CHECK_FALSE(layoutWeak.expired());
+
+    cmdList.Replay();
+    CHECK(layoutWeak.expired());
     CHECK(rhi.NamelessDraws == 0);
 
     threading.Shutdown();

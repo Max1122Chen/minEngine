@@ -896,3 +896,77 @@ TEST_CASE("scene-proxy-lifetime: a frame that applied a removal records nothing 
     CHECK(loaded.renderScene->m_ProxyDeleteCount == deletesBefore + 1);
     CHECK_FALSE(loaded.renderScene->HasPendingProxyWork());
 }
+
+
+TEST_CASE("scene-proxy-lifetime: a draw command and its packet keep the vertex layout the asset dropped [smoke]")
+{
+    ProxyLifetimeScope scope;
+
+    const std::shared_ptr<minEngine::Scene> scene =
+        minEngine::SceneManager::Get().CreateNewScene("scene-proxy-lifetime-layout-handle");
+    REQUIRE(scene != nullptr);
+    const std::shared_ptr<minEngine::GameObject> gameObject = scene->CreateGameObject();
+    REQUIRE(gameObject != nullptr);
+    const std::shared_ptr<StaticMeshComponent> component =
+        gameObject->AddComponent<StaticMeshComponent>();
+    REQUIRE(component != nullptr);
+
+    std::shared_ptr<DescribedBuffer> indexBuffer;
+    std::shared_ptr<StaticMesh> mesh = MakeSectionedMesh(36u, 36u, 24u, indexBuffer);
+    const std::weak_ptr<RHIVertexInputLayout> layoutWeak = mesh->m_VertexInputLayout;
+    component->SetMesh(mesh);
+
+    std::shared_ptr<minEngine::Material> material = std::make_shared<minEngine::Material>();
+    component->SetMaterial(material);
+
+    PrimitiveSceneProxy* proxy = component->CreateSceneProxy();
+    REQUIRE(proxy != nullptr);
+
+    // Collect and convert inside one scope: from here on the command and the packet are the only
+    // things naming the layout, so whichever of them holds it is what keeps it alive.
+    std::vector<MeshDrawCommand> commands;
+    {
+        MeshBatchCollector collector;
+        MeshCollectContext context;
+        proxy->GetMeshBatches(collector, context);
+        REQUIRE(collector.GetBatches().size() == 1u);
+
+        OpaqueMeshPassProcessor processor(commands);
+        collector.DispatchTo(processor);
+    }
+    REQUIRE(commands.size() == 1u);
+    REQUIRE(commands[0].m_VertexInputLayout != nullptr);
+    const RHIVertexInputLayout* const layoutAddress = commands[0].m_VertexInputLayout;
+
+    MeshDrawPacket packet;
+    packet.PipelineState = std::make_shared<RHIGraphicsPSOStateFallback>();
+    packet.BindDrawCommand(commands[0]);
+    CHECK(packet.VertexInputLayout == layoutAddress);
+
+    // The proxy is removed on the render role and the asset is released on the game one, exactly as
+    // they are when a mesh component is destroyed mid-frame. The draw built from it was already
+    // handed to the frame, so the draw is what has to keep the layout.
+    component->DetachSceneProxy();
+    delete proxy;
+    component->SetMesh(nullptr);
+    mesh.reset();
+
+    CHECK_FALSE(layoutWeak.expired());
+    CHECK(commands[0].m_VertexInputLayout == layoutAddress);
+    CHECK(packet.VertexInputLayout == layoutAddress);
+    CHECK(packet.VertexInputLayoutRef.get() == layoutAddress);
+
+    // A submission that named a layout nobody holds would hand the device an address that was
+    // already released. The packet holding it is what makes this draw valid.
+    RecordingRHI rhi;
+    RHICommandList cmdList(&rhi);
+    cmdList.SubmitMeshDrawPacket(packet);
+    CHECK(rhi.IndexedDrawCount == 1u);
+    CHECK(rhi.LastIndexCount == 36u);
+
+    const RHIVertexInputLayout* const drainedAddress = layoutAddress;
+    packet = MeshDrawPacket();
+    commands.clear();
+    CHECK(layoutWeak.expired());
+    (void)drainedAddress;
+}

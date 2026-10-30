@@ -1,3 +1,13 @@
+## 2026-10-30 — 顶点输入布局进入"命名即持有"的持有链（几何持有链的最后一条裸指针）
+
+- **为什么现在补：** 上一条修的是顶点/索引缓冲，**顶点输入布局仍是裸指针**（`MeshBatch::m_VertexInputLayout`、`MeshDrawCommand::m_VertexInputLayout`），靠"同帧两段式删除"兜。并行装配 `MeshDrawCommand` 的第一个前提正是"装配不再保证与代理删除同帧"——同帧兜底一旦放开，这条裸指针就会悬垂。
+- **谁持：** `RHIVertexInputLayoutRef` 沿 `MeshBatch` → `MeshDrawCommand` → `MeshDrawPacket`（`BindDrawCommand`）→ 录制流（`m_RecordedLayoutHolds`，`Reset` 归还）全程持有，与缓冲同款；裸指针保留为帧视图。生产者逐条填：`PrimitiveSceneProxy::GetMeshBatches`（静态网格）、`SkeletalMeshSceneProxy`、`SpriteSceneProxy`、`WidgetSceneProxy`（ScreenUI 共享 quad 走 `SpriteQuadMesh::GetVertexInputLayoutRef()`），以及所有经 `MeshPassProcessor::MakeDrawCommand` 出命令的路径（opaque / translucent / shadow 三个 processor 共用同一处转换）。
+- **进程级缓存的生命周期：** 字形布局是 `TextMeshBuilder` 的函数局部 static，由 `TextMeshBuilder::ReleaseSharedLayout()` 在 `RenderSystem::Shutdown` 中、`m_SceneRenderer->Shutdown()` 之后、`RHIDrainAllDeferredDestroys()` 之前释放；共享 quad 布局由 `SpriteQuadMesh::Shutdown()` 在同一处释放。持有它们的是帧内对象（代理 / 命令 / 包 / 录制流），寿命都短于 device，因此**不会把资源钉到进程退出**。字形布局没有可共享的句柄（新增访问器等于新增导出），所以那条路仍以帧视图传递。
+- **不变量写成断言：** `SubmitDrawBuffers` 提交前先问 `GetDeferredUse(packet.VertexInputLayout)`，布局缺失或未实体化一律跳过并限频报告（`Draw not submitted: the bound vertex input layout …`），不再提交注定无效的绘制；索引/非索引两条分支都覆盖。
+- **红灯：** 先红后绿共三例。(a) `scene-proxy-lifetime` "a draw command and its packet keep the vertex layout the asset dropped"：代理删除 + 资产释放后 `CHECK_FALSE( layoutWeak.expired() )` → `values: CHECK_FALSE( true )`——命令与包仍命名已释放的布局；(b) `draw-packet-lifetime` "a draw whose vertex layout is not materialized is not submitted"：布局未实体化仍被提交，`CHECK( rhi.Draws.empty() )` → `CHECK( false )`；(c) 新增"a recorded stream holds the vertex layout it names until it is replayed"断言布局活到 `Replay`。
+- **验证：** `minEngineTests` 与 `Editor` 构建 exit 0；`draw-packet-lifetime` 7 例 / 73 断言、`scene-proxy-lifetime` 12 / 194、`scene-proxy-render-read` 3 / 59、`material-ir` 5 / 79、`sprite-translucency` 2 / 7、`mesh-draw-sort` 3 / 9、`rhi-command-list` 13 / 72、`rhi-deferred-create` 19 / 170、`rhi-deferred-destroy` 16 / 306、`gpu-static-lifetime` 2 / 21、`screen-ui-text` 1 / 2、`screen-ui-image` 3 / 18、`widget-graphic` 4 / 61、`scene-proxy-identity` 7 / 133、`render-command-pipe` 13 / 1813、`vertex-attribute-semantics` 1 / 17 全 PASS；`test smoke` exit 0（34 套件）。导出 3037 → 3037（增量 0，快照未改）。
+- **遗留：** 字形布局仍只有帧视图（拿不到句柄而不新增导出）；`WidgetGraphicComponent` 的 `WidgetDrawData` 只带裸布局指针，text graphic 走 raw 重载；`ShadowPass` 的 PSO 缓存仍以布局裸指针为键（命令持有期间稳定，缓存本身不持句柄）。
+
 ## 2026-10-30 — 绘制借用的几何不再活得比所有者长（"索引缓冲没有 native name"）
 
 - **现象：** PIE 退出、大量 GameObject 销毁之后、`frame roles stopped` 之前一条 `OpenGL draw skipped: the bound index buffer (…) has no native name (36 requested)`；同一次会话的关停计数器 `4253 posted, 3761 created, 492 not needed`。

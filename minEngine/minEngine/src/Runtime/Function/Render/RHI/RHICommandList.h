@@ -232,6 +232,14 @@ namespace minEngine
          * name geometry that still exists when it finally runs.
          */
         std::vector<RHIBufferRef> m_RecordedGeometryHolds;
+        /**
+         * Vertex input layouts the same streams keep alive.
+         *
+         * A layout is what the vertex buffer is read through, so a replayed draw needs it exactly
+         * as much as it needs the buffer: the pass it was made for may have been rebuilt, and the
+         * pipeline state cached against it names the same object.
+         */
+        std::vector<RHIVertexInputLayoutRef> m_RecordedLayoutHolds;
     };
 
     /**
