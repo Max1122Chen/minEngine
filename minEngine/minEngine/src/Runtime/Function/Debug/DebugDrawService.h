@@ -33,6 +33,7 @@ namespace minEngine
         void EnqueueBox(const DebugBoxCommand& command);
         void EnqueueSphere(const DebugSphereCommand& command);
         void EnqueueCapsule(const DebugCapsuleCommand& command);
+        void EnqueueIndexedLines(const DebugIndexedLinesCommand& command);
 
     private:
         std::vector<DebugLineCommand> m_Lines;
@@ -40,6 +41,7 @@ namespace minEngine
         std::vector<DebugBoxCommand> m_Boxes;
         std::vector<DebugSphereCommand> m_Spheres;
         std::vector<DebugCapsuleCommand> m_Capsules;
+        std::vector<DebugIndexedLinesCommand> m_IndexedLines;
 
         std::vector<DebugVertex> m_VerticesDepthTested;
         std::vector<DebugVertex> m_VerticesAlwaysVisible;

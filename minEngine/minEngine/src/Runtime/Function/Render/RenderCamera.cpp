@@ -3,10 +3,16 @@
 #include "Render/RHI/RHIClipSpace.h"
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
 
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace minEngine
 {
+    namespace
+    {
+        constexpr float kMinPositiveLens = 1.0e-4f;
+    }
+
     void RenderCamera::Initialize()
     {
         UpdateViewMatrix();
@@ -14,19 +20,41 @@ namespace minEngine
         UpdateViewProjMatrix();
     }
 
-    void RenderCamera::UpdateViewMatrix()
+    Vector3 RenderCamera::GetForwardDirection() const
     {
         const glm::quat rotationQuat = m_Rotation.ToGlm();
-        const Vector3 forward = glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));
+        return glm::normalize(rotationQuat * Vector3(1.0f, 0.0f, 0.0f));
+    }
+
+    void RenderCamera::UpdateViewMatrix()
+    {
+        const Vector3 forward = GetForwardDirection();
         const Vector3 up = Math::abs(forward.y) > 0.999f ? Vector3(0.0f, 0.0f, 1.0f) : Vector3(0.0f, 1.0f, 0.0f);
         m_ViewMatrix = glm::lookAt(m_Position, m_Position + forward, up);
     }
 
     void RenderCamera::UpdateProjectionMatrix()
     {
+        const float aspect = std::max(m_AspectRatio, kMinPositiveLens);
+
+        if (m_ProjectionMode == ECameraProjectionMode::Orthographic)
+        {
+            const float orthoHeight = std::max(m_OrthoHeight, kMinPositiveLens);
+            const float halfH = orthoHeight * 0.5f;
+            const float halfW = halfH * aspect;
+            m_ProjectionMatrix = RHIClipSpace::MakeOrthographic(
+                -halfW,
+                halfW,
+                -halfH,
+                halfH,
+                m_zNear,
+                m_zFar);
+            return;
+        }
+
         m_ProjectionMatrix = RHIClipSpace::MakePerspective(
             glm::radians(m_FOV),
-            m_AspectRatio,
+            aspect,
             m_zNear,
             m_zFar);
     }
@@ -50,12 +78,19 @@ namespace minEngine
 
         const Matrix4 invViewProj = glm::inverse(m_ViewProjMatrix);
         Vector4 nearWorld = invViewProj * Vector4(ndcX, ndcY, nearNdcZ, 1.0f);
-        Vector4 farWorld = invViewProj * Vector4(ndcX, ndcY, farNdcZ, 1.0f);
         nearWorld /= nearWorld.w;
-        farWorld /= farWorld.w;
 
         Geometry::Ray outRay;
         outRay.Origin = Vector3(nearWorld);
+
+        if (m_ProjectionMode == ECameraProjectionMode::Orthographic)
+        {
+            outRay.Direction = GetForwardDirection();
+            return outRay;
+        }
+
+        Vector4 farWorld = invViewProj * Vector4(ndcX, ndcY, farNdcZ, 1.0f);
+        farWorld /= farWorld.w;
         outRay.Direction = glm::normalize(farWorld - nearWorld);
         return outRay;
     }

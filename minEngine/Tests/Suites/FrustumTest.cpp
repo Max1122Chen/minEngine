@@ -3,6 +3,7 @@
 #include "Render/DrawCommands/MeshBatchCollector.h"
 #include "Render/DrawCommands/MeshCollectContext.h"
 #include "Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Render/RenderCamera.h"
 #include "Render/RHI/RHIClipSpace.h"
 #include "Render/RHI/RHIClipSpaceCapabilities.h"
 
@@ -210,4 +211,55 @@ TEST_CASE("frustum: active-clip FromViewProjection matches explicit NDC helpers 
         CHECK(a.Normal.z == doctest::Approx(b.Normal.z));
         CHECK(a.Distance == doctest::Approx(b.Distance));
     }
+}
+
+TEST_CASE("frustum: orthographic projection matches clip-space ortho [smoke]")
+{
+    using namespace minEngine;
+
+    RenderCamera camera;
+    camera.m_ProjectionMode = ECameraProjectionMode::Orthographic;
+    camera.m_OrthoHeight = 10.0f;
+    camera.m_AspectRatio = 2.0f;
+    camera.m_zNear = 0.5f;
+    camera.m_zFar = 50.0f;
+    camera.SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+    camera.SetRotationEulerDegrees(Vector3(0.0f, 0.0f, 0.0f));
+    camera.Initialize();
+
+    const Matrix4 expected = RHIClipSpace::MakeOrthographic(-10.0f, 10.0f, -5.0f, 5.0f, 0.5f, 50.0f);
+    const Matrix4 actual = camera.GetProjectionMatrix();
+    for (int column = 0; column < 4; ++column)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            CHECK(actual[column][row] == doctest::Approx(expected[column][row]));
+        }
+    }
+}
+
+TEST_CASE("frustum: orthographic screen rays stay parallel [smoke]")
+{
+    using namespace minEngine;
+    using namespace minEngine::Math::Geometry;
+
+    RenderCamera camera;
+    camera.m_ProjectionMode = ECameraProjectionMode::Orthographic;
+    camera.m_OrthoHeight = 20.0f;
+    camera.m_AspectRatio = 1.0f;
+    camera.m_zNear = 1.0f;
+    camera.m_zFar = 100.0f;
+    camera.SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+    camera.SetRotationEulerDegrees(Vector3(0.0f, 0.0f, 0.0f));
+    camera.Initialize();
+
+    const Vector2 bufferSize(100.0f, 100.0f);
+    const Geometry::Ray center = camera.ScreenPointToRay(Vector2(50.0f, 50.0f), bufferSize);
+    const Geometry::Ray corner = camera.ScreenPointToRay(Vector2(10.0f, 10.0f), bufferSize);
+    const Vector3 forward = camera.GetForwardDirection();
+
+    CHECK(glm::dot(center.Direction, forward) == doctest::Approx(1.0f).epsilon(1.0e-4f));
+    CHECK(glm::dot(corner.Direction, forward) == doctest::Approx(1.0f).epsilon(1.0e-4f));
+    CHECK(glm::dot(center.Direction, corner.Direction) == doctest::Approx(1.0f).epsilon(1.0e-4f));
+    CHECK(glm::length(center.Origin - corner.Origin) > 0.1f);
 }

@@ -325,4 +325,24 @@ namespace minEngine
         m_Session.AtlasAsset->SetPaddingMode(mode);
         NotifyChanged();
     }
+
+    void SpriteAtlasEditor::SetSamplerFilter(RHISamplerFilter filter)
+    {
+        if (!m_Session.HasOpenAtlas())
+        {
+            return;
+        }
+        m_Session.AtlasAsset->SetSamplerFilter(filter);
+        NotifyChanged();
+    }
+
+    void SpriteAtlasEditor::SetSamplerAddress(RHISamplerAddress address)
+    {
+        if (!m_Session.HasOpenAtlas())
+        {
+            return;
+        }
+        m_Session.AtlasAsset->SetSamplerAddress(address);
+        NotifyChanged();
+    }
 }

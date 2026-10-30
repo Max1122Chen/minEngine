@@ -1,3 +1,26 @@
+## 2026-10-30 — BUG-SPR-001 SpriteAtlas 开放采样 Filter/Address（对齐 Texture2D）
+
+- **问题（minCraft）：** SpriteAtlas 无作者采样字段；Rebuild 经 `CreateFromPixels` 留下 Texture2D 默认 Linear+Repeat，无法声明 Nearest/Clamp 等，编辑器与自动化亦无配置口。
+- **修复：** 图集级 `m_SamplerFilter` / `m_SamplerAddress`（EditAnywhere；默认 Nearest + ClampToEdge，利于像素图集）；Rebuild / setter / 加载 rebind 写入生成页；Editor 组合框；`SpriteEditorServices::SetAtlasSampler`；Automation `sprite_atlas.set_sampler`。
+- **验证：** `sprite-atlas` 8 例 / 81 断言 PASS（Release bin）；导出 3008→3011（+3：`SetSamplerFilter` / `SetSamplerAddress` / `ApplySamplerToGeneratedTextures`），snapshot 已写。
+- **记录：** [BUG-SPR-001](./bugs/BUG-SPR-001.md) Fixed；生成页假 `Texture2D` 所有权另挂 [TD-055](./TECH_DEBT.md)。
+
+## 2026-10-29 — RND-F29 / RND-F30 实现落地（`feat/render`）
+
+- **RND-F29 S01/S02：** `ECameraProjectionMode` + `m_OrthoHeight`；`RenderCamera::UpdateProjectionMatrix` / 正交平行 `ScreenPointToRay`；`CameraComponent` 模式与 OrthoHeight 推送。
+- **RND-F30 S01/S02：** `DebugDraw::IndexedLines`（两重载，`MINENGINE_API`）+ `DebugIndexedLinesCommand`；CPU 展开；`DebugDrawPass` 双 PSO（Tested depth-test / AlwaysVisible depth-off），同 VB 分区 `Draw`；Snapshot 含 IndexedLines。
+- **Tests：** `frustum` 10/10（含正交 Proj + 平行射线）；`scene-debug-draw-snapshot` 5/5（含 IndexedLines Tested / AlwaysVisible）。
+- **Exports：** 3003 → 3008（+5）：`CameraComponent::SetOrthoHeight` / `SetProjectionMode`；`DebugDraw::IndexedLines`×2；`RenderCamera::GetForwardDirection`。snapshot 已重写。构建 cache 将 `MINENGINE_EXPORT_BUDGET` 对齐 3500（旧 cache 卡在 3000）。
+- **Next：** 可选收口 Done（Inspector / ImGuizmo）；commit 前主人验收；minCraft 可用 `Box` 或 `IndexedLines` + `Tested` 描边。
+
+## 2026-10-29 — RND-F29 / RND-F30 Design Draft（`feat/render`）
+
+- **Branch / tree：** `minEngine-render` 上 `feat/render` fast-forward 到主树 tip `4bb56d13`；文档与 Registry 在此树推进。
+- **RND-F29：** 正交相机补充设计 — `ECameraProjectionMode` + OrthoHeight；复用 `RHIClipSpace::MakeOrthographic`；正交 `ScreenPointToRay` 平行射线。[Design](./Render/RND-F29_ORTHOGRAPHIC_CAMERA_DESIGN.md)
+- **RND-F30：** DebugDraw `IndexedLines`（顶点+索引 → CPU 展开 LineList）+ Pass 双 PSO 补全 `AlwaysVisible`；瞄准描边默认 `Tested`（读深度、不写）。锚点：UE `DrawDebugHelpers.h`（`DrawDebugLine` / `DrawDebugMesh`）。[Design](./Render/RND-F30_DEBUG_DRAW_INDEXED_LINES_DESIGN.md)
+- **Registry / ACTIVE_WORK：** 两行 Draft 已挂；实现顺序 F29 → F30（正常顺序）。
+- **Next：** 主人确认 Draft → Planned 后开工 S01；编码前可不跑 design-review 仪式（均为 L1）。
+
 ## 2026-10-29 — ImGui 纹理归位的两处回归：等待方持住请求 + 释放投给所属设备的队列
 
 - **问题（两条独立，都已证伪/证实到行号）：** ① Multi 拓扑视口永久 "Scene color texture is not ready."、日志 0 条错误：`EditorRHIImGuiTexture::Request` 把绑定交给 `ScheduleNativeCreate` 后，视口同帧拿到 `ImTextureID_Invalid` 就 `Reset`，旧 `Reset` 立即释放绑定 → 队列 lambda 成唯一持有者 → `RHIDeferredCreateQueue` 的 `use_count() == 1` 优化判定 `NotNeeded`，**永不创建**（Single 下 `RHIGraphicsRole::IsCurrent()` 为真、创建同步完成，故只 Multi 显形）。② 每次 ImGui 纹理释放都报 `last reference dropped while no RHI was alive`：`RequestRelease` 走 `PostNativeDestroy` → `RHIDeferredDestroyQueue::s_ActiveQueue`，而该类**未导出**，`inline static` 在编辑器 DLL 与引擎 DLL 各一份——引擎注册的那份，编辑器这份恒空。
@@ -39,6 +62,7 @@
 - **红灯：** 先写 4 例（作用域结束恢复、两层嵌套、并发认领/查询、跨线程抢占计数）。旧实现下"—离开作用域后 `GetThreadId(Render)` 仍是调用线程"首例即红（`CHECK( 0xdc == thread::id of a non-executing thread )`）。用例运行器带 `abort-after=1`，一次只暴露首个失败断言，嵌套例与抢占计数例由同一处缺失（析构空实现、认领路径无计数）决定；并发例在旧实现下不会失败（写序恰好是"先 id 后 bound"），它钉的是新契约的不变量。
 - **验证：** `minEngineTests` / `Editor` 构建 exit 0；`frame-threading` 13 例 / 85 断言（原 9 例 / 49 断言）、`task-system` 23/163、`contract-violations` 7/46 全绿（在 `minEngine/bin` 下跑）；`test smoke` exit 0（24 套件）；导出 3003 → 3003（增量 0，无符号消失）。
 - **残留：** 身份表只存 tid，**分不出"持有者已经退出"和"持有者还活着"**——角色线程退出却不交还角色时，之后的临时认领会按抢占被拒（`TaskSystem::StopFrameRoles` 正常路径会交还，生产路径不触发）；`BindCurrentThread` 仍是无条件占用（角色线程用它声明所有权，不做仲裁）；"Multi 下可以临时认领空闲角色"这条契约写在头文件里，没有任何编译期或运行期手段强制调用方说明理由。
+
 
 ## 2026-10-29 — 录制期上传成为命令：`RHICommandList::UpdateBuffer`（TD-045 收口）
 

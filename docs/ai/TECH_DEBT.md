@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-10-27（TD-039 材质渲染对象侧化收口）
+Last updated: 2026-10-30（TD-055 SpriteAtlas 生成页假 Texture2D 债务）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -62,6 +62,8 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-050 | 导出预算值钉在**每个消费者的构建缓存**里 | BUILD | **Medium** | Open | [CORE-F47](./Platform/Core/CORE-F47_FRAME_THREAD_CONTRACTS_DESIGN.md) | `MINENGINE_EXPORT_BUDGET` 是 CMake cache 变量：引擎侧改默认值不会传播到已 configure 过的消费者构建目录。实测 minCraft 的 build 仍钉着 3000，引擎导出涨到 3014 后**消费者链接期直接失败**（`FAIL: NumberOfFunctions 3014 > budget 3000`），而引擎自己的构建是绿的。缓解：链接期断言改为从提交的导出快照派生上限（例如快照数 + 25），让判据跟着代码走而不是跟着缓存走；在此之前，升级引擎后必须重新 configure 每个消费者构建目录。 |
 | TD-049 | `test full` 不是门禁的一部分，且本机不绿 | TEST | **Low** | Open | `scripts/verify.ps1` · `material-compile-cache` | 门禁只跑 `test smoke`（smoke exit 0）。`test full` 在本机稳定红在 `material-compile-cache: one widget batch compiles each stage once`（`spirvArtifacts=0`，同一进程里前面的 `sprite-runtime-consume` 已编译过 `SpriteUnlit`）；该套件单独跑 8/8 全绿。属进程内跨套件状态隔离问题，与本次改动无关，但缺一个能跑全量的稳定基线。 |
 | TD-051 | 进程级 GPU 资源注册表是**每模块一份**的 header 静态 | RND / RHI / BUILD | **High** | Open | `RHIDeferredDestroyQueue::s_ActiveQueue` · [BUG-EDITOR-010](./bugs/BUG-EDITOR-010.md) | `RHIDeferredDestroy.h` 把"当前 RHI 的销毁队列"存成类内 `inline static`，而 `RHIDeferredDestroyQueue` 没有导出：每个包含该头的模块各有一份，引擎 DLL 里注册的那份，编辑器 DLL / 第三方模块那份永远是空的。编辑器 ImGui 纹理释放曾因此整段失效（每次都报 "no RHI was alive" 并把标识符丢掉）。本次只把编辑器那条路改成"投递给绑定所持 RHI 自己的队列"（`EditorRHIImGuiTexture::RequestRelease`），注册表本体没动：任何**其它**模块（minCraft 及未来的编辑器插件）第一次在模块内析构引擎侧 GPU 资源仍会踩同一坑。真正的修法是把注册表移进引擎的编译单元并以已导出符号访问，或把 `RHIDeferredDestroyQueue` 整类导出——两条都动导出表，故记为债务。 |
+| TD-055 | SpriteAtlas 生成页用假 `Texture2D` 资产壳，而非 `RHITexture` + Atlas 采样 | SPR / RND | **Medium** | Open | SPR-F02 MVP · [BUG-SPR-001](./bugs/BUG-SPR-001.md)（采样字段已补，所有权未改） | Rebuild 经 `CreateFromPixels` 造带 GUID 的 `Texture2D`；Source 应是资产，Generated/Baked 只是 GPU 产物。消费面（Sprite / Component / MaterialFactory）仍认 `Texture2D*`。目标态：Atlas 持 `RHITexture` + Filter/Address；Sprite 绑定时给 RHI+Sampler+UV；假资产壳去掉。开 Feature + Design 后再动。 |
+
 
 ---
 

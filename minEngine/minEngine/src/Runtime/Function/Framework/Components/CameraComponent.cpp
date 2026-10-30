@@ -1,6 +1,5 @@
 #include "CameraComponent.h"
 
-#include "Runtime/Function/Render/RenderCamera.h"
 #include "Runtime/Function/Render/SceneViewport.h"
 #include "Runtime/Function/Framework/GameObject/GameObject.h"
 #include "Runtime/Function/Framework/Scene/Scene.h"
@@ -19,9 +18,23 @@ namespace minEngine
     {
     }
 
+    void CameraComponent::SetProjectionMode(ECameraProjectionMode mode)
+    {
+        m_ProjectionMode = mode;
+        ApplyLensToRenderCamera();
+        MarkRenderStateDirty();
+    }
+
     void CameraComponent::SetFieldOfView(float degrees)
     {
         m_FOV = degrees;
+        ApplyLensToRenderCamera();
+        MarkRenderStateDirty();
+    }
+
+    void CameraComponent::SetOrthoHeight(float height)
+    {
+        m_OrthoHeight = height;
         ApplyLensToRenderCamera();
         MarkRenderStateDirty();
     }
@@ -47,7 +60,9 @@ namespace minEngine
             return;
         }
 
+        m_RenderCamera->m_ProjectionMode = m_ProjectionMode;
         m_RenderCamera->m_FOV = m_FOV;
+        m_RenderCamera->m_OrthoHeight = m_OrthoHeight;
         m_RenderCamera->m_zNear = m_zNear;
         m_RenderCamera->m_zFar = m_zFar;
         // Aspect is owned by the presenting SceneViewport (buffer size); leave m_AspectRatio.
