@@ -111,6 +111,18 @@
 - **Verification:** `minEngineTests` / `Editor` 构建通过；`test smoke` exit 0；`material-proxy-data` 7/125、`scene-proxy-lifetime` 5/79、`scene-retirement` 5/162、`scene-proxy-render-read` 3/59、`sprite-translucency` 2/7、`screen-ui-text` 1/2、`material-ir` 5/79 全绿；导出 2998 → 2997（只少 `GetDeferredObjectReleaseQueue`，无新增）
 - **Next:** P2 代理删除两段式（落地后可删 `RenderScene` 两槽 keep-alive 与 `MeshDrawCommand` 里的裸代理指针）
 
+## 2026-10-30 — 跨切片组合缺陷收口（3 次真机回归）
+
+- **现象与根因（全部只在真机暴露，headless 全绿）：**
+  1. **Multi 下 PIE 世界消失**：共享 per-frame UBO 在录制期被 ScreenUIPass 覆盖 → 3D draw 读到 UI 正交矩阵。修法：屏幕空间独立 per-frame 块（临时），后续由"上传走命令列表"根治（TD-045 已收口）。
+  2. **ImGui 纹理标识符**：延迟创建队列的 "NotNeeded"（只剩队列一个引用就不创建）× 注册表改 weak_ptr → 请求永不实体化；以及 header 里的 `inline static` 死在未导出类里 → 编辑器投进了自己那份空队列，设备还活着就报 2000+ 条 "no RHI alive"。修法：pin 强持有未实体化的请求；进程级状态移进已导出的翻译单元。
+  3. **Multi 视口永远 "Scene color texture is not ready"**：`RenderGraph::UnregisterExternalTexture` 无条件清槽（即使该名字从未注册为 external）→ SceneColor 每帧重建 → pin 的匹配键（对象地址）永不命中。修法：只清"确实由 external 装进去的槽"（并把 `Reset()` 的反向同病一并修掉）。
+- **结构性发现：** 契约违规的发布只在 `Engine::Run` 里调用，而编辑器有自己的帧循环 → 本轮新增的三项计数在产品宿主上**一行都不打印**。已把 drain 挂到 `Engine::CompleteFrameReleases`（编辑器与 `Run` 两条路径都必经）。
+- **验证：** 构建（minEngineTests / Editor）、`test smoke` exit 0（34 套件）、导出 3019 / 3500；每片附真机或单元红灯证据。
+- **新增缺陷记录：** BUG-EDITOR-010（ImGui 纹理标识符）、BUG-RENDER-017（环境贴图烘焙）、BUG-RENDER-018（管道发布顺序）、BUG-AUDIO-001（音频剪辑生命周期）。
+- **登记债务：** TD-046..TD-052；其中 **TD-052（Vulkan 分离拓扑帧上下文）标注"启用 Vulkan 多线程前必须先修"**，当前 VK 未启用，暂缓。
+- **给消费者仓库的待办：** `minCraft` / `minCraft-gameplay` / `minCraft-runtime` / `minCraft-ui` 四个分支的 `ChunkMeshSceneProxy` 仍未给 `MeshBatch` 填 `m_IndexCount`/`m_VertexCount` → 用当前引擎重建后**世界不绘制**；修法与 `minCraft-render` 已落地的一致（槽位加两个字段、上传时从 `EntityMesh` 取值、emit 时带出）。
+
 ## 2026-10-29 — CORE-F47 遗留审查与收口（四路只读审查 → 11 个修复切片）
 
 - **背景：** 帧线程三条硬约束落地后做了一次全局审查（Core 服务 / 渲染侧 / 编辑器与 PIE / 帧线程基础设施），判据七条：越界调 GPU、录制期立即操作、渲染侧解引用游戏对象、无同步共享状态、"单线程/单帧在飞"的隐式假设、关停顺序、缺断言计数。报告见 [FRAME_THREAD_LEFTOVER_AUDIT](./Platform/Core/FRAME_THREAD_LEFTOVER_AUDIT.md)。

@@ -16,7 +16,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 序 | ID | 标题 | Status | Design |
 |----|-----|------|--------|--------|
 | — | CORE-F42 | 指针/光标策略服务 | **Done**（S01–S06） | [Design](./Platform/Core/CORE-F42_POINTER_POLICY_DESIGN.md) · [S01](./Platform/Core/CORE-F42_S01_FOCUS_SCOPED_POINTER_IMPLEMENTATION.md) · [S02–S06](./Platform/Core/CORE-F42_S02_S05_POINTER_POLICY_SERVICE_IMPLEMENTATION.md) · `test pointer-policy` |
-| 1 | CORE-F47 | 帧线程契约（帧号所有权 · 资源所有权 · 异常边界 · 退役闸口 · 端到端背压） | **In Progress**（S01–S04 落地；待 PIE 手验 + 外部宿主重建） | [Design](./Platform/Core/CORE-F47_FRAME_THREAD_CONTRACTS_DESIGN.md) · [Review](./Platform/Core/FRAME_THREADING_SYSTEM_REVIEW.md) |
+| 1 | CORE-F47 | 帧线程契约（三条硬约束 + 遗留审查收口） | **In Progress**（引擎侧重构与 11 个遗留切片完成，smoke 34 套件绿；剩 Vulkan 帧上下文 TD-052 与 4 项待决策，VK 暂不启用） | [Design](./Platform/Core/CORE-F47_FRAME_THREAD_CONTRACTS_DESIGN.md) · [Review](./Platform/Core/FRAME_THREADING_SYSTEM_REVIEW.md) |
 | — | CORE-F46 | TaskSystem 统一门面（角色线程 + ParallelFor + 小 DAG） | **Done**（S00–S03） | [Design](./Platform/Core/CORE-F46_TASK_SYSTEM_UNIFIED_FACADE_DESIGN.md) |
 | — | CORE-F45 | 帧线程分离（Game \| Render \| RHI） | **Done**（S00–S03；S04 吸收进 F46） | [综述](./Platform/Core/CORE-F45_FRAME_THREAD_SEPARATION_DESIGN.md) · [Game](./Platform/Core/CORE-F45_GAME_THREAD_DESIGN.md) · [Render](./Platform/Core/CORE-F45_RENDER_THREAD_DESIGN.md) · [RHI](./Platform/Core/CORE-F45_RHI_THREAD_DESIGN.md) |
 | — | RND-F27 | RDG RegisterExternal（SceneColor 外部物理绑定） | **Done**（S01；S02 可选） | [Design](./Render/RND-F27_RDG_REGISTER_EXTERNAL_DESIGN.md) |
