@@ -2,8 +2,12 @@
 
 #include "Support/HeadlessTestRHI.h"
 
+#include "Runtime/Core/Threading/FrameThreading.h"
+#include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
+#include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
@@ -12,7 +16,16 @@
 
 #include <utility>
 
+using minEngine::FrameThreading;
+using minEngine::FrameThreadKind;
+using minEngine::FrameThreadMode;
+using minEngine::MeshDrawCommand;
 using minEngine::MeshDrawPacket;
+using minEngine::RHIBuffer;
+using minEngine::RHIBufferCreateDesc;
+using minEngine::RHIBufferRef;
+using minEngine::RHIBufferUsage;
+using minEngine::ScopedFrameThreadKind;
 using minEngine::RHICommandList;
 using minEngine::RHIGraphicsPSODesc;
 using minEngine::RHIShaderBindingSet;
@@ -33,6 +46,51 @@ namespace
         RHIGraphicsPSODesc desc;
         packet.PipelineState = rhi.RHICreateGraphicsPipelineState(desc);
         return packet;
+    }
+
+    /**
+     * A geometry handle whose native object is a flag: not ready until the graphics role has run
+     * its creation, exactly like a backend buffer created off that role.
+     */
+    class ProbeGeometryBuffer final : public RHIBuffer
+    {
+    public:
+        explicit ProbeGeometryBuffer(const RHIBufferCreateDesc& desc)
+            : m_Desc(desc)
+        {
+        }
+
+        const RHIBufferCreateDesc& GetDesc() const override { return m_Desc; }
+        void UpdateSubresource(const void*, uint32_t, uint32_t) override {}
+        bool CreateNativeResources() override
+        {
+            m_bHasNativeObject = true;
+            return true;
+        }
+        bool IsReady() const override { return m_bHasNativeObject; }
+
+    private:
+        RHIBufferCreateDesc m_Desc;
+        bool m_bHasNativeObject = false;
+    };
+
+    RHIBufferCreateDesc MakeIndexBufferDesc()
+    {
+        RHIBufferCreateDesc desc;
+        desc.Usage = RHIBufferUsage::Index;
+        desc.ByteSize = 36u * sizeof(uint32_t);
+        desc.ElementCount = 36u;
+        return desc;
+    }
+
+    /** Routes every buffer this device hands out through the deferred-create policy. */
+    void InstallDeferredBufferFactory(HeadlessTestRHI& rhi)
+    {
+        rhi.CreateBufferHook = [&rhi](const RHIBufferCreateDesc& desc, const void*) {
+            return rhi.ScheduleNativeCreate(
+                std::make_shared<ProbeGeometryBuffer>(desc),
+                "probe geometry buffer");
+        };
     }
 }
 
@@ -134,4 +192,85 @@ TEST_CASE("draw-packet-lifetime: a recorded set is held until the stream is repl
     CHECK(rhi.RHIDrainAllDeferredDestroys() == 2);
     CHECK(probe->NativesDestroyed.load() == 2);
     CHECK(probe->NativesRefused.load() == 0);
+}
+TEST_CASE("draw-packet-lifetime: the geometry a packet names is still built after its producer lets go [smoke]")
+{
+    // The topology where a buffer cannot be created by the caller: the handle comes back complete
+    // and its native object waits for the graphics role.
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    CHECK(!indexBuffer->IsReady());
+    CHECK(rhi.GetDeferredCreateQueue().GetPendingCount() == 1);
+
+    MeshDrawCommand command;
+    command.m_IndexBuffer = indexBuffer.get();
+    command.m_IndexCount = 36;
+    MeshDrawPacket packet;
+    packet.BindDrawCommand(command);
+
+    // The producer hands the geometry to the frame and stops holding it. What the packet names is
+    // what the frame draws, so the packet is the last owner of that handle from here on - or the
+    // request has nobody left to ask for it and the frame-start drain skips it as unwanted.
+    indexBuffer.reset();
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+
+    CHECK(rhi.GetDeferredCreateQueue().GetNotNeededCount() == 0);
+    CHECK(rhi.GetDeferredCreateQueue().GetCreatedCount() == 1);
+
+    threading.Shutdown();
+}
+
+TEST_CASE("draw-packet-lifetime: a draw whose geometry has no native object is not submitted [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    REQUIRE(!indexBuffer->IsReady());
+
+    MeshDrawCommand command;
+    command.m_IndexBuffer = indexBuffer.get();
+    command.m_IndexCount = 36;
+
+    MeshDrawPacket packet = MakePacket(rhi);
+    packet.BindDrawCommand(command);
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+
+    // The handle exists and is held; its native object waits for the frame start that has not run
+    // yet. Submitting the draw now would name no data, so the submission is what has to wait.
+    cmdList.SubmitMeshDrawPacket(packet);
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+    REQUIRE(indexBuffer->IsReady());
+
+    // The frame after the creation names the object it waited for.
+    cmdList.SubmitMeshDrawPacket(packet);
+    REQUIRE(rhi.Draws.size() == 1u);
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(rhi.Draws[0].bIndexed);
+    CHECK(rhi.Draws[0].Count == 36u);
+    CHECK(rhi.Draws[0].IndexBuffer == indexBuffer.get());
+
+    threading.Shutdown();
 }

@@ -183,11 +183,42 @@ namespace minEngine::Testing
             CreateVertexInputLayoutHook;
         std::function<std::shared_ptr<RHIShaderBindingSet>(RHIShaderBindingSetLayout*)>
             CreateShaderBindingSetHook;
+        /**
+         * Buffer factory hook. A suite that reasons about geometry lifetime installs a probe that
+         * goes through RHI::ScheduleNativeCreate, so the handle exists before its native object and
+         * the queue's "nobody wants it" decision is exercised for real.
+         */
+        std::function<std::shared_ptr<RHIBuffer>(const RHIBufferCreateDesc&, const void*)> CreateBufferHook;
 
         /** Every bind the device was handed, in order: the index and the set the stream named. */
         std::vector<std::pair<uint32_t, RHIShaderBindingSet*>> BoundSets;
         /** Binds whose set named nothing at all. */
         int NullSetBinds = 0;
+
+        /**
+         * One draw the device was handed, with the geometry bound when it arrived.
+         *
+         * A real backend refuses a draw whose geometry has no native object instead of handing it
+         * to the driver, so the double answers the same question: a recorded draw whose bound
+         * buffer is not ready is the state that must never reach the device, and it is counted
+         * here so a suite can assert on it rather than on a log line.
+         */
+        struct RecordedDraw
+        {
+            bool bIndexed = false;
+            uint32_t Count = 0;
+            RHIBuffer* VertexBuffer = nullptr;
+            RHIBuffer* IndexBuffer = nullptr;
+            bool bNamelessGeometry = false;
+        };
+
+        std::vector<RecordedDraw> Draws;
+        /** Draws refused-by-contract: the geometry they named had no native object. */
+        int NamelessDraws = 0;
+
+        /** The geometry last bound, so a draw can be attributed to what it named. */
+        RHIBuffer* BoundVertexBuffer = nullptr;
+        RHIBuffer* BoundIndexBuffer = nullptr;
 
         void Initialize() override {}
         void Shutdown() override {}
@@ -203,8 +234,14 @@ namespace minEngine::Testing
         {
             return nullptr;
         }
-        std::shared_ptr<RHIBuffer> RHICreateBuffer(const RHIBufferCreateDesc&, const void*) override
+        std::shared_ptr<RHIBuffer> RHICreateBuffer(
+            const RHIBufferCreateDesc& desc,
+            const void* initialData) override
         {
+            if (CreateBufferHook)
+            {
+                return CreateBufferHook(desc, initialData);
+            }
             return nullptr;
         }
         std::shared_ptr<RHIShader> RHICreateShader(
@@ -274,16 +311,46 @@ namespace minEngine::Testing
         }
         void RHICmdTransition(const RHITextureTransitionInfo&) override {}
         void RHICmdSetViewport(uint32_t, uint32_t, uint32_t, uint32_t, bool) override {}
-        void RHICmdSetVertexBuffer(RHIBuffer*, uint32_t) override {}
-        void RHICmdSetIndexBuffer(RHIBuffer*) override {}
-        void RHICmdDrawIndexed(uint32_t, uint32_t, int32_t) override {}
-        void RHICmdDraw(uint32_t, uint32_t) override {}
+        void RHICmdSetVertexBuffer(RHIBuffer* vertexBuffer, uint32_t) override
+        {
+            BoundVertexBuffer = vertexBuffer;
+        }
+        void RHICmdSetIndexBuffer(RHIBuffer* indexBuffer) override
+        {
+            BoundIndexBuffer = indexBuffer;
+        }
+        void RHICmdDrawIndexed(uint32_t indexCount, uint32_t, int32_t) override
+        {
+            RecordDraw(true, indexCount, BoundVertexBuffer, BoundIndexBuffer);
+        }
+        void RHICmdDraw(uint32_t vertexCount, uint32_t) override
+        {
+            RecordDraw(false, vertexCount, BoundVertexBuffer, nullptr);
+        }
         void RHICmdGenerateMips(RHITexture*) override {}
         void RHISetBackbufferClearColor(const minEngine::Math::Vector3&) override {}
         void RHIClearBackbuffer() override {}
         void RHIPresent() override {}
 
     private:
+        /** The backend's own answer to "would this draw name data": no object, no draw. */
+        void RecordDraw(bool bIndexed, uint32_t count, RHIBuffer* vertexBuffer, RHIBuffer* indexBuffer)
+        {
+            RecordedDraw draw;
+            draw.bIndexed = bIndexed;
+            draw.Count = count;
+            draw.VertexBuffer = vertexBuffer;
+            draw.IndexBuffer = indexBuffer;
+
+            const RHIBuffer* named = indexBuffer != nullptr ? indexBuffer : vertexBuffer;
+            draw.bNamelessGeometry = named != nullptr && !named->IsReady();
+            if (draw.bNamelessGeometry)
+            {
+                ++NamelessDraws;
+            }
+            Draws.push_back(draw);
+        }
+
         std::shared_ptr<GpuHandleProbe> m_Probe;
         uint32_t m_NextSetSerial = 1;
     };
