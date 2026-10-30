@@ -45,6 +45,7 @@
 #include "Suites/PlayMainCameraTest.h"
 #include "Suites/AutomationPipeInterruptTest.h"
 #include "Suites/MeshDrawSortTest.h"
+#include "Suites/MeshAssemblyDeterminismTest.h"
 #include "Suites/UILayoutTest.h"
 #include "Suites/ScreenUIHitTest.h"
 #include "Suites/ScreenUIButtonTest.h"
@@ -757,6 +758,23 @@ namespace minEngine
             }
         };
 
+
+        struct MeshAssemblyDeterminismTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{"mesh-assembly-determinism", "Mesh Assembly Determinism", true, true, false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'mesh-assembly-determinism'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "mesh-assembly-determinism",
+                    context.GetCommandLine().TestKind);
+            }
+        };
 
         struct Texture2DCookTestSuiteTraits
         {
@@ -1805,6 +1823,7 @@ namespace minEngine
         using PlayMainCameraSuite = TypedTestSuite<PlayMainCameraTestSuiteTraits>;
         using AutomationPipeInterruptSuite = TypedTestSuite<AutomationPipeInterruptTestSuiteTraits>;
         using MeshDrawSortSuite = TypedTestSuite<MeshDrawSortTestSuiteTraits>;
+        using MeshAssemblyDeterminismSuite = TypedTestSuite<MeshAssemblyDeterminismTestSuiteTraits>;
         using Texture2DCookSuite = TypedTestSuite<Texture2DCookTestSuiteTraits>;
         using TextureSamplerSuite = TypedTestSuite<TextureSamplerTestSuiteTraits>;
         using SpriteAtlasSuite = TypedTestSuite<SpriteAtlasTestSuiteTraits>;
@@ -1907,6 +1926,7 @@ namespace minEngine
             registry.Register(PlayMainCameraSuite::Get());
             registry.Register(AutomationPipeInterruptSuite::Get());
             registry.Register(MeshDrawSortSuite::Get());
+            registry.Register(MeshAssemblyDeterminismSuite::Get());
             registry.Register(Texture2DCookSuite::Get());
             registry.Register(TextureSamplerSuite::Get());
             registry.Register(SpriteAtlasSuite::Get());

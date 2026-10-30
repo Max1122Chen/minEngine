@@ -4,10 +4,7 @@
 #include "Runtime/Core/Math/Geometry/Frustum.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
 #include "Runtime/Function/Render/RenderScene.h"
-#include "Runtime/Function/Render/DrawCommands/MeshBatchCollector.h"
-#include "Runtime/Function/Render/DrawCommands/MeshCollectContext.h"
-#include "Runtime/Function/Render/DrawCommands/MeshPassProcessor.h"
-#include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Runtime/Function/Render/RenderPipeline/MeshAssemblyChunk.h"
 #include "Runtime/Function/Render/SceneProxies/WidgetSceneProxy.h"
 #include "Runtime/Function/Render/ScreenUI/ScreenUICoords.h"
 
@@ -22,89 +19,15 @@
  * builders read - cached bounds, the widget draw bit, the canvas mapping - are exactly the contract
  * a test has to pin down. Reaching them from the test binary any other way would mean exporting
  * more of the renderer, and the export table has no headroom to spend on test reachability.
+ *
+ * The primitive queue is assembled by the chunked builder in MeshAssemblyChunk.h; this header only
+ * keeps the entry point the pipeline and its tests already call.
  */
 namespace minEngine
 {
     inline void BuildPrimitiveRenderQueue(SceneRenderContext& ctx, const Math::Geometry::Frustum* mainFrustum)
     {
-        ctx.OpaqueQueue.clear();
-        ctx.TranslucentQueue.clear();
-        ctx.ShadowCasterQueue.clear();
-
-        RenderScene* renderScene = ctx.Scene;
-        if (!renderScene)
-        {
-            return;
-        }
-
-        const bool cullEnabled = mainFrustum != nullptr;
-
-        MeshBatchCollector mainCollector;
-        MeshBatchCollector shadowOnlyCollector;
-
-        MeshCollectContext mainCollectContext;
-        mainCollectContext.Purpose = MeshCollectPurpose::MainView;
-        if (cullEnabled)
-        {
-            mainCollectContext.ViewFrustum = mainFrustum;
-        }
-
-        MeshCollectContext shadowOnlyCollectContext;
-        shadowOnlyCollectContext.Purpose = MeshCollectPurpose::ShadowOnly;
-        // No main-view frustum: sub-culling would drop casters outside the camera cone.
-
-        for (PrimitiveSceneProxy* primitiveProxy : renderScene->m_PrimitiveSceneProxies)
-        {
-            // A removal command has already taken this proxy out of the draw set. The flag is
-            // written where those commands run, so this decision never reads a game-role pointer
-            // that the game role may be mutating or have freed.
-            if (!primitiveProxy || primitiveProxy->m_bPendingRemove)
-            {
-                continue;
-            }
-
-            // Hidden primitives stay registered and keep ticking; they only stop producing draw
-            // and shadow output. The game thread already decided that and stored it on the proxy,
-            // and both collectors are fed from this loop, so one guard covers both.
-            if (!primitiveProxy->m_Enabled)
-            {
-                continue;
-            }
-
-            // The box was captured on the game role. Resolving it here would reach the component,
-            // which is exactly what is gone while a queued removal waits for the frame to end.
-            const Math::Geometry::AABB worldBounds = primitiveProxy->ResolveWorldBounds();
-
-            bool bMainViewVisible = true;
-            if (cullEnabled && worldBounds.IsValid())
-            {
-                bMainViewVisible = mainFrustum->Intersect(worldBounds);
-            }
-
-            const bool bWantShadowCollect = ctx.bEnableShadows && primitiveProxy->m_CastShadow;
-            if (!bMainViewVisible && !bWantShadowCollect)
-            {
-                continue;
-            }
-
-            if (bMainViewVisible)
-            {
-                primitiveProxy->GetMeshBatches(mainCollector, mainCollectContext);
-            }
-            else
-            {
-                primitiveProxy->GetMeshBatches(shadowOnlyCollector, shadowOnlyCollectContext);
-            }
-        }
-
-        OpaqueMeshPassProcessor opaqueProcessor(ctx.OpaqueQueue);
-        TranslucentMeshPassProcessor translucentProcessor(ctx.TranslucentQueue);
-        ShadowDepthMeshPassProcessor shadowProcessor(ctx.ShadowCasterQueue);
-
-        mainCollector.DispatchTo(opaqueProcessor);
-        mainCollector.DispatchTo(translucentProcessor);
-        mainCollector.DispatchTo(shadowProcessor);
-        shadowOnlyCollector.DispatchTo(shadowProcessor);
+        BuildPrimitiveRenderQueueChunked(ctx, mainFrustum, MeshAssemblySchedule{}, nullptr);
     }
 
     inline void BuildScreenUIDrawQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)

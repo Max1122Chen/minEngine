@@ -74,6 +74,7 @@ namespace minEngine
             "scene-proxy-identity",
             "editor-imgui-texture",
             "scene-debug-draw-snapshot",
+            "mesh-assembly-determinism",
         };
 
         std::vector<ITestSuite*> ordered;
