@@ -66,6 +66,8 @@ namespace minEngine
         void SetMaxSize(int32_t maxSize);
         void SetPadding(int32_t padding);
         void SetPaddingMode(SpriteAtlasPaddingMode mode);
+        void SetSamplerFilter(RHISamplerFilter filter);
+        void SetSamplerAddress(RHISamplerAddress address);
 
     private:
         SpriteAtlasInspectorSource m_InspectorSource;

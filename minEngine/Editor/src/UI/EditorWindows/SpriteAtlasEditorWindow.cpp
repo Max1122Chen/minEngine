@@ -109,6 +109,28 @@ namespace minEngine
             editor->SetPaddingMode(static_cast<SpriteAtlasPaddingMode>(paddingMode));
         }
 
+        int samplerFilter = static_cast<int>(atlas.GetSamplerFilter());
+        const char* filterItems[] = {"Nearest", "Linear"};
+        if (ImGui::Combo(
+                "SamplerFilter",
+                &samplerFilter,
+                filterItems,
+                static_cast<int>(IM_ARRAYSIZE(filterItems))))
+        {
+            editor->SetSamplerFilter(static_cast<RHISamplerFilter>(samplerFilter));
+        }
+
+        int samplerAddress = static_cast<int>(atlas.GetSamplerAddress());
+        const char* addressItems[] = {"Repeat", "MirroredRepeat", "ClampToEdge", "ClampToBorder"};
+        if (ImGui::Combo(
+                "SamplerAddress",
+                &samplerAddress,
+                addressItems,
+                static_cast<int>(IM_ARRAYSIZE(addressItems))))
+        {
+            editor->SetSamplerAddress(static_cast<RHISamplerAddress>(samplerAddress));
+        }
+
         ImGui::Separator();
         ImGui::Text("Members (%zu)", atlas.GetMembers().size());
 

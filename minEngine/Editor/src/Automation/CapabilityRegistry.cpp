@@ -89,6 +89,7 @@ namespace minEngine
         Add({"sprite_atlas", "create", "asset", "sprite_atlas.create", false, false, "Create empty SpriteAtlas"});
         Add({"sprite_atlas", "add_members", "asset", "sprite_atlas.add_members", false, false, "Add Sprite members"});
         Add({"sprite_atlas", "set_padding", "asset", "sprite_atlas.set_padding", false, false, "Set atlas padding/mode"});
+        Add({"sprite_atlas", "set_sampler", "asset", "sprite_atlas.set_sampler", false, false, "Set atlas sampler filter/address"});
         Add({"sprite_atlas", "rebuild", "asset", "sprite_atlas.rebuild", false, false, "Rebuild atlas (needs RHI)"});
         Add({"sprite_atlas", "save", "asset", "sprite_atlas.save", false, false, "Save SpriteAtlas"});
         Add({"sprite_atlas", "create_from_selection", "asset", "sprite_atlas.create_from_selection", false, false, "Create atlas from Sprite paths"});

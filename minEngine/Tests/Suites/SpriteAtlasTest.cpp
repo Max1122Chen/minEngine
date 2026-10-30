@@ -221,6 +221,60 @@ TEST_CASE("sprite-atlas: rebuild packs two sprites onto one texture [full]")
     CHECK(uvDiffer);
 }
 
+TEST_CASE("sprite-atlas: rebuild applies authored sampler modes [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    ScopedObjectManager objectManagerScope;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    ImagePixels pixels = MakeSolidPixels(4, 4, 255, 0, 0, 255);
+    std::shared_ptr<Texture2D> source =
+        Texture2DLoader::CreateFromPixels(rhi, pixels, "SpriteAtlasSampler_Src", GenerateGUID());
+    std::shared_ptr<Sprite> sprite = NewObject<Sprite>("SamplerSprite");
+    sprite->ConfigureFromTexture(source, Vector4(0, 0, 4, 4));
+    REQUIRE(sprite->SetAuthoringPixels(pixels));
+    ImageLoader::Free(pixels);
+
+    std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>("SamplerAtlas");
+    REQUIRE(atlas->AddMember(sprite));
+
+    // Defaults favor crisp pixel pages.
+    CHECK(atlas->GetSamplerFilter() == RHISamplerFilter::Nearest);
+    CHECK(atlas->GetSamplerAddress() == RHISamplerAddress::ClampToEdge);
+    REQUIRE(atlas->Rebuild(rhi).Ok);
+    REQUIRE(atlas->GetGeneratedTextures().size() == 1);
+    {
+        const Texture2D& page = *atlas->GetGeneratedTextures()[0];
+        CHECK(page.GetSamplerFilter() == RHISamplerFilter::Nearest);
+        CHECK(page.GetSamplerAddress() == RHISamplerAddress::ClampToEdge);
+        CHECK(page.GetPreferredSamplerDesc().MagFilter == RHISamplerFilter::Nearest);
+        CHECK(page.GetPreferredSamplerDesc().AddressU == RHISamplerAddress::ClampToEdge);
+    }
+
+    atlas->SetSamplerFilter(RHISamplerFilter::Linear);
+    atlas->SetSamplerAddress(RHISamplerAddress::Repeat);
+    REQUIRE(atlas->Rebuild(rhi).Ok);
+    {
+        const Texture2D& page = *atlas->GetGeneratedTextures()[0];
+        CHECK(page.GetSamplerFilter() == RHISamplerFilter::Linear);
+        CHECK(page.GetSamplerAddress() == RHISamplerAddress::Repeat);
+    }
+
+    // Live setters update existing pages without requiring another Rebuild.
+    atlas->SetSamplerFilter(RHISamplerFilter::Nearest);
+    atlas->SetSamplerAddress(RHISamplerAddress::ClampToBorder);
+    {
+        const Texture2D& page = *atlas->GetGeneratedTextures()[0];
+        CHECK(page.GetSamplerFilter() == RHISamplerFilter::Nearest);
+        CHECK(page.GetSamplerAddress() == RHISamplerAddress::ClampToBorder);
+    }
+}
+
 TEST_CASE("sprite-atlas: remove member clears baked [full]")
 {
     using namespace minEngine;

@@ -68,6 +68,11 @@ namespace minEngine
             int32_t padding,
             SpriteAtlasPaddingMode mode);
 
+        GraphEditorResult SetAtlasSampler(
+            SpriteAtlas& atlas,
+            RHISamplerFilter filter,
+            RHISamplerAddress address);
+
         GraphEditorResult SaveSprite(const Sprite& sprite);
         GraphEditorResult SaveAtlas(const SpriteAtlas& atlas);
 

@@ -1,6 +1,6 @@
 # Technical Debt Register
 
-Last updated: 2026-10-27（TD-039 材质渲染对象侧化收口）
+Last updated: 2026-10-30（TD-055 SpriteAtlas 生成页假 Texture2D 债务）
 
 Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap planning. Not a bug list — use [bugs/](./bugs/) for defects.
 
@@ -53,6 +53,7 @@ Purpose: explicit queue of **deferred or risky work** for Pre-flight and roadmap
 | TD-044 | GPU 对象在**调用线程**创建，Multi 下创建者没有 current context | RND / RHI | **High** | **Done** | [CORE-F47](./Platform/Core/CORE-F47_FRAME_THREAD_CONTRACTS_DESIGN.md) | `RHI::RHICreateBuffer` / `RHICreateVertexInputLayout` 立即在调用线程执行 GL，不检查 context。角色启动后 context 只在图形线程（`TaskSystem`），于是 Game 线程创建得到名字 0 的对象：轻则静默不画，重则把非法状态交给驱动（实测 `glDrawElements` 在 nvoglv32 内空指针崩溃）。现状：无 context 时不再调 GL、名字 0 的绘制被拒绝并限频报错（把崩溃换成可见失败），但 chunk 在 Multi 下仍画不出来。真正修法需要引擎提供“在图形角色创建”的通路（同步投递或懒创建）。 |
 | TD-043 | 帧内裸指针的隐式不变量未断言 | RND | **Low** | **部分收口** | — | draw 命令里的裸缓冲指针只在产出它的那一帧有效；各 Pass 持有每帧重填的 `std::vector<MeshDrawCommand>`，该不变量靠约定维持、无处断言 |
 | TD-045 | `UpdateSubresource` 在录制期立即上传，绕过命令列表 | RND / RHI | **Medium** | **Done** | [Probe README](../minEngine/Tests/Fixtures/ScreenUIPerFrameUboProbe/README.md) · `RHICommandList::UpdateBuffer` | 每个 pass 若在录制期写一个"别的 draw 已在看的"缓冲，replay 就会读到后写的字节（多轮录制/多视口更加明显）。**2026-10-29 已收口：** 上传成为命令 —— `RHICommandList::UpdateBuffer` 在录制期把 payload 拷进命令流、replay 时按顺序写，立即模式直通不多拷贝；副本块挂在命令列表上随池复用。所有录制路径站点（per-frame / 灯光 / 屏幕 UI / 后处理 / 天空盒 / debug 顶点 / per-object 与骨骼 ring / 材质 scalar 块）已迁移，录制期直接调低层原语会被计数并在日志报 Error。仍保持立即写的是帧录制开始之前的阴影 UBO 预热（不在录制窗口内），跨帧窗口另见 TD 备注 |
+| TD-055 | SpriteAtlas 生成页用假 `Texture2D` 资产壳，而非 `RHITexture` + Atlas 采样 | SPR / RND | **Medium** | Open | SPR-F02 MVP · [BUG-SPR-001](./bugs/BUG-SPR-001.md)（采样字段已补，所有权未改） | Rebuild 经 `CreateFromPixels` 造带 GUID 的 `Texture2D`；Source 应是资产，Generated/Baked 只是 GPU 产物。消费面（Sprite / Component / MaterialFactory）仍认 `Texture2D*`。目标态：Atlas 持 `RHITexture` + Filter/Address；Sprite 绑定时给 RHI+Sampler+UV；假资产壳去掉。开 Feature + Design 后再动。 |
 
 ---
 

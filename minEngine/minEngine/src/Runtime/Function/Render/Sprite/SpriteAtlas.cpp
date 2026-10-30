@@ -22,6 +22,31 @@ namespace minEngine
         m_Padding = std::max(0, padding);
     }
 
+    void SpriteAtlas::SetSamplerFilter(RHISamplerFilter filter)
+    {
+        m_SamplerFilter = filter;
+        ApplySamplerToGeneratedTextures();
+    }
+
+    void SpriteAtlas::SetSamplerAddress(RHISamplerAddress address)
+    {
+        m_SamplerAddress = address;
+        ApplySamplerToGeneratedTextures();
+    }
+
+    void SpriteAtlas::ApplySamplerToGeneratedTextures()
+    {
+        for (const std::shared_ptr<Texture2D>& texture : m_GeneratedTextures)
+        {
+            if (!texture)
+            {
+                continue;
+            }
+            texture->SetSamplerFilter(m_SamplerFilter);
+            texture->SetSamplerAddress(m_SamplerAddress);
+        }
+    }
+
     bool SpriteAtlas::AddMember(const std::shared_ptr<Sprite>& sprite, std::string* outError)
     {
         if (!sprite)
@@ -97,6 +122,8 @@ namespace minEngine
                 member->SetAtlasOwner(this);
             }
         }
+        // Atlas author fields are the source of truth for page sampling after deserialize.
+        ApplySamplerToGeneratedTextures();
     }
 
     SpriteAtlasRebuildResult SpriteAtlas::Rebuild(RHI& rhi)
@@ -239,6 +266,7 @@ namespace minEngine
         // Commit only after successful texture create (transactional).
         m_GeneratedTextures.clear();
         m_GeneratedTextures.push_back(generated);
+        ApplySamplerToGeneratedTextures();
         m_Slots = std::move(pendingSlots);
 
         for (const SpriteAtlasSlot& slot : m_Slots)

@@ -265,6 +265,16 @@ namespace minEngine
         return OkResult();
     }
 
+    GraphEditorResult SpriteEditorServices::SetAtlasSampler(
+        SpriteAtlas& atlas,
+        RHISamplerFilter filter,
+        RHISamplerAddress address)
+    {
+        atlas.SetSamplerFilter(filter);
+        atlas.SetSamplerAddress(address);
+        return OkResult();
+    }
+
     GraphEditorResult SpriteEditorServices::SaveSprite(const Sprite& sprite)
     {
         if (!AssetManager::HasInstance())

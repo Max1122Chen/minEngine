@@ -53,6 +53,12 @@ namespace minEngine
         SpriteAtlasPaddingMode GetPaddingMode() const { return m_PaddingMode; }
         void SetPaddingMode(SpriteAtlasPaddingMode mode) { m_PaddingMode = mode; }
 
+        RHISamplerFilter GetSamplerFilter() const { return m_SamplerFilter; }
+        void SetSamplerFilter(RHISamplerFilter filter);
+
+        RHISamplerAddress GetSamplerAddress() const { return m_SamplerAddress; }
+        void SetSamplerAddress(RHISamplerAddress address);
+
         const std::vector<std::shared_ptr<Sprite>>& GetMembers() const { return m_Members; }
         const std::vector<std::shared_ptr<Texture2D>>& GetGeneratedTextures() const { return m_GeneratedTextures; }
         const std::vector<SpriteAtlasSlot>& GetSlots() const { return m_Slots; }
@@ -71,6 +77,9 @@ namespace minEngine
         void RebindMemberOwnersAfterLoad();
 
     private:
+        /** Push authored filter/address onto every generated page texture. */
+        void ApplySamplerToGeneratedTextures();
+
         ME_PROPERTY()
         int32_t m_MaxSize = 2048;
 
@@ -79,6 +88,13 @@ namespace minEngine
 
         ME_PROPERTY()
         SpriteAtlasPaddingMode m_PaddingMode = SpriteAtlasPaddingMode::PadWithZero;
+
+        /** Atlas page sampling; defaults favor crisp pixel atlases (Texture2D assets default Linear+Repeat). */
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetSamplerFilter", Getter = "GetSamplerFilter"))
+        RHISamplerFilter m_SamplerFilter = RHISamplerFilter::Nearest;
+
+        ME_PROPERTY(EditAnywhere, meta = (Setter = "SetSamplerAddress", Getter = "GetSamplerAddress"))
+        RHISamplerAddress m_SamplerAddress = RHISamplerAddress::ClampToEdge;
 
         ME_PROPERTY()
         std::vector<std::shared_ptr<Sprite>> m_Members;

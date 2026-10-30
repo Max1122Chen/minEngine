@@ -1,3 +1,10 @@
+## 2026-10-30 — BUG-SPR-001 SpriteAtlas 开放采样 Filter/Address（对齐 Texture2D）
+
+- **问题（minCraft）：** SpriteAtlas 无作者采样字段；Rebuild 经 `CreateFromPixels` 留下 Texture2D 默认 Linear+Repeat，无法声明 Nearest/Clamp 等，编辑器与自动化亦无配置口。
+- **修复：** 图集级 `m_SamplerFilter` / `m_SamplerAddress`（EditAnywhere；默认 Nearest + ClampToEdge，利于像素图集）；Rebuild / setter / 加载 rebind 写入生成页；Editor 组合框；`SpriteEditorServices::SetAtlasSampler`；Automation `sprite_atlas.set_sampler`。
+- **验证：** `sprite-atlas` 8 例 / 81 断言 PASS（Release bin）；导出 3008→3011（+3：`SetSamplerFilter` / `SetSamplerAddress` / `ApplySamplerToGeneratedTextures`），snapshot 已写。
+- **记录：** [BUG-SPR-001](./bugs/BUG-SPR-001.md) Fixed；生成页假 `Texture2D` 所有权另挂 [TD-055](./TECH_DEBT.md)。
+
 ## 2026-10-29 — RND-F29 / RND-F30 实现落地（`feat/render`）
 
 - **RND-F29 S01/S02：** `ECameraProjectionMode` + `m_OrthoHeight`；`RenderCamera::UpdateProjectionMatrix` / 正交平行 `ScreenPointToRay`；`CameraComponent` 模式与 OrthoHeight 推送。

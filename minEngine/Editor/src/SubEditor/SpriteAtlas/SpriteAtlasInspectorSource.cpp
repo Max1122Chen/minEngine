@@ -37,6 +37,26 @@ namespace minEngine
             "PaddingMode: %s",
             atlas.GetPaddingMode() == SpriteAtlasPaddingMode::DilateBorder ? "DilateBorder"
                                                                            : "PadWithZero");
+        const char* addressName = "ClampToEdge";
+        switch (atlas.GetSamplerAddress())
+        {
+        case RHISamplerAddress::Repeat:
+            addressName = "Repeat";
+            break;
+        case RHISamplerAddress::MirroredRepeat:
+            addressName = "MirroredRepeat";
+            break;
+        case RHISamplerAddress::ClampToEdge:
+            addressName = "ClampToEdge";
+            break;
+        case RHISamplerAddress::ClampToBorder:
+            addressName = "ClampToBorder";
+            break;
+        }
+        ImGui::Text(
+            "Sampler: %s / %s",
+            atlas.GetSamplerFilter() == RHISamplerFilter::Nearest ? "Nearest" : "Linear",
+            addressName);
         ImGui::Text("Generated pages: %zu", atlas.GetGeneratedTextures().size());
         if (!session.LastRebuildMessage.empty())
         {

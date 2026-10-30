@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-29（`feat/render`：RND-F29/F30 Design Draft；worktree 已 ff→master tip）
+Last updated: 2026-10-30（`feat/render`：BUG-SPR-001 SpriteAtlas sampler Fixed；RND-F29/F30 已落地）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  

@@ -101,6 +101,7 @@ namespace minEngine
         AutomationResponse HandleSpriteAtlasCreate(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasAddMembers(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasSetPadding(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleSpriteAtlasSetSampler(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasRebuild(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasSave(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasCreateFromSelection(IEditorContext& context, const AutomationRequest& request);

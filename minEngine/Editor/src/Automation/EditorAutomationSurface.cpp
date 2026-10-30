@@ -331,6 +331,11 @@ namespace minEngine
                 return HandleSpriteAtlasSetPadding(context, request);
             });
         m_Handlers.emplace(
+            "sprite_atlas.set_sampler",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteAtlasSetSampler(context, request);
+            });
+        m_Handlers.emplace(
             "sprite_atlas.rebuild",
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleSpriteAtlasRebuild(context, request);
@@ -2346,6 +2351,108 @@ namespace minEngine
             return MakeError(request, "InternalError", result.Message);
         }
         return FromEditorResult(request, MakeOk(), Json{{"padding", padding}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteAtlasSetSampler(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> {
+            std::string loadAssetError;
+            return std::dynamic_pointer_cast<SpriteAtlas>(
+                AssetManager::Get().LoadAssetByPath(atlasPath, loadAssetError));
+        })();
+        if (atlas == nullptr)
+        {
+            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+        }
+
+        RHISamplerFilter filter = atlas->GetSamplerFilter();
+        RHISamplerAddress address = atlas->GetSamplerAddress();
+
+        const std::string filterStr = request.Payload.value(
+            "filter",
+            request.Payload.value("samplerFilter", ""));
+        if (!filterStr.empty())
+        {
+            if (filterStr == "Nearest")
+            {
+                filter = RHISamplerFilter::Nearest;
+            }
+            else if (filterStr == "Linear")
+            {
+                filter = RHISamplerFilter::Linear;
+            }
+            else
+            {
+                return MakeError(
+                    request,
+                    "InvalidPayload",
+                    "Unknown filter '" + filterStr + "' (expected Nearest or Linear)");
+            }
+        }
+
+        const std::string addressStr = request.Payload.value(
+            "address",
+            request.Payload.value("samplerAddress", ""));
+        if (!addressStr.empty())
+        {
+            if (addressStr == "Repeat")
+            {
+                address = RHISamplerAddress::Repeat;
+            }
+            else if (addressStr == "MirroredRepeat")
+            {
+                address = RHISamplerAddress::MirroredRepeat;
+            }
+            else if (addressStr == "ClampToEdge")
+            {
+                address = RHISamplerAddress::ClampToEdge;
+            }
+            else if (addressStr == "ClampToBorder")
+            {
+                address = RHISamplerAddress::ClampToBorder;
+            }
+            else
+            {
+                return MakeError(
+                    request,
+                    "InvalidPayload",
+                    "Unknown address '" + addressStr
+                        + "' (expected Repeat, MirroredRepeat, ClampToEdge, or ClampToBorder)");
+            }
+        }
+
+        const GraphEditorResult result =
+            context.GetSpriteEditorServices().SetAtlasSampler(*atlas, filter, address);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+
+        const char* addressName = "ClampToEdge";
+        switch (address)
+        {
+        case RHISamplerAddress::Repeat:
+            addressName = "Repeat";
+            break;
+        case RHISamplerAddress::MirroredRepeat:
+            addressName = "MirroredRepeat";
+            break;
+        case RHISamplerAddress::ClampToEdge:
+            addressName = "ClampToEdge";
+            break;
+        case RHISamplerAddress::ClampToBorder:
+            addressName = "ClampToBorder";
+            break;
+        }
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"filter", filter == RHISamplerFilter::Nearest ? "Nearest" : "Linear"},
+                {"address", addressName}});
     }
 
     AutomationResponse EditorAutomationSurface::HandleSpriteAtlasRebuild(
