@@ -663,6 +663,168 @@ namespace minEngine
         CHECK_FALSE(error.empty());
     }
 
+    TEST_CASE("render-graph: unregistering a never-external slot keeps SceneColor stable")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        ProducerPass producerImpl;
+        RenderPass& producer = graph.AddPass("Producer");
+        producer.SetImplementation(&producerImpl);
+
+        graph.SetBackbufferSource(kRDGSceneColor);
+        graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
+        graph.Bake();
+
+        RDGTextureResource& sceneColor = graph.GetTextureResource(kRDGSceneColor);
+
+        RHITexture* stable = nullptr;
+        for (int frame = 0; frame < 8; ++frame)
+        {
+            if (frame > 0)
+            {
+                graph.Bake();
+            }
+            // A frame without an external SceneColor unbinds the name even though nothing was
+            // registered; that unbind must not discard the graph-owned slot.
+            graph.UnregisterExternalTexture(kRDGSceneColor);
+            const bool recreated = graph.SetupAttachments(rhi);
+
+            RHITexture* current = graph.GetPhysicalTexture(sceneColor);
+            REQUIRE(current != nullptr);
+            if (frame == 0)
+            {
+                stable = current;
+                CHECK(recreated);
+                continue;
+            }
+            CHECK_FALSE(recreated);
+            CHECK(current == stable);
+        }
+    }
+
+    TEST_CASE("render-graph: unregistering a slot that was external still drops it")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        ProducerPass producerImpl;
+        RenderPass& producer = graph.AddPass("Producer");
+        producer.SetImplementation(&producerImpl);
+
+        graph.SetBackbufferSource(kRDGSceneColor);
+        graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
+        graph.Bake();
+
+        RHITextureRef external = rhi.RHICreateTexture2D(
+            MakeTexture2DRenderTargetDesc(64, 64, TextureFormat::RGBA8), nullptr);
+        REQUIRE(external != nullptr);
+
+        std::string error;
+        REQUIRE(graph.RegisterExternalTexture(kRDGSceneColor, external, &error));
+        CHECK(error.empty());
+        CHECK(graph.SetupAttachments(rhi));
+
+        RDGTextureResource& sceneColor = graph.GetTextureResource(kRDGSceneColor);
+        CHECK(graph.GetPhysicalTexture(sceneColor) == external.get());
+
+        graph.UnregisterExternalTexture(kRDGSceneColor);
+        // The caller's texture is the only thing dropped; the slot no longer holds it.
+        CHECK(graph.TryGetPhysicalTexture(&sceneColor) == nullptr);
+
+        CHECK(graph.SetupAttachments(rhi));
+        RHITexture* recreated = graph.GetPhysicalTexture(sceneColor);
+        REQUIRE(recreated != nullptr);
+        CHECK(recreated != external.get());
+        CHECK(recreated->GetDesc().Width == 64);
+    }
+
+    TEST_CASE("render-graph: unbinding an aliased non-external name keeps the external slot")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        ProducerPass producerImpl;
+        ConsumerPass consumerImpl(nullptr);
+        RenderPass& producer = graph.AddPass("Producer");
+        producer.SetImplementation(&producerImpl);
+        RenderPass& consumer = graph.AddPass("Consumer");
+        consumer.SetImplementation(&consumerImpl);
+
+        graph.SetBackbufferSource(kRDGBackbuffer);
+        graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
+        graph.Bake();
+
+        RDGTextureResource& sceneColor = graph.GetTextureResource(kRDGSceneColor);
+        RDGTextureResource& backbuffer = graph.GetTextureResource(kRDGBackbuffer);
+        REQUIRE(backbuffer.GetPhysicalIndex() == sceneColor.GetPhysicalIndex());
+
+        RHITextureRef external = rhi.RHICreateTexture2D(
+            MakeTexture2DRenderTargetDesc(64, 64, TextureFormat::RGBA8), nullptr);
+        REQUIRE(external != nullptr);
+        std::string error;
+        REQUIRE(graph.RegisterExternalTexture(kRDGSceneColor, external, &error));
+        CHECK(graph.SetupAttachments(rhi));
+        CHECK(graph.GetPhysicalTexture(sceneColor) == external.get());
+
+        // Backbuffer shares the physical slot but was never registered as external.
+        graph.UnregisterExternalTexture(kRDGBackbuffer);
+        CHECK(graph.TryGetPhysicalTexture(&sceneColor) == external.get());
+        CHECK_FALSE(graph.SetupAttachments(rhi));
+        CHECK(graph.GetPhysicalTexture(sceneColor) == external.get());
+
+        graph.UnregisterExternalTexture(kRDGSceneColor);
+        CHECK(graph.TryGetPhysicalTexture(&sceneColor) == nullptr);
+    }
+
+    TEST_CASE("render-graph: resizing the backbuffer recreates the SceneColor slot once")
+    {
+        ScopedHeadlessGlContext glContext;
+        REQUIRE(glContext.IsReady());
+
+        OpenGLRHI rhi;
+        RenderGraph graph;
+        ProducerPass producerImpl;
+        RenderPass& producer = graph.AddPass("Producer");
+        producer.SetImplementation(&producerImpl);
+
+        graph.SetBackbufferSource(kRDGSceneColor);
+        graph.SetBackbufferDimensions(64, 64);
+        graph.SetActiveViewKey(1, nullptr);
+        graph.Bake();
+        graph.SetupAttachments(rhi);
+
+        RDGTextureResource& sceneColor = graph.GetTextureResource(kRDGSceneColor);
+        RHITexture* beforeResize = graph.GetPhysicalTexture(sceneColor);
+        REQUIRE(beforeResize->GetDesc().Width == 64);
+
+        graph.SetBackbufferDimensions(128, 128);
+        graph.Bake();
+        graph.UnregisterExternalTexture(kRDGSceneColor);
+        CHECK(graph.SetupAttachments(rhi));
+
+        RHITexture* resized = graph.GetPhysicalTexture(sceneColor);
+        REQUIRE(resized != nullptr);
+        CHECK(resized != beforeResize);
+        CHECK(resized->GetDesc().Width == 128);
+        CHECK(resized->GetDesc().Height == 128);
+
+        // The new size is stable again: no further recreation without a size change.
+        graph.Bake();
+        graph.UnregisterExternalTexture(kRDGSceneColor);
+        CHECK_FALSE(graph.SetupAttachments(rhi));
+        CHECK(graph.GetPhysicalTexture(sceneColor) == resized);
+    }
+
     TEST_CASE("render-graph: Texture2DRenderTarget Create is a Texture2D with RT GPU")
     {
         EngineReflectionFixture reflection;

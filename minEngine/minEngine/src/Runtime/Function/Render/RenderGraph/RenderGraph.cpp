@@ -24,9 +24,18 @@ namespace minEngine
         m_PhysicalDims.clear();
         m_BoundPhysicalTextures = nullptr;
         m_ActiveViewKey = {};
-        // keep per-view physical caches across topology rebuilds; drop external bindings.
+        // Keep per-view physical caches across topology rebuilds; drop external bindings. A slot
+        // an external installed goes with its binding: leaving it would keep the caller's texture
+        // posing as a graph-owned slot that no later unregister can reach.
         for (ViewPhysicalCache& cache : m_ViewPhysicalCaches)
         {
+            for (uint32_t physicalIndex : cache.ExternalPhysicalIndices)
+            {
+                if (physicalIndex < cache.Textures.size())
+                {
+                    cache.Textures[physicalIndex].reset();
+                }
+            }
             cache.Externals.clear();
             cache.ExternalPhysicalIndices.clear();
         }
@@ -122,7 +131,10 @@ namespace minEngine
         cache->Externals.erase(logicalName);
 
         // Drop the installed physical slot so the next SetupAttachments creates a graph-owned RT
-        // instead of reusing the caller's texture by matching size/format.
+        // instead of reusing the caller's texture by matching size/format. Only a slot this
+        // external actually installed may be dropped: unbinding a name that was never registered
+        // must leave the graph-owned texture alone, otherwise every frame discards and recreates
+        // it and the handle published to the editor changes hand every frame.
         if (!m_IsBaked || m_BoundPhysicalTextures == nullptr)
         {
             return;
@@ -133,12 +145,25 @@ namespace minEngine
             return;
         }
         const uint32_t physicalIndex = resource->GetPhysicalIndex();
+        // Several logical names can alias one physical slot; while another external still resolves
+        // to it the slot belongs to that binding, and unbinding a graph-owned alias is a no-op.
+        for (const auto& external : cache->Externals)
+        {
+            RDGTextureResource* other = FindTextureResource(external.first);
+            if (other != nullptr && other->GetPhysicalIndex() == physicalIndex)
+            {
+                return;
+            }
+        }
+        if (cache->ExternalPhysicalIndices.erase(physicalIndex) == 0)
+        {
+            return;
+        }
         std::vector<std::shared_ptr<RHITexture>>& physicalTextures = *m_BoundPhysicalTextures;
         if (physicalIndex < physicalTextures.size())
         {
             physicalTextures[physicalIndex].reset();
         }
-        cache->ExternalPhysicalIndices.erase(physicalIndex);
     }
 
     void RenderGraph::ClearExternalTextures()

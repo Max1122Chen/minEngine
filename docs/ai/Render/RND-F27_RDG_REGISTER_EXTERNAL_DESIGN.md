@@ -121,6 +121,7 @@ void ClearExternalTextures();
 
 - 每 `ViewPhysicalCache`：`unordered_map<string, RHITextureRef> Externals`，或 Bake 后 physicalIndex → external。
 - slot 标记 external vs 图创建，避免后续 SetupAttachments 在尺寸碰巧匹配时把 External「升级」成内部重建。
+- Unregister 只清理由本次注册装进去的 slot：名字从未注册（或共享该 slot 的别名仍未解绑）时为空操作；否则 ForwardRenderer 每帧的 else 分支会让图自建槽每帧重建，推翻 Bake 保留槽位以便编辑器继续采样的意图。
 
 ### SetupAttachments 变更
 
