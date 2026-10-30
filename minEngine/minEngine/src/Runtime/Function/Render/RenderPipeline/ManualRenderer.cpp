@@ -329,11 +329,42 @@ namespace minEngine
         BuildRenderQueue(ctx);
         SortMeshDrawQueues(ctx);
 
+        // Before the frame starts recording: the environment bake loads an asset and submits an
+        // immediate command buffer of its own, which cannot be spliced into a stream that is
+        // already being built.
+        PrepareSceneEnvironment(*rhi, ctx);
+
+        RHICommandList stackList(rhi);
+        const bool immediate = stackList.IsImmediate();
+        // A lease, not a raw borrow: every early return below gives the slot back instead of
+        // shrinking the pool until Acquire blocks.
+        RHICommandListPool::Lease pooledList;
+        RHICommandList* cmdListPtr = &stackList;
+        if (!immediate)
+        {
+            ME_ASSERT(RHICommandListPool::HasInstance(), "Multi Recording requires RHICommandListPool");
+            pooledList = RHICommandListPool::Get().AcquireLease();
+            cmdListPtr = pooledList.Get();
+            if (cmdListPtr == nullptr)
+            {
+                return;
+            }
+        }
+        RHICommandList& cmdList = *cmdListPtr;
+        // The window is a scope: an early return between here and the hand-off closes it on this
+        // thread instead of leaving it open for the next frame's uploads.
+        RHICommandListRecordingScope recordingScope(cmdList);
+
+        UpdatePerFrameUBO(cmdList, ctx);
+
+        // Shadow draws and the uniform slots they read are recorded in this frame's stream, so the
+        // slot write sits before the draw that points at it instead of landing as an upload ahead of
+        // the whole window.
         if (ctx.bEnableShadows)
         {
             m_ShadowUniformBuffers.BeginShadowFrame();
             CollectShadowRequests(ctx);
-            BuildShadowDrawCommands(ctx);
+            BuildShadowDrawCommands(cmdList, ctx);
         }
         else
         {
@@ -343,29 +374,8 @@ namespace minEngine
             ctx.PointShadowHandles.clear();
             ctx.SpotShadowHandleMap.clear();
             ctx.PointShadowHandleMap.clear();
-            ClearUnusedShadowViewProjSlots(ctx);
+            ClearUnusedShadowViewProjSlots(cmdList, ctx);
         }
-
-        // Before the frame starts recording: the environment bake loads an asset and submits an
-        // immediate command buffer of its own, which cannot be spliced into a stream that is
-        // already being built.
-        PrepareSceneEnvironment(*rhi, ctx);
-
-        RHICommandList stackList(rhi);
-        const bool immediate = stackList.IsImmediate();
-        RHICommandList* cmdListPtr = &stackList;
-        if (!immediate)
-        {
-            ME_ASSERT(RHICommandListPool::HasInstance(), "Multi Recording requires RHICommandListPool");
-            cmdListPtr = RHICommandListPool::Get().Acquire();
-            if (cmdListPtr == nullptr)
-            {
-                return;
-            }
-        }
-        RHICommandList& cmdList = *cmdListPtr;
-        cmdList.BeginRecording();
-        UpdatePerFrameUBO(cmdList, ctx);
 
         if (const bool texturesRecreated = EnsureManualTextures(*rhi, width, height); texturesRecreated)
         {
@@ -418,14 +428,16 @@ namespace minEngine
         sceneTarget->PublishGraphColorTexture(m_ManualSceneColor);
         sceneTarget->PublishGraphDepthTexture(m_ManualSceneDepth);
 
-        cmdList.FinishRecording();
+        // Close the window before the stream is handed over: Replay runs on the RHI role, which in a
+        // frame-threaded topology is not the thread that recorded this frame.
+        recordingScope.Finish();
         if (immediate)
         {
             cmdList.Replay();
         }
         else
         {
-            RHICommandListPool::Get().SubmitFinished(cmdListPtr);
+            pooledList.SubmitFinished();
         }
 
         ++m_FrameIndex;

@@ -159,11 +159,17 @@ namespace minEngine
         void UpdatePerFrameUBO(RHICommandList& cmdList, const SceneRenderContext& ctx);
         void UpdateLightUBO(RHICommandList& cmdList, const SceneRenderContext& ctx);
         void CollectShadowRequests(SceneRenderContext& ctx);
-        void BuildShadowDrawCommands(SceneRenderContext& ctx);
+        /**
+         * Builds the shadow draws and records the uniform slots they read into the frame's stream.
+         * It runs inside the recording window, so a slot write sits in the stream before the draw
+         * that points at it instead of landing as an upload ahead of the whole window.
+         */
+        void BuildShadowDrawCommands(RHICommandList& cmdList, SceneRenderContext& ctx);
         void BuildRenderQueue(SceneRenderContext& ctx);
         void SortMeshDrawQueues(SceneRenderContext& ctx);
         void BuildScreenUIQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight);
-        void ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx);
+        /** Zeroes the spot slots no light claims this frame, as commands in the same stream. */
+        void ClearUnusedShadowViewProjSlots(RHICommandList& cmdList, const SceneRenderContext& ctx);
 
         SkyBoxPass m_SkyBoxPass;
         ScreenUIPass m_ScreenUIPass;

@@ -37,7 +37,13 @@ namespace minEngine
     public:
         explicit RHICommandList(RHI* rhi);
         RHICommandList() = default;
-        ~RHICommandList() = default;
+        /**
+         * A list destroyed while it still holds this thread's recording window gives it back. An
+         * early return that drops the list - a frame that bails out before its recording is handed
+         * over - would otherwise leave the window open, and every later upload on this thread would
+         * land inside a recording that no longer exists.
+         */
+        ~RHICommandList() { Reset(); }
 
         RHICommandList(const RHICommandList&) = delete;
         RHICommandList& operator=(const RHICommandList&) = delete;
@@ -58,6 +64,13 @@ namespace minEngine
         void ClearImmediateOverride();
 
         void BeginRecording();
+        /**
+         * Ends the stream and closes the recording window, on the thread that opened it.
+         *
+         * The window belongs to the recording call, not to the list: the stream is replayed later,
+         * possibly by another thread and possibly after the list was handed to a pool, so a window
+         * that stayed open until Replay would outlive the recording it describes.
+         */
         void FinishRecording();
         /** Replay Finished commands on the RHI role. Immediate: no-op. */
         void Replay();
@@ -183,6 +196,54 @@ namespace minEngine
         size_t m_UploadScratchCursor = 0;
         /** True while this list keeps the current thread's recording window open. */
         bool m_HoldsRecordingWindow = false;
+    };
+
+    /**
+     * The recording window as a scope: BeginRecording when it opens, FinishRecording when it closes,
+     * so an early return or an exception closes the window on the way out instead of leaving it open
+     * on this thread for every later upload to fall into.
+     *
+     * Finish() closes the window at the point the frame hands its stream over (Replay, or a pool
+     * submission), so the window never overlaps that step. It is safe to call more than once, and
+     * the destructor closes a window Finish() was not reached for.
+     *
+     * The scope borrows the list and must not outlive it. A list the pool has already taken back was
+     * Reset on the way, so the scope sees no open recording and does nothing: the window it would
+     * have closed was given back by that Reset. That is also why the scope reads the state instead
+     * of assuming it owns an open window.
+     */
+    class RHICommandListRecordingScope
+    {
+    public:
+        explicit RHICommandListRecordingScope(RHICommandList& cmdList)
+            : m_CmdList(cmdList)
+        {
+            m_CmdList.BeginRecording();
+        }
+
+        ~RHICommandListRecordingScope() { Finish(); }
+
+        RHICommandListRecordingScope(const RHICommandListRecordingScope&) = delete;
+        RHICommandListRecordingScope& operator=(const RHICommandListRecordingScope&) = delete;
+
+        /** Closes the window now. Does not replay: handing the stream over stays the caller's call. */
+        void Finish()
+        {
+            if (m_bClosed)
+            {
+                return;
+            }
+
+            m_bClosed = true;
+            if (m_CmdList.GetState() == ERHICommandListState::Recording)
+            {
+                m_CmdList.FinishRecording();
+            }
+        }
+
+    private:
+        RHICommandList& m_CmdList;
+        bool m_bClosed = false;
     };
 
     /**

@@ -61,11 +61,15 @@ one, so the "one writer, one reader role" property is no longer something a pass
 | `EngineSceneBindingSets::WriteNextPerObjectModel` | per-object matrix ring | `cmdList.UpdateBuffer` (recorded) |
 | `EngineSceneBindingSets` bone palette ring | bone palette ring | `cmdList.UpdateBuffer` (recorded) |
 | `MaterialRenderProxy::SyncScalarUniformBuffer` | per-proxy scalar block | `cmdList.UpdateBuffer` (recorded) |
-| `ForwardRenderer::BuildShadowDrawCommands`, `ClearUnusedShadowViewProjSlots`, `ShadowUniformBuffers` rings | shadow matrices / params | **unchanged**: written before `BeginRecording`, outside the recording window, where there is no stream position to hold them |
+| `ForwardRenderer::BuildShadowDrawCommands`, `ClearUnusedShadowViewProjSlots`, `ShadowUniformBuffers` rings | shadow matrices / params | `cmdList.UpdateBuffer` (recorded) |
 
-The last row is the remaining gap in this area: those writes are still immediate, and in Multi they
-land while the previous frame's replay may still be reading the same blocks. That is a cross-frame
-window rather than a within-frame ordering problem, and it is registered on its own.
+The shadow slots were the last row to move. They are built inside the recording window now, so each
+slot write is a command in the same stream as the shadow draw that points at it, and the
+`MAX_CASCADES × 2` zero fill plus the unused spot slots no longer cost ten immediate uploads a frame.
+Building them outside a window also meant their uploads fell into whatever window a previous frame
+had left open, which is how a recording that bailed out early turned into "buffer upload ran
+immediately while a command list was recording" on the next frame. The window is a scope now: it
+closes with the recording, on the thread that opened it.
 
 A write that bypasses the stream is no longer silent: the backends report an immediate upload to
 `RHICommandList` while a recording is open on the same thread, which logs an error once per write

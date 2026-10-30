@@ -247,6 +247,11 @@ namespace minEngine
         }
         ME_ASSERT(m_State == ERHICommandListState::Recording, "FinishRecording requires Recording");
         m_State = ERHICommandListState::Finished;
+        // The window closes with the stream it describes, on the thread that opened it. Leaving it
+        // to Replay would tie the window to whoever replays, which in a frame-threaded topology is
+        // another thread: the recording thread would keep the window open and report every later
+        // upload it makes as a write that bypassed a recording.
+        LeaveRecordingWindow(m_HoldsRecordingWindow);
     }
 
     void RHICommandList::Replay()
@@ -264,8 +269,9 @@ namespace minEngine
         }
         ME_ASSERT(m_State == ERHICommandListState::Finished, "Replay requires Finished");
         ME_ASSERT(m_RHI != nullptr, "Replay requires an executing RHI");
-        // The window closes before the first command runs: those uploads are this stream's own and
-        // arrive exactly where they belong in it.
+        // FinishRecording already closed the window; this is the same give-back for a stream that
+        // reaches Replay by another route. Either way no window is open here, so the uploads the
+        // commands below perform are this stream's own and arrive where they belong in it.
         LeaveRecordingWindow(m_HoldsRecordingWindow);
         for (std::function<void()>& command : m_RecordedCommands)
         {

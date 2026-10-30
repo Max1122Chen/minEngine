@@ -62,7 +62,7 @@ namespace minEngine
         return cascadeIndex * m_CascadeFarPlaneStride;
     }
 
-    uint32_t ShadowUniformBuffers::WritePointLightViewProj(const Matrix4& viewProj)
+    uint32_t ShadowUniformBuffers::WritePointLightViewProj(RHICommandList& cmdList, const Matrix4& viewProj)
     {
         if (m_PointLightViewProjWriteIndex >= kPointViewProjRingSlots)
         {
@@ -77,13 +77,13 @@ namespace minEngine
         const uint32_t offset = slot * m_Mat4SlotStride;
         if (m_PointLightViewProjRingBuffer)
         {
-            m_PointLightViewProjRingBuffer->UpdateSubresource(&viewProj, offset, sizeof(Matrix4));
+            cmdList.UpdateBuffer(m_PointLightViewProjRingBuffer.get(), &viewProj, offset, sizeof(Matrix4));
         }
         ++m_PointLightViewProjWriteIndex;
         return offset;
     }
 
-    uint32_t ShadowUniformBuffers::WriteParams(const ShadowPassParamsUBO& params)
+    uint32_t ShadowUniformBuffers::WriteParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params)
     {
         if (m_ParamsWriteIndex >= kParamsRingSlots)
         {
@@ -98,7 +98,7 @@ namespace minEngine
         const uint32_t offset = slot * m_ParamsSlotStride;
         if (m_ParamsRingBuffer)
         {
-            m_ParamsRingBuffer->UpdateSubresource(&params, offset, sizeof(ShadowPassParamsUBO));
+            cmdList.UpdateBuffer(m_ParamsRingBuffer.get(), &params, offset, sizeof(ShadowPassParamsUBO));
         }
         ++m_ParamsWriteIndex;
         return offset;

@@ -1,3 +1,13 @@
+## 2026-10-30 — 录制窗口作用域化 + 阴影 UBO 走命令流（TD-045 收尾）
+
+- **问题：** 帧录制窗口靠调用方手写 `FinishRecording`/`Reset` 关闭；一旦帧内 early return（帧图 Setup 失败即例子），窗口留在录制线程上，下一帧在 `BeginRecording` 之前写的阴影 UBO 预热就被判成"录制期立即上传"（实测 8 条 `Buffer upload ran immediately while a command list was recording`）。另有跨线程关窗：`Replay` 在 RHI 角色线程执行，录制线程的窗口计数因此永不回落。
+- **修复：**
+  - 窗口成为作用域对象 `RHICommandListRecordingScope`（头文件内联，不新增导出）；`ForwardRenderer::Execute` / `ManualRenderer::Execute` 全程持有，early return 与异常路径都必然关窗；`ManualRenderer` 的裸 `Acquire` 换成 `AcquireLease`。
+  - `FinishRecording` 在录制线程关窗；`~RHICommandList` 归还仍持有的窗口。
+  - 阴影 UBO 预热移入录制窗口：`BuildShadowDrawCommands` / `ClearUnusedShadowViewProjSlots` 收 `RHICommandList&`，与 `ShadowUniformBuffers::WriteParams`/`WritePointLightViewProj` 一起改走 `cmdList.UpdateBuffer`，每帧 10 次立即上传归零。
+- **验证：** `minEngineTests` + `Editor` 建构通过；`rhi-command-list` 13/13（新增 4 例）、`render-graph` 15/15、`scene-proxy-identity` 7/7、`scene-proxy-render-read` 3/3、`scene-proxy-lifetime` 11/11、`screen-ui-per-frame-ubo` 2/2 全 PASS；`test smoke` exit 0；导出 3033（+0，snapshot 未变）。
+- **遗留：** 引擎级的"每帧 10 次立即上传"只在 RHI 层有回归断言（`ForwardRenderer` 未导出，minEngineTests 链接不到），渲染器侧的等价证据是探针 README 与新用例的机制契约。
+
 ## 2026-10-30 — BUG-SPR-001 SpriteAtlas 开放采样 Filter/Address（对齐 Texture2D）
 
 - **问题（minCraft）：** SpriteAtlas 无作者采样字段；Rebuild 经 `CreateFromPixels` 留下 Texture2D 默认 Linear+Repeat，无法声明 Nearest/Clamp 等，编辑器与自动化亦无配置口。

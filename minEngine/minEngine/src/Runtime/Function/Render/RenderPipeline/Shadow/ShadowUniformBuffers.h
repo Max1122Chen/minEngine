@@ -42,8 +42,14 @@ namespace minEngine
         uint32_t GetSpotLightViewProjOffset(uint32_t spotSlot) const;
         uint32_t GetCascadeFarPlaneOffset(uint32_t cascadeIndex) const;
 
-        uint32_t WritePointLightViewProj(const Matrix4& viewProj);
-        uint32_t WriteParams(const ShadowPassParamsUBO& params);
+        /**
+         * Claim the next slot of a ring and hand back its byte offset. The bytes go into the frame's
+         * command stream at the point of the call, so they are written in the order the shadow draws
+         * that read them were recorded - the offset alone is not enough for a caller to write it
+         * later without losing that position.
+         */
+        uint32_t WritePointLightViewProj(RHICommandList& cmdList, const Matrix4& viewProj);
+        uint32_t WriteParams(RHICommandList& cmdList, const ShadowPassParamsUBO& params);
 
     private:
         static uint32_t AlignUniformSize(uint32_t size, uint32_t alignment);

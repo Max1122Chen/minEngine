@@ -670,23 +670,6 @@ namespace minEngine
         SortMeshDrawQueues(ctx);
         BuildScreenUIQueue(ctx, sceneTarget->GetWidth(), sceneTarget->GetHeight());
 
-        if (ctx.bEnableShadows)
-        {
-            m_ShadowUniformBuffers.BeginShadowFrame();
-            CollectShadowRequests(ctx);
-            BuildShadowDrawCommands(ctx);
-        }
-        else
-        {
-            ctx.ShadowDrawCommands.clear();
-            ctx.DirectionalShadowHandle = ShadowResourceHandle{};
-            ctx.SpotShadowHandles.clear();
-            ctx.PointShadowHandles.clear();
-            ctx.SpotShadowHandleMap.clear();
-            ctx.PointShadowHandleMap.clear();
-            ClearUnusedShadowViewProjSlots(ctx);
-        }
-
         m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
 
         // Everything that produces resources for this frame happens before it starts recording: the
@@ -712,9 +695,33 @@ namespace minEngine
             }
         }
         RHICommandList& cmdList = *cmdListPtr;
-        cmdList.BeginRecording();
+        // The window is a scope: every early return below - the frame-graph setup failure included -
+        // closes it on this thread instead of leaving it open for the next frame's uploads to fall
+        // into while they are still being built outside a window of their own.
+        RHICommandListRecordingScope recordingScope(cmdList);
 
         UpdatePerFrameUBO(cmdList, ctx);
+
+        // Shadow draws and the uniform slots they read are built here, inside the window: the slot
+        // writes are commands in the same stream as the draws that point at them. Building them
+        // before the window instead made them plain uploads, which is both a write that lands ahead
+        // of every draw of the frame and ten immediate uploads per frame that the stream never sees.
+        if (ctx.bEnableShadows)
+        {
+            m_ShadowUniformBuffers.BeginShadowFrame();
+            CollectShadowRequests(ctx);
+            BuildShadowDrawCommands(cmdList, ctx);
+        }
+        else
+        {
+            ctx.ShadowDrawCommands.clear();
+            ctx.DirectionalShadowHandle = ShadowResourceHandle{};
+            ctx.SpotShadowHandles.clear();
+            ctx.PointShadowHandles.clear();
+            ctx.SpotShadowHandleMap.clear();
+            ctx.PointShadowHandleMap.clear();
+            ClearUnusedShadowViewProjSlots(cmdList, ctx);
+        }
 
         // allocate graph shadow maps before Set1 samples them.
         if (!SetupFrameRenderGraph(cmdList, desc, ctx))
@@ -769,7 +776,9 @@ namespace minEngine
 
         EnqueueFrameRenderGraph(cmdList, sceneTarget);
 
-        cmdList.FinishRecording();
+        // Close the window before the stream is handed over: Replay happens on the RHI role, which
+        // in a frame-threaded topology is not the thread that recorded this frame.
+        recordingScope.Finish();
         if (immediate)
         {
             cmdList.Replay();
@@ -1061,7 +1070,7 @@ namespace minEngine
         return handle;
     }
 
-    void ForwardRenderer::BuildShadowDrawCommands(SceneRenderContext& ctx)
+    void ForwardRenderer::BuildShadowDrawCommands(RHICommandList& cmdList, SceneRenderContext& ctx)
     {
         ctx.ShadowDrawCommands.clear();
         ctx.DirectionalShadowHandle = ShadowResourceHandle{};
@@ -1090,11 +1099,13 @@ namespace minEngine
                 for (size_t i = 0; i < result.Commands.size(); ++i)
                 {
                     auto& command = result.Commands[i];
-                    m_ShadowUniformBuffers.GetCascadeFarPlaneBuffer()->UpdateSubresource(
+                    cmdList.UpdateBuffer(
+                        m_ShadowUniformBuffers.GetCascadeFarPlaneBuffer(),
                         &result.CascadeFarPlaneVS[i],
                         m_ShadowUniformBuffers.GetCascadeFarPlaneOffset(static_cast<uint32_t>(i)),
                         sizeof(float));
-                    m_ShadowUniformBuffers.GetDirLightViewProjBuffer()->UpdateSubresource(
+                    cmdList.UpdateBuffer(
+                        m_ShadowUniformBuffers.GetDirLightViewProjBuffer(),
                         &command.ViewProj,
                         m_ShadowUniformBuffers.GetDirLightViewProjOffset(static_cast<uint32_t>(i)),
                         sizeof(Matrix4));
@@ -1104,7 +1115,7 @@ namespace minEngine
                     ShadowPassParamsUBO params{};
                     params.UseLinearDepth = 0;
                     command.ParamsUniformBuffer = m_ShadowUniformBuffers.GetParamsRingBuffer();
-                    command.ParamsUniformOffset = m_ShadowUniformBuffers.WriteParams(params);
+                    command.ParamsUniformOffset = m_ShadowUniformBuffers.WriteParams(cmdList, params);
                 }
                 ctx.ShadowDrawCommands.insert(
                     ctx.ShadowDrawCommands.end(), result.Commands.begin(), result.Commands.end());
@@ -1128,7 +1139,8 @@ namespace minEngine
                 ctx.SpotShadowHandles.push_back(handle);
                 ShadowDrawCommand command = BuildSpotShadowDrawCommand(shadowRequest, handle, spotLightProxy);
                 command.GraphDepthResourceName = "SpotShadow." + std::to_string(spotSlot);
-                m_ShadowUniformBuffers.GetSpotLightViewProjBuffer()->UpdateSubresource(
+                cmdList.UpdateBuffer(
+                    m_ShadowUniformBuffers.GetSpotLightViewProjBuffer(),
                     &command.ViewProj,
                     m_ShadowUniformBuffers.GetSpotLightViewProjOffset(static_cast<uint32_t>(spotSlot)),
                     sizeof(Matrix4));
@@ -1138,7 +1150,7 @@ namespace minEngine
                 ShadowPassParamsUBO params{};
                 params.UseLinearDepth = 0;
                 command.ParamsUniformBuffer = m_ShadowUniformBuffers.GetParamsRingBuffer();
-                command.ParamsUniformOffset = m_ShadowUniformBuffers.WriteParams(params);
+                command.ParamsUniformOffset = m_ShadowUniformBuffers.WriteParams(cmdList, params);
                 ctx.ShadowDrawCommands.push_back(command);
                 spotLightCount++;
             }
@@ -1163,7 +1175,8 @@ namespace minEngine
                 {
                     command.GraphDepthResourceName = pointDepthName;
                     command.ViewProjUniformBuffer = m_ShadowUniformBuffers.GetPointLightViewProjRingBuffer();
-                    command.ViewProjUniformOffset = m_ShadowUniformBuffers.WritePointLightViewProj(command.ViewProj);
+                    command.ViewProjUniformOffset =
+                        m_ShadowUniformBuffers.WritePointLightViewProj(cmdList, command.ViewProj);
                     ShadowPassParamsUBO params{};
                     params.UseLinearDepth = 1;
                     params.LightPos[0] = command.LightPosition.x;
@@ -1171,7 +1184,7 @@ namespace minEngine
                     params.LightPos[2] = command.LightPosition.z;
                     params.FarPlane = command.FarPlane;
                     command.ParamsUniformBuffer = m_ShadowUniformBuffers.GetParamsRingBuffer();
-                    command.ParamsUniformOffset = m_ShadowUniformBuffers.WriteParams(params);
+                    command.ParamsUniformOffset = m_ShadowUniformBuffers.WriteParams(cmdList, params);
                 }
                 ctx.ShadowDrawCommands.insert(ctx.ShadowDrawCommands.end(), commands.begin(), commands.end());
                 pointLightCount++;
@@ -1186,21 +1199,25 @@ namespace minEngine
             const float zeroFar = 0.0f;
             for (int i = 0; i < MAX_CASCADES; ++i)
             {
-                m_ShadowUniformBuffers.GetDirLightViewProjBuffer()->UpdateSubresource(
+                cmdList.UpdateBuffer(
+                    m_ShadowUniformBuffers.GetDirLightViewProjBuffer(),
                     &zeroMatrix,
                     m_ShadowUniformBuffers.GetDirLightViewProjOffset(static_cast<uint32_t>(i)),
                     sizeof(Matrix4));
-                m_ShadowUniformBuffers.GetCascadeFarPlaneBuffer()->UpdateSubresource(
+                cmdList.UpdateBuffer(
+                    m_ShadowUniformBuffers.GetCascadeFarPlaneBuffer(),
                     &zeroFar,
                     m_ShadowUniformBuffers.GetCascadeFarPlaneOffset(static_cast<uint32_t>(i)),
                     sizeof(float));
             }
         }
 
-        ClearUnusedShadowViewProjSlots(ctx);
+        ClearUnusedShadowViewProjSlots(cmdList, ctx);
     }
 
-    void ForwardRenderer::ClearUnusedShadowViewProjSlots(const SceneRenderContext& ctx)
+    void ForwardRenderer::ClearUnusedShadowViewProjSlots(
+        RHICommandList& cmdList,
+        const SceneRenderContext& ctx)
     {
         RHIBuffer* spotBuffer = m_ShadowUniformBuffers.GetSpotLightViewProjBuffer();
         if (!spotBuffer)
@@ -1222,7 +1239,8 @@ namespace minEngine
             }
             if (!slotInUse)
             {
-                spotBuffer->UpdateSubresource(
+                cmdList.UpdateBuffer(
+                    spotBuffer,
                     &zeroMatrix,
                     m_ShadowUniformBuffers.GetSpotLightViewProjOffset(static_cast<uint32_t>(slot)),
                     sizeof(Matrix4));

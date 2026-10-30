@@ -31,6 +31,7 @@ using minEngine::RHI;
 using minEngine::RHIBufferRef;
 using minEngine::RHICommandListPool;
 using minEngine::RHICommandList;
+using minEngine::RHICommandListRecordingScope;
 using minEngine::RHIRenderPassInfo;
 
 namespace
@@ -458,5 +459,183 @@ TEST_CASE("rhi-command-list: a list driven from a worker while the roles are sto
 
     tasks.Shutdown();
     threading.Shutdown();
+}
+
+TEST_CASE("rhi-command-list: a list destroyed while recording gives the window back [full]")
+{
+    CountingRHI rhi;
+    {
+        RHICommandList cmdList(&rhi);
+        cmdList.SetImmediateOverride(false);
+        cmdList.BeginRecording();
+        cmdList.Draw(3u);
+        REQUIRE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+        // No FinishRecording, no Reset and no Replay: the frame that opened this window is gone, the
+        // way it is gone when it returns early after BeginRecording.
+    }
+
+    // The window belongs to the recording. A list that goes away still holding one would leave every
+    // later upload on this thread looking like it landed inside a recording that no longer exists.
+    CHECK_FALSE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+}
+
+TEST_CASE("rhi-command-list: the window closes on the thread that opened it [full]")
+{
+    CountingRHI rhi;
+    RHICommandListPool pool;
+    pool.Initialize(&rhi);
+
+    // A frame-threaded frame records on the render role and hands the stream over; the RHI role
+    // replays it on another thread. Closing the window is part of finishing the recording, so it
+    // cannot depend on who replays or when.
+    {
+        RHICommandListPool::Lease lease = pool.AcquireLease();
+        REQUIRE(lease.IsValid());
+        lease->BeginRecording();
+        lease->Draw(3u);
+        lease->FinishRecording();
+        CHECK_FALSE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+        lease.SubmitFinished();
+    }
+    CHECK_FALSE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+
+    bool replayed = false;
+    std::thread rhiRole([&pool, &replayed]() {
+        RHICommandList* finished = pool.WaitTakeFinished();
+        if (finished == nullptr)
+        {
+            return;
+        }
+        finished->Replay();
+        pool.Release(finished);
+        replayed = true;
+    });
+    rhiRole.join();
+
+    CHECK(replayed);
+    CHECK(rhi.DrawCount == 1);
+    // The recording thread still holds no window after a replay that happened somewhere else.
+    CHECK_FALSE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+
+    pool.Shutdown();
+}
+
+TEST_CASE("rhi-command-list: the recording scope closes the window on an early return [smoke]")
+{
+    CountingRHI rhi;
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(false);
+
+    const auto runFrame = [&cmdList](bool failsMidFrame) {
+        RHICommandListRecordingScope recordingScope(cmdList);
+        cmdList.Draw(3u);
+        if (failsMidFrame)
+        {
+            // The frame-graph setup failure: nothing closes the recording by hand.
+            return false;
+        }
+
+        recordingScope.Finish();
+        cmdList.Replay();
+        return true;
+    };
+
+    CHECK_FALSE(runFrame(true));
+    // The half-built stream is closed rather than replayed, and the window is back with it.
+    CHECK(cmdList.GetState() == ERHICommandListState::Finished);
+    CHECK_FALSE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+    CHECK(rhi.DrawCount == 0);
+
+    // Handing the list back to the pool drops the closed stream and leaves the list idle; a scope
+    // that runs after that Reset finds no recording to close and does nothing.
+    cmdList.Reset();
+    CHECK(cmdList.GetState() == ERHICommandListState::Idle);
+
+    CHECK(runFrame(false));
+    CHECK(rhi.DrawCount == 1);
+    CHECK(cmdList.GetState() == ERHICommandListState::Idle);
+    CHECK_FALSE(RHICommandList::IsRecordingWindowOpenOnThisThread());
+}
+
+TEST_CASE("rhi-command-list: a slot write and the draw that reads it stay in stream order [full]")
+{
+    CountingRHI rhi;
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(false);
+
+    // Two slots of one block, with the draw between the writes: the draw must read the first slot's
+    // bytes. A write that landed immediately would rewrite the slot before the draw ever ran, which
+    // is what the shadow slots did while they were written outside the recording window.
+    TrackingBuffer block(8u);
+    std::string bytesAtDraw;
+    rhi.OnDraw = [&]() { bytesAtDraw = block.Text(); };
+
+    RHICommandListRecordingScope recordingScope(cmdList);
+    cmdList.UpdateBuffer(&block, "AA", 0u, 2u);
+    cmdList.Draw(3u);
+    cmdList.UpdateBuffer(&block, "BB", 4u, 2u);
+    recordingScope.Finish();
+    cmdList.Replay();
+
+    std::string expectedAtDraw = "AA";
+    expectedAtDraw.append(6u, '\0');
+    CHECK(bytesAtDraw == expectedAtDraw);
+    CHECK(block.Text() == std::string("AA\0\0BB\0\0", 8u));
+}
+
+TEST_CASE("rhi-command-list: a frame's shadow uploads stay inside its stream [full]")
+{
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+
+    // Ten uploads per frame is what the shadow slots cost: four cascade matrices, four cascade far
+    // planes and two spot slots no light claims. Recorded, they are writes in the frame's stream and
+    // the guard sees none of them. Issued straight through the primitive while a window is open they
+    // are the bypasses the guard counts - the shape the renderer used before it recorded them.
+    OpenGLRHI rhi;
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(false);
+
+    RHIBufferRef dirViewProj = cmdList.CreateBuffer(MakeUniformBufferDesc(256u * 4u));
+    RHIBufferRef cascadeFar = cmdList.CreateBuffer(MakeUniformBufferDesc(16u * 4u));
+    RHIBufferRef spotViewProj = cmdList.CreateBuffer(MakeUniformBufferDesc(256u * 2u));
+    REQUIRE(dirViewProj);
+    REQUIRE(cascadeFar);
+    REQUIRE(spotViewProj);
+
+    const uint64_t bypassesBefore = RHICommandList::GetImmediateUploadWhileRecordingCount();
+
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        RHICommandListRecordingScope recordingScope(cmdList);
+        for (uint32_t cascade = 0; cascade < 4u; ++cascade)
+        {
+            const float viewProj[16] = { 1.0f };
+            const float farPlane = 10.0f + static_cast<float>(cascade);
+            cmdList.UpdateBuffer(dirViewProj.get(), viewProj, 256u * cascade, sizeof(viewProj));
+            cmdList.UpdateBuffer(cascadeFar.get(), &farPlane, 16u * cascade, sizeof(farPlane));
+        }
+        for (uint32_t slot = 0; slot < 2u; ++slot)
+        {
+            const float unusedSlot[16] = { 1.0f };
+            cmdList.UpdateBuffer(spotViewProj.get(), unusedSlot, 256u * slot, sizeof(unusedSlot));
+        }
+        recordingScope.Finish();
+        cmdList.Replay();
+    }
+
+    CHECK(RHICommandList::GetImmediateUploadWhileRecordingCount() == bypassesBefore);
+
+    {
+        RHICommandListRecordingScope recordingScope(cmdList);
+        const float farPlane = 1.0f;
+        for (uint32_t write = 0; write < 10u; ++write)
+        {
+            cascadeFar->UpdateSubresource(&farPlane, 0u, sizeof(farPlane));
+        }
+        recordingScope.Finish();
+        cmdList.Reset();
+    }
+    CHECK(RHICommandList::GetImmediateUploadWhileRecordingCount() == bypassesBefore + 10u);
 }
 
