@@ -28,6 +28,9 @@ namespace minEngine
 
         std::atomic<uint64_t> g_OffRoleCommandRefusalCount{0};
 
+        /** Sets that recorded streams of the live lists keep alive (see GetRecordedBindingSetHoldCount). */
+        std::atomic<uint64_t> g_RecordedBindingSetHoldCount{0};
+
         /**
          * The topology that makes every list record: Multi with the frame roles running. Every other
          * topology - Single, headless, and Multi whose roles have stopped - lets a list run its
@@ -286,6 +289,13 @@ namespace minEngine
     void RHICommandList::Reset()
     {
         LeaveRecordingWindow(m_HoldsRecordingWindow);
+        // The commands go with their captures, so the sets they held go with them: the reference a
+        // recorded bind took is given back exactly once, whether the command ran or never will.
+        if (m_RecordedBindingSetHolds != 0)
+        {
+            g_RecordedBindingSetHoldCount.fetch_sub(m_RecordedBindingSetHolds, std::memory_order_relaxed);
+            m_RecordedBindingSetHolds = 0;
+        }
         m_RecordedCommands.clear();
         m_UploadScratchCursor = 0;
         m_State = ERHICommandListState::Idle;
@@ -294,6 +304,11 @@ namespace minEngine
     uint64_t RHICommandList::GetImmediateUploadWhileRecordingCount()
     {
         return g_ImmediateUploadWhileRecordingCount.load();
+    }
+
+    uint64_t RHICommandList::GetRecordedBindingSetHoldCount()
+    {
+        return g_RecordedBindingSetHoldCount.load();
     }
 
     bool RHICommandList::IsRecordingWindowOpenOnThisThread()
@@ -401,6 +416,37 @@ namespace minEngine
         RecordOrExecute([this, setIndex, bindingSet]() {
             m_RHI->RHICmdSetShaderBindingSet(setIndex, bindingSet);
         });
+    }
+
+    void RHICommandList::SetShaderBindingSet(uint32_t setIndex, const RHIShaderBindingSetRef& bindingSet)
+    {
+        if (!bindingSet)
+        {
+            SetShaderBindingSet(setIndex, static_cast<RHIShaderBindingSet*>(nullptr));
+            return;
+        }
+
+        // Not routed through RecordOrExecute: only the recorded command needs the reference, and
+        // only this overload knows it took one. An immediate list runs the lambda before the call
+        // returns, so the shared copy is released straight away and nothing is counted.
+        if (IsImmediate())
+        {
+            m_RHI->RHICmdSetShaderBindingSet(setIndex, bindingSet.get());
+            return;
+        }
+
+        AssertCanIssueDrawCommand();
+        if (m_State != ERHICommandListState::Recording)
+        {
+            return;
+        }
+
+        m_RecordedCommands.push_back(
+            [this, setIndex, bindingSet]() {
+                m_RHI->RHICmdSetShaderBindingSet(setIndex, bindingSet.get());
+            });
+        ++m_RecordedBindingSetHolds;
+        g_RecordedBindingSetHoldCount.fetch_add(1, std::memory_order_relaxed);
     }
 
     void RHICommandList::Transition(const RHITextureTransitionInfo& transition)

@@ -81,6 +81,8 @@
 #include "Suites/MaterialRenderProxyDataTest.h"
 #include "Suites/EnvMapBakeTest.h"
 #include "Suites/SceneDebugDrawSnapshotTest.h"
+#include "Suites/GpuStaticLifetimeTest.h"
+#include "Suites/DrawPacketLifetimeTest.h"
 
 namespace minEngine
 {
@@ -1595,6 +1597,50 @@ namespace minEngine
             }
         };
 
+        struct GpuStaticLifetimeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "gpu-static-lifetime",
+                    "Process-Level GPU Handle Lifetime",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'gpu-static-lifetime'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "gpu-static-lifetime",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
+        struct DrawPacketLifetimeTestSuiteTraits
+        {
+            static TestSuiteMetadata BuildMetadata()
+            {
+                return TestSuiteMetadata{
+                    "draw-packet-lifetime",
+                    "Draw Packet Binding Set Lifetime",
+                    true,
+                    true,
+                    false};
+            }
+
+            static bool RunSuite(TestContext& context)
+            {
+                ME_LOG(LogTest, Info, "TestRunner: starting suite 'draw-packet-lifetime'.");
+                EngineTestContextScope scope(context);
+                return DoctestSuiteRunner::RunSuiteForContext(
+                    "draw-packet-lifetime",
+                    context.GetCommandLine().TestKind);
+            }
+        };
+
         struct RHIDeferredCreateTestSuiteTraits
         {
             static TestSuiteMetadata BuildMetadata()
@@ -1799,6 +1845,8 @@ namespace minEngine
         using RHICommandListSuite = TypedTestSuite<RHICommandListTestSuiteTraits>;
         using RHIDeferredCreateSuite = TypedTestSuite<RHIDeferredCreateTestSuiteTraits>;
         using RHIDeferredDestroySuite = TypedTestSuite<RHIDeferredDestroyTestSuiteTraits>;
+        using GpuStaticLifetimeSuite = TypedTestSuite<GpuStaticLifetimeTestSuiteTraits>;
+        using DrawPacketLifetimeSuite = TypedTestSuite<DrawPacketLifetimeTestSuiteTraits>;
         using EditorImGuiTextureSuite = TypedTestSuite<EditorImGuiTextureTestSuiteTraits>;
         using SceneProxyResourceLifetimeSuite = TypedTestSuite<SceneProxyResourceLifetimeTestSuiteTraits>;
         using SceneProxyRenderReadSuite = TypedTestSuite<SceneProxyRenderReadTestSuiteTraits>;
@@ -1899,6 +1947,8 @@ namespace minEngine
             registry.Register(RHICommandListSuite::Get());
             registry.Register(RHIDeferredCreateSuite::Get());
             registry.Register(RHIDeferredDestroySuite::Get());
+            registry.Register(GpuStaticLifetimeSuite::Get());
+            registry.Register(DrawPacketLifetimeSuite::Get());
             registry.Register(EditorImGuiTextureSuite::Get());
             registry.Register(SceneProxyResourceLifetimeSuite::Get());
             registry.Register(SceneProxyRenderReadSuite::Get());

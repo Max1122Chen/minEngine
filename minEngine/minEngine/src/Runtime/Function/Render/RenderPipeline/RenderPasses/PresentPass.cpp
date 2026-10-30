@@ -188,7 +188,7 @@ namespace minEngine
         }
 
         m_DrawPacket.PipelineState = m_PresentPipelineState;
-        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentShaderBindingSet.get();
+        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PresentShaderBindingSet;
         m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         m_DrawPacket.VertexCount = kScreenQuadVertexCount;
     }

@@ -102,9 +102,26 @@ namespace minEngine
         return outResult.QuadCount > 0 || utf8Text.empty();
     }
 
+    namespace
+    {
+        /**
+         * The one vertex layout text draws share, and the only process-level GPU handle this file
+         * holds.
+         *
+         * It is a single function-local static reached through one accessor so the release entry
+         * above touches the same object: a second static in a second function would reset its own
+         * copy and let the real one die after the device, which is the leak this exists to prevent.
+         */
+        RHIVertexInputLayoutRef& SharedVertexInputLayout()
+        {
+            static RHIVertexInputLayoutRef s_Layout;
+            return s_Layout;
+        }
+    }
+
     RHIVertexInputLayout* TextMeshBuilder::GetOrCreateVertexInputLayout(RHI& rhi)
     {
-        static RHIVertexInputLayoutRef s_Layout;
+        RHIVertexInputLayoutRef& s_Layout = SharedVertexInputLayout();
         if (!s_Layout)
         {
             s_Layout = rhi.RHICreateVertexInputLayout({
@@ -115,5 +132,18 @@ namespace minEngine
             });
         }
         return s_Layout.get();
+    }
+
+    void TextMeshBuilder::ReleaseSharedLayout()
+    {
+        // Reached through a module-level accessor, not a second copy of the static: the handle is
+        // owned by one function-local static, and a helper elsewhere would only reset its own.
+        RHIVertexInputLayoutRef& layout = SharedVertexInputLayout();
+        layout.reset();
+    }
+
+    bool TextMeshBuilder::HasSharedLayout()
+    {
+        return static_cast<bool>(SharedVertexInputLayout());
     }
 }

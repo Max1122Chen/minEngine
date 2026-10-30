@@ -180,6 +180,11 @@ namespace minEngine
         return m_MaterialShaderBindingSet.get();
     }
 
+    RHIShaderBindingSetRef MaterialRenderProxy::GetMaterialShaderBindingSetRef() const
+    {
+        return m_MaterialShaderBindingSet;
+    }
+
     void MaterialRenderProxy::MarkGameDataDirty()
     {
         m_bGameDataDirty = true;

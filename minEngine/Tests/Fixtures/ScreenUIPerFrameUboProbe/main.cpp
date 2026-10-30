@@ -234,7 +234,7 @@ int main()
         perObjectRing.get(),
         256u);
 
-    RHIShaderBindingSet* sceneDraw = bindings.BindNextPerObjectModel(cmdList, Matrix4(1.0f));
+    RHIShaderBindingSetRef sceneDraw = bindings.BindNextPerObjectModel(cmdList, Matrix4(1.0f));
     if (sceneDraw != nullptr)
     {
         cmdList.SetShaderBindingSet(EngineShaderBindings::kSetSceneObject, sceneDraw);
@@ -245,7 +245,7 @@ int main()
         "a 3D draw binds the camera block");
 
     Testing::TestAccess<EngineSceneBindingSets>::RouteScreenSpaceBlock(bindings, published);
-    RHIShaderBindingSet* screenSpaceDraw = bindings.BindNextPerObjectModel(cmdList, Matrix4(1.0f));
+    RHIShaderBindingSetRef screenSpaceDraw = bindings.BindNextPerObjectModel(cmdList, Matrix4(1.0f));
     if (screenSpaceDraw != nullptr)
     {
         cmdList.SetShaderBindingSet(EngineShaderBindings::kSetSceneObject, screenSpaceDraw);
@@ -256,7 +256,7 @@ int main()
         "a screen-space draw binds the screen-space block");
 
     Testing::TestAccess<EngineSceneBindingSets>::RouteScreenSpaceBlock(bindings, nullptr);
-    RHIShaderBindingSet* nextSceneDraw = bindings.BindNextPerObjectModel(cmdList, Matrix4(1.0f));
+    RHIShaderBindingSetRef nextSceneDraw = bindings.BindNextPerObjectModel(cmdList, Matrix4(1.0f));
     if (nextSceneDraw != nullptr)
     {
         cmdList.SetShaderBindingSet(EngineShaderBindings::kSetSceneObject, nextSceneDraw);

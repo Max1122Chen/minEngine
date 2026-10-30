@@ -15,6 +15,8 @@
 
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "RenderPipeline/ForwardRenderer.h"
+#include "Runtime/Function/UI/Font/FontGlyphAtlasCache.h"
+#include "Runtime/Function/UI/Font/TextMeshBuilder.h"
 #include "RenderPipeline/ManualRenderer.h"
 #include "RenderScene.h"
 
@@ -127,6 +129,11 @@ namespace minEngine
         SpriteMaterialFactory::ClearTemplateCache();
         ScreenUIMaterialFactory::ClearCachedResources();
         ShaderCompiler::Get().ClearMemoryCache();
+        // The glyph atlas cache is the same shape and was the one left out: each atlas owns the
+        // Texture2D it rasterized into, so an atlas that is only dropped by its static destructor
+        // releases a native texture after the device is gone. Live widgets keep their own atlas
+        // reference and stay valid.
+        FontGlyphAtlasCache::Get().Clear();
 
         m_EngineRenderingAssetsLoaded = false;
 
@@ -140,6 +147,12 @@ namespace minEngine
         // caller for its Shutdown(); release it here (after draw consumers are gone, before the
         // context dies). The SpriteQuadMesh files themselves are outside this work item's boundary.
         SpriteQuadMesh::Get().Shutdown();
+
+        // Same shape, same reason: the text vertex layout is held for the process, so its static
+        // destructor would run after the device is gone and report the layout as a leak that can no
+        // longer be destroyed. Released here, the handle is queued like any other and the drain
+        // below destroys it while the device is still alive.
+        TextMeshBuilder::ReleaseSharedLayout();
 
         if (m_RHI)
         {

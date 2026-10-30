@@ -56,8 +56,14 @@ namespace minEngine
             m_ScreenSpacePerFrame = block;
         }
 
-        /** Write next ring slot and return a set0 that views that slot (scene opaque/translucent). */
-        RHIShaderBindingSet* BindNextPerObjectModel(
+        /**
+         * Write next ring slot and return a set0 that views that slot (scene opaque/translucent).
+         *
+         * The reference is returned instead of the address because the caller keeps it: a packet
+         * records the set it names, and a stream that has not been replayed yet names it too, so
+         * this object clearing its cache must not be what ends the set's life.
+         */
+        RHIShaderBindingSetRef BindNextPerObjectModel(
             RHICommandList& cmdList,
             const Matrix4& model,
             const Matrix4* bonePalette = nullptr,
@@ -79,7 +85,8 @@ namespace minEngine
         /** Drop cached shadow SRVs / set1 after RDG shadow resources are recreated or removed. */
         void InvalidateShadowTextureBindings();
 
-        RHIShaderBindingSet* GetSceneSet1() const { return m_SceneSet1.get(); }
+        /** Borrowed access for identity checks; a caller that keeps it takes a copy. */
+        const RHIShaderBindingSetRef& GetSceneSet1() const { return m_SceneSet1; }
         RHIShaderBindingSetLayout* GetSceneSet0Layout() const { return m_SceneSet0Layout.get(); }
         RHIShaderBindingSetLayout* GetSceneSet1Layout() const { return m_SceneSet1Layout.get(); }
 

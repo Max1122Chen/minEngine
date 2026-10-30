@@ -199,7 +199,7 @@ namespace minEngine
         cmdList.UpdateBuffer(m_PostParamsUniformBuffer.get(), &params, 0, sizeof(EnginePostParamsUBO));
 
         m_DrawPacket.PipelineState = m_PostProcessPipelineState;
-        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PostShaderBindingSet.get();
+        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PostShaderBindingSet;
         m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         m_DrawPacket.VertexCount = kScreenQuadVertexCount;
     }

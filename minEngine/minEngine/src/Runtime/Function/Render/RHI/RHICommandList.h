@@ -80,7 +80,22 @@ namespace minEngine
         void BeginRenderPass(const RHIRenderPassInfo& info);
         void EndRenderPass();
         void SetGraphicsPipelineState(RHIGraphicsPipelineState* pipelineState);
+        /**
+         * Binds a set by address. Recording copies the address and not the object, so a caller
+         * that records keeps the set alive itself until the stream is replayed.
+         */
         void SetShaderBindingSet(uint32_t setIndex, RHIShaderBindingSet* bindingSet);
+
+        /**
+         * Binds a set the stream itself keeps alive.
+         *
+         * Recording holds a reference for as long as the command sits unreplayed, so a producer
+         * that rebuilds or drops the set after recording it cannot leave the stream naming a
+         * destroyed object - the case a replayed material draw hits when the material compiled
+         * again between recording and replay. Immediate execution retains nothing: the command
+         * runs before this call returns, so only the recording path pays.
+         */
+        void SetShaderBindingSet(uint32_t setIndex, const RHIShaderBindingSetRef& bindingSet);
         void Transition(const RHITextureTransitionInfo& transition);
         void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height, bool flipY = true);
         void SetViewport(
@@ -141,6 +156,16 @@ namespace minEngine
          */
         static bool IsRecordingWindowOpenOnThisThread();
 
+        /**
+         * Binding sets that recorded, unreplayed commands of the live lists keep alive right now.
+         *
+         * Every set a stream names is a reference that outlives its producer, so the count is the
+         * one place a lifetime defect becomes visible instead of silent: a count that never falls
+         * back to zero is a stream that was never replayed, and the sets it holds are the ones a
+         * producer has already stopped tracking.
+         */
+        static uint64_t GetRecordedBindingSetHoldCount();
+
         /** Sole draw submit path: PSO → binding sets → VB/IB → Draw. */
         void SubmitMeshDrawPacket(const MeshDrawPacket& packet);
 
@@ -196,6 +221,8 @@ namespace minEngine
         size_t m_UploadScratchCursor = 0;
         /** True while this list keeps the current thread's recording window open. */
         bool m_HoldsRecordingWindow = false;
+        /** Sets this list's unreplayed commands keep alive; given back by Reset. */
+        uint32_t m_RecordedBindingSetHolds = 0;
     };
 
     /**

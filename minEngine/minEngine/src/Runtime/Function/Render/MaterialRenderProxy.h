@@ -226,7 +226,19 @@ namespace minEngine
             return data != nullptr && data->Shader != nullptr && data->Shader->HasNativeCreateFailed();
         }
         virtual RHIShaderBindingSetLayout* GetMaterialShaderBindingSetLayout() const;
+
+        /** Borrowed access: valid while this proxy holds the set, i.e. until its next rebuild. */
         virtual RHIShaderBindingSet* GetMaterialShaderBindingSet() const;
+
+        /**
+         * The set as an owner does.
+         *
+         * A draw packet records the set it binds and the stream that recorded it may be replayed
+         * after this proxy rebuilt its GPU state. Taking the reference is what makes the packet
+         * name the set that existed when it was filled instead of an address that is only valid
+         * until the next compile generation change.
+         */
+        virtual RHIShaderBindingSetRef GetMaterialShaderBindingSetRef() const;
 
         /**
          * The snapshot to draw from: one atomic load of an immutable block.

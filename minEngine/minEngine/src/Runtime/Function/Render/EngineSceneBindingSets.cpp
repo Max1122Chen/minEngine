@@ -59,8 +59,56 @@ namespace minEngine
         }
     }
 
+    namespace
+    {
+        /** Sets in this collection that another owner still holds. */
+        uint32_t CountSetsHeldElsewhere(const std::vector<RHIShaderBindingSetRef>& sets)
+        {
+            uint32_t heldElsewhere = 0;
+            for (const RHIShaderBindingSetRef& set : sets)
+            {
+                if (set && set.use_count() > 1)
+                {
+                    ++heldElsewhere;
+                }
+            }
+            return heldElsewhere;
+        }
+
+        /**
+         * Reports sets this object is about to stop holding that somebody else still holds: a draw
+         * packet built earlier, or a recorded stream that has not been replayed.
+         *
+         * Their own reference keeps the set alive, which is intended - a draw recorded against a
+         * set keeps reading the bindings it was recorded with. The report exists because the
+         * alternative is silent: without it, "a consumer outlived the collection that built the
+         * set" is only visible when it reads freed memory, which is a crash and not a fact.
+         */
+        void ReportSetsDroppedWhileReferenced(const char* where, uint32_t heldElsewhere)
+        {
+            if (heldElsewhere == 0)
+            {
+                return;
+            }
+
+            ME_LOG(
+                LogRender,
+                Info,
+                "EngineSceneBindingSets: {} stops holding {} binding set(s) that a draw packet or "
+                "an unreplayed stream still references; they stay alive until that consumer is done.",
+                where,
+                heldElsewhere);
+        }
+    }
+
     void EngineSceneBindingSets::Shutdown()
     {
+        ReportSetsDroppedWhileReferenced(
+            "Shutdown",
+            CountSetsHeldElsewhere(m_SceneSet0BySlot)
+                + CountSetsHeldElsewhere(m_ScreenSpaceSet0BySlot)
+                + ((m_SceneSet1 && m_SceneSet1.use_count() > 1) ? 1u : 0u));
+
         m_SceneSet0BySlot.clear();
         m_ScreenSpaceSet0BySlot.clear();
         m_ScreenSpacePerFrame = nullptr;
@@ -131,6 +179,11 @@ namespace minEngine
 
         if (ringIdentityChanged)
         {
+            ReportSetsDroppedWhileReferenced(
+                "BeginFrame",
+                CountSetsHeldElsewhere(m_SceneSet0BySlot)
+                    + CountSetsHeldElsewhere(m_ScreenSpaceSet0BySlot));
+
             m_SceneSet0BySlot.clear();
             m_SceneSet0BySlot.resize(kPerObjectRingSlots);
             m_ScreenSpaceSet0BySlot.clear();
@@ -160,7 +213,7 @@ namespace minEngine
         return offset;
     }
 
-    RHIShaderBindingSet* EngineSceneBindingSets::BindNextPerObjectModel(
+    RHIShaderBindingSetRef EngineSceneBindingSets::BindNextPerObjectModel(
         RHICommandList& cmdList,
         const Matrix4& model,
         const Matrix4* bonePalette,
@@ -237,7 +290,7 @@ namespace minEngine
             set0BySlot[slot] = cmdList.CreateShaderBindingSet(m_SceneSet0Layout.get(), resources);
         }
 
-        return set0BySlot[slot].get();
+        return set0BySlot[slot];
     }
 
     bool EngineSceneBindingSets::ShadowTextureSlotChanged(

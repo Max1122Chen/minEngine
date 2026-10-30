@@ -9,6 +9,8 @@
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIShader.h"
 
+#include <utility>
+
 namespace minEngine
 {
     void PrepareSceneMeshDrawPackets(
@@ -56,7 +58,12 @@ namespace minEngine
                 drawCommand.m_VertexInputLayout,
                 passKind);
             packet.BindDrawCommand(drawCommand);
-            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = materialProxy->GetMaterialShaderBindingSet();
+            // The material slot is deliberately left empty here. Its set is the one object in this
+            // packet a producer rebuilds while the packet is alive: BindForDraw drops the set the
+            // proxy built before and builds another. Filling the slot here meant the packet spent
+            // the time between preparation and submission naming a set that may already be gone,
+            // and the refresh at submission only rescued the draws that happened to be submitted in
+            // the same frame. The slot is filled once, after the rebuild, below.
         }
     }
 
@@ -88,7 +95,7 @@ namespace minEngine
                 continue;
             }
 
-            RHIShaderBindingSet* set0 = sceneBindings.BindNextPerObjectModel(
+            RHIShaderBindingSetRef set0 = sceneBindings.BindNextPerObjectModel(
                 cmdList,
                 drawCommand.m_ModelMatrix,
                 drawCommand.m_BonePalette,
@@ -98,13 +105,19 @@ namespace minEngine
                 continue;
             }
 
-            packet.ShaderBindingSets[EngineShaderBindings::kSetSceneObject] = set0;
+            // Every slot is filled from a reference the packet now owns, so the packet and any
+            // stream that has not been replayed yet keep these sets alive after their producers
+            // stop holding them.
+            packet.ShaderBindingSets[EngineShaderBindings::kSetSceneObject] = std::move(set0);
             // Pipeline layout always has set 1; leave it unbound and some drivers drop the draw.
             packet.ShaderBindingSets[EngineShaderBindings::kSetShadowIBL] = sceneBindings.GetSceneSet1();
 
-            // BindForDraw may recreate the material binding set; refresh the packet pointer after.
+            // BindForDraw rebuilds the material set when the material compiled again. Reading the
+            // set after it returns is what makes the packet name the set that exists now, and the
+            // only place the material slot is ever filled.
             materialProxy->BindForDraw(cmdList);
-            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] = materialProxy->GetMaterialShaderBindingSet();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetMaterial] =
+                materialProxy->GetMaterialShaderBindingSetRef();
             cmdList.SubmitMeshDrawPacket(packet);
         }
     }

@@ -16,7 +16,18 @@ namespace minEngine
     {
         RHIGraphicsPipelineStateRef PipelineState;
 
-        std::array<RHIShaderBindingSet*, kMaxShaderBindingSets> ShaderBindingSets{};
+        /**
+         * The binding sets this draw names, owned for as long as the packet exists.
+         *
+         * A packet is built in a pass preparation step and submitted later, and a recorded stream
+         * that names a set can be replayed later still. In that gap the producer of a set may
+         * rebuild it - a material whose compile generation changed drops the set it built before -
+         * so a packet that only borrowed the address would hand a destroyed object to the device.
+         * Holding the reference is what makes the gap harmless: the old set stays alive until the
+         * last consumer of it is gone, and the draw it was recorded for reads the bindings that
+         * were current when the packet was filled.
+         */
+        std::array<RHIShaderBindingSetRef, kMaxShaderBindingSets> ShaderBindingSets{};
 
         RHIBuffer* VertexBuffer = nullptr;
         RHIBuffer* IndexBuffer = nullptr;

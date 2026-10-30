@@ -228,7 +228,7 @@ namespace minEngine
 
             MeshDrawPacket packet;
             packet.PipelineState = pipelineState;
-            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = shadowSet.get();
+            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = shadowSet;
             packet.BindDrawCommand(drawCommand);
             cmdList.SubmitMeshDrawPacket(packet);
         }

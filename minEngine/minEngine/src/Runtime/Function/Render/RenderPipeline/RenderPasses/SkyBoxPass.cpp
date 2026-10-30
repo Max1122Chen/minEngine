@@ -339,7 +339,7 @@ namespace minEngine
         context.CommandList->UpdateBuffer(m_SkyFrameUniformBuffer.get(), &frameData, 0, sizeof(SkyPassFrameUBO));
 
         m_DrawPacket.PipelineState = m_SkyPipelineState;
-        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
+        m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet;
         m_DrawPacket.VertexBuffer = m_CubeVertexBuffer.get();
         m_DrawPacket.VertexCount = CubeVertexCount();
         m_ShouldRender = true;
@@ -408,7 +408,7 @@ namespace minEngine
 
         MeshDrawPacket packet;
         packet.PipelineState = m_SkyPipelineState;
-        packet.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet.get();
+        packet.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet;
         packet.VertexBuffer = m_CubeVertexBuffer.get();
         packet.VertexCount = CubeVertexCount();
         cmdList.SubmitMeshDrawPacket(packet);
