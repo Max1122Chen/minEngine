@@ -333,8 +333,11 @@ namespace minEngine
         void ReportFrameWorkLoss(const TaskSystem* tasks)
         {
             // The frame boundary owns the one moment with no log lock held, so it is where the
-            // violations recorded since the previous frame become log records.
-            DrainContractViolations();
+            // violations recorded since the previous frame become log records - and where the count
+            // the summary reports is read, in the same call, so the summary can never describe
+            // records the log has not received yet.
+            const ContractViolationFrameSample contractViolations =
+                PublishAndSampleContractViolations();
 
             FrameWorkLossCounters current;
             if (RenderCommandPipe::HasInstance())
@@ -350,7 +353,7 @@ namespace minEngine
                 current.DroppedFrames = tasks->GetDroppedQueuedFrameCount();
                 current.RenderWritesDuringFrame = tasks->GetGameRoleRenderWriteCount();
             }
-            current.ContractViolations = GetContractViolationCounters().Total();
+            current.ContractViolations = contractViolations.Counters.Total();
             // Both are process-wide totals, like the contract count above: a summed count keeps
             // rising, so the delta in the line is what happened between two frames.
             current.OffRoleCoreServiceCalls = ObjectManager::GetOffRoleCoreServiceCallCountTotal();

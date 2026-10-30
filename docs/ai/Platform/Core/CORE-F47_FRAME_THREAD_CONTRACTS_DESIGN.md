@@ -265,9 +265,11 @@ P3b 把最后一段游戏对象所有权移出渲染侧，`DeferredObjectRelease
 
 报告路径**不调用** `LogSystem::Emit`。`Emit` 在持有自己的互斥量时逐 sink 回调，而契约违反恰恰经常发生在“这个线程已经握着某把锁”的时候——包括日志锁本身（sink 里触发的违反）。因此报告路径只做四件不取锁的事：一处 interlocked 计数、一次定长记录写入预分配的进程级暂存区（64 槽、环形领取、槽满只加未投递计数）、一行 `_write(2, ...)` 直写标准错误描述符（绕过 `FILE*` 的锁）、一次线程局部重入闸（报告里再触发只计数不递归）。
 
-成日志由 `DrainContractViolations()`（`Runtime/Core/Assert/AssertLog.h`）完成，调用点选在帧边界（`Engine::ReportFrameWorkLoss`）——那里确定没有日志锁在手上。硬陷分支不 drain：那会在最不该等锁的时刻等锁；行已经在 stderr 上，崩溃记录由崩溃处理器负责。
+成日志由 `PublishAndSampleContractViolations()`（`Runtime/Core/Assert/AssertLog.h`）完成，调用点选在帧边界（`Engine::ReportFrameWorkLoss`，`Engine::Run` 与 `Engine::CompleteFrameReleases` 都必经）；那里确定没有日志锁在手上。发布与取样合成一次调用，因为它们是同一个时刻：先发布再在别处读计数，就会出现“汇总里数了日志还没收到的记录”。硬陷分支不 drain：那会在最不该等锁的时刻等锁；行已经在 stderr 上，崩溃记录由崩溃处理器负责。
 
-暂存区是**每进程一份**：`Local\minEngine-contract-state-<pid>` 的页文件区，同进程内引擎 DLL 与可执行文件映射到同一页（否则 DLL 报的数、测试读的数会各算一份），不同进程之间不共享（页文件区按名字是会话级的，所以 pid 必须进名字）。映射失败时退回模块私有块，计数仍然对，只是不跨模块。除计数外这里不新增任何导出（导出 3003 不变）。
+状态块是**每进程一份**，实现方式是“定义只有一个”：计数器与暂存区定义在 `Runtime/Core/Assert/AssertLog.cpp`（引擎模块的一个已导出翻译单元）里，其余模块只能通过导出的访问器够到它——头文件里没有定义，所以不存在第二份可以实例化的副本；一个进程只加载一个引擎模块，所有调用都落在同一个对象上。原先用 `Local\minEngine-contract-state-<pid>` 页文件映射 + 手写 `CreateFileMappingW`/`MapViewOfFile` 原型来凑这份“唯一”，代价是要在头文件里重抄一份 Win32 ABI、以及映射失败时退回模块私有块（退回之后计数就对不上了）。改成导出访问器后这些都删掉了，失败路径也随之消失。
+
+访问器分两类，各自只有一个职责：记录侧（`CountContractViolation`、`StageContractRecord`、`CurrentContractRole`、`SetContractRoleResolver`）供内联报告路径调用，都是无分配、无锁、可在线程任意位置调用；读取侧（`GetContractViolationCounters`、`PublishAndSampleContractViolations`）供每帧汇总与诊断使用。内部状态类型（`ContractState`/`ContractRecordSlot`）随之从公共头文件消失，只剩计数器视图。本次新增 6 个导出（3019 → 3025），删掉了原本“除计数外不新增导出”的承诺，因为跨模块唯一性现在必须由导出函数承担。
 
 ### 限频
 

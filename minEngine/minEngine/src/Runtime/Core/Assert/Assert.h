@@ -22,10 +22,18 @@
  *       - one interlocked increment per counter;
  *       - one fixed-size record written into a preallocated, process-wide staging area;
  *       - one line written straight to the standard error handle.
- *     No allocation, no formatting through the C++ library, no log-system lock, no lock at all
- *     beyond the kernel's own object table on the very first report. Publishing the staged records
- *     to the log happens later, in DrainContractViolations() (AssertLog.h), from a caller that owns
- *     no log lock - the frame boundary owns one such moment.
+ *     No allocation, no formatting through the C++ library, no log-system lock, no lock at all.
+ *     Publishing the staged records to the log happens later, at the frame boundary
+ *     (PublishAndSampleContractViolations in AssertLog.h), from a caller that owns no log lock.
+ *
+ * Where the state lives
+ *     The counters and the staging area are one block in the engine module's data (AssertLog.cpp),
+ *     and the accessors below are the only way to it. One block, not one per module: the numbers a
+ *     report moves and the numbers a host prints have to be the same numbers, and a reporter in the
+ *     executable, in a game module or in the editor DLL is reporting about the same process. The
+ *     functions are ordinary exports, so a call is a call - no allocation, no lock, no lazy
+ *     initialisation behind them - and the record path itself stays inline here, because it is the
+ *     part that has to run wherever the violation is detected.
  *
  * Rate limiting
  *     A violated contract is usually violated every frame, so a site that logged once per failure
@@ -33,8 +41,11 @@
  *     (message, role): the first kContractVerboseReportsPerViolation failures of a distinct
  *     violation are recorded in full, the next one states that the site has gone quiet, and any
  *     failure after that only moves the counters. Nothing is lost silently: the cumulative total
- *     keeps rising and the per-frame summary reports it.
+ *     keeps rising and the per-frame summary reports it. The budget table belongs to the site, so
+ *     it stays with the site's expansion instead of crossing a module boundary.
  */
+
+#include "Runtime/Core/EngineAPI.h"
 
 #include <cstdarg>
 #include <cstddef>
@@ -47,7 +58,6 @@
 
 #if defined(_WIN32)
 #include <io.h>
-#include <process.h>
 #else
 #include <unistd.h>
 #endif
@@ -66,41 +76,10 @@
     #endif
 #endif
 
-#if defined(_WIN32)
-// Two kernel32 entry points, declared here instead of through <windows.h>: this header is reached by
-// every engine translation unit, and windows.h brings macros that rename engine functions (its
-// GetClassName would rewrite the reflection template of the same name). Both signatures are fixed
-// ABI, and both are declared in a namespace so a translation unit that includes windows.h as well
-// keeps its own global declarations untouched.
-namespace minEngine
-{
-    namespace ContractWin32
-    {
-        extern "C" __declspec(dllimport) void* __stdcall CreateFileMappingW(
-            void* fileHandle,
-            void* attributes,
-            unsigned long protect,
-            unsigned long maximumSizeHigh,
-            unsigned long maximumSizeLow,
-            const wchar_t* name);
-
-        extern "C" __declspec(dllimport) void* __stdcall MapViewOfFile(
-            void* mapping,
-            unsigned long access,
-            unsigned long offsetHigh,
-            unsigned long offsetLow,
-            std::size_t bytesToMap);
-    }
-}
-#endif
-
 namespace minEngine
 {
     /** Text capacity of one staged record: a file:line, a thread, a role and the author's message. */
     constexpr std::uint32_t kContractRecordTextCapacity = 256;
-
-    /** Records the staging area holds before further failures are only counted (never dropped silently). */
-    constexpr std::uint32_t kContractRecordSlots = 64;
 
     /** Distinct violations a single site reports in full before it goes quiet. */
     constexpr std::uint32_t kContractVerboseReportsPerViolation = 4;
@@ -124,6 +103,10 @@ namespace minEngine
     /**
      * One report site: one expansion of ME_ENSURE or ME_ASSERT. Constant-initialised, so declaring
      * it costs no thread-safe static guard on the failure path.
+     *
+     * The budget table lives with the site: it belongs to this expansion, only threads that reach
+     * this expansion touch it, and keeping it here is what lets the table be found without a lookup
+     * on the failure path.
      */
     struct ContractSite
     {
@@ -131,30 +114,6 @@ namespace minEngine
         int Line = 0;
         std::uint32_t BudgetKeys[kContractBudgetedViolations]{};
         std::uint32_t BudgetUsed[kContractBudgetedViolations]{};
-    };
-
-    /** A staged record. Plain integers and bytes: it lives in memory that is mapped, not constructed. */
-    struct ContractRecordSlot
-    {
-        std::uint32_t State = 0; // 0 free, 1 claimed, 2 staged and waiting for the log
-        std::uint32_t Reserved = 0;
-        char Text[kContractRecordTextCapacity]{};
-    };
-
-    /** Counters and staging area: one instance per process, shared by every module that reports. */
-    struct ContractState
-    {
-        std::uint64_t Ensured = 0;
-        std::uint64_t Trapped = 0;
-        std::uint64_t Suppressed = 0;
-        std::uint64_t Undelivered = 0;
-        std::uint32_t NextSlot = 0;
-        std::uint32_t Reserved = 0;
-        // Shared on purpose: a report raised in one module must still name the role its thread holds,
-        // and only the module that owns the frame-role table can answer that. A function pointer is
-        // a process-wide address, so every module can call it.
-        ContractRoleResolver RoleResolver = nullptr;
-        ContractRecordSlot Slots[kContractRecordSlots]{};
     };
 
     /** What the report path has counted so far. */
@@ -168,19 +127,61 @@ namespace minEngine
         std::uint64_t Suppressed = 0;
         /** Failures whose record found no free slot in the staging area. */
         std::uint64_t Undelivered = 0;
-        /** True when the counters are shared with every module in this process. */
-        bool bProcessWide = false;
 
         std::uint64_t Total() const { return RecordedOnContinue + RecordedOnTrap; }
     };
+
+    // ---- the one state block, reached through the engine module ---------------
+    //
+    // Every function below is public API for the same reason: the state they touch belongs to the
+    // process, while the code that has to touch it is spread over the modules of that process. A
+    // report is raised wherever the contract is broken, a summary is printed by whichever module
+    // drives frames, and a diagnostic is read by whoever runs the process - all three must mean the
+    // same counters, and none of them may acquire a lock or allocate while doing it.
+
+    /**
+     * Counts one report on the failing thread: one increment for its grade, and one more for the
+     * suppression when a site's budget kept it out of the log. Called from the inline record path,
+     * so it must stay allocation-free and lock-free.
+     */
+    MINENGINE_API void CountContractViolation(ContractGrade grade, bool bSuppressed);
+
+    /**
+     * Copies one already-formatted line into the staging area, or counts it as undelivered when the
+     * area is full. Never allocates and never waits, so the caller may hold any lock - including the
+     * log system's own.
+     */
+    MINENGINE_API void StageContractRecord(const char* text);
+
+    /**
+     * Installs the resolver a report asks for its thread's frame role, or clears it with null. The
+     * role table belongs to a frame-role instance, which a host, the editor or a game module may
+     * own; the block that remembers the resolver belongs to the engine module, so a report raised
+     * anywhere names the role its thread actually holds.
+     */
+    MINENGINE_API void SetContractRoleResolver(ContractRoleResolver resolver);
+
+    /**
+     * The frame role the calling thread holds, as a string the engine module owns, or a sentence
+     * saying that no resolver is installed. The record has to name the role of the thread that
+     * broke the contract, and that thread is whichever one detected the violation.
+     */
+    MINENGINE_API const char* CurrentContractRole();
+
+    /**
+     * One read of every counter: what a diagnostic prints, what a host or a test checks, and what
+     * the per-frame summary is built from. The counters are the process's, so the read has to be
+     * one call into the module that owns them rather than a copy per module.
+     */
+    MINENGINE_API ContractViolationCounters GetContractViolationCounters();
 
     namespace ContractDetail
     {
         // ---- atomic access to plain memory ------------------------------------
         //
-        // The state block is mapped rather than constructed, so it cannot hold std::atomic: the
-        // mapped pages must be usable as they arrive. Intrinsics over plain integers keep the
-        // layout language-agnostic and the operations lock-free on every target here.
+        // The state block and the per-site budget tables are plain integers touched with
+        // interlocked intrinsics: the report path may not construct anything, and a table that a
+        // thread claims a slot in has to survive a thread that faults in the middle of a report.
 
 #if defined(_MSC_VER)
         inline std::uint32_t LoadAcquire32(const std::uint32_t* value)
@@ -198,16 +199,6 @@ namespace minEngine
         inline void StoreRelease32(std::uint32_t* value, std::uint32_t next)
         {
             ::_InterlockedExchange(reinterpret_cast<volatile long*>(value), static_cast<long>(next));
-        }
-
-        inline void StoreRelaxed32(std::uint32_t* value, std::uint32_t next)
-        {
-            StoreRelease32(value, next);
-        }
-
-        inline void StoreRelaxed64(std::uint64_t* value, std::uint64_t next)
-        {
-            ::_InterlockedExchange64(reinterpret_cast<volatile long long*>(value), static_cast<long long>(next));
         }
 
         inline std::uint32_t CompareExchange32(std::uint32_t* value, std::uint32_t desired, std::uint32_t expected)
@@ -241,16 +232,6 @@ namespace minEngine
             __atomic_store_n(value, next, __ATOMIC_RELEASE);
         }
 
-        inline void StoreRelaxed32(std::uint32_t* value, std::uint32_t next)
-        {
-            __atomic_store_n(value, next, __ATOMIC_RELAXED);
-        }
-
-        inline void StoreRelaxed64(std::uint64_t* value, std::uint64_t next)
-        {
-            __atomic_store_n(value, next, __ATOMIC_RELAXED);
-        }
-
         inline std::uint32_t CompareExchange32(std::uint32_t* value, std::uint32_t desired, std::uint32_t expected)
         {
             std::uint32_t current = expected;
@@ -268,137 +249,6 @@ namespace minEngine
             __atomic_fetch_add(value, 1ull, __ATOMIC_RELAXED);
         }
 #endif
-
-        // ---- the process-wide state -------------------------------------------
-
-        inline ContractState& ModuleLocalState()
-        {
-            // Constant-initialised: reaching it takes no guard variable and no heap.
-            static ContractState state;
-            return state;
-        }
-
-        /**
-         * One state block per process, not one per module. The engine DLL and the executable that
-         * loads it each instantiate this header, so a plain function-local static would count every
-         * violation twice - once in the module that reported it and once in the module that reads
-         * the number - and the second copy would always read zero.
-         *
-         * The rendezvous is a pagefile-backed section whose name carries the process id: modules of
-         * one process map the same pages, and two processes - the editor and a test run, or two
-         * test runs - never share a count. A pagefile-backed section is session-wide by name, which
-         * is exactly why the process id is part of it. The block is plain integers, so nothing has to
-         * be constructed in it and no module owns it; a module that cannot map the section keeps its
-         * own block instead, which still counts correctly for that module.
-         */
-        inline ContractState* MapProcessWideState()
-        {
-#if defined(_WIN32)
-            // PAGE_READWRITE and FILE_MAP_ALL_ACCESS, spelled out because windows.h is not included.
-            constexpr unsigned long kPageReadWrite = 0x04;
-            constexpr unsigned long kFileMapAllAccess = 0x000F001F;
-
-            wchar_t sectionName[64]{};
-            std::swprintf(
-                sectionName, sizeof(sectionName) / sizeof(sectionName[0]), L"Local\\minEngine-contract-state-%d",
-                ::_getpid());
-
-            const std::size_t size = sizeof(ContractState);
-            void* section = ContractWin32::CreateFileMappingW(
-                reinterpret_cast<void*>(-1), // INVALID_HANDLE_VALUE: backed by the paging file
-                nullptr,
-                kPageReadWrite,
-                0,
-                static_cast<unsigned long>(size),
-                sectionName);
-            if (section == nullptr)
-            {
-                return nullptr;
-            }
-
-            // The section handle is deliberately never closed: the mapping has to outlive every
-            // module that reports, and it is released with the process.
-            void* view = ContractWin32::MapViewOfFile(section, kFileMapAllAccess, 0, 0, size);
-            if (view == nullptr)
-            {
-                return nullptr;
-            }
-            return static_cast<ContractState*>(view);
-#else
-            return nullptr;
-#endif
-        }
-
-        struct ResolvedState
-        {
-            ContractState* Block = nullptr;
-            bool bProcessWide = false;
-        };
-
-        inline ResolvedState ResolveState()
-        {
-            // Module-local once: the mapping call below is identical in every module, and the
-            // section name is what makes them agree on one block.
-            static std::uint32_t state = 0;
-            static ContractState* block = nullptr;
-            static bool bProcessWide = false;
-
-            if (LoadAcquire32(&state) == 0)
-            {
-                if (CompareExchange32(&state, 1u, 0u) == 0)
-                {
-                    ContractState* mapped = MapProcessWideState();
-                    block = mapped != nullptr ? mapped : &ModuleLocalState();
-                    bProcessWide = mapped != nullptr;
-                    StoreRelease32(&state, 2u);
-                }
-                else
-                {
-                    while (LoadAcquire32(&state) != 2u)
-                    {
-                        std::this_thread::yield();
-                    }
-                }
-            }
-
-            ResolvedState resolved;
-            resolved.Block = block;
-            resolved.bProcessWide = bProcessWide;
-            return resolved;
-        }
-
-        inline ContractState& State()
-        {
-            return *ResolveState().Block;
-        }
-
-        // ---- identity of the reporting thread ---------------------------------
-
-        inline ContractRoleResolver& RoleResolverSlot()
-        {
-            return State().RoleResolver;
-        }
-
-        /**
-         * Installed by FrameThreading while an instance exists. A slot rather than an include keeps
-         * this header leaf-level: FrameThreading.h reaches Core.h, which includes this file, so
-         * depending on it here would be an include cycle decided by include order.
-         */
-        inline void SetContractRoleResolver(ContractRoleResolver resolver)
-        {
-            RoleResolverSlot() = resolver;
-        }
-
-        inline const char* CurrentRole()
-        {
-            const ContractRoleResolver resolver = RoleResolverSlot();
-            if (resolver == nullptr)
-            {
-                return "unbound (no frame-role resolver installed)";
-            }
-            const char* role = resolver();
-            return role != nullptr ? role : "unbound";
-        }
 
         inline std::uint32_t CurrentLogThreadId()
         {
@@ -479,30 +329,6 @@ namespace minEngine
 #endif
         }
 
-        /** Copies one line into a free staging slot, or counts it when the staging area is full. */
-        inline void StageRecord(ContractState& state, const char* text)
-        {
-            for (std::uint32_t attempt = 0; attempt < kContractRecordSlots; ++attempt)
-            {
-                const std::uint32_t index = Increment32(&state.NextSlot) % kContractRecordSlots;
-                ContractRecordSlot& slot = state.Slots[index];
-                if (CompareExchange32(&slot.State, 1u, 0u) != 0u)
-                {
-                    continue;
-                }
-
-                std::size_t copied = 0;
-                for (; text[copied] != '\0' && copied + 1 < kContractRecordTextCapacity; ++copied)
-                {
-                    slot.Text[copied] = text[copied];
-                }
-                slot.Text[copied] = '\0';
-                StoreRelease32(&slot.State, 2u);
-                return;
-            }
-            Increment64(&state.Undelivered);
-        }
-
         [[noreturn]] inline void TrapContractViolation()
         {
 #if defined(_MSC_VER)
@@ -516,52 +342,23 @@ namespace minEngine
         }
     }
 
-    /** Installed by FrameThreading while a frame-role instance exists; cleared when it shuts down. */
-    inline void SetContractRoleResolver(ContractRoleResolver resolver)
-    {
-        ContractDetail::SetContractRoleResolver(resolver);
-    }
-
-    inline ContractViolationCounters GetContractViolationCounters()
-    {
-        const ContractDetail::ResolvedState resolved = ContractDetail::ResolveState();
-        const ContractState& state = *resolved.Block;
-
-        ContractViolationCounters counters;
-        counters.RecordedOnContinue = ContractDetail::LoadRelaxed64(&state.Ensured);
-        counters.RecordedOnTrap = ContractDetail::LoadRelaxed64(&state.Trapped);
-        counters.Suppressed = ContractDetail::LoadRelaxed64(&state.Suppressed);
-        counters.Undelivered = ContractDetail::LoadRelaxed64(&state.Undelivered);
-        counters.bProcessWide = resolved.bProcessWide;
-        return counters;
-    }
-
-    /** Test support: the counters are process-wide, so only a test that owns the process resets them. */
-    inline void ResetContractViolationCounters()
-    {
-        ContractState& state = ContractDetail::State();
-        ContractDetail::StoreRelaxed64(&state.Ensured, 0u);
-        ContractDetail::StoreRelaxed64(&state.Trapped, 0u);
-        ContractDetail::StoreRelaxed64(&state.Suppressed, 0u);
-        ContractDetail::StoreRelaxed64(&state.Undelivered, 0u);
-    }
-
     /**
      * Records one contract violation and returns. Never throws, never blocks on a lock another
      * thread could be holding while it violates a contract, never allocates.
+     *
+     * The formatting, the site's budget and the standard error mirror stay here, in the module that
+     * detected the violation; the counters and the staged record go where every module can see the
+     * same ones.
      */
     inline void ReportContractViolation(ContractSite& site, ContractGrade grade, const char* format, ...)
     {
         const char* userFormat = format != nullptr ? format : "(no message)";
 
-        ContractState& state = ContractDetail::State();
-        ContractDetail::Increment64(
-            grade == ContractGrade::AssertFatal ? &state.Trapped : &state.Ensured);
-
         // A report raised from inside a report - a resolver or a formatter that faults, or a check
         // inside the report path itself - is counted but must not recurse into the same buffers.
         if (ContractDetail::ReportDepth() != 0)
         {
+            CountContractViolation(grade, /*bSuppressed=*/false);
             return;
         }
         ContractDetail::ReportDepth() = 1;
@@ -572,7 +369,7 @@ namespace minEngine
         std::vsnprintf(userMessage, sizeof(userMessage), userFormat, arguments);
         va_end(arguments);
 
-        const char* role = ContractDetail::CurrentRole();
+        const char* role = CurrentContractRole();
         const std::uint32_t threadId = ContractDetail::CurrentLogThreadId();
         const char* kind = "ME_ENSURE";
         if (grade == ContractGrade::AssertFatal)
@@ -597,22 +394,21 @@ namespace minEngine
 
         // A site that has spent its budget, or one that already tracks too many distinct violations,
         // only counts. The failure is not lost: the counter keeps rising and the frame summary
-        // reports it.
-        const bool bOutOfBudget =
-            budgetSlot < 0 || reported > kContractVerboseReportsPerViolation;
+        // reports it. The last line a violation writes on its own is the announcement that the
+        // budget is spent, and that line is a suppression too - silence after it would read as a fix.
+        const bool bOutOfBudget = budgetSlot < 0 || reported > kContractVerboseReportsPerViolation;
+        const bool bBudgetAnnouncement = !bOutOfBudget && reported == kContractVerboseReportsPerViolation;
+        CountContractViolation(grade, bOutOfBudget || bBudgetAnnouncement);
+
         if (bOutOfBudget)
         {
-            ContractDetail::Increment64(&state.Suppressed);
             ContractDetail::ReportDepth() = 0;
             return;
         }
 
         char text[kContractRecordTextCapacity]{};
-        if (reported == kContractVerboseReportsPerViolation)
+        if (bBudgetAnnouncement)
         {
-            // The last line this violation will write on its own: silence after it would read as a
-            // fix, and the reader has to know that the count keeps rising instead.
-            ContractDetail::Increment64(&state.Suppressed);
             std::snprintf(
                 text,
                 sizeof(text),
@@ -643,7 +439,7 @@ namespace minEngine
         // The standard error mirror follows the same budget as the staged record: a site that has
         // gone quiet must not keep painting the console either.
         ContractDetail::WriteToStandardError(text);
-        ContractDetail::StageRecord(state, text);
+        StageContractRecord(text);
         ContractDetail::ReportDepth() = 0;
     }
 }

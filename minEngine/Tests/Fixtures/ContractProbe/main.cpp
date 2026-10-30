@@ -64,12 +64,11 @@ namespace
         std::snprintf(
             line,
             sizeof(line),
-            "counters total=%llu continued=%llu trapped=%llu suppressed=%llu process-wide=%d",
+            "counters total=%llu continued=%llu trapped=%llu suppressed=%llu",
             static_cast<unsigned long long>(counters.Total()),
             static_cast<unsigned long long>(counters.RecordedOnContinue),
             static_cast<unsigned long long>(counters.RecordedOnTrap),
-            static_cast<unsigned long long>(counters.Suppressed),
-            counters.bProcessWide ? 1 : 0);
+            static_cast<unsigned long long>(counters.Suppressed));
         TraceLine(line);
     }
 
@@ -137,11 +136,12 @@ int main(int argc, char** argv)
         const bool bContinued = contractprobe::RunReleaseGradeAssertViolation();
         TraceLine(bContinued ? "survived-release-assert" : "did-not-continue");
 
-        const std::uint32_t published = minEngine::DrainContractViolations();
+        const minEngine::ContractViolationFrameSample sample =
+            minEngine::PublishAndSampleContractViolations();
         char line[64]{};
-        std::snprintf(line, sizeof(line), "published=%u", published);
+        std::snprintf(line, sizeof(line), "published=%u", sample.Published);
         TraceLine(line);
-        TraceCounters(minEngine::GetContractViolationCounters());
+        TraceCounters(sample.Counters);
         return 0;
     }
 
@@ -152,11 +152,12 @@ int main(int argc, char** argv)
         ME_LOG(minEngine::LogTest, Info, "contract-probe: logging with a sink that violates a contract.");
         TraceLine("log-returned");
 
-        const std::uint32_t published = minEngine::DrainContractViolations();
+        const minEngine::ContractViolationFrameSample sample =
+            minEngine::PublishAndSampleContractViolations();
         char line[64]{};
-        std::snprintf(line, sizeof(line), "published=%u", published);
+        std::snprintf(line, sizeof(line), "published=%u", sample.Published);
         TraceLine(line);
-        TraceCounters(minEngine::GetContractViolationCounters());
+        TraceCounters(sample.Counters);
         TraceLine("survived-log-lock");
         return 0;
     }

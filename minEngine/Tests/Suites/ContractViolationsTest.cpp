@@ -346,24 +346,27 @@ namespace
 
 TEST_CASE("contract-violations: a recoverable violation is counted and published as one Error [smoke]")
 {
-    const minEngine::ContractViolationCounters shared = minEngine::GetContractViolationCounters();
-    REQUIRE_MESSAGE(
-        shared.bProcessWide,
-        "the contract counters are not shared with the engine module; the frame summary would read zero");
-
-    minEngine::ResetContractViolationCounters();
-    (void)minEngine::DrainContractViolations();
+    // The counters are the engine module's and reach this one through an exported accessor, so
+    // there is no per-module copy: a baseline and a delta is the only comparison a process-wide
+    // count allows.
+    const minEngine::ContractViolationCounters before = minEngine::GetContractViolationCounters();
+    (void)minEngine::PublishAndSampleContractViolations();
 
     Recorder().Begin();
     ViolateOnceAtOneSite();
-    const std::uint32_t published = minEngine::DrainContractViolations();
+    const minEngine::ContractViolationFrameSample sample =
+        minEngine::PublishAndSampleContractViolations();
     Recorder().End();
 
     const minEngine::ContractViolationCounters after = minEngine::GetContractViolationCounters();
-    CHECK_MESSAGE(after.RecordedOnContinue == 1, "counted ", after.RecordedOnContinue, " violations, not 1");
-    CHECK_MESSAGE(after.RecordedOnTrap == 0, "a recoverable violation was counted as a trap");
-    CHECK_MESSAGE(after.Suppressed == 0, "the first report of a site was already suppressed");
-    CHECK_MESSAGE(published == 1, "published ", published, " records, not 1");
+    CHECK_MESSAGE(
+        after.RecordedOnContinue == before.RecordedOnContinue + 1,
+        "counted ", after.RecordedOnContinue - before.RecordedOnContinue, " violations, not 1");
+    CHECK_MESSAGE(
+        after.RecordedOnTrap == before.RecordedOnTrap, "a recoverable violation was counted as a trap");
+    CHECK_MESSAGE(
+        after.Suppressed == before.Suppressed, "the first report of a site was already suppressed");
+    CHECK_MESSAGE(sample.Published == 1, "published ", sample.Published, " records, not 1");
 
     const std::vector<std::string> messages = Recorder().Messages();
     const std::vector<minEngine::LogSeverity> severities = Recorder().Severities();
@@ -380,8 +383,8 @@ TEST_CASE("contract-violations: a recoverable violation is counted and published
 
 TEST_CASE("contract-violations: a site reports a bounded number of times and keeps counting [smoke]")
 {
-    minEngine::ResetContractViolationCounters();
-    (void)minEngine::DrainContractViolations();
+    const minEngine::ContractViolationCounters before = minEngine::GetContractViolationCounters();
+    (void)minEngine::PublishAndSampleContractViolations();
 
     Recorder().Begin();
     constexpr int kAttempts = 20;
@@ -389,13 +392,15 @@ TEST_CASE("contract-violations: a site reports a bounded number of times and kee
     {
         ViolateRepeatedlyAtOneSite();
     }
-    const std::uint32_t published = minEngine::DrainContractViolations();
+    const minEngine::ContractViolationFrameSample sample =
+        minEngine::PublishAndSampleContractViolations();
     Recorder().End();
 
+    const std::uint32_t published = sample.Published;
     const minEngine::ContractViolationCounters after = minEngine::GetContractViolationCounters();
     CHECK_MESSAGE(
-        after.RecordedOnContinue == static_cast<std::uint64_t>(kAttempts),
-        "counted ", after.RecordedOnContinue, " of ", kAttempts, " violations");
+        after.RecordedOnContinue == before.RecordedOnContinue + static_cast<std::uint64_t>(kAttempts),
+        "counted ", after.RecordedOnContinue - before.RecordedOnContinue, " of ", kAttempts, " violations");
     // One budget's worth of full reports, one line announcing the budget is spent, and every other
     // failure counted but not written: N failures must not become N lines.
     CHECK_MESSAGE(
@@ -403,8 +408,9 @@ TEST_CASE("contract-violations: a site reports a bounded number of times and kee
         "one site wrote ", published, " lines for ", kAttempts, " failures");
     CHECK_MESSAGE(
         after.Suppressed
-            == static_cast<std::uint64_t>(kAttempts - static_cast<int>(minEngine::kContractVerboseReportsPerViolation)),
-        "counted ", after.Suppressed, " suppressed, published ", published, " of ", kAttempts);
+            == before.Suppressed
+                + static_cast<std::uint64_t>(kAttempts - static_cast<int>(minEngine::kContractVerboseReportsPerViolation)),
+        "counted ", after.Suppressed - before.Suppressed, " suppressed, published ", published, " of ", kAttempts);
 
     const std::size_t records = Recorder().Messages().size();
     CHECK_MESSAGE(records == published, "the log received ", records, " records, not ", published);
@@ -415,8 +421,8 @@ TEST_CASE("contract-violations: a role mismatch on a frame thread is recorded an
     FrameThreadingScope scope(FrameThreadMode::Multi);
     FrameThreading& threading = scope.Threading;
 
-    minEngine::ResetContractViolationCounters();
-    (void)minEngine::DrainContractViolations();
+    const minEngine::ContractViolationCounters countersBefore = minEngine::GetContractViolationCounters();
+    (void)minEngine::PublishAndSampleContractViolations();
 
     TaskSystem tasks;
     tasks.Init(2);
@@ -446,11 +452,53 @@ TEST_CASE("contract-violations: a role mismatch on a frame thread is recorded an
     CHECK(checked.load(std::memory_order_relaxed));
     CHECK(mismatchRecorded.load(std::memory_order_relaxed));
 
-    const std::uint32_t published = minEngine::DrainContractViolations();
+    const minEngine::ContractViolationFrameSample sample =
+        minEngine::PublishAndSampleContractViolations();
     const minEngine::ContractViolationCounters after = minEngine::GetContractViolationCounters();
-    CHECK_MESSAGE(after.RecordedOnContinue == 1, "counted ", after.RecordedOnContinue, " violations, not 1");
-    CHECK_MESSAGE(after.RecordedOnTrap == 0, "a role mismatch was counted as a trap");
-    CHECK_MESSAGE(published == 1, "published ", published, " records, not 1");
+    CHECK_MESSAGE(
+        after.RecordedOnContinue == countersBefore.RecordedOnContinue + 1,
+        "counted ", after.RecordedOnContinue - countersBefore.RecordedOnContinue, " violations, not 1");
+    CHECK_MESSAGE(after.RecordedOnTrap == countersBefore.RecordedOnTrap, "a role mismatch was counted as a trap");
+    CHECK_MESSAGE(sample.Published == 1, "published ", sample.Published, " records, not 1");
+}
+
+/**
+ * The counters cannot be a function-local static in the header: this executable and the engine DLL
+ * are two translation units in two modules, and the engine reports violations on paths this module
+ * only calls into. A record raised inside the engine has to move the number read here, and the
+ * staged text has to name the engine's own site.
+ */
+TEST_CASE("contract-violations: a violation recorded inside the engine module is visible to this module [smoke]")
+{
+    // In Multi this thread owns the Game role only, so asking about the Render role from here is a
+    // real mismatch - and the check that fires lives in FrameThreading.cpp, inside the DLL.
+    FrameThreadingScope scope(FrameThreadMode::Multi);
+    (void)minEngine::PublishAndSampleContractViolations();
+    const minEngine::ContractViolationCounters before = minEngine::GetContractViolationCounters();
+
+    Recorder().Begin();
+    scope.Threading.AssertIsFrameThread(FrameThreadKind::Render, "cross-module visibility check");
+    const minEngine::ContractViolationFrameSample sample =
+        minEngine::PublishAndSampleContractViolations();
+    Recorder().End();
+
+    const minEngine::ContractViolationCounters after = minEngine::GetContractViolationCounters();
+    CHECK_MESSAGE(
+        after.RecordedOnContinue == before.RecordedOnContinue + 1,
+        "the engine module's report moved this module's count by ",
+        after.RecordedOnContinue - before.RecordedOnContinue,
+        ", not 1");
+    CHECK_MESSAGE(
+        after.RecordedOnTrap == before.RecordedOnTrap, "a recoverable violation was counted as a trap");
+    CHECK_MESSAGE(sample.Published == 1, "published ", sample.Published, " records, not 1");
+
+    const std::vector<std::string> messages = Recorder().Messages();
+    REQUIRE_MESSAGE(messages.size() == 1, "the log received ", messages.size(), " records, not 1");
+    // The record names the engine's site and the role this thread holds: the site, the count and the
+    // staged text all come from the module that detected the violation.
+    CHECK_MESSAGE(Contains(messages[0], "FrameThreading.cpp"), messages[0].c_str());
+    CHECK_MESSAGE(Contains(messages[0], "role Game"), messages[0].c_str());
+    CHECK_MESSAGE(Contains(messages[0], "cross-module visibility check"), messages[0].c_str());
 }
 
 TEST_CASE("contract-violations: the frame summary reports the contract count [smoke]")
@@ -480,8 +528,7 @@ TEST_CASE("contract-violations: the editor's frame boundary publishes the violat
     // drives every frame itself.
     minEngine::Engine engine;
 
-    minEngine::ResetContractViolationCounters();
-    (void)minEngine::DrainContractViolations();
+    (void)minEngine::PublishAndSampleContractViolations();
 
     // One frame with nothing staged: the work-loss line reports a delta, so the baseline has to be
     // this frame's counters rather than whatever the previous case left behind.
@@ -519,8 +566,7 @@ TEST_CASE("contract-violations: a repeated frame boundary publishes nothing twic
 {
     minEngine::Engine engine;
 
-    minEngine::ResetContractViolationCounters();
-    (void)minEngine::DrainContractViolations();
+    (void)minEngine::PublishAndSampleContractViolations();
     engine.CompleteFrameReleases();
 
     Recorder().Begin();

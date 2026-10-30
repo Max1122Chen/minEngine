@@ -376,8 +376,8 @@ TEST_CASE("frame-threading: a temporary claim on a role another thread holds is 
         std::this_thread::yield();
     }
 
-    minEngine::ResetContractViolationCounters();
-    (void)minEngine::DrainContractViolations();
+    const minEngine::ContractViolationCounters countersBefore = minEngine::GetContractViolationCounters();
+    (void)minEngine::PublishAndSampleContractViolations();
 
     {
         ScopedFrameThreadKind claimant(FrameThreadKind::Render);
@@ -387,15 +387,18 @@ TEST_CASE("frame-threading: a temporary claim on a role another thread holds is 
     }
 
     const minEngine::ContractViolationCounters after = minEngine::GetContractViolationCounters();
-    CHECK_MESSAGE(after.RecordedOnContinue == 1, "counted ", after.RecordedOnContinue, " violations, not 1");
-    CHECK_MESSAGE(after.RecordedOnTrap == 0, "a refused claim was counted as a trap");
+    CHECK_MESSAGE(
+        after.RecordedOnContinue == countersBefore.RecordedOnContinue + 1,
+        "counted ", after.RecordedOnContinue - countersBefore.RecordedOnContinue, " violations, not 1");
+    CHECK_MESSAGE(after.RecordedOnTrap == countersBefore.RecordedOnTrap, "a refused claim was counted as a trap");
     CHECK(threading.GetThreadId(FrameThreadKind::Render) == ownerId.load(std::memory_order_acquire));
     CHECK_FALSE(threading.IsInRenderingThread());
 
     ownerMayLeave.store(true, std::memory_order_release);
     owner.join();
 
-    // The counters and the staging area are process-wide: a record left staged here would be
-    // published by whichever suite drains next, and counted against that suite's own violation.
-    (void)minEngine::DrainContractViolations();
+    // The counters and the staging area belong to the whole process: a record left staged here
+    // would be published by whichever suite hits a frame boundary next, and counted against that
+    // suite's own violation.
+    (void)minEngine::PublishAndSampleContractViolations();
 }

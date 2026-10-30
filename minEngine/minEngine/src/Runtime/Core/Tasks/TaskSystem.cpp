@@ -706,8 +706,11 @@ namespace minEngine
             }
 
             // Phase 2: let the role threads finish the frames the game side already handed over.
-            // A frame in the middle of one role body is expected to complete; the wait is bounded
-            // because a role body may be stuck on user code and shutdown cannot hang on it.
+            // Only this drain is bounded: it gives up after kFrameQueueDrainTimeoutMs and logs what
+            // was left. The join below it is not bounded, so a role body stuck in user code still
+            // makes shutdown wait forever. That is a known limitation rather than an accident -
+            // there is no safe way to abandon a thread that may be inside the driver - and it is
+            // recorded in the debt register.
             DrainQueuedFrames();
 
             // Phase 3: stop and join. Every waiter has to learn about the stop, including a game
