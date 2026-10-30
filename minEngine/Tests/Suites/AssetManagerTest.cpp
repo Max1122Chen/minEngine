@@ -15,9 +15,11 @@
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Function/Render/Material.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string_view>
+#include <system_error>
 #include <thread>
 #include <vector>
 
@@ -102,6 +104,11 @@ namespace minEngine
             const std::filesystem::path& GetTestContentDirectory() const
             {
                 return m_TestContentDirectory;
+            }
+
+            const std::filesystem::path& GetProjectRoot() const
+            {
+                return m_ProjectRoot;
             }
 
             std::filesystem::path GetEngineCubeSource() const
@@ -675,3 +682,333 @@ TEST_CASE("asset-manager: a sync load off the game role is counted and still loa
 
     threading.Shutdown();
 }
+
+
+namespace minEngine
+{
+    namespace
+    {
+        /**
+         * The algorithm the manager used before the cache existed, kept verbatim (only the log
+         * lines are dropped). The equivalence test compares the cached implementation against
+         * this copy, so a cache that silently changes case, separators, '..' folding or symlink
+         * resolution fails instead of agreeing with itself.
+         */
+        std::string ReferenceNormalizeProjectRelativeAssetPath(const std::string& path)
+        {
+            if (path.empty())
+            {
+                return std::string();
+            }
+
+            const PathRegistry& paths = PathRegistry::Get();
+            const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
+            const std::filesystem::path input(path);
+
+            std::filesystem::path absolutePath;
+            if (input.is_absolute())
+            {
+                absolutePath = std::filesystem::weakly_canonical(input);
+            }
+            else if (!contentRoot.empty())
+            {
+                absolutePath = std::filesystem::weakly_canonical(contentRoot / input);
+            }
+            else
+            {
+                absolutePath = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
+            }
+
+            const auto isInsideDirectory =
+                [](const std::filesystem::path& absolutePathToTest,
+                   const std::filesystem::path& rootDirectory)
+            {
+                if (rootDirectory.empty() || absolutePathToTest.empty())
+                {
+                    return false;
+                }
+
+                const std::filesystem::path canonicalRoot =
+                    std::filesystem::weakly_canonical(rootDirectory);
+                const std::filesystem::path canonicalPath =
+                    std::filesystem::weakly_canonical(absolutePathToTest);
+                const auto mismatchPair = std::mismatch(
+                    canonicalRoot.begin(), canonicalRoot.end(), canonicalPath.begin());
+                return mismatchPair.first == canonicalRoot.end();
+            };
+
+            if (isInsideDirectory(absolutePath, paths.GetEngineDefaultAssetsRoot()))
+            {
+                return std::string();
+            }
+
+            if (!contentRoot.empty() && isInsideDirectory(absolutePath, contentRoot))
+            {
+                std::error_code errorCode;
+                const std::filesystem::path relativePath = std::filesystem::relative(
+                    absolutePath,
+                    std::filesystem::weakly_canonical(contentRoot),
+                    errorCode);
+                if (!errorCode)
+                {
+                    std::string result = relativePath.lexically_normal().generic_string();
+                    if (result.size() >= 2 && result[0] == '.' && result[1] == '.')
+                    {
+                        return std::string();
+                    }
+
+                    return result;
+                }
+            }
+
+            return std::string();
+        }
+
+        /** One path per shape the normaliser has to fold: separators, '..', case, tails, roots. */
+        std::vector<std::string> BuildProjectRelativePathTable()
+        {
+            const PathRegistry& paths = PathRegistry::Get();
+            const std::filesystem::path contentRoot = paths.GetProjectContentRoot();
+            const std::filesystem::path engineDefaultRoot = paths.GetEngineDefaultAssetsRoot();
+
+            const std::filesystem::path tableFile =
+                contentRoot / "_P2UnitTest" / "NormalizeTable.mat";
+            std::filesystem::create_directories(tableFile.parent_path());
+            std::ofstream tableDummy(tableFile, std::ios::binary | std::ios::trunc);
+            tableDummy.put('x');
+            tableDummy.close();
+
+            std::vector<std::string> table;
+            table.push_back(std::string());
+            table.push_back("Assets");
+            table.push_back("_P2UnitTest");
+            table.push_back("_P2UnitTest/NormalizeTable.mat");
+            table.push_back("_P2UnitTest\\NormalizeTable.mat");
+            table.push_back("./_P2UnitTest/NormalizeTable.mat");
+            table.push_back("_P2UnitTest//NormalizeTable.mat");
+            table.push_back("_P2UnitTest/./NormalizeTable.mat");
+            table.push_back("_P2UnitTest/../_P2UnitTest/NormalizeTable.mat");
+            table.push_back("_P2UnitTest/NormalizeTable.mat/");
+            table.push_back("_P2UnitTest\\NormalizeTable.mat\\");
+            table.push_back("_p2unittest/normalizetable.mat");
+            table.push_back("_P2UnitTest/NORMALIZETABLE.MAT");
+            table.push_back("_P2UnitTest/Missing/Deep.mat");
+            table.push_back("../../outside.mat");
+            table.push_back(tableFile.generic_string());
+            table.push_back(tableFile.string());
+            table.push_back((contentRoot / ".." / "_P2UnitTest" / "NormalizeTable.mat").string());
+            table.push_back((engineDefaultRoot / "Meshes" / "BasicShapes" / "cube.obj").string());
+            table.push_back(engineDefaultRoot.string());
+            table.push_back("C:/Windows/not_an_asset.mat");
+            return table;
+        }
+
+        std::string NormalizePathThroughManager(AssetManager& assetManager, const std::string& path)
+        {
+            return Testing::TestAccess<AssetManager>::NormalizeProjectRelativeAssetPath(
+                assetManager,
+                path);
+        }
+
+        Testing::AssetPathNormalizationStats GetNormalizationStats(const AssetManager& assetManager)
+        {
+            return Testing::TestAccess<AssetManager>::GetNormalizationStats(assetManager);
+        }
+    }
+}
+
+TEST_CASE("asset-manager: repeated normalisation resolves a path on disk once [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    REQUIRE(EnsureEnginePathsReady(fixture.GetArgc(), fixture.GetArgv()));
+
+    AssetManagerTestScope scope;
+    AssetManagerTestProject project;
+
+    AssetManager& assetManager = AssetManager::Get();
+    std::string createError;
+    std::shared_ptr<Material> created = std::dynamic_pointer_cast<Material>(
+        assetManager.CreateAssetByTypeId("Material", "NormalizeCachedMat", "Assets/_P2UnitTest", createError));
+    REQUIRE(created != nullptr);
+    REQUIRE(created->GetMeta() != nullptr);
+
+    const std::string path = created->GetMeta()->AssetPath;
+    REQUIRE(!path.empty());
+
+    // Another spelling of the same file: creating the asset already normalised `path`, so the
+    // cold call has to be one the memo has never seen.
+    const size_t slashPosition = path.find('/');
+    REQUIRE(slashPosition != std::string::npos);
+    const std::string coldSpelling =
+        path.substr(0, slashPosition + 1) + "./" + path.substr(slashPosition + 1);
+
+    const Testing::AssetPathNormalizationStats before = GetNormalizationStats(assetManager);
+    for (int repeat = 0; repeat < 33; ++repeat)
+    {
+        INFO("repeat: " << repeat);
+        CHECK(NormalizePathThroughManager(assetManager, coldSpelling) == path);
+    }
+    const Testing::AssetPathNormalizationStats after = GetNormalizationStats(assetManager);
+
+    INFO("input canonicalisations: "
+        << (after.InputCanonicalizations - before.InputCanonicalizations)
+        << ", root refreshes: " << (after.RootRefreshes - before.RootRefreshes)
+        << ", hits: " << (after.CacheHits - before.CacheHits)
+        << ", misses: " << (after.CacheMisses - before.CacheMisses));
+    // 33 calls, one resolution against the disk, and no root resolved per call.
+    CHECK(after.InputCanonicalizations - before.InputCanonicalizations == 1u);
+    CHECK(after.RootRefreshes - before.RootRefreshes <= 1u);
+    CHECK(after.CacheHits - before.CacheHits == 32u);
+    CHECK(after.CacheMisses - before.CacheMisses == 1u);
+    CHECK(after.CachedEntries == before.CachedEntries + 1u);
+}
+
+TEST_CASE("asset-manager: normalisation cache follows project root changes [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    REQUIRE(EnsureEnginePathsReady(fixture.GetArgc(), fixture.GetArgv()));
+
+    AssetManagerTestScope scope;
+    AssetManagerTestProject project;
+
+    AssetManager& assetManager = AssetManager::Get();
+    const std::filesystem::path projectRoot = project.GetProjectRoot();
+    const std::filesystem::path otherRoot = projectRoot.parent_path() / "ProjectOther";
+    std::filesystem::create_directories(otherRoot / "Assets");
+
+    const std::filesystem::path probeFile = project.GetTestContentDirectory() / "RootSwitch.mat";
+    std::ofstream probeStream(probeFile, std::ios::binary | std::ios::trunc);
+    probeStream.put('x');
+    probeStream.close();
+
+    const std::string probeAbsolute = probeFile.string();
+    const std::string expectedRelative = "_P2UnitTest/RootSwitch.mat";
+
+    REQUIRE(NormalizePathThroughManager(assetManager, probeAbsolute) == expectedRelative);
+    const Testing::AssetPathNormalizationStats before = GetNormalizationStats(assetManager);
+
+    CHECK(NormalizePathThroughManager(assetManager, probeAbsolute) == expectedRelative);
+
+    // The same absolute path is no longer inside the content root: a cached answer would still
+    // report the old relative path.
+    PathRegistry::Get().SetProjectRoots(otherRoot);
+    CHECK(NormalizePathThroughManager(assetManager, probeAbsolute).empty());
+    CHECK(NormalizePathThroughManager(assetManager, probeAbsolute).empty());
+
+    // Switching back must recompute as well, not resurrect the answer from before the switch.
+    PathRegistry::Get().SetProjectRoots(projectRoot);
+    CHECK(NormalizePathThroughManager(assetManager, probeAbsolute) == expectedRelative);
+
+    const Testing::AssetPathNormalizationStats after = GetNormalizationStats(assetManager);
+    INFO("input canonicalisations: "
+        << (after.InputCanonicalizations - before.InputCanonicalizations)
+        << ", root refreshes: " << (after.RootRefreshes - before.RootRefreshes)
+        << ", hits: " << (after.CacheHits - before.CacheHits)
+        << ", misses: " << (after.CacheMisses - before.CacheMisses));
+    // Two of the four calls are real misses (one per root set), two are memo hits, and each root
+    // swap refreshes the roots exactly once.
+    CHECK(after.InputCanonicalizations - before.InputCanonicalizations == 2u);
+    CHECK(after.RootRefreshes - before.RootRefreshes == 2u);
+    CHECK(after.CacheHits - before.CacheHits == 2u);
+    CHECK(after.CacheMisses - before.CacheMisses == 2u);
+}
+
+TEST_CASE("asset-manager: normalised paths match the pre-cache algorithm [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    REQUIRE(EnsureEnginePathsReady(fixture.GetArgc(), fixture.GetArgv()));
+
+    AssetManagerTestScope scope;
+    AssetManagerTestProject project;
+
+    AssetManager& assetManager = AssetManager::Get();
+    const std::vector<std::string> pathTable = BuildProjectRelativePathTable();
+    REQUIRE(pathTable.size() >= 20u);
+
+    for (const std::string& path : pathTable)
+    {
+        const std::string expected = ReferenceNormalizeProjectRelativeAssetPath(path);
+        const std::string actual = NormalizePathThroughManager(assetManager, path);
+        INFO("path: '" << path << "'");
+        CHECK(actual == expected);
+
+        if (!actual.empty())
+        {
+            INFO("normalised: '" << actual << "'");
+            CHECK(NormalizePathThroughManager(assetManager, actual) == actual);
+        }
+    }
+
+    // Fixed anchors: the table above only proves the two implementations agree, so pin the
+    // shapes the cache must fold exactly.
+    CHECK(NormalizePathThroughManager(assetManager, "_P2UnitTest/NormalizeTable.mat")
+        == "_P2UnitTest/NormalizeTable.mat");
+    CHECK(NormalizePathThroughManager(assetManager, "_P2UnitTest\\NormalizeTable.mat")
+        == "_P2UnitTest/NormalizeTable.mat");
+    CHECK(NormalizePathThroughManager(assetManager, "_P2UnitTest/../_P2UnitTest/./NormalizeTable.mat")
+        == "_P2UnitTest/NormalizeTable.mat");
+    CHECK(NormalizePathThroughManager(assetManager, "_P2UnitTest/NormalizeTable.mat/")
+        == "_P2UnitTest/NormalizeTable.mat");
+    CHECK(NormalizePathThroughManager(assetManager, "../outside.mat").empty());
+    CHECK(NormalizePathThroughManager(assetManager, "").empty());
+}
+
+TEST_CASE("asset-manager: a sync load normalises the registry path once [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture fixture;
+    REQUIRE(fixture.IsReflectionReady());
+    REQUIRE(EnsureEnginePathsReady(fixture.GetArgc(), fixture.GetArgv()));
+
+    AssetManagerTestScope scope;
+    AssetManagerTestProject project;
+
+    AssetManager& assetManager = AssetManager::Get();
+    const std::filesystem::path projectRoot = project.GetProjectRoot();
+    const std::filesystem::path otherRoot = projectRoot.parent_path() / "ProjectLoadOther";
+    std::filesystem::create_directories(otherRoot / "Assets" / "_P2UnitTest");
+
+    std::string createError;
+    std::shared_ptr<Asset> created = assetManager.CreateAssetByTypeId(
+        "Material", "SingleNormalizeMat", "Assets/_P2UnitTest", createError);
+    REQUIRE(created != nullptr);
+    REQUIRE(created->GetMeta() != nullptr);
+
+    const std::string path = created->GetMeta()->AssetPath;
+    REQUIRE(!path.empty());
+
+    // Resolve once under another root set, so the memo belongs to that root when the load below
+    // starts: switching back then forces a real normalisation instead of a warm entry.
+    PathRegistry::Get().SetProjectRoots(otherRoot);
+    REQUIRE(NormalizePathThroughManager(assetManager, path) == path);
+    PathRegistry::Get().SetProjectRoots(projectRoot);
+
+    const Testing::AssetPathNormalizationStats before = GetNormalizationStats(assetManager);
+    std::string loadError;
+    std::shared_ptr<Asset> loaded = assetManager.LoadAssetByPath(path, loadError);
+    REQUIRE_MESSAGE(loaded != nullptr, loadError);
+    const Testing::AssetPathNormalizationStats after = GetNormalizationStats(assetManager);
+
+    INFO("input canonicalisations: "
+        << (after.InputCanonicalizations - before.InputCanonicalizations)
+        << ", root refreshes: " << (after.RootRefreshes - before.RootRefreshes));
+    CHECK(after.InputCanonicalizations - before.InputCanonicalizations == 1u);
+
+    // Warm memos answer the second load without touching the filesystem again.
+    const std::shared_ptr<Asset> reloaded = assetManager.LoadAssetByPath(path, loadError);
+    REQUIRE(reloaded != nullptr);
+    CHECK(reloaded.get() == loaded.get());
+    CHECK(GetNormalizationStats(assetManager).InputCanonicalizations
+        == after.InputCanonicalizations);
+}
+

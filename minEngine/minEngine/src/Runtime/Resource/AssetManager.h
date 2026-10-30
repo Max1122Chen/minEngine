@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -383,6 +384,9 @@ namespace minEngine
         friend class AnimationClipImporter;
         friend class Engine;
         friend class Testing::TestAccess<AssetManager>;
+        /** Holds the synchronous load body so a caller with a known registry key skips a second
+         *  normalisation; the class exports the entry point, not this. */
+        friend struct AssetMetaLoadDetail;
 
         static void SetInstance(AssetManager* instance);
         static AssetManager* s_Instance;
@@ -419,6 +423,36 @@ namespace minEngine
             const Asset& asset,
             std::string& outErrorMessage);
 
+        /**
+         * Memo for NormalizeProjectRelativeAssetPath.
+         *
+         * The resolved roots are the invalidation key: a project reload (PathRegistry root set
+         * swap) or an engine-default override changes them, and the memo is dropped with them.
+         * Nothing else invalidates it - the answer is filesystem path arithmetic and never mixes
+         * in registry state, so a registry change cannot make a remembered answer wrong.
+         *
+         * The counters exist so a frame budget can tell a map lookup from a filesystem round trip:
+         * InputCanonicalizations counts the calls that had to resolve the caller's text against
+         * the disk, RootRefreshes the times the roots themselves were resolved again.
+         *
+         * Guarded by Mutex because this is reached from arbitrary threads (imports and editor
+         * background work), not only the game thread.
+         */
+        struct ProjectRelativePathCache
+        {
+            std::mutex Mutex;
+            bool RootsValid = false;
+            std::filesystem::path ContentRoot;
+            std::filesystem::path EngineDefaultAssetsRoot;
+            std::filesystem::path CanonicalContentRoot;
+            std::filesystem::path CanonicalEngineDefaultAssetsRoot;
+            std::unordered_map<std::string, std::string> Results;
+            uint64_t InputCanonicalizations = 0;
+            uint64_t RootRefreshes = 0;
+            uint64_t Hits = 0;
+            uint64_t Misses = 0;
+        };
+
         std::string NormalizeProjectRelativeAssetPath(const std::string& path) const;
         bool IsUnderProjectContentRoot(const std::filesystem::path& absolutePath) const;
         bool IsUnderEngineDefaultAssetsRoot(const std::filesystem::path& absolutePath) const;
@@ -440,6 +474,7 @@ namespace minEngine
         void RemoveOrphanMetaFilesInDirectory(const std::filesystem::path& directory);
 
         AssetRegistry m_Registry;
+        mutable ProjectRelativePathCache m_PathCache;
         std::unordered_map<std::string, std::weak_ptr<MEObject>> m_LoadedAssetCache;
         std::unordered_map<std::string, AssetLoadHandlerFn> m_LoadHandlers;
         std::unordered_map<std::string, AssetSaveHandlerFn> m_SaveHandlers;

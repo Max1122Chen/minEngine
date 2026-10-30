@@ -63,6 +63,130 @@ namespace minEngine
 {
     AssetManager* AssetManager::s_Instance = nullptr;
 
+    namespace
+    {
+        /** Upper bound on remembered paths: a caller that invents paths must not grow it forever. */
+        constexpr size_t kMaxCachedProjectRelativePaths = 8192;
+
+        /**
+         * Prefix test on paths that are already canonical: the verdict IsPathInsideDirectory
+         * reaches, without resolving either side against the disk again and without walking past
+         * the end of the shorter component sequence.
+         */
+        bool IsCanonicalPathInsideDirectory(
+            const std::filesystem::path& canonicalPath,
+            const std::filesystem::path& canonicalDirectory)
+        {
+            if (canonicalDirectory.empty() || canonicalPath.empty())
+            {
+                return false;
+            }
+
+            auto pathComponent = canonicalPath.begin();
+            for (auto directoryComponent = canonicalDirectory.begin();
+                 directoryComponent != canonicalDirectory.end();
+                 ++directoryComponent, ++pathComponent)
+            {
+                if (pathComponent == canonicalPath.end() || *pathComponent != *directoryComponent)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    struct AssetMetaLoadDetail
+    {
+        /** knownRegistryKey is the normalised key the caller already holds, or nullptr. */
+        static std::shared_ptr<Asset> Load(
+            AssetManager& manager,
+            const AssetMeta& meta,
+            const std::string* knownRegistryKey,
+            std::string& outErrorMessage);
+    };
+
+    std::shared_ptr<Asset> AssetMetaLoadDetail::Load(
+        AssetManager& manager,
+        const AssetMeta& meta,
+        const std::string* knownRegistryKey,
+        std::string& outErrorMessage)
+    {
+        // Every synchronous load enters here - LoadAssetByPath, LoadAssetByMeta and LoadAssetByGUID -
+        // and the whole body is game-role state: it writes the loaded asset cache and the object
+        // registry, and it joins an in-flight DataAsset load that a worker is assembling. The
+        // asynchronous entries refused an off-role caller; this path said nothing and loaded anyway.
+        // The load still runs, because a synchronous caller has no other way to get its asset.
+        ME_ENSURE(
+            !ObjectManager::NoteIfOffGameRole(ECoreServiceEntry::SyncAssetLoad),
+            "AssetManager::LoadAssetByPath was called off the game role: the synchronous load writes "
+            "the asset cache and the object registry, and joining an in-flight async load from "
+            "another thread races the worker assembling it. The asset is still loaded.");
+
+        // A caller that found the meta by its registry key already holds the normalised text;
+        // normalising meta.AssetPath again would resolve the same path against the disk twice.
+        // The registry stores metas under their normalised path, so the two agree.
+        const std::string normalizedFromMeta =
+            knownRegistryKey == nullptr ? manager.NormalizeProjectRelativeAssetPath(meta.AssetPath) : std::string();
+        const std::string& registryKey = knownRegistryKey == nullptr ? normalizedFromMeta : *knownRegistryKey;
+        if (!registryKey.empty())
+        {
+            const auto cacheIt = manager.m_LoadedAssetCache.find(registryKey);
+            if (cacheIt != manager.m_LoadedAssetCache.end())
+            {
+                std::shared_ptr<MEObject> cachedObject = cacheIt->second.lock();
+                if (cachedObject)
+                {
+                    return Cast<Asset>(cachedObject);
+                }
+            }
+
+            // MVP: only DataAsset uses AsyncLoad / the in-flight map. Sync join waits the
+            // worker and assembles here, never DrainCompletions for coalescing.
+            if (meta.AssetType == "DataAsset")
+            {
+                const auto inFlightIt = manager.m_InFlightDataAssetLoads.find(registryKey);
+                if (inFlightIt != manager.m_InFlightDataAssetLoads.end() && inFlightIt->second != nullptr)
+                {
+                    return manager.JoinInFlightDataAssetLoad(inFlightIt->second, outErrorMessage);
+                }
+            }
+        }
+
+        const AssetLoadHandlerFn handler = manager.FindLoadHandler(meta.AssetType);
+        if (handler == nullptr)
+        {
+            outErrorMessage = "unsupported asset type '" + meta.AssetType + "'";
+            return nullptr;
+        }
+
+        std::shared_ptr<Asset> asset = handler(manager, meta, outErrorMessage);
+        if (asset == nullptr)
+        {
+            return nullptr;
+        }
+
+        if (!manager.ValidateOrHealRuntimeClassNameAfterLoad(meta, *asset, outErrorMessage))
+        {
+            return nullptr;
+        }
+
+        if (!registryKey.empty())
+        {
+            manager.m_LoadedAssetCache[registryKey] = asset;
+            // The key is already normalised, so the registry is asked directly: routing this
+            // through FindAssetMetaByPath would normalise the same text once more.
+            const AssetMeta* registryMeta = manager.m_Registry.FindMetaByPath(registryKey);
+            if (registryMeta != nullptr)
+            {
+                asset->SetMeta(const_cast<AssetMeta*>(registryMeta));
+            }
+        }
+
+        return asset;
+    }
+
     bool AssetManager::IsPathInsideDirectory(
         const std::filesystem::path& absolutePath,
         const std::filesystem::path& rootDirectory)
@@ -154,6 +278,38 @@ namespace minEngine
         m_CreateHandlers.clear();
         m_ImportProducts.clear();
         EditorFilesystemMutationPass::Clear();
+
+        // The path memo outlives a single project otherwise, and its counters are the only place
+        // that says how much of the normalisation was still a filesystem round trip.
+        uint64_t pathCacheHits = 0;
+        uint64_t pathCacheMisses = 0;
+        uint64_t pathCacheCanonicalizations = 0;
+        uint64_t pathCacheRootRefreshes = 0;
+        {
+            std::lock_guard<std::mutex> lock(m_PathCache.Mutex);
+            pathCacheHits = m_PathCache.Hits;
+            pathCacheMisses = m_PathCache.Misses;
+            pathCacheCanonicalizations = m_PathCache.InputCanonicalizations;
+            pathCacheRootRefreshes = m_PathCache.RootRefreshes;
+            m_PathCache.Results.clear();
+            m_PathCache.RootsValid = false;
+            m_PathCache.ContentRoot.clear();
+            m_PathCache.EngineDefaultAssetsRoot.clear();
+            m_PathCache.CanonicalContentRoot.clear();
+            m_PathCache.CanonicalEngineDefaultAssetsRoot.clear();
+            m_PathCache.Hits = 0;
+            m_PathCache.Misses = 0;
+            m_PathCache.InputCanonicalizations = 0;
+            m_PathCache.RootRefreshes = 0;
+        }
+
+        ME_LOG(LogAsset, Debug,
+            "Asset path normalisation: {} memo hits, {} misses, {} path canonicalisations, "
+            "{} root refreshes.",
+            pathCacheHits,
+            pathCacheMisses,
+            pathCacheCanonicalizations,
+            pathCacheRootRefreshes);
     }
 
     void AssetManager::MarkReachableLoadedAssets(const std::function<void(MEObject*)>& markReachable) const
@@ -195,9 +351,47 @@ namespace minEngine
         }
 
         const PathRegistry& paths = PathRegistry::Get();
-        const std::filesystem::path& contentRoot = paths.GetProjectContentRoot();
-        const std::filesystem::path input(path);
+        const std::filesystem::path contentRoot = paths.GetProjectContentRoot();
+        const std::filesystem::path engineDefaultAssetsRoot = paths.GetEngineDefaultAssetsRoot();
 
+        std::filesystem::path canonicalContentRoot;
+        std::filesystem::path canonicalEngineDefaultAssetsRoot;
+        {
+            std::lock_guard<std::mutex> lock(m_PathCache.Mutex);
+
+            // The roots are the only input that can turn a remembered answer wrong, so they are
+            // the invalidation key: a project reload swaps them and drops the memo with them.
+            // Comparing them costs a string compare; resolving them costs filesystem calls.
+            if (!m_PathCache.RootsValid
+                || m_PathCache.ContentRoot != contentRoot
+                || m_PathCache.EngineDefaultAssetsRoot != engineDefaultAssetsRoot)
+            {
+                m_PathCache.ContentRoot = contentRoot;
+                m_PathCache.EngineDefaultAssetsRoot = engineDefaultAssetsRoot;
+                m_PathCache.CanonicalContentRoot = contentRoot.empty()
+                    ? std::filesystem::path()
+                    : std::filesystem::weakly_canonical(contentRoot);
+                m_PathCache.CanonicalEngineDefaultAssetsRoot = engineDefaultAssetsRoot.empty()
+                    ? std::filesystem::path()
+                    : std::filesystem::weakly_canonical(engineDefaultAssetsRoot);
+                m_PathCache.Results.clear();
+                m_PathCache.RootsValid = true;
+                ++m_PathCache.RootRefreshes;
+            }
+
+            const auto memo = m_PathCache.Results.find(path);
+            if (memo != m_PathCache.Results.end())
+            {
+                ++m_PathCache.Hits;
+                return memo->second;
+            }
+
+            ++m_PathCache.Misses;
+            canonicalContentRoot = m_PathCache.CanonicalContentRoot;
+            canonicalEngineDefaultAssetsRoot = m_PathCache.CanonicalEngineDefaultAssetsRoot;
+        }
+
+        const std::filesystem::path input(path);
         std::filesystem::path absolutePath;
         if (input.is_absolute())
         {
@@ -212,32 +406,57 @@ namespace minEngine
             absolutePath = std::filesystem::weakly_canonical(std::filesystem::absolute(input));
         }
 
-        if (IsUnderEngineDefaultAssetsRoot(absolutePath))
+        const auto remember = [this, &path, &contentRoot, &engineDefaultAssetsRoot](const std::string& result)
         {
-            ME_LOG(LogAsset, Warn, 
+            std::lock_guard<std::mutex> lock(m_PathCache.Mutex);
+            ++m_PathCache.InputCanonicalizations;
+
+            // The roots can move while this path is being resolved. That answer belongs to a root
+            // set nobody is using any more, so it is dropped instead of poisoning the memo the swap
+            // just rebuilt.
+            if (m_PathCache.RootsValid
+                && m_PathCache.ContentRoot == contentRoot
+                && m_PathCache.EngineDefaultAssetsRoot == engineDefaultAssetsRoot)
+            {
+                if (m_PathCache.Results.size() >= kMaxCachedProjectRelativePaths)
+                {
+                    m_PathCache.Results.clear();
+                }
+
+                m_PathCache.Results.emplace(path, result);
+            }
+        };
+
+        if (IsCanonicalPathInsideDirectory(absolutePath, canonicalEngineDefaultAssetsRoot))
+        {
+            ME_LOG(LogAsset, Warn,
                 "Asset path is under EngineDefaultAssetsRoot and will not be registered: {}",
                 absolutePath.string());
+            remember(std::string());
             return std::string();
         }
 
-        if (!contentRoot.empty() && IsUnderProjectContentRoot(absolutePath))
+        if (!contentRoot.empty() && IsCanonicalPathInsideDirectory(absolutePath, canonicalContentRoot))
         {
             std::error_code errorCode;
             const std::filesystem::path relativePath =
-                std::filesystem::relative(absolutePath, std::filesystem::weakly_canonical(contentRoot), errorCode);
+                std::filesystem::relative(absolutePath, canonicalContentRoot, errorCode);
             if (!errorCode)
             {
                 std::string result = relativePath.lexically_normal().generic_string();
                 if (result.size() >= 2 && result[0] == '.' && result[1] == '.')
                 {
+                    remember(std::string());
                     return std::string();
                 }
 
+                remember(result);
                 return result;
             }
         }
 
         ME_LOG(LogAsset, Warn, "Asset path is not under ProjectContentRoot: {}", absolutePath.string());
+        remember(std::string());
         return std::string();
     }
 
@@ -954,7 +1173,10 @@ namespace minEngine
             outErrorMessage = "asset meta not found for path: " + path;
             return nullptr;
         }
-        return LoadAssetByMeta_Internal(*meta, outErrorMessage);
+
+        // The registry found this meta under its own key, so meta.AssetPath is the normalised
+        // text: handing it to the load keeps it from resolving the same path a second time.
+        return AssetMetaLoadDetail::Load(*this, *meta, &meta->AssetPath, outErrorMessage);
     }
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta(const AssetMeta& meta, std::string& outErrorMessage)
@@ -974,7 +1196,9 @@ namespace minEngine
             return nullptr;
         }
 
-        return LoadAssetByMeta_Internal(*assetMeta, outErrorMessage);
+        // Registry metas are stored under their normalised path, so the stored AssetPath is the
+        // key the load would compute anyway.
+        return AssetMetaLoadDetail::Load(*this, *assetMeta, &assetMeta->AssetPath, outErrorMessage);
     }
 
     const AssetMeta* AssetManager::FindAssetMetaByPath(const std::string& path) const
@@ -1434,70 +1658,10 @@ namespace minEngine
 
     std::shared_ptr<Asset> AssetManager::LoadAssetByMeta_Internal(const AssetMeta& meta, std::string& outErrorMessage)
     {
-        // Every synchronous load enters here - LoadAssetByPath, LoadAssetByMeta and LoadAssetByGUID -
-        // and the whole body is game-role state: it writes m_LoadedAssetCache and the object
-        // registry, and it joins an in-flight DataAsset load that a worker is assembling. The
-        // asynchronous entries refused an off-role caller; this path said nothing and loaded anyway.
-        // The load still runs, because a synchronous caller has no other way to get its asset.
-        ME_ENSURE(
-            !ObjectManager::NoteIfOffGameRole(ECoreServiceEntry::SyncAssetLoad),
-            "AssetManager::LoadAssetByPath was called off the game role: the synchronous load writes "
-            "the asset cache and the object registry, and joining an in-flight async load from "
-            "another thread races the worker assembling it. The asset is still loaded.");
-        const std::string registryKey = NormalizeProjectRelativeAssetPath(meta.AssetPath);
-        if (!registryKey.empty())
-        {
-            const auto cacheIt = m_LoadedAssetCache.find(registryKey);
-            if (cacheIt != m_LoadedAssetCache.end())
-            {
-                std::shared_ptr<MEObject> cachedObject = cacheIt->second.lock();
-                if (cachedObject)
-                {
-                    return Cast<Asset>(cachedObject);
-                }
-            }
-
-            // MVP: only DataAsset uses AsyncLoad / m_InFlightDataAssetLoads. Sync join waits the
-            // worker and assembles here — never DrainCompletions for coalescing.
-            if (meta.AssetType == "DataAsset")
-            {
-                const auto inFlightIt = m_InFlightDataAssetLoads.find(registryKey);
-                if (inFlightIt != m_InFlightDataAssetLoads.end() && inFlightIt->second != nullptr)
-                {
-                    return JoinInFlightDataAssetLoad(inFlightIt->second, outErrorMessage);
-                }
-            }
-        }
-
-        const AssetLoadHandlerFn handler = FindLoadHandler(meta.AssetType);
-        if (handler == nullptr)
-        {
-            outErrorMessage = "unsupported asset type '" + meta.AssetType + "'";
-            return nullptr;
-        }
-
-        std::shared_ptr<Asset> asset = handler(*this, meta, outErrorMessage);
-        if (asset == nullptr)
-        {
-            return nullptr;
-        }
-
-        if (!ValidateOrHealRuntimeClassNameAfterLoad(meta, *asset, outErrorMessage))
-        {
-            return nullptr;
-        }
-
-        if (!registryKey.empty())
-        {
-            m_LoadedAssetCache[registryKey] = asset;
-            const AssetMeta* registryMeta = FindAssetMetaByPath(registryKey);
-            if (registryMeta != nullptr)
-            {
-                asset->SetMeta(const_cast<AssetMeta*>(registryMeta));
-            }
-        }
-
-        return asset;
+        // A caller-owned meta: nothing guarantees its AssetPath is already the registry key, so
+        // this entry pays the one normalisation it cannot know about. The registry entries
+        // (LoadAssetByPath / LoadAssetByGUID) hand their key over and skip it.
+        return AssetMetaLoadDetail::Load(*this, meta, nullptr, outErrorMessage);
     }
 
 
