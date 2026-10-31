@@ -488,6 +488,24 @@ namespace
     }
 
     /**
+     * Order-only digest over the identity each proxy stamps into its command.
+     *
+     * The scenario writes the proxy identity into `m_VertexCount`, so this reads the merged queue
+     * back as a sequence of proxies without folding in a single pointer. That makes it a value a
+     * case can pin: the sequence the shadow queue has to keep, whatever the storage does.
+     */
+    uint64_t MakeMarkerDigest(const std::vector<MeshDrawCommand>& commands)
+    {
+        Fnv1a64 hash;
+        hash.MixU64(static_cast<uint64_t>(commands.size()));
+        for (const MeshDrawCommand& command : commands)
+        {
+            hash.MixU32(command.m_VertexCount);
+        }
+        return hash.Get();
+    }
+
+    /**
      * Appends chunks in the order it is handed. Production code reaches it through
      * MergeMeshAssemblyChunks; the meta checks call it with a broken order on purpose, which is how
      * they show the equality above can fail.
@@ -920,6 +938,174 @@ TEST_CASE("mesh-assembly-determinism: shadow casters keep the main-view segment 
     CHECK(noShadowCtx.ShadowCasterQueue[0].m_VertexCount == 0u);
     CHECK(noShadowCtx.ShadowCasterQueue[1].m_VertexCount == 1u);
     CHECK(noShadowCtx.ShadowCasterQueue[2].m_VertexCount == 2u);
+}
+
+TEST_CASE("mesh-assembly-determinism: the shadow pass borrows the assembled casters [smoke]")
+{
+    AssemblyScene scene;
+    scene.ResetDense(4);
+    REQUIRE(scene.GetProxy(3) != nullptr);
+    scene.GetProxy(3)->SetOutsideView(true);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext ctx;
+    minEngine::BuildMeshAssemblyQueues(input, ctx, MakeSchedule(2), nullptr);
+
+    // The assembly names the two runs in place: both index the queue that was just merged, so no
+    // second container has to be built to say which caster came from which route.
+    REQUIRE(ctx.ShadowCasterQueue.size() == 4u);
+    CHECK(ctx.ShadowCasters.MainVisible.First == 0u);
+    CHECK(ctx.ShadowCasters.MainVisible.Count == 3u);
+    CHECK(ctx.ShadowCasters.Hidden.First == ctx.ShadowCasters.MainVisible.End());
+    CHECK(ctx.ShadowCasters.Hidden.Count == 1u);
+    CHECK(ctx.ShadowCasters.Tiles(ctx.ShadowCasterQueue.size()));
+
+    // What the frame does: name the queue, record the shadow draws off it, and let go when the
+    // frame ends. Nothing is copied, so the borrow has to be the queue itself.
+    minEngine::ShadowCasterBorrow borrow;
+    {
+        minEngine::ShadowCasterBorrowScope scope(borrow, ctx.ShadowCasterQueue, ctx.ShadowCasters);
+
+        REQUIRE(borrow.IsBound());
+        CHECK(borrow.Queue() == &ctx.ShadowCasterQueue);
+        CHECK(&borrow.Commands() == &ctx.ShadowCasterQueue);
+        CHECK(borrow.Commands().data() == ctx.ShadowCasterQueue.data());
+        CHECK(borrow.Segments().MainVisible.Count == ctx.ShadowCasters.MainVisible.Count);
+        CHECK(borrow.Segments().Hidden.Count == ctx.ShadowCasters.Hidden.Count);
+    }
+
+    CHECK_FALSE(borrow.IsBound());
+    CHECK(borrow.Queue() == nullptr);
+}
+
+TEST_CASE("mesh-assembly-determinism: the caster queue keeps its two runs and their order [smoke]")
+{
+    AssemblyScene scene;
+    scene.ResetDense(4);
+    REQUIRE(scene.GetProxy(3) != nullptr);
+    scene.GetProxy(3)->SetOutsideView(true);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+
+    // The sequence the queue has always held: main-view casters in draw-set order, then the ones
+    // collected for the shadow pass alone. Pinned, because a queue that is only compared against a
+    // second copy of itself cannot report a changed order.
+    constexpr uint64_t kExpectedCasterMarkerDigest = 10370375220131207297ull;
+
+    const uint32_t chunkCounts[] = { 1u, 2u, 4u };
+    for (uint32_t chunkCount : chunkCounts)
+    {
+        SceneRenderContext ctx;
+        minEngine::BuildMeshAssemblyQueues(
+            input,
+            ctx,
+            MakeSchedule(static_cast<int32_t>(chunkCount)),
+            nullptr);
+
+        INFO("chunk count=" << chunkCount);
+
+        REQUIRE(ctx.ShadowCasterQueue.size() == 4u);
+        CHECK(MakeMarkerDigest(ctx.ShadowCasterQueue) == kExpectedCasterMarkerDigest);
+
+        // The first run is every main-view caster, the second run is what the shadow pass alone
+        // collected, and both read into the same storage.
+        const minEngine::ShadowCasterSegments segments = ctx.ShadowCasters;
+        REQUIRE(segments.Tiles(ctx.ShadowCasterQueue.size()));
+
+        const std::vector<MeshDrawCommand>& casters = ctx.ShadowCasterQueue;
+        for (uint32_t index = 0; index < segments.MainVisible.Count; ++index)
+        {
+            INFO("main-view caster=" << index);
+            CHECK(casters[segments.MainVisible.First + index].m_VertexCount < 3u);
+        }
+        for (uint32_t index = 0; index < segments.Hidden.Count; ++index)
+        {
+            INFO("shadow-only caster=" << index);
+            CHECK(casters[segments.Hidden.First + index].m_VertexCount >= 3u);
+        }
+
+        // The order the shadow pass draws in, read through the traversal the pass itself uses.
+        std::vector<uint32_t> drawn;
+        minEngine::VisitShadowCasters(
+            casters,
+            segments,
+            [&drawn](const MeshDrawCommand& command) { drawn.push_back(command.m_VertexCount); });
+        CHECK(drawn == std::vector<uint32_t>{ 0u, 1u, 2u, 3u });
+
+        // A run that names more than the storage holds draws what is there and stops.
+        std::vector<uint32_t> clamped;
+        minEngine::VisitShadowCasters(
+            casters,
+            minEngine::ShadowCasterSegments{
+                minEngine::MeshQueueSegment{ 0u, 2u },
+                minEngine::MeshQueueSegment{ 10u, 5u } },
+            [&clamped](const MeshDrawCommand& command) { clamped.push_back(command.m_VertexCount); });
+        CHECK(clamped == std::vector<uint32_t>{ 0u, 1u });
+
+        // Byte for byte the queue the single-pass path produces - the same commands, the same order.
+        CHECK(ctx.ShadowCasterQueue.size() == reference.ShadowCasterQueue.size());
+        CHECK(MakeQueueDigest(ctx.ShadowCasterQueue) == MakeQueueDigest(reference.ShadowCasterQueue));
+    }
+}
+
+TEST_CASE("mesh-assembly-determinism: the caster queue outlives the frame that borrows it [smoke]")
+{
+    AssemblyScene scene;
+    scene.ResetDense(4);
+    REQUIRE(scene.GetProxy(3) != nullptr);
+    scene.GetProxy(3)->SetOutsideView(true);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    // The pass outlives every frame; the queue it reads does not. The counter is the detector: a
+    // borrow that is still alive after its frame ended is a number a case can fail on, instead of a
+    // dangling pointer nobody notices until it draws garbage.
+    minEngine::ShadowCasterBorrow passSide;
+    CHECK(minEngine::ShadowCasterBorrow::LiveCount() == 0u);
+
+    {
+        // One frame, as the pipeline owns it: the context is the queue's owner, and recording plus
+        // submit both happen inside this scope.
+        SceneRenderContext frame;
+        minEngine::BuildMeshAssemblyQueues(input, frame, MakeSchedule(2), nullptr);
+        minEngine::ShadowCasterBorrowScope scope(passSide, frame.ShadowCasterQueue, frame.ShadowCasters);
+
+        REQUIRE(passSide.IsBound());
+        CHECK(minEngine::ShadowCasterBorrow::LiveCount() == 1u);
+
+        // "Recording": the pass reads the frame's own storage, in run order, twice.
+        for (uint32_t pass = 0; pass < 2u; ++pass)
+        {
+            const std::vector<MeshDrawCommand>& casters = passSide.Commands();
+            CHECK(&casters == &frame.ShadowCasterQueue);
+            CHECK(casters.size() == frame.ShadowCasters.Total());
+        }
+
+        // "Submit": the queue is still the one the commands were recorded from.
+        CHECK(passSide.Queue() == &frame.ShadowCasterQueue);
+        CHECK(passSide.Commands().data() == frame.ShadowCasterQueue.data());
+    }
+
+    // The frame ended - by its own last statement or by any early return out of it - and nothing
+    // still names its storage.
+    CHECK_FALSE(passSide.IsBound());
+    CHECK(minEngine::ShadowCasterBorrow::LiveCount() == 0u);
 }
 
 TEST_CASE("mesh-assembly-determinism: the frame entry point matches the reference too [smoke]")

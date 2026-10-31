@@ -8,6 +8,7 @@
 #include "Runtime/Function/Render/RenderPipeline/Shadow/ShadowUniformBuffers.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+#include "Runtime/Function/Render/SceneRenderContext.h"
 
 #include <unordered_map>
 
@@ -41,6 +42,11 @@ namespace minEngine
         void Render(RHICommandList& cmdList);
         void Render();
         void DrawOpaqueMeshes(RHICommandList& cmdList, const ShadowPassUniformBinding& uniformBinding);
+        void DrawShadowCaster(
+            RHICommandList& cmdList,
+            const ShadowPassUniformBinding& uniformBinding,
+            const MeshDrawCommand& drawCommand,
+            std::vector<RHIShaderBinding>& resources);
         RHIGraphicsPipelineStateRef GetOrCreateShadowPipelineForLayout(
             RHIVertexInputLayout* vertexInputLayout,
             RHICommandList& cmdList);
@@ -48,7 +54,15 @@ namespace minEngine
     public:
         RHIBuffer* m_PerObjectUniformBuffer = nullptr;
         const ShadowUniformBuffers* m_ShadowUniformBuffers = nullptr;
-        std::vector<MeshDrawCommand> m_OpaqueQueue;
+        /**
+         * The frame's caster queue, borrowed for as long as the frame records.
+         *
+         * The queue belongs to the frame context, which the pipeline keeps alive until the frame's
+         * recording window has been submitted and replayed; this pass only names it. The borrow is
+         * what replaces the copy this member used to hold, and the two runs it carries are the
+         * shadow draws' order: main-view casters first, shadow-only casters after them.
+         */
+        ShadowCasterBorrow m_CasterQueue;
 
         std::vector<ShadowDrawCommand> m_ShadowDrawCommands;
 

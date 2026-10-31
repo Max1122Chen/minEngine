@@ -540,16 +540,18 @@ namespace minEngine
 
         size_t opaqueTotal = 0;
         size_t translucentTotal = 0;
-        size_t shadowTotal = 0;
+        size_t shadowFromMainVisibleTotal = 0;
+        size_t shadowFromHiddenTotal = 0;
         for (const MeshAssemblyChunk* chunk : orderedChunks)
         {
             opaqueTotal += chunk->Opaque.size();
             translucentTotal += chunk->Translucent.size();
-            shadowTotal += chunk->ShadowFromMainVisible.size() + chunk->ShadowFromHidden.size();
+            shadowFromMainVisibleTotal += chunk->ShadowFromMainVisible.size();
+            shadowFromHiddenTotal += chunk->ShadowFromHidden.size();
         }
         ctx.OpaqueQueue.reserve(opaqueTotal);
         ctx.TranslucentQueue.reserve(translucentTotal);
-        ctx.ShadowCasterQueue.reserve(shadowTotal);
+        ctx.ShadowCasterQueue.reserve(shadowFromMainVisibleTotal + shadowFromHiddenTotal);
 
         for (const MeshAssemblyChunk* chunk : orderedChunks)
         {
@@ -574,6 +576,19 @@ namespace minEngine
                 chunk->ShadowFromHidden.begin(),
                 chunk->ShadowFromHidden.end());
         }
+
+        // The two sweeps above are the two runs, named here and nowhere else: the queue is one
+        // container, and the boundary between what the main view drew and what was collected for
+        // the shadow pass alone only survives the merge if it is recorded while it is known.
+        ctx.ShadowCasters.MainVisible = MeshQueueSegment{
+            0u,
+            static_cast<uint32_t>(shadowFromMainVisibleTotal) };
+        ctx.ShadowCasters.Hidden = MeshQueueSegment{
+            ctx.ShadowCasters.MainVisible.End(),
+            static_cast<uint32_t>(shadowFromHiddenTotal) };
+        ME_ASSERT(
+            ctx.ShadowCasters.Tiles(ctx.ShadowCasterQueue.size()),
+            "the shadow caster runs have to tile the queue they were merged into");
     }
 
     /**

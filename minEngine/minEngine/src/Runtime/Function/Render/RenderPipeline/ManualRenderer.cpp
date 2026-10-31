@@ -208,7 +208,12 @@ namespace minEngine
     void ManualRenderer::ExecuteManualShadowPasses(RHICommandList& cmdList, SceneRenderContext& ctx)
     {
         m_ShadowPass.m_ShadowDrawCommands = ctx.ShadowDrawCommands;
-        m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
+        // The same hand-over the forward frame performs: the pass reads the assembled queue, and
+        // the borrow ends with this recording function rather than outliving the frame.
+        const ShadowCasterBorrowScope shadowCastersForThisFrame(
+            m_ShadowPass.m_CasterQueue,
+            ctx.ShadowCasterQueue,
+            ctx.ShadowCasters);
         m_ShadowPass.PrepareShadowPass(cmdList);
 
         for (const ShadowDrawCommand& command : ctx.ShadowDrawCommands)

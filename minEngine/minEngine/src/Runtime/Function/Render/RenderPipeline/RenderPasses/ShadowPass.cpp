@@ -16,6 +16,8 @@
 #include "Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Core/Log/LogSystem.h"
 
+#include <algorithm>
+
 namespace minEngine
 {
     void ShadowPass::Initialize()
@@ -177,61 +179,87 @@ namespace minEngine
             return;
         }
 
-        RHIShaderBindingSetLayout* shadowBindingLayout = pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout();
+        if (!pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout())
+        {
+            return;
+        }
+
+        // One binding description for the whole light view instead of one allocation per caster.
+        std::vector<RHIShaderBinding> resources(3);
+
+        // Both runs are read out of the frame's own queue: the pass owns no commands, so there is
+        // nothing to keep in step with the assembly and nothing to copy into it. The order is the
+        // run order - what the main view already draws first, what the shadow pass alone collected
+        // after it - which is also the order the queue was merged in.
+        VisitShadowCasters(
+            m_CasterQueue.Commands(),
+            m_CasterQueue.Segments(),
+            [&](const MeshDrawCommand& drawCommand)
+            {
+                DrawShadowCaster(cmdList, uniformBinding, drawCommand, resources);
+            });
+    }
+
+    void ShadowPass::DrawShadowCaster(
+        RHICommandList& cmdList,
+        const ShadowPassUniformBinding& uniformBinding,
+        const MeshDrawCommand& drawCommand,
+        std::vector<RHIShaderBinding>& resources)
+    {
+        if (!drawCommand.m_CastShadow)
+        {
+            return;
+        }
+
+        RHIShaderBindingSetLayout* shadowBindingLayout =
+            pipeline->GetPipelineLayouts().GetShadowShaderBindingSetLayout();
         if (!shadowBindingLayout)
         {
             return;
         }
 
-        for (auto& drawCommand : m_OpaqueQueue)
+        RHIGraphicsPipelineStateRef pipelineState =
+            GetOrCreateShadowPipelineForLayout(drawCommand.m_VertexInputLayout, cmdList);
+        if (!pipelineState || !drawCommand.m_VertexBuffer)
         {
-            if (!drawCommand.m_CastShadow)
-            {
-                continue;
-            }
-
-            RHIGraphicsPipelineStateRef pipelineState =
-                GetOrCreateShadowPipelineForLayout(drawCommand.m_VertexInputLayout, cmdList);
-            if (!pipelineState || !drawCommand.m_VertexBuffer)
-            {
-                continue;
-            }
-
-            const uint32_t perObjectOffset =
-                pipeline->GetSceneBindings().WriteNextPerObjectModel(cmdList, drawCommand.m_ModelMatrix);
-            std::vector<RHIShaderBinding> resources(3);
-            resources[0] = {
-                RHIShaderBindingType::UniformBuffer,
-                uniformBinding.ViewProjBuffer,
-                nullptr,
-                uniformBinding.ViewProjByteOffset,
-                static_cast<uint32_t>(sizeof(Matrix4))};
-            resources[1] = {
-                RHIShaderBindingType::UniformBuffer,
-                m_PerObjectUniformBuffer,
-                nullptr,
-                perObjectOffset,
-                static_cast<uint32_t>(sizeof(Matrix4))};
-            resources[2] = {
-                RHIShaderBindingType::UniformBuffer,
-                uniformBinding.ParamsBuffer,
-                nullptr,
-                uniformBinding.ParamsByteOffset,
-                static_cast<uint32_t>(sizeof(ShadowPassParamsUBO))};
-
-            RHIShaderBindingSetRef shadowSet = cmdList.CreateShaderBindingSet(shadowBindingLayout, resources);
-            if (!shadowSet)
-            {
-                continue;
-            }
-            m_PendingShadowBindingSets.push_back(shadowSet);
-
-            MeshDrawPacket packet;
-            packet.PipelineState = pipelineState;
-            packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = shadowSet;
-            packet.BindDrawCommand(drawCommand);
-            cmdList.SubmitMeshDrawPacket(packet);
+            return;
         }
+
+        const uint32_t perObjectOffset =
+            pipeline->GetSceneBindings().WriteNextPerObjectModel(cmdList, drawCommand.m_ModelMatrix);
+        resources[0] = {
+            RHIShaderBindingType::UniformBuffer,
+            uniformBinding.ViewProjBuffer,
+            nullptr,
+            uniformBinding.ViewProjByteOffset,
+            static_cast<uint32_t>(sizeof(Matrix4))};
+        resources[1] = {
+            RHIShaderBindingType::UniformBuffer,
+            m_PerObjectUniformBuffer,
+            nullptr,
+            perObjectOffset,
+            static_cast<uint32_t>(sizeof(Matrix4))};
+        resources[2] = {
+            RHIShaderBindingType::UniformBuffer,
+            uniformBinding.ParamsBuffer,
+            nullptr,
+            uniformBinding.ParamsByteOffset,
+            static_cast<uint32_t>(sizeof(ShadowPassParamsUBO))};
+
+        // Rewritten per draw into the same three slots; the set built from them is a new one each
+        // time and is what keeps the bindings alive until the command buffer submits.
+        RHIShaderBindingSetRef shadowSet = cmdList.CreateShaderBindingSet(shadowBindingLayout, resources);
+        if (!shadowSet)
+        {
+            return;
+        }
+        m_PendingShadowBindingSets.push_back(shadowSet);
+
+        MeshDrawPacket packet;
+        packet.PipelineState = pipelineState;
+        packet.ShaderBindingSets[EngineShaderBindings::kSetShadowPass] = shadowSet;
+        packet.BindDrawCommand(drawCommand);
+        cmdList.SubmitMeshDrawPacket(packet);
     }
 
     void ShadowPass::RenderDirectionalShadow(RHICommandList& cmdList, const ShadowDrawCommand& command)

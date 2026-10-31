@@ -590,8 +590,6 @@ namespace minEngine
         m_SkyBoxPass.Shutdown();
         m_DebugDrawPass.Shutdown();
 
-        m_ShadowPass.m_OpaqueQueue.clear();
-
         m_ShadowGraphPasses.clear();
         m_ShadowGraphPassPtrs.clear();
         m_FrameRenderGraph.Reset();
@@ -670,7 +668,14 @@ namespace minEngine
         SortMeshDrawQueues(ctx);
         BuildScreenUIQueue(ctx, sceneTarget->GetWidth(), sceneTarget->GetHeight());
 
-        m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue;
+        // The shadow pass draws this frame's casters out of the queue the context owns instead of
+        // out of a copy of it. The context outlives the recording window and the submit below, so
+        // naming it is enough - and the scope is what releases the borrow on every early return
+        // this function has between here and its end.
+        const ShadowCasterBorrowScope shadowCastersForThisFrame(
+            m_ShadowPass.m_CasterQueue,
+            ctx.ShadowCasterQueue,
+            ctx.ShadowCasters);
 
         // Everything that produces resources for this frame happens before it starts recording: the
         // environment bake below loads an asset, draws six faces per mip level and submits an
