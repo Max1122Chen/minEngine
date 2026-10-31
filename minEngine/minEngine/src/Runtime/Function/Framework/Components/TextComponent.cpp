@@ -10,6 +10,7 @@
 #include "Runtime/Function/UI/Font/FontGlyphAtlas.h"
 #include "Runtime/Function/UI/Font/FontGlyphAtlasCache.h"
 #include "Runtime/Function/UI/Font/TextMeshBuilder.h"
+#include "Runtime/Function/UI/Font/TextVertexLayoutShared.h"
 
 namespace minEngine
 {
@@ -143,7 +144,11 @@ namespace minEngine
         outData.bLocalPixelMesh = true;
         outData.VertexBuffer = m_VertexBuffer;
         outData.IndexBuffer = m_IndexBuffer;
-        outData.VertexInputLayout = m_VertexInputLayout;
+        // Text reads its vertices through one layout the whole process shares, and the cache that
+        // owns it hands out a handle: passing that handle on is what lets a proxy outlive this
+        // graphic and still name a layout that exists.
+        outData.VertexInputLayoutRef = SharedTextVertexInputLayout();
+        outData.VertexInputLayout = outData.VertexInputLayoutRef.get();
         outData.IndexCount = m_QuadCount * kIndicesPerQuad;
         outData.VertexCount = m_QuadCount * kVerticesPerQuad;
         outData.Texture = m_AtlasTexture.get();

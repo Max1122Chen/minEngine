@@ -3,6 +3,7 @@
 #include "Runtime/Function/Render/RHI/RHI.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/UI/Font/FontGlyphAtlas.h"
+#include "Runtime/Function/UI/Font/TextVertexLayoutShared.h"
 #include "Runtime/Function/UI/Font/FontUtf8.h"
 
 namespace minEngine
@@ -102,26 +103,23 @@ namespace minEngine
         return outResult.QuadCount > 0 || utf8Text.empty();
     }
 
-    namespace
+    /**
+     * The one vertex layout text draws share, and the only process-level GPU handle this file
+     * holds.
+     *
+     * It is a function-local static reached through one accessor so the factory and the release
+     * entry below touch the same object: a second static in a second function would reset its own
+     * copy and let the real one die after the device, which is the leak this exists to prevent.
+     */
+    RHIVertexInputLayoutRef& SharedTextVertexInputLayout()
     {
-        /**
-         * The one vertex layout text draws share, and the only process-level GPU handle this file
-         * holds.
-         *
-         * It is a single function-local static reached through one accessor so the release entry
-         * above touches the same object: a second static in a second function would reset its own
-         * copy and let the real one die after the device, which is the leak this exists to prevent.
-         */
-        RHIVertexInputLayoutRef& SharedVertexInputLayout()
-        {
-            static RHIVertexInputLayoutRef s_Layout;
-            return s_Layout;
-        }
+        static RHIVertexInputLayoutRef s_Layout;
+        return s_Layout;
     }
 
     RHIVertexInputLayout* TextMeshBuilder::GetOrCreateVertexInputLayout(RHI& rhi)
     {
-        RHIVertexInputLayoutRef& s_Layout = SharedVertexInputLayout();
+        RHIVertexInputLayoutRef& s_Layout = SharedTextVertexInputLayout();
         if (!s_Layout)
         {
             s_Layout = rhi.RHICreateVertexInputLayout({
@@ -138,12 +136,12 @@ namespace minEngine
     {
         // Reached through a module-level accessor, not a second copy of the static: the handle is
         // owned by one function-local static, and a helper elsewhere would only reset its own.
-        RHIVertexInputLayoutRef& layout = SharedVertexInputLayout();
+        RHIVertexInputLayoutRef& layout = SharedTextVertexInputLayout();
         layout.reset();
     }
 
     bool TextMeshBuilder::HasSharedLayout()
     {
-        return static_cast<bool>(SharedVertexInputLayout());
+        return static_cast<bool>(SharedTextVertexInputLayout());
     }
 }

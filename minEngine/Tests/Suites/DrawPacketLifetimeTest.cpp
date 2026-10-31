@@ -2,6 +2,7 @@
 
 #include "Support/HeadlessTestRHI.h"
 
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
@@ -10,10 +11,15 @@
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
+#include "Runtime/Function/Render/RHI/RHIDeferredCreate.h"
 #include "Runtime/Function/Render/RHI/RHIShaderBinding.h"
+#include "Runtime/Function/Render/SceneProxies/WidgetSceneProxy.h"
+#include "Runtime/Function/UI/Font/TextMeshBuilder.h"
 
 #include "doctest.h"
 
+#include <atomic>
+#include <mutex>
 #include <utility>
 
 using minEngine::FrameThreading;
@@ -34,6 +40,7 @@ using minEngine::Testing::GpuHandleProbe;
 using minEngine::Testing::HeadlessTestRHI;
 using minEngine::Testing::ProbeShaderBindingSet;
 using minEngine::Testing::ProbeShaderBindingSetLayout;
+using minEngine::WidgetSceneProxy;
 
 namespace
 {
@@ -485,3 +492,238 @@ TEST_CASE("draw-packet-lifetime: a recorded stream holds the vertex layout it na
 
     threading.Shutdown();
 }
+
+namespace
+{
+    /**
+     * Counts the one line that says a draw read its vertices through the layout the pipeline state
+     * binds: the case is legitimate, and that line is what makes it visible in a real log.
+     */
+    class PipelineStateLayoutNoticeSink final : public minEngine::ILogSink
+    {
+    public:
+        void Write(const minEngine::LogRecord& record) override
+        {
+            if (record.message.find("vertex input layout the graphics pipeline state binds")
+                != std::string::npos)
+            {
+                Count.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+
+        std::atomic<int> Count{ 0 };
+    };
+
+    PipelineStateLayoutNoticeSink& GetLayoutNoticeSink()
+    {
+        static PipelineStateLayoutNoticeSink s_Sink;
+        return s_Sink;
+    }
+
+    /** Registers the notice sink once per process; the log system owns the reference. */
+    void EnsureLayoutNoticeSinkInstalled()
+    {
+        static std::once_flag s_Once;
+        std::call_once(s_Once, []() {
+            minEngine::LogSystem::AddSink(std::shared_ptr<minEngine::ILogSink>(
+                &GetLayoutNoticeSink(),
+                [](minEngine::ILogSink*) {
+                    // Process-lifetime probe: the log system keeps the reference.
+                }));
+        });
+        // The notice is informational, so the channel has to let it through for this to read it.
+        minEngine::LogSystem::SetChannelSeverity(minEngine::LogRender, minEngine::LogSeverity::Info);
+    }
+
+    /** A pipeline state that binds the given layout when it is applied. */
+    minEngine::RHIGraphicsPipelineStateRef MakePipelineStateWithLayout(
+        HeadlessTestRHI& rhi,
+        minEngine::RHIVertexInputLayout* layout)
+    {
+        RHIGraphicsPSODesc desc;
+        desc.VertexInputLayout = layout;
+        return rhi.RHICreateGraphicsPipelineState(desc);
+    }
+
+    /** A quad draw of six indices whose geometry is ready and whose packet carries no layout. */
+    MeshDrawPacket MakeQuadPacketWithoutLayout(const RHIBufferRef& indexBuffer)
+    {
+        MeshDrawPacket packet;
+        packet.IndexBufferRef = indexBuffer;
+        packet.IndexBuffer = indexBuffer.get();
+        packet.IndexCount = 6u;
+        return packet;
+    }
+}
+
+TEST_CASE("draw-packet-lifetime: a draw whose layout comes from the pipeline state is submitted [smoke]")
+{
+    EnsureLayoutNoticeSinkInstalled();
+    PipelineStateLayoutNoticeSink& notice = GetLayoutNoticeSink();
+    const int noticesBefore = notice.Count.load(std::memory_order_relaxed);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+    REQUIRE(indexBuffer->IsReady());
+
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
+    REQUIRE(layout != nullptr);
+    REQUIRE(layout->IsReady());
+
+    // A pass that owns exactly one vertex state keeps it on the pipeline state instead of copying
+    // it into every packet. The draw is still complete: the state binds that layout when it is
+    // applied, so nothing about it is missing.
+    MeshDrawPacket packet = MakeQuadPacketWithoutLayout(indexBuffer);
+    packet.PipelineState = MakePipelineStateWithLayout(rhi, layout.get());
+    REQUIRE(packet.VertexInputLayout == nullptr);
+    REQUIRE(packet.VertexInputLayoutRef == nullptr);
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+    cmdList.SubmitMeshDrawPacket(packet);
+
+    CHECK(rhi.Draws.size() == 1u);
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(notice.Count.load(std::memory_order_relaxed) > noticesBefore);
+}
+
+TEST_CASE("draw-packet-lifetime: a layout the pipeline state names but has not materialized is not submitted [smoke]")
+{
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    indexBuffer->CreateNativeResources();
+    REQUIRE(indexBuffer->IsReady());
+
+    const std::shared_ptr<DeferredVertexInputLayout> layout =
+        std::make_shared<DeferredVertexInputLayout>();
+    REQUIRE(!layout->IsReady());
+
+    MeshDrawPacket packet = MakeQuadPacketWithoutLayout(indexBuffer);
+    packet.PipelineState = MakePipelineStateWithLayout(rhi, layout.get());
+    REQUIRE(packet.VertexInputLayout == nullptr);
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+
+    // Moving the layout to the pipeline state does not make an unmaterialized one drawable: the
+    // vertex array the state would bind does not exist yet either.
+    cmdList.SubmitMeshDrawPacket(packet);
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+
+    layout->CreateNativeResources();
+    cmdList.SubmitMeshDrawPacket(packet);
+    REQUIRE(rhi.Draws.size() == 1u);
+    CHECK(rhi.NamelessDraws == 0);
+}
+
+TEST_CASE("draw-packet-lifetime: a draw that names no layout anywhere is not submitted [smoke]")
+{
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    indexBuffer->CreateNativeResources();
+    REQUIRE(indexBuffer->IsReady());
+
+    // Nothing binds a vertex layout: no layout on the packet, and a state built without one.
+    MeshDrawPacket packet = MakeQuadPacketWithoutLayout(indexBuffer);
+    packet.PipelineState = rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+    cmdList.SubmitMeshDrawPacket(packet);
+
+    // A draw of that shape reads no vertex data at all, whatever the state does with it.
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+}
+
+TEST_CASE("draw-packet-lifetime: a text widget's packet names the glyph layout it draws through [smoke]")
+{
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferCreateDesc vertexDesc;
+    vertexDesc.Usage = RHIBufferUsage::Vertex;
+    vertexDesc.ByteSize = 4u * 32u;
+    vertexDesc.ElementCount = 4u;
+    const RHIBufferRef vertexBuffer = rhi.RHICreateBuffer(vertexDesc, nullptr);
+    const RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(vertexBuffer != nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+    REQUIRE(vertexBuffer->IsReady());
+    REQUIRE(indexBuffer->IsReady());
+
+    // Glyph geometry reads its vertices through one layout the text builder shares, and the builder
+    // keeps it as a handle. That handle is what a text graphic hands to its widget, so the proxy -
+    // and every draw recorded from it - names a layout that outlives the text that produced it.
+    // The builder's own handle stays inside the engine module, so this case binds a handle of the
+    // same kind and pins the hand-over: what a widget binds is what its draws name.
+    REQUIRE(minEngine::TextMeshBuilder::GetOrCreateVertexInputLayout(rhi) != nullptr);
+    CHECK(minEngine::TextMeshBuilder::HasSharedLayout());
+    const minEngine::RHIVertexInputLayoutRef sharedLayout = rhi.RHICreateVertexInputLayout({
+        minEngine::RHIVertexElement("a_Position", minEngine::VertexElementType::Float3),
+        minEngine::RHIVertexElement("a_TexCoord", minEngine::VertexElementType::Float2),
+    });
+    REQUIRE(sharedLayout != nullptr);
+    CHECK(minEngine::GetDeferredUse(sharedLayout.get()) == minEngine::RHIDeferredUse::Usable);
+
+    MeshDrawPacket packet;
+    {
+        WidgetSceneProxy proxy;
+        proxy.SetMeshResources(vertexBuffer, sharedLayout, indexBuffer, 6u, 4u);
+        REQUIRE(proxy.m_VertexInputLayoutRef != nullptr);
+        CHECK(proxy.m_VertexInputLayout == sharedLayout.get());
+
+        // What the ScreenUI queue copies out of the proxy, and what a pass turns into a packet.
+        MeshDrawCommand command;
+        command.m_VertexBufferRef = proxy.m_VertexBufferRef;
+        command.m_IndexBufferRef = proxy.m_IndexBufferRef;
+        command.m_VertexBuffer = proxy.m_VertexBuffer;
+        command.m_IndexBuffer = proxy.m_IndexBuffer;
+        command.m_VertexInputLayoutRef = proxy.m_VertexInputLayoutRef;
+        command.m_VertexInputLayout = proxy.m_VertexInputLayout;
+        command.m_IndexCount = proxy.m_IndexCount;
+        REQUIRE(command.m_VertexInputLayoutRef != nullptr);
+        CHECK(minEngine::GetDeferredUse(command.m_VertexInputLayout)
+            == minEngine::RHIDeferredUse::Usable);
+        packet.BindDrawCommand(command);
+    }
+
+    // The state this draw is recorded with binds no layout of its own: the layout the packet names
+    // is the only one the draw can read its vertices through.
+    packet.PipelineState = rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+    REQUIRE(packet.VertexInputLayoutRef != nullptr);
+    REQUIRE(packet.VertexInputLayout != nullptr);
+    CHECK(minEngine::GetDeferredUse(packet.VertexInputLayout) == minEngine::RHIDeferredUse::Usable);
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(true);
+    cmdList.SubmitMeshDrawPacket(packet);
+
+    CHECK(rhi.Draws.size() == 1u);
+    CHECK(rhi.NamelessDraws == 0);
+
+    // The layout is a process-level handle: giving it back here leaves the next suite a clean one.
+    packet = {};
+    minEngine::TextMeshBuilder::ReleaseSharedLayout();
+    CHECK_FALSE(minEngine::TextMeshBuilder::HasSharedLayout());
+}
+
+

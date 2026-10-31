@@ -404,7 +404,7 @@ namespace minEngine
             // own buffers, while this proxy may still be waiting on the render thread to draw them.
             proxy.SetMeshResources(
                 drawData.VertexBuffer,
-                drawData.VertexInputLayout,
+                drawData.VertexInputLayoutRef,
                 drawData.IndexBuffer,
                 drawData.IndexCount,
                 drawData.VertexCount);

@@ -31,10 +31,16 @@ namespace minEngine
         RHIBufferRef IndexBuffer;
 
         /**
-         * Not owned: vertex input layouts come from process-lifetime caches (SpriteQuadMesh for the
-         * shared quad, TextMeshBuilder for glyph geometry), so this pointer stays valid for as long
-         * as any proxy can use it.
+         * The layout reads the vertex buffer, as the handle the producer holds.
+         *
+         * Glyph geometry reads through one layout the whole process shares (TextMeshBuilder's
+         * cache), and the shared quad through its own, so a graphic can hand the handle over: the
+         * proxy that keeps it keeps the layout alive for exactly as long as it draws with it, and
+         * a draw recorded from that proxy names a layout that still exists when it is submitted.
          */
+        RHIVertexInputLayoutRef VertexInputLayoutRef;
+
+        /** The same layout as a bare pointer; empty when the producer owns no handle. */
         RHIVertexInputLayout* VertexInputLayout = nullptr;
 
         /** Draw range of that geometry, from the graphic's own mesh metadata. */

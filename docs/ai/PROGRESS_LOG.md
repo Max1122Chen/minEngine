@@ -1,3 +1,11 @@
+## 2026-10-31 — BUG-RENDER-021 未带顶点布局的绘制不再被误拒（feat/core）
+
+- **改了什么：** `RHICommandList::SubmitDrawBuffers` 的几何门禁从"只看 packet 布局"改为三段判断：包内布局（ref 或裸指针）非空 → 按原语义要求可用；为空 → 取管线状态描述的 `VertexInputLayout`（`GetPipelineStateDesc`，`RHIGraphicsPSODesc::VertexInputLayout`，OpenGL 后端在 `ApplyGraphicsPipelineState` 用它绑定顶点数组）；两者皆空才拒绝，并走独立计数 `g_DrawWithoutVertexLayoutCount` + Error。布局来自管线状态时每个 command list 记一条 Info。
+- **为什么：** 后处理与 Present 的 packet 只填 `VertexBuffer/VertexCount = 6`，布局在 PSO 上（`PostProcessPass.cpp`）；把这些 draw 判成"布局不可用"是真机日志里 200+ 条 Error 的来源。
+- **源头补齐：** `WidgetDrawData` 增加 `RHIVertexInputLayoutRef`；文字 graphic 从 `TextMeshBuilder` 的进程级句柄取 ref 传出（新增模块内头 `TextVertexLayoutShared.h`，句柄仍是一个 function-local static，`ReleaseSharedLayout` 语义不变）；`WidgetSceneProxy` 删除收裸指针的 `SetMeshResources` 重载，只保留收句柄的那条。
+- **红灯：** `CHECK( rhi.Draws.size() == 1u )` → `values: CHECK( 0 == 1 )`（"a draw whose layout comes from the pipeline state is submitted"），修复后转绿。
+- **验证：** `minEngine` + `minEngineTests` + `Editor` 构建 exit 0；`draw-packet-lifetime` 11 / 112 PASS（新增 4 例）；`screen-ui-*` 10 个套件 35 例、`widget-graphic` 4、`scene-proxy-render-read` 3、`mesh-assembly-determinism` 20、`gpu-static-lifetime` 2、`scene-proxy-lifetime` 12、`rhi-command-list` 13、`render-command-pipe` 13、`rhi-deferred-create` 19 全 PASS；`test smoke` exit 0（`Status: SUCCESS` 27、`Status: FAILURE` 0）。导出 3040 → 3040（增量 0，快照未改）。
+
 ## 2026-10-31 — RND-F31 S04 阴影队列不再每帧全量拷贝 + 两段显式化（feat/core）
 
 - **改了什么：** `ForwardRenderer.cpp` 里 `m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue`（每帧一次整队列深拷贝）删除，改为 `ShadowCasterBorrowScope` 作用域借用；`ManualRenderer::ExecuteManualShadowPasses` 同一行同改（成员消失后不成立即编译不过，且它本身也是同一份多余拷贝）；`ForwardRenderer::Shutdown` 里 `m_OpaqueQueue.clear()` 随之删除（借用的东西没有内存可放）。`ShadowPass` 不再持有 `std::vector<MeshDrawCommand>` 副本，只持 `ShadowCasterBorrow m_CasterQueue`。

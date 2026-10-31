@@ -240,6 +240,16 @@ namespace minEngine
          * pipeline state cached against it names the same object.
          */
         std::vector<RHIVertexInputLayoutRef> m_RecordedLayoutHolds;
+        /**
+         * Set once this list has reported a draw that read its vertices through the layout its
+         * pipeline state binds instead of one its packet carried.
+         *
+         * That draw is legitimate but says nothing about where its vertex state comes from, so it
+         * gets one line. One per list keeps the report out of the per-frame path: a pooled list is
+         * handed back frame after frame, and a real log would otherwise repeat it for every draw
+         * of every frame that draws this way.
+         */
+        bool m_bReportedPipelineStateVertexLayout = false;
     };
 
     /**

@@ -70,10 +70,10 @@ namespace minEngine
          * buffers - and the material's render object rather than the material - alive instead of
          * pointing at whatever the game thread leaves behind.
          *
-         * The vertex input layout is held the same way where its producer owns a handle - the
-         * shared quad does. A glyph layout comes from a process-level cache the builder releases
-         * explicitly at render teardown, so there is no handle to share; that one travels as the
-         * frame view below and submission refuses it rather than naming it if it is not there.
+         * The vertex input layout is held the same way for both kinds of widget geometry: the
+         * shared quad owns its layout, and glyph geometry reads through one layout the whole
+         * process shares, whose handle the builder hands out. Holding it is what lets the draws
+         * recorded from this proxy name a layout that still exists when they run.
          */
         RHIBufferRef m_VertexBufferRef;
         RHIVertexInputLayoutRef m_VertexInputLayoutRef;
@@ -115,31 +115,6 @@ namespace minEngine
             m_VertexBuffer = m_VertexBufferRef.get();
             m_IndexBuffer = m_IndexBufferRef.get();
             m_VertexInputLayout = m_VertexInputLayoutRef.get();
-
-            m_IndexCount = indexCount;
-            m_VertexCount = vertexCount;
-        }
-
-        /**
-         * Binds a layout whose producer hands out no handle it could share: the glyph layout is a
-         * process-level cache, released at render teardown rather than by whoever drew last. The
-         * proxy keeps the address as the frame view only, and submission refuses a draw whose
-         * layout is missing instead of naming it.
-         */
-        void SetMeshResources(
-            const RHIBufferRef& vertexBuffer,
-            RHIVertexInputLayout* vertexInputLayout,
-            const RHIBufferRef& indexBuffer,
-            uint32_t indexCount,
-            uint32_t vertexCount)
-        {
-            m_VertexBufferRef = vertexBuffer;
-            m_VertexInputLayoutRef.reset();
-            m_IndexBufferRef = indexBuffer;
-
-            m_VertexBuffer = m_VertexBufferRef.get();
-            m_IndexBuffer = m_IndexBufferRef.get();
-            m_VertexInputLayout = vertexInputLayout;
 
             m_IndexCount = indexCount;
             m_VertexCount = vertexCount;

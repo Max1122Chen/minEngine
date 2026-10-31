@@ -35,6 +35,15 @@ namespace minEngine
         std::atomic<uint64_t> g_DrawWithoutNativeGeometryCount{0};
 
         /**
+         * Draws refused because nothing named a vertex layout for them.
+         *
+         * A separate cause from the one above: the geometry may be perfectly ready and the draw
+         * still read nothing, because no packet layout and no pipeline state layout says how its
+         * vertices are laid out.
+         */
+        std::atomic<uint64_t> g_DrawWithoutVertexLayoutCount{0};
+
+        /**
          * Whether a draw may name this handle, reported once per hundred refusals.
          *
          * A buffer created off the graphics role exists as a handle at once and as a native object
@@ -83,6 +92,50 @@ namespace minEngine
                 static_cast<const void*>(target),
                 count,
                 refused);
+            return false;
+        }
+
+        /**
+         * The description a pipeline state was created from, or null when it carries none.
+         *
+         * Every backend in this build creates its graphics states from one description - the
+         * OpenGL backend binds the pieces directly, the Vulkan backend compiles them from the same
+         * values - so a state is that description with a handle beside it. The description is what
+         * says whether the state binds a vertex layout of its own.
+         */
+        const RHIGraphicsPSODesc* GetPipelineStateDesc(const RHIGraphicsPipelineState* pipelineState)
+        {
+            if (pipelineState == nullptr)
+            {
+                return nullptr;
+            }
+
+            const auto* const described = static_cast<const RHIGraphicsPSOStateFallback*>(pipelineState);
+            return &described->GetDesc();
+        }
+
+        /**
+         * Refuses a draw that names no vertex layout at all.
+         *
+         * Reported under one budget for the whole process: a producer that never bound a layout
+         * misses it on every draw it submits, and repeating the line for each would bury the one
+         * report that says what is wrong.
+         */
+        bool RefuseDrawWithoutVertexLayout(uint32_t count)
+        {
+            const uint64_t refused =
+                g_DrawWithoutVertexLayoutCount.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (refused == 1 || refused % 100 == 0)
+            {
+                ME_LOG(
+                    LogRender,
+                    Error,
+                    "Draw not submitted: neither the draw nor the graphics pipeline state it is "
+                    "recorded with names a vertex input layout, so the draw would read no vertex "
+                    "data ({} requested). {} draw(s) refused so far.",
+                    count,
+                    refused);
+            }
             return false;
         }
 
@@ -558,14 +611,11 @@ namespace minEngine
 
     void RHICommandList::BindPacketDescriptorSets(const MeshDrawPacket& packet)
     {
-        RHIGraphicsPipelineState* pipelineState = packet.PipelineState.get();
         RHIPipelineLayout* pipelineLayout = nullptr;
-        if (pipelineState)
+        if (const RHIGraphicsPSODesc* const pipelineStateDesc =
+                GetPipelineStateDesc(packet.PipelineState.get()))
         {
-            if (auto* fallback = static_cast<RHIGraphicsPSOStateFallback*>(pipelineState))
-            {
-                pipelineLayout = fallback->GetDesc().PipelineLayout;
-            }
+            pipelineLayout = pipelineStateDesc->PipelineLayout;
         }
 
         if (pipelineLayout)
@@ -618,6 +668,57 @@ namespace minEngine
             }
         }
 
+        // The vertex state the draw runs with is the layout the packet names, or - when the packet
+        // names none - the one the pipeline state binds when it is applied. A pass that owns a
+        // single vertex state keeps it there instead of copying it into every packet it records,
+        // which is why a packet without a layout is a complete draw rather than a broken one.
+        bool bLayoutFromPipelineState = false;
+        const RHIDeferredCreateTarget* vertexLayout = packet.VertexInputLayout;
+        if (vertexLayout == nullptr)
+        {
+            vertexLayout = packet.VertexInputLayoutRef.get();
+        }
+        if (vertexLayout == nullptr)
+        {
+            if (const RHIGraphicsPSODesc* const pipelineStateDesc =
+                    GetPipelineStateDesc(packet.PipelineState.get()))
+            {
+                vertexLayout = pipelineStateDesc->VertexInputLayout;
+                bLayoutFromPipelineState = vertexLayout != nullptr;
+            }
+        }
+
+        // The layout is the vertex state the draw runs with: without a native object behind it the
+        // backend has no vertex array to bind, and the draw names nothing. It is checked before the
+        // buffers because a packet can only draw them through it, and a draw that names no layout
+        // anywhere has no way to read its vertices at all.
+        const auto canNameVertexState = [this, vertexLayout, bLayoutFromPipelineState](uint32_t count)
+        {
+            if (vertexLayout == nullptr)
+            {
+                return RefuseDrawWithoutVertexLayout(count);
+            }
+
+            if (!CanNameGeometry(vertexLayout, "vertex input layout", count))
+            {
+                return false;
+            }
+
+            if (bLayoutFromPipelineState && !m_bReportedPipelineStateVertexLayout)
+            {
+                m_bReportedPipelineStateVertexLayout = true;
+                ME_LOG(
+                    LogRender,
+                    Info,
+                    "Draw submitted with the vertex input layout the graphics pipeline state binds "
+                    "({} requested): the packet carries none, so the draw reads its vertices "
+                    "through the layout the state was created with. Reported once per command "
+                    "list.",
+                    count);
+            }
+            return true;
+        };
+
         if (packet.IndexBuffer)
         {
             if (packet.IndexCount == 0)
@@ -625,11 +726,7 @@ namespace minEngine
                 return;
             }
 
-            // The layout is the vertex state the draw runs with: without a native object behind it
-            // the backend has no vertex array to bind, and the draw names nothing. It is checked
-            // before the buffers because a packet can only draw them through it, and a packet with
-            // no layout at all is a producer that never bound one.
-            if (!CanNameGeometry(packet.VertexInputLayout, "vertex input layout", packet.IndexCount))
+            if (!canNameVertexState(packet.IndexCount))
             {
                 return;
             }
@@ -661,7 +758,7 @@ namespace minEngine
             return;
         }
 
-        if (!CanNameGeometry(packet.VertexInputLayout, "vertex input layout", packet.VertexCount))
+        if (!canNameVertexState(packet.VertexCount))
         {
             return;
         }
