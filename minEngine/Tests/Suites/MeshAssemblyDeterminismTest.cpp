@@ -1,5 +1,7 @@
 #include "MeshAssemblyDeterminismTest.h"
 
+#include "Runtime/Core/Tasks/TaskSystem.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommandSort.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialRenderProxy.h"
@@ -16,10 +18,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace
@@ -37,6 +42,11 @@ namespace
     using minEngine::PrimitiveSceneProxy;
     using minEngine::RenderScene;
     using minEngine::SceneRenderContext;
+    using minEngine::TaskSystem;
+    using minEngine::FrameThreadKind;
+    using minEngine::FrameThreadMode;
+    using minEngine::FrameThreading;
+    using minEngine::ScopedFrameThreadKind;
     using minEngine::Math::Matrix4;
     using minEngine::Math::Vector3;
 
@@ -63,6 +73,32 @@ namespace
 
     private:
         std::vector<minEngine::RHIVertexElement> m_Elements;
+    };
+
+    /**
+     * Counts the batches a proxy produced on the thread that called the assembly, and off it.
+     *
+     * This is what a fan-out is judged by: a body that ran on a worker produces its batches on a
+     * thread that is not the caller's, and a body that was refused and repaired serially produces
+     * them on the caller's thread. "The pool was asked" is not the same fact as either.
+     */
+    struct AssemblyThreadProbe
+    {
+        std::thread::id Caller = std::this_thread::get_id();
+        std::atomic<uint32_t> OnCaller{ 0 };
+        std::atomic<uint32_t> OffCaller{ 0 };
+
+        void Reset()
+        {
+            OnCaller.store(0, std::memory_order_relaxed);
+            OffCaller.store(0, std::memory_order_relaxed);
+        }
+
+        void Record()
+        {
+            std::atomic<uint32_t>& counter = std::this_thread::get_id() == Caller ? OnCaller : OffCaller;
+            counter.fetch_add(1, std::memory_order_relaxed);
+        }
     };
 
     /**
@@ -94,6 +130,9 @@ namespace
 
         uint32_t BatchCount = 1;
 
+        /** Optional: records which thread this proxy produced its batches on. */
+        AssemblyThreadProbe* ThreadProbe = nullptr;
+
         /** Moves the primitive out of the look-at view, so it is only collected for the shadows. */
         void SetOutsideView(bool bOutsideView)
         {
@@ -109,6 +148,11 @@ namespace
 
         void GetMeshBatches(MeshBatchCollector& collector, const MeshCollectContext& context) const override
         {
+            if (ThreadProbe != nullptr)
+            {
+                ThreadProbe->Record();
+            }
+
             for (uint32_t batchIndex = 0; batchIndex < BatchCount; ++batchIndex)
             {
                 const AABB sectionBounds = SectionBounds(batchIndex);
@@ -237,6 +281,14 @@ namespace
         AssemblyTestProxy* GetProxy(uint32_t identity)
         {
             return identity < m_Owned.size() ? m_Owned[identity].get() : nullptr;
+        }
+
+        void SetThreadProbe(AssemblyThreadProbe* probe)
+        {
+            for (std::unique_ptr<AssemblyTestProxy>& proxy : m_Owned)
+            {
+                proxy->ThreadProbe = probe;
+            }
         }
 
         std::vector<PrimitiveSceneProxy*> m_Proxies;
@@ -481,6 +533,81 @@ namespace
         bool bCull = true;
         bool bEnableShadows = true;
     };
+
+    /** The serial shape: one chunk, no pool named. */
+    MeshAssemblySchedule MakeSchedule(int32_t chunkCount)
+    {
+        MeshAssemblySchedule schedule;
+        schedule.ChunkCount = chunkCount;
+        return schedule;
+    }
+
+    /** The same cut, handed to a pool. */
+    MeshAssemblySchedule MakeParallelSchedule(int32_t chunkCount, TaskSystem& tasks)
+    {
+        MeshAssemblySchedule schedule = MakeSchedule(chunkCount);
+        schedule.Tasks = &tasks;
+        return schedule;
+    }
+
+    /**
+     * FrameThreading is process-wide. Acquisition owns the release, so a case that fails between
+     * initialise and shutdown cannot leave an identity behind for the next suite to compare against.
+     */
+    struct FrameThreadingScope
+    {
+        FrameThreading Threading;
+
+        explicit FrameThreadingScope(FrameThreadMode mode) { Threading.Initialize(mode); }
+        ~FrameThreadingScope() { Threading.Shutdown(); }
+
+        FrameThreadingScope(const FrameThreadingScope&) = delete;
+        FrameThreadingScope& operator=(const FrameThreadingScope&) = delete;
+    };
+
+    /**
+     * A pool whose game role lives on another thread.
+     *
+     * The thread that initialises a task system becomes the role a fan-out is accepted from, so this
+     * is how a case produces a refused fan-out: the assembly is called from here, where no frame
+     * role is held, and the pool declines every body without telling the caller.
+     */
+    struct PoolOnAnotherThread
+    {
+        TaskSystem Tasks;
+        std::thread::id ThreadId{};
+        std::atomic<bool> bReady{ false };
+        std::atomic<bool> bStop{ false };
+        std::thread Thread;
+
+        PoolOnAnotherThread()
+        {
+            Thread = std::thread([this]() {
+                Tasks.Init(2);
+                ThreadId = std::this_thread::get_id();
+                bReady.store(true, std::memory_order_release);
+                while (!bStop.load(std::memory_order_acquire))
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                Tasks.Shutdown();
+            });
+
+            while (!bReady.load(std::memory_order_acquire))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+
+        ~PoolOnAnotherThread()
+        {
+            bStop.store(true, std::memory_order_release);
+            Thread.join();
+        }
+
+        PoolOnAnotherThread(const PoolOnAnotherThread&) = delete;
+        PoolOnAnotherThread& operator=(const PoolOnAnotherThread&) = delete;
+    };
 }
 
 TEST_CASE("mesh-assembly-determinism: the chunked assembly reproduces the serial reference [smoke]")
@@ -543,7 +670,7 @@ TEST_CASE("mesh-assembly-determinism: the chunk count does not change the queues
 
     std::vector<MeshAssemblyChunk> singleChunk;
     SceneRenderContext single;
-    minEngine::BuildMeshAssemblyQueues(input, single, MeshAssemblySchedule{ 1 }, &singleChunk);
+    minEngine::BuildMeshAssemblyQueues(input, single, MakeSchedule(1), &singleChunk);
     ApplyQueueSorts(single);
 
     REQUIRE(singleChunk.size() == 1u);
@@ -563,7 +690,7 @@ TEST_CASE("mesh-assembly-determinism: the chunk count does not change the queues
         minEngine::BuildMeshAssemblyQueues(
             input,
             split,
-            MeshAssemblySchedule{ static_cast<int32_t>(chunkCount) },
+            MakeSchedule(static_cast<int32_t>(chunkCount)),
             &chunks);
         ApplyQueueSorts(split);
 
@@ -621,7 +748,7 @@ TEST_CASE("mesh-assembly-determinism: merging in chunk order is what the equalit
 
     std::vector<MeshAssemblyChunk> chunks;
     SceneRenderContext merged;
-    minEngine::BuildMeshAssemblyQueues(input, merged, MeshAssemblySchedule{ 3 }, &chunks);
+    minEngine::BuildMeshAssemblyQueues(input, merged, MakeSchedule(3), &chunks);
     ApplyQueueSorts(merged);
     REQUIRE(chunks.size() == 3u);
 
@@ -659,7 +786,7 @@ TEST_CASE("mesh-assembly-determinism: a dropped or duplicated proxy changes the 
 
     std::vector<MeshAssemblyChunk> chunks;
     SceneRenderContext merged;
-    minEngine::BuildMeshAssemblyQueues(input, merged, MeshAssemblySchedule{ 3 }, &chunks);
+    minEngine::BuildMeshAssemblyQueues(input, merged, MakeSchedule(3), &chunks);
     ApplyQueueSorts(merged);
     REQUIRE(chunks.size() == 3u);
     REQUIRE(merged.OpaqueQueue.size() == 6u);
@@ -683,6 +810,19 @@ TEST_CASE("mesh-assembly-determinism: a dropped or duplicated proxy changes the 
     ApplyQueueSorts(overlappingCtx);
     CHECK(overlappingCtx.OpaqueQueue.size() == 7u);
     CHECK(MakeQueueDigest(overlappingCtx.OpaqueQueue) != opaqueDigest);
+
+    // A gap is the third way the tiling breaks: both counts stay plausible and one proxy in the
+    // middle of the interval is never walked, so nothing but the digest shows it.
+    std::vector<MeshAssemblyChunk> gapped = chunks;
+    gapped[1].FirstProxy += 1u;
+    gapped[1].ProxyCount -= 1u;
+    minEngine::AssembleMeshAssemblyChunk(input, gapped[1]);
+    CHECK(TotalVisited(gapped) == 5u);
+    SceneRenderContext gappedCtx;
+    minEngine::MergeMeshAssemblyChunks(gapped, gappedCtx);
+    ApplyQueueSorts(gappedCtx);
+    CHECK(gappedCtx.OpaqueQueue.size() == 5u);
+    CHECK(MakeQueueDigest(gappedCtx.OpaqueQueue) != opaqueDigest);
 }
 
 TEST_CASE("mesh-assembly-determinism: shadow casters keep the main-view segment first [smoke]")
@@ -707,7 +847,7 @@ TEST_CASE("mesh-assembly-determinism: shadow casters keep the main-view segment 
         minEngine::BuildMeshAssemblyQueues(
             input,
             ctx,
-            MeshAssemblySchedule{ static_cast<int32_t>(chunkCount) },
+            MakeSchedule(static_cast<int32_t>(chunkCount)),
             nullptr);
 
         INFO("chunk count=" << chunkCount);
@@ -723,7 +863,7 @@ TEST_CASE("mesh-assembly-determinism: shadow casters keep the main-view segment 
     // Without shadows the shadow-only caster produces nothing at all.
     input.bEnableShadows = false;
     SceneRenderContext noShadowCtx;
-    minEngine::BuildMeshAssemblyQueues(input, noShadowCtx, MeshAssemblySchedule{ 2 }, nullptr);
+    minEngine::BuildMeshAssemblyQueues(input, noShadowCtx, MakeSchedule(2), nullptr);
     REQUIRE(noShadowCtx.ShadowCasterQueue.size() == 3u);
     CHECK(noShadowCtx.ShadowCasterQueue[0].m_VertexCount == 0u);
     CHECK(noShadowCtx.ShadowCasterQueue[1].m_VertexCount == 1u);
@@ -770,3 +910,278 @@ TEST_CASE("mesh-assembly-determinism: the frame entry point matches the referenc
     CHECK(emptyContext.TranslucentQueue.empty());
     CHECK(emptyContext.ShadowCasterQueue.empty());
 }
+
+TEST_CASE("mesh-assembly-determinism: a fan-out runs the chunks off the calling thread [smoke]")
+{
+    FrameThreadingScope threading(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+    REQUIRE(tasks.IsRunning());
+    REQUIRE(tasks.GetWorkerCount() > 1);
+
+    AssemblyScene scene;
+    scene.Reset(1000);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+    ApplyQueueSorts(reference);
+    REQUIRE_FALSE(reference.OpaqueQueue.empty());
+    const uint64_t opaqueSerialDigest = MakeQueueDigest(reference.OpaqueQueue);
+    const uint64_t translucentSerialDigest = MakeQueueDigest(reference.TranslucentQueue);
+    const uint64_t shadowSerialDigest = MakeQueueDigest(reference.ShadowCasterQueue);
+
+    AssemblyThreadProbe probe;
+    scene.SetThreadProbe(&probe);
+
+    // Assembly runs on the render role in a real frame; this thread also holds the game role, so the
+    // pool accepts the fan-out under either identity.
+    ScopedFrameThreadKind renderRole(FrameThreadKind::Render);
+
+    const int32_t chunkCounts[] = { 2, 3, 8, 17 };
+    for (int32_t chunkCount : chunkCounts)
+    {
+        INFO("chunk count=" << chunkCount);
+
+        minEngine::ResetMeshAssemblyStats();
+        probe.Reset();
+
+        std::vector<MeshAssemblyChunk> chunks;
+        SceneRenderContext parallel;
+        minEngine::BuildMeshAssemblyQueues(
+            input,
+            parallel,
+            MakeParallelSchedule(chunkCount, tasks),
+            &chunks);
+        ApplyQueueSorts(parallel);
+
+        const minEngine::MeshAssemblyStats stats = minEngine::GetMeshAssemblyStats();
+
+        // The fan-out was attempted: the capability gate passed and the pool was asked.
+        REQUIRE(stats.LastSerialReason == nullptr);
+        CHECK(stats.ParallelCalls == 1u);
+        CHECK(stats.LastChunkCount == static_cast<uint32_t>(chunkCount));
+
+        // It was also carried out: no chunk needed the repair pass, and every chunk walked its
+        // whole range.
+        CHECK(stats.ChunksNotRun == 0u);
+        REQUIRE(chunks.size() == static_cast<size_t>(chunkCount));
+        for (const MeshAssemblyChunk& chunk : chunks)
+        {
+            CHECK(chunk.VisitCount == chunk.ProxyCount);
+        }
+
+        // The batches were produced on threads that are not this one, and never on this one: the
+        // work left the caller instead of quietly being done by it.
+        CHECK(probe.OffCaller.load(std::memory_order_relaxed) > 0u);
+        CHECK(probe.OnCaller.load(std::memory_order_relaxed) == 0u);
+
+        CHECK(parallel.OpaqueQueue.size() == reference.OpaqueQueue.size());
+        CHECK(parallel.TranslucentQueue.size() == reference.TranslucentQueue.size());
+        CHECK(parallel.ShadowCasterQueue.size() == reference.ShadowCasterQueue.size());
+        CHECK(MakeQueueDigest(parallel.OpaqueQueue) == opaqueSerialDigest);
+        CHECK(MakeQueueDigest(parallel.TranslucentQueue) == translucentSerialDigest);
+        CHECK(MakeQueueDigest(parallel.ShadowCasterQueue) == shadowSerialDigest);
+    }
+
+    tasks.Shutdown();
+}
+
+TEST_CASE("mesh-assembly-determinism: repeated fanned-out frames keep the queues [smoke]")
+{
+    FrameThreadingScope threading(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+    REQUIRE(tasks.GetWorkerCount() > 1);
+
+    AssemblyScene scene;
+    scene.Reset(600);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+    ApplyQueueSorts(reference);
+    const uint64_t opaqueSerialDigest = MakeQueueDigest(reference.OpaqueQueue);
+    const uint64_t shadowSerialDigest = MakeQueueDigest(reference.ShadowCasterQueue);
+
+    ScopedFrameThreadKind renderRole(FrameThreadKind::Render);
+
+    // The cut changes from frame to frame: how the draw set is split may move the cost of a frame,
+    // never its content or its order.
+    const int32_t chunkCounts[] = { 2, 3, 8, 17 };
+    minEngine::ResetMeshAssemblyStats();
+
+    for (int32_t frame = 0; frame < 60; ++frame)
+    {
+        const int32_t chunkCount = chunkCounts[frame % 4];
+
+        SceneRenderContext parallel;
+        minEngine::BuildMeshAssemblyQueues(
+            input,
+            parallel,
+            MakeParallelSchedule(chunkCount, tasks),
+            nullptr);
+        ApplyQueueSorts(parallel);
+
+        INFO("frame=" << frame << " chunks=" << chunkCount);
+
+        CHECK(MakeQueueDigest(parallel.OpaqueQueue) == opaqueSerialDigest);
+        CHECK(MakeQueueDigest(parallel.ShadowCasterQueue) == shadowSerialDigest);
+    }
+
+    const minEngine::MeshAssemblyStats stats = minEngine::GetMeshAssemblyStats();
+    CHECK(stats.Calls == 60u);
+    CHECK(stats.ParallelCalls == 60u);
+    CHECK(stats.ChunksNotRun == 0u);
+
+    tasks.Shutdown();
+}
+
+TEST_CASE("mesh-assembly-determinism: a refused fan-out is repaired in place [smoke]")
+{
+    // Nothing on this thread holds a frame role, and the pool's game role lives on another thread,
+    // so the pool declines every body it is handed - without telling the caller.
+    REQUIRE_FALSE(FrameThreading::HasInstance());
+
+    PoolOnAnotherThread pool;
+    REQUIRE(pool.Tasks.IsRunning());
+    REQUIRE(pool.Tasks.GetWorkerCount() > 1);
+    REQUIRE(pool.ThreadId != std::this_thread::get_id());
+
+    AssemblyScene scene;
+    scene.Reset(1000);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+    ApplyQueueSorts(reference);
+
+    AssemblyThreadProbe probe;
+    scene.SetThreadProbe(&probe);
+    minEngine::ResetMeshAssemblyStats();
+
+    constexpr int32_t kChunkCount = 4;
+    std::vector<MeshAssemblyChunk> chunks;
+    SceneRenderContext repaired;
+    minEngine::BuildMeshAssemblyQueues(
+        input,
+        repaired,
+        MakeParallelSchedule(kChunkCount, pool.Tasks),
+        &chunks);
+    ApplyQueueSorts(repaired);
+
+    const minEngine::MeshAssemblyStats stats = minEngine::GetMeshAssemblyStats();
+
+    // The fan-out was attempted and refused, so every chunk has to be accounted for by the repair
+    // pass - skipping it because the pool was "asked" is the failure this case exists for.
+    REQUIRE(stats.LastSerialReason == nullptr);
+    CHECK(stats.ParallelCalls == 1u);
+    CHECK(stats.ChunksNotRun == static_cast<uint64_t>(kChunkCount));
+    REQUIRE(chunks.size() == static_cast<size_t>(kChunkCount));
+    for (const MeshAssemblyChunk& chunk : chunks)
+    {
+        CHECK(chunk.VisitCount == chunk.ProxyCount);
+    }
+
+    // The repair happened on this thread, which is the mirror image of the fanned-out case.
+    CHECK(probe.OffCaller.load(std::memory_order_relaxed) == 0u);
+    CHECK(probe.OnCaller.load(std::memory_order_relaxed) > 0u);
+
+    // A refused fan-out costs the frame its parallelism, not its draws.
+    CHECK(repaired.OpaqueQueue.size() == reference.OpaqueQueue.size());
+    CHECK(repaired.TranslucentQueue.size() == reference.TranslucentQueue.size());
+    CHECK(repaired.ShadowCasterQueue.size() == reference.ShadowCasterQueue.size());
+    CHECK(MakeQueueDigest(repaired.OpaqueQueue) == MakeQueueDigest(reference.OpaqueQueue));
+    CHECK(MakeQueueDigest(repaired.TranslucentQueue) == MakeQueueDigest(reference.TranslucentQueue));
+    CHECK(MakeQueueDigest(repaired.ShadowCasterQueue) == MakeQueueDigest(reference.ShadowCasterQueue));
+}
+
+TEST_CASE("mesh-assembly-determinism: the pipeline schedule stays serial with a pool running [smoke]")
+{
+    FrameThreadingScope threading(FrameThreadMode::Multi);
+
+    TaskSystem tasks;
+    tasks.Init(2);
+    REQUIRE(tasks.GetWorkerCount() > 1);
+
+    AssemblyScene scene;
+    scene.Reset(1000);
+    AssemblyThreadProbe probe;
+    scene.SetThreadProbe(&probe);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    RenderScene renderScene;
+    renderScene.m_PrimitiveSceneProxies = scene.m_Proxies;
+
+    SceneRenderContext viaPipeline;
+    viaPipeline.Scene = &renderScene;
+    viaPipeline.bEnableShadows = true;
+
+    minEngine::ResetMeshAssemblyStats();
+    probe.Reset();
+
+    // The pipeline entry the frame calls: a live pool in the process must not reach it, because the
+    // schedule it passes names none.
+    minEngine::BuildPrimitiveRenderQueue(viaPipeline, &frustum);
+    ApplyQueueSorts(viaPipeline);
+
+    const minEngine::MeshAssemblyStats stats = minEngine::GetMeshAssemblyStats();
+    REQUIRE(stats.LastSerialReason != nullptr);
+    CHECK(std::string(stats.LastSerialReason) == "no task system");
+    CHECK(stats.ParallelCalls == 0u);
+    CHECK(stats.ChunksNotRun == 0u);
+    CHECK(stats.LastChunkCount == 1u);
+    CHECK(probe.OffCaller.load(std::memory_order_relaxed) == 0u);
+    CHECK(probe.OnCaller.load(std::memory_order_relaxed) > 0u);
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &renderScene.m_PrimitiveSceneProxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+    ApplyQueueSorts(reference);
+    CHECK(MakeQueueDigest(viaPipeline.OpaqueQueue) == MakeQueueDigest(reference.OpaqueQueue));
+    CHECK(MakeQueueDigest(viaPipeline.ShadowCasterQueue) == MakeQueueDigest(reference.ShadowCasterQueue));
+
+    // Naming the pool is not enough either: a draw set under the threshold is not worth spreading,
+    // and the two ends of a fan-out are paid in full whatever a chunk holds.
+    AssemblyScene small;
+    small.Reset(100);
+    MeshAssemblyInput smallInput;
+    smallInput.PrimitiveProxies = &small.m_Proxies;
+    smallInput.MainFrustum = &frustum;
+    smallInput.bEnableShadows = true;
+    REQUIRE(smallInput.GetProxyCount() < minEngine::kMeshAssemblyMinProxiesPerChunk * 2u);
+
+    minEngine::ResetMeshAssemblyStats();
+    SceneRenderContext smallCtx;
+    minEngine::BuildMeshAssemblyQueues(smallInput, smallCtx, MakeParallelSchedule(4, tasks), nullptr);
+
+    const minEngine::MeshAssemblyStats smallStats = minEngine::GetMeshAssemblyStats();
+    REQUIRE(smallStats.LastSerialReason != nullptr);
+    CHECK(std::string(smallStats.LastSerialReason) == "too few proxies to spread");
+    CHECK(smallStats.ParallelCalls == 0u);
+    CHECK(smallStats.ChunksNotRun == 0u);
+
+    tasks.Shutdown();
+}
+

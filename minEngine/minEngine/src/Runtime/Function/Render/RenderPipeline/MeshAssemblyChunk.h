@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Core.h"
+#include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Math/Geometry/Frustum.h"
+#include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Function/Render/DrawCommands/MeshBatchCollector.h"
 #include "Runtime/Function/Render/DrawCommands/MeshCollectContext.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
@@ -19,11 +21,14 @@
 /**
  * Primitive render queue assembly, cut into proxy-index chunks.
  *
- * The split exists so that the per-proxy work can later be handed to workers without touching the
- * code that produces it: one chunk is assembled from a read-only view of the scene and writes only
- * into itself, and the merge is the single place that decides order. Neither the chunk assembly
- * entry nor its inputs name an RHI command list or the renderer type, so a function that only
- * assembles a chunk cannot reach the GPU or the frame recorder even by accident.
+ * The split is what lets the per-proxy work run on workers without touching the code that produces
+ * it: one chunk is assembled from a read-only view of the scene and writes only into itself, and the
+ * merge is the single place that decides order. Neither the chunk assembly entry nor its inputs name
+ * an RHI command list or the renderer type, so a function that only assembles a chunk cannot reach
+ * the GPU or the frame recorder even by accident.
+ *
+ * Handing chunks to workers is a property of the schedule, not of this code: a schedule that names
+ * no task system assembles everything in one loop, and the pipeline passes exactly that.
  *
  * These are inline functions in a header for the reason the queue builders next door are: the
  * assemblies are plain data, and a headless test has to be able to call them without the frame
@@ -82,7 +87,14 @@ namespace minEngine
         std::vector<MeshDrawCommand> ShadowFromMainVisible;
         std::vector<MeshDrawCommand> ShadowFromHidden;
 
-        /** Proxies this chunk walked, including the ones it skipped. Proves the chunk ran. */
+        /**
+         * Proxies this chunk walked, including the ones it skipped.
+         *
+         * Written once, as the last step of the assembly and only when the whole range was walked.
+         * Zero therefore reads as "this chunk was asked for but did not run" - refused by the pool,
+         * or thrown out of part-way - which is the only signal the caller can trust, because a
+         * pool that declines a fan-out returns without saying so.
+         */
         uint32_t VisitCount = 0;
 
         void Clear()
@@ -95,16 +107,74 @@ namespace minEngine
         }
     };
 
-    /** How the caller wants the proxy range split. One is the serial shape. */
+    /**
+     * Draw-set size below which handing the range to workers costs more than it saves.
+     *
+     * A conservative starting value, not a measured one: the two ends of a fan-out - the submissions
+     * and the join - are paid in full whatever a chunk holds, so the threshold has to be a number
+     * someone measured. This one only keeps small scenes off the pool in the meantime.
+     */
+    inline constexpr uint32_t kMeshAssemblyMinProxiesPerChunk = 128;
+
+    /** How the caller wants the proxy range split, and where the work may be handed over. */
     struct MeshAssemblySchedule
     {
+        /**
+         * Workers to hand chunks to. Null keeps every call serial, which is the shape the pipeline
+         * passes: a frame that never opted in cannot reach a worker by accident.
+         */
+        TaskSystem* Tasks = nullptr;
+
+        /** One is the serial shape: one chunk, one loop, nothing scheduled. */
         int32_t ChunkCount = 1;
+
+        /** Draw-set size below which a fan-out is not worth attempting. */
+        uint32_t MinProxiesPerChunk = kMeshAssemblyMinProxiesPerChunk;
 
         uint32_t GetChunkCount() const
         {
             return ChunkCount > 0 ? static_cast<uint32_t>(ChunkCount) : 1u;
         }
     };
+
+    /**
+     * What the assembly has done so far, and what it had to repair.
+     *
+     * Per module rather than process-wide: the assembly is header-inline, so this binary and the
+     * engine each own the counters of the calls they make. Sharing one would mean exporting it,
+     * and the assembly is deliberately not exported.
+     */
+    struct MeshAssemblyStats
+    {
+        /** Assembly calls: one per view per frame. */
+        uint64_t Calls = 0;
+
+        /** Calls that handed their chunks to workers. The only proof a fan-out was attempted. */
+        uint64_t ParallelCalls = 0;
+
+        /**
+         * Chunks a fan-out left unrun and the caller had to assemble itself. Non-zero means the
+         * queues were still complete but the parallelism the caller asked for did not happen.
+         */
+        uint64_t ChunksNotRun = 0;
+
+        uint32_t LastProxyCount = 0;
+        uint32_t LastChunkCount = 0;
+
+        /** Why the last call stayed serial, or null when it fanned out. */
+        const char* LastSerialReason = nullptr;
+    };
+
+    inline MeshAssemblyStats& GetMeshAssemblyStats()
+    {
+        static MeshAssemblyStats stats;
+        return stats;
+    }
+
+    inline void ResetMeshAssemblyStats()
+    {
+        GetMeshAssemblyStats() = MeshAssemblyStats{};
+    }
 
     /**
      * Splits a proxy count into chunks that tile it exactly: no gap, no overlap, no empty chunk.
@@ -186,9 +256,11 @@ namespace minEngine
         shadowOnlyCollectContext.Purpose = MeshCollectPurpose::ShadowOnly;
         // No main-view frustum: sub-culling would drop casters outside the camera cone.
 
+        uint32_t visitedProxyCount = 0;
+
         for (uint32_t proxyIndex = chunk.FirstProxy; proxyIndex < chunkEnd; ++proxyIndex)
         {
-            ++chunk.VisitCount;
+            ++visitedProxyCount;
 
             PrimitiveSceneProxy* primitiveProxy = (*primitives)[proxyIndex];
 
@@ -243,6 +315,11 @@ namespace minEngine
         mainCollector.DispatchTo(translucentProcessor);
         mainCollector.DispatchTo(mainVisibleShadowProcessor);
         shadowOnlyCollector.DispatchTo(hiddenShadowProcessor);
+
+        // Last write of the assembly, deliberately: everything that can go wrong - a pool that
+        // refuses the body, a throw from a proxy or a pass processor - happens before this line, so
+        // the caller can read a zero as "this chunk did not run" and assemble it itself.
+        chunk.VisitCount = visitedProxyCount;
     }
 
     /**
@@ -318,10 +395,94 @@ namespace minEngine
     }
 
     /**
+     * Why this call has to stay serial, or null when its chunks may go to workers.
+     *
+     * The decision is taken here, once per call, before anything is scheduled: it asks whether there
+     * is work to spread and whether the pool can take it, and nothing about who the caller is. That
+     * last question is answered by the task system when the fan-out is attempted, and its answer is
+     * read back afterwards from the chunks themselves - re-stating the entitlement rule here would
+     * only give it two places to drift apart in.
+     */
+    inline const char* GetMeshAssemblySerialReason(
+        const MeshAssemblyInput& input,
+        const MeshAssemblySchedule& schedule)
+    {
+        if (schedule.Tasks == nullptr)
+        {
+            return "no task system";
+        }
+        if (!schedule.Tasks->IsRunning())
+        {
+            return "task system not running";
+        }
+        if (schedule.Tasks->GetWorkerCount() <= 1)
+        {
+            return "one worker";
+        }
+        if (schedule.GetChunkCount() <= 1)
+        {
+            return "one chunk";
+        }
+
+        const uint32_t proxyCount = input.GetProxyCount();
+        // Two proxies is the smallest draw set that still yields two non-empty chunks, and a
+        // fan-out of one chunk would pay for scheduling to run exactly what the loop runs.
+        if (proxyCount < 2u)
+        {
+            return "fewer than two proxies";
+        }
+        if (proxyCount < schedule.MinProxiesPerChunk * 2u)
+        {
+            return "too few proxies to spread";
+        }
+        return nullptr;
+    }
+
+    /**
+     * Reports a fan-out that left chunks unrun. Rate limited: a refused fan-out is refused on every
+     * call that attempts one, and a line per call would bury the refusal under its own repeats.
+     * The counter keeps moving either way - the budget bounds the reporting, not the measurement.
+     */
+    inline void ReportMeshAssemblyChunksNotRun(uint32_t chunksNotRun, uint32_t firstChunkNotRun, uint32_t chunkCount)
+    {
+        constexpr uint32_t kReportBudget = 4;
+
+        static uint32_t sReports = 0;
+        if (sReports > kReportBudget)
+        {
+            return;
+        }
+        ++sReports;
+        if (sReports > kReportBudget)
+        {
+            ME_LOG(
+                LogRender,
+                Error,
+                "Mesh assembly: no further reports of unrun chunks after {}; they are still counted.",
+                kReportBudget);
+            return;
+        }
+
+        ME_LOG(
+            LogRender,
+            Error,
+            "Mesh assembly: {} of {} chunk(s) did not run on a worker (first index {}); assembled them "
+            "in place. The queues are complete, but the frame paid for a fan-out it did not get - the "
+            "caller may not orchestrate, or a chunk body threw.",
+            chunksNotRun,
+            chunkCount,
+            firstChunkNotRun);
+    }
+
+    /**
      * Assembles the primitive queues for one view from an explicit read-only input.
      *
-     * Chunks are assembled one after another in this slice; the loop is the only thing that has to
-     * change for the work to be spread over workers, because a chunk reads nothing the others write.
+     * One implementation, two schedules: with a task system and more than one chunk the same chunk
+     * assembly runs on workers, and every other shape runs it in the loop below. The fan-out is
+     * never taken on trust - a pool that declines a body returns without saying so, and a body that
+     * throws is caught and dropped by the pool - so the chunks are inspected afterwards and the ones
+     * that did not run are assembled in place before the merge. Asking the pool and getting the work
+     * done are two different facts, and only the second one makes the queues correct.
      */
     inline void BuildMeshAssemblyQueues(
         const MeshAssemblyInput& input,
@@ -332,9 +493,57 @@ namespace minEngine
         std::vector<MeshAssemblyChunk> chunks;
         ComputeMeshAssemblyChunkRanges(input.GetProxyCount(), schedule.GetChunkCount(), chunks);
 
-        for (MeshAssemblyChunk& chunk : chunks)
+        MeshAssemblyStats& stats = GetMeshAssemblyStats();
+        const char* const serialReason = GetMeshAssemblySerialReason(input, schedule);
+        stats.Calls += 1;
+        stats.LastProxyCount = input.GetProxyCount();
+        stats.LastChunkCount = static_cast<uint32_t>(chunks.size());
+        stats.LastSerialReason = serialReason;
+
+        if (serialReason != nullptr)
         {
-            AssembleMeshAssemblyChunk(input, chunk);
+            for (MeshAssemblyChunk& chunk : chunks)
+            {
+                AssembleMeshAssemblyChunk(input, chunk);
+            }
+        }
+        else
+        {
+            stats.ParallelCalls += 1;
+            schedule.Tasks->ParallelFor(
+                static_cast<int32_t>(chunks.size()),
+                [&input, &chunks](int32_t index)
+                {
+                    AssembleMeshAssemblyChunk(input, chunks[static_cast<size_t>(index)]);
+                });
+
+            uint32_t chunksNotRun = 0;
+            uint32_t firstChunkNotRun = 0;
+            for (size_t index = 0; index < chunks.size(); ++index)
+            {
+                if (chunks[index].VisitCount != 0)
+                {
+                    continue;
+                }
+
+                if (chunksNotRun == 0)
+                {
+                    firstChunkNotRun = static_cast<uint32_t>(index);
+                }
+                ++chunksNotRun;
+                // Reassembling starts by clearing the chunk, so a body that threw part-way leaves
+                // nothing behind that the merge could pick up.
+                AssembleMeshAssemblyChunk(input, chunks[index]);
+            }
+
+            if (chunksNotRun != 0)
+            {
+                stats.ChunksNotRun += chunksNotRun;
+                ReportMeshAssemblyChunksNotRun(
+                    chunksNotRun,
+                    firstChunkNotRun,
+                    static_cast<uint32_t>(chunks.size()));
+            }
         }
 
         MergeMeshAssemblyChunks(chunks, ctx);
