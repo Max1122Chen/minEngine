@@ -126,13 +126,16 @@ namespace minEngine
     };
 
     /**
-     * Draw-set size below which handing the range to workers costs more than it saves.
+     * Draw-set size below which one more chunk is not worth cutting.
      *
-     * A conservative starting value, not a measured one: the two ends of a fan-out - the submissions
-     * and the join - are paid in full whatever a chunk holds, so the threshold has to be a number
-     * someone measured. This one only keeps small scenes off the pool in the meantime.
+     * Measured, not guessed: the two ends of a fan-out - the submissions and the join - are paid in
+     * full whatever a chunk holds (about 25us on the reference machine, in a build where one proxy
+     * costs 0.15us when it is culled before producing anything and 35us when it is a voxel chunk
+     * rebuilding its batches every frame). Cutting one chunk per 16 proxies keeps the per-chunk work
+     * above that fixed cost in every measured case, and it is low enough that a scene of a few dozen
+     * proxies still gets more than one chunk: the editor's own scene reaches only 81.
      */
-    inline constexpr uint32_t kMeshAssemblyMinProxiesPerChunk = 128;
+    inline constexpr uint32_t kMeshAssemblyMinProxiesPerChunk = 16;
 
     /** How the caller wants the proxy range split, and where the work may be handed over. */
     struct MeshAssemblySchedule

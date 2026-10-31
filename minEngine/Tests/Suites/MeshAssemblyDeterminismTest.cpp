@@ -1404,7 +1404,7 @@ TEST_CASE("mesh-assembly-determinism: the pipeline resolves the pool the process
     // Naming the pool is not enough either: a draw set under the threshold is not worth spreading,
     // and the two ends of a fan-out are paid in full whatever a chunk holds.
     AssemblyScene small;
-    small.Reset(100);
+    small.Reset(20);
     MeshAssemblyInput smallInput;
     smallInput.PrimitiveProxies = &small.m_Proxies;
     smallInput.MainFrustum = &frustum;
@@ -1574,13 +1574,14 @@ TEST_CASE("mesh-assembly-determinism: the chunk count follows the workers and th
     const Row rows[] = {
         { 0u, 8, 1u },
         { 1u, 8, 1u },
-        { 255u, 8, 2u },
-        { 256u, 8, 2u },
+        { 128u, 8, 8u },
+        { 129u, 8, 9u },
+        { 200u, 16, 13u },
         { 1000u, 1, 1u },
         { 1000u, 0, 1u },
         { 1000u, 2, 4u },
         { 1000u, 4, 8u },
-        { 1000u, 16, 8u },
+        { 1000u, 16, 32u },
     };
 
     for (const Row& row : rows)

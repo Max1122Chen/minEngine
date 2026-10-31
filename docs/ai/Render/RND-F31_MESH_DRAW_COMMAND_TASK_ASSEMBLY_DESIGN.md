@@ -433,22 +433,102 @@ for i in chunks where chunk[i].VisitCount == 0:      // 没跑过
 chunkCount = clamp(ceil(proxyCount / MinProxiesPerChunk), 1, workerCount * 2)
 ```
 
-- `MinProxiesPerChunk` 先给保守初值（建议 128），**由 S05 测量定稿**，并把测得值写进文档，
-  不留成注释里的魔法数。
-- 上界用 `workerCount * 2` 而不是 `workerCount`：长尾（某片特别重）时仍有均衡余量。
+- `MinProxiesPerChunk` **已实测定稿为 16**（推导与数值见本节末尾「测量与定稿」），不是初值猜测。
+- 上界用 `workerCount * 2` 而不是 `workerCount`：长尾（某片特别重）时仍有均衡余量。实测中该上界
+  在真实场景（81 proxy、31 worker）不生效（模型给出 6 片），在大场景上它只会让每片更小，
+  实测仍快于串行但不及 4–8 片——保留的理由与代价见「测量与定稿」最后一小节。
 - 分片数**必须不影响结果**（§5.4 的跨帧 digest 恒等就是这条的测试）。
 
-**实现落点（S03 已接线，S05 仍需测量定稿）**
+**实现落点（已接线，阈值已定稿）**
 
 - 分片公式即上面这条，落在 `ComputeMeshAssemblyChunkCount`（`MeshAssemblyChunk.h`）；调度由
   `ResolveMeshAssemblySchedule` 每帧解析一次，`BuildPrimitiveRenderQueue` 从进程级
-  `TaskSystem` 实例取池。`MinProxiesPerChunk` 仍是 128 的保守初值。
+  `TaskSystem` 实例取池。`MinProxiesPerChunk` 为 16（`kMeshAssemblyMinProxiesPerChunk`）。
 - 开关：默认开启；`MINENGINE_MESH_ASSEMBLY_PARALLEL=0|off|false|no` 关闭，关掉后是单片的
   同一段代码（`ChunkCount == 1`），串行原因报 "parallel assembly turned off"。
 - **能力判定不含拓扑**：`Single` 下三角色同线程、`AreFrameRolesRunning() == false` 时扇出照样发生，
   已由 `mesh-assembly-determinism: a single-topology frame still fans out` 钉住。
 - `MeshAssemblyChunksNotRun` 走进程级 provider（`TaskSystem::NoteMeshAssemblyChunksNotRun` /
   `GetMeshAssemblyChunksNotRunTotal`）：装配是 header-inline，模块级计数器读不到别的模块的补跑。
+
+**测量与定稿（实测，非估算）**
+
+环境：`D:/Dev/GitRepo/minCraft-render`（消费者，用本仓 `feat/core` 当前源码构建）与引擎测试二进制；
+Debug 配置（本仓唯一契约构建：`-g`、无 `-O`，因此**绝对值偏大、三段之间的比例才是要读的东西**）；
+32 逻辑核 / 15 GB，默认 31 worker。取样：编辑器每个进程取**稳态**装配调用（场景灌入段从 25 proxy
+升到 81 proxy，前约 143 次调用剔除；稳态 = 81 proxy 恒定）最后 500 次的中位数（每个进程的稳态样本
+≥400 次）；测试二进制每档 20 次取中位数并记录 20 次的范围。跨进程复现性：串行档 4 个独立进程给出
+2816–2894us（±1.4%），定稿并行档 2 个独立进程给出 767 / 762us。
+
+**Q1 — 装配耗时拆成三段（真实场景，串行单片，81 proxy 稳态）**
+
+| 采样进程 | 装配总计 | 粗筛（逐 proxy 可见性/阴影判定） | `GetMeshBatches` | `MakeDrawCommand` | 分片合并 |
+|---|---|---|---|---|---|
+| A | 2859us | 14us（0.5%） | 2444us（85.5%） | 322us（11.3%） | 53us（1.9%） |
+| B | 2894us | 14us（0.5%） | 2472us（85.4%） | 324us（11.2%） | 53us（1.8%） |
+
+同一次拆分在合成场景上（测试二进制、每 proxy 一条单 batch、四分之一在视锥外）为
+粗筛 5–6% / `GetMeshBatches` 36–38% / `MakeDrawCommand` 46–48% / 合并 6–9%（200–5000 proxy 五档一致），
+即**拷贝占大头**。两者如实并列的意思是：谁的 `GetMeshBatches` 贵，重心就落在谁身上——真实体素代理
+把 85% 花在批次生产里，而那一段同样是纯 CPU、同样能并行。
+
+结论（§12.2-5 的裁定）：**并行是正解**。`MakeDrawCommand` 的逐字段拷贝在真实场景只占 11%
+（合成场景 46%），「按代理缓存 MDC」最多拿回这一段，抵不上引入"代理字段变了但缓存没刷新"的一致性成本。
+
+**Q2 — 串行 vs 并行：真实场景（81 proxy，31 worker，Multi）**
+
+| 分片数 | 装配总计 | 相对串行 | `MakeDrawCommand` 的 CPU 合计 |
+|---|---|---|---|
+| 1（串行） | 2859us | 1.00x | 0.32ms |
+| 2 | 1645us | 1.73x | 0.37ms |
+| 4 | 1045us | 2.72x | 0.44ms |
+| 8 | 696us | 4.09x | 0.68ms |
+| 16 | 720us | 3.95x | 3.35ms |
+| 25 | 869us | 3.27x | 10.65ms |
+
+worker 数（固定 6 片，对比同一拓扑的串行 2859us）：2 → 1657us（1.73x）、4 → 1130us（2.53x）、
+8 → 791us（3.61x）、31 → 767us（3.73x）。
+**定稿配置实测**（阈值 16，模型自选片数 = 6，两个独立进程）：767us / 762us，对串行 2.86–2.89ms 为 **3.7x**。
+Single 拓扑同一场景：并行 792us vs 串行 2818us（**3.56x**）——Single 下并行同样净赚，不需要为它留一条串行默认。
+
+**Q2 — 合成场景的规模曲线与交叉点**（测试二进制，每档 20 次中位；范围为 20 次的最小–最大）
+
+| proxy | 串行 | 并行 2 worker | 并行 4 worker | 并行 8 worker |
+|---|---|---|---|---|
+| 200 | 504us（497–809） | 446us | 409us | 413us |
+| 500 | 1445us（1431–2029） | 1101us | 902us | 917us |
+| 1000 | 2750us（2670–3041） | 1971us | 1740us | 2696us |
+| 2000 | 5548us（5312–6073） | 3976us | 3436us | 4993us |
+| 5000 | 15062us（14248–15807） | 11322us | 9583us | 12851us |
+
+（该表的并行档片数按当时的阈值 128 取，即 2 / 4 / 8 片；阈值改成 16 之后同一批 proxy 会切得更细，
+而下面这张交叉点表说明更细只会更好——200 proxy 从 2 片（1.23x）变成 8 片（约 1.4x）。）
+
+交叉点（4 worker、固定 8 片）：32 proxy 0.97x（持平）、64 → 1.27x、128 → 1.40x、512 → 1.40x、
+1024 → 1.46x、2048 → 1.69x、4096 → 1.57x。线性拟合：串行 ≈ 2.64us/proxy，并行 ≈ 25us（扇出固定成本）
++ 1.81us/proxy，交叉点 ≈ 30 proxy，即**每片 4–8 个 proxy** 就开始净赚。合成场景的并行上限只有 1.5–1.7x，
+不是分片不够细，而是 `GetMeshBatches` 与 `MakeDrawCommand` 里的每片容器分配在多 worker 下互相争用：
+同样的拷贝在并行档的 CPU 合计是串行档的 1.4–3.4 倍（上表最后一列）。真实场景的 3.7x 之所以更高，
+是因为它的每 proxy 工作量大、且集中在一段可并行的批次生产里。
+
+**Q3 — 定稿值与依据**
+
+- **`MinProxiesPerChunk = 16`（原 128）**。三条依据：
+  1. 取 128 时分片预算 `ceil(81/128) = 1`：唯一实测到的真实场景**永远只有一片**，阈值把自己关掉了；
+  2. 实测最优切点是每片约 10 proxy（8 片 = 4.08x），每片 3 proxy 仍然净赚（25 片 = 3.28x），
+     合成场景的交叉点同样是每片 4–8 proxy；
+  3. 16 落在实测最优区并留余量：既覆盖"真实体素代理 35us/proxy"的贵端，也照顾"被剔除、只走粗筛
+     0.15us/proxy"的便宜端。定稿后在真实场景给出 6 片 / 767us（3.73x，两次独立进程 767 / 762）。
+- **上界 `workerCount * 2` 保留**。真实场景 31 worker 下只切 6 片，上界不生效；合成 2000 proxy 档
+  4–8 片最好（c4 4146us、c8 4111us，c64 4529us），更多片仍快于串行（c64 为 1.28x），而片的下限由
+  `MinProxiesPerChunk` 兜住，长尾均衡余量照旧。
+- **代价（记为后续，不进阈值）**：分片越多，命令拷贝的 CPU 合计越大（真实场景 0.32ms → 0.69ms@8 片
+  → 3.26ms@16 片 → 10.66ms@25 片；合成 2000 proxy 2.50ms → 8.50ms@8 片）。墙钟仍在变快，因为同样的
+  拷贝被摊到更多核上，但那是"摊"不是"省"。下一步应验证"每片按 `ProxyCount` 预留容量"能否消掉这部分
+  争用；若消掉，上界可以进一步放宽。
+- **未来场景规模变化时怎么复测（一句话）**：在同一场景分别取串行基线（`MINENGINE_MESH_ASSEMBLY_PARALLEL=0`）
+  与若干强制分片档（测试内直接构造 `MeshAssemblySchedule.ChunkCount`，或临时调低 `MinProxiesPerChunk`），
+  按稳态中位数找到"每片 proxy 数"的拐点，据此重定常量，并按"过了拐点墙钟是否还降"重定上界。
 
 ## 8. 可观测性
 
@@ -573,12 +653,15 @@ struct MeshAssemblyStats
 
 ### S05 — 测量、阈值定稿、（可选）排序并行
 
-- **改什么**：填 `MinProxiesPerChunk` 的实测值；决定 Single 拓扑默认值；
+- **改什么（已完成）**：`MinProxiesPerChunk` 实测填值为 **16**（128 → 16，依据与曲线见 §7.4
+  「测量与定稿」）；Single 拓扑默认值定为**默认允许并行**（实测 Single 下 3.56x，不需要串行默认）；
   **可选**：片内 `stable_sort` + 按片归并替换全局 `stable_sort`（`ForwardRenderer.cpp:1272`）。
 - **红灯**：排序并行化前后 `OpaqueQueue` digest 恒等（k 路归并的 tie-break 必须与 `std::stable_sort`
   完全一致：等键按片序、片内按插入序）。
-- **判定没退化**：≥1000 proxy 场景帧时间有可复现改善（写明测量方法与数值）；否则**不做**排序并行化
-  并把原因记进未决问题。
+- **判定没退化（结论）**：装配耗时在真实场景（81 proxy）与合成场景（200–5000 proxy）都拿到可复现
+  改善（真实场景 2859–2894us → 767us，3.7x；合成 5000 proxy 15062us → 9583us，1.57x），数值与方法见 §7.4。
+  **排序并行化不做**：排序不在装配的测量窗口内，而装配本身已经被压到 0.7ms，先动排序没有可归因的收益；
+  记入 §12.2-5 之后的顺序（先补「代理版本号 + 批次缓存」，排序并行排在其后）。
 
 ### 依赖
 
@@ -764,7 +847,7 @@ RHI 线程统一 replay」）不能直接搬到我们这里：**
 |---|---|---|---|
 | 每视图一份可见性数据，视图是顶层任务单位 | 每 view 一次装配扇出，仍在各自 `Execute` 内 | 取（形状） | `ForwardRenderer.cpp:669`、`ManualRenderer.cpp:329` |
 | primitive 区间切任务、每任务只写自己那段 | `MeshAssemblyChunk` 的 `[FirstProxy, FirstProxy + ProxyCount)` | 取 | `RenderQueueBuild.h:56`、§4.3 |
-| 「每任务最多处理多少」的上限参数 | `MinProxiesPerChunk` + `workerCount * 2` 上界 | 取（概念）；数值由 S05 测 | §7.4 |
+| 「每任务最多处理多少」的上限参数 | `MinProxiesPerChunk`（16）+ `workerCount * 2` 上界 | 取（概念）；数值已实测 | §7.4 |
 | 阶段一产「可见命令索引」、阶段二归组 | 片直接产 `MeshDrawCommand`，无索引层 | 不取索引层 | `MeshPassProcessor.cpp:21-37`、§4.3 |
 | 按 state bucket 稳定排序 | `MeshDrawCommandSortKey`（material / VIL / VB 折叠）+ `stable_sort` | 已等价，本 Feature 不动 | `MeshDrawCommandSort.cpp:10-36`、`:46-58` |
 | 并行合并严格按 task index | I2：按 `FirstProxy` 升序逐片 append | 取 | §5.3、§5.4 |
@@ -796,17 +879,28 @@ RHI 线程统一 replay」）不能直接搬到我们这里：**
 
 1. ~~编号~~ **已确定**：`RND-F31`，文件名为 `RND-F31_MESH_DRAW_COMMAND_TASK_ASSEMBLY_DESIGN.md`，
    `FEATURE_REGISTRY.md` 已录入（状态 `Design`）。
-2. **Single 拓扑默认是否并行**：Single 下 `RHICommandList` 是 immediate，帧延迟更敏感，但并行装配
-   仍是纯 CPU。推荐：**默认允许**，开关默认 On 且可关，用 S05 的测量定稿。
+2. **Single 拓扑默认是否并行 — 已定稿：默认允许。** Single 下 `RHICommandList` 是 immediate、帧延迟
+   更敏感，但并行装配仍是纯 CPU，实测同一真实场景 Single 下 2818us → 792us（**3.56x**），与 Multi 的 3.73x
+   同量级：没有"Single 下并行不赚"的证据，因此不为 Single 维护另一条串行默认，开关保留可关。
 3. **多 viewport 是否做「跨 view 一次扇出」**：`RenderSystem::Tick` 手上已有全部 `m_PendingDraws`
    （`RenderSystem.cpp:229`），可以在任何 view 开窗之前把所有 view 的装配合并成**一次**扇出
    （4 个 viewport 时省 3 次 join，总工作量不变）。代价：`CollectOrphanedSceneProxies` 的调用点要从
    `Execute` 提到 `Tick`（每 scene 一次），且 `Execute` 要接受「已装配好的 ctx」。
    推荐：**本 Feature 不做**，作为独立切片 S06 评估 —— 它是编辑器多 viewport 的真正大头，但会改帧结构。
 4. **是否把 `BuildScreenUIDrawQueue` 也纳入**：推荐不做（数据量小）。
-5. **每 primitive 缓存的触发条件**：等 S05 的 profile 数据。若装配耗时中 >50% 在 `GetMeshBatches`
-   的虚调用与结构体拷贝，则「按代理缓存 `MeshDrawCommand`」比并行更值；若在剔除数学，则并行是正解。
-   **先测再定。**
+5. **每 primitive 缓存的触发条件 — 已用实测数据裁定（数值见 §7.4「测量与定稿」）。**
+   真实场景（81 proxy 稳态、串行一片）的 2.82–2.89ms 装配里：`GetMeshBatches` 2.44–2.47ms（**85%**）、
+   `MakeDrawCommand` 的一次结构体拷贝 0.32ms（**11%**）、剔除数学 0.014ms（0.5%）、分片合并 0.05ms（2%）。
+   据此：
+   - **「按代理缓存 `MeshDrawCommand`」不做**：它只能拿回那 11%（+2% 合并），而并行在同一个场景已经拿到
+     3.7x；为 11% 引入「代理字段变了但缓存没刷新」的一致性风险不划算。§11.2 / §11.4.3 的结论不变，但现在
+     有数值支撑，不再是「先测再定」。
+   - **真正的杠杆是那 85%**：它落在消费者侧的 `GetMeshBatches` 内部（每帧重新生产批次）。能拿回它的只有
+     「按代理缓存批次/命令，且只在代理版本变化时重建」——那要求每个代理有一个版本号，而
+     `PrimitiveSceneProxy` 今天只有裸字段（§11.4.3 的表）。这是**另一个 Feature 的前置条件**，不在本
+     Feature 内。
+   - 因此推荐顺序是：**先并行（已落地，真实场景 3.7x）→ 若仍不够，再补「代理版本号 + 批次缓存」**，
+     而不是反过来。
 6. **`m_ShadowPass.m_OpaqueQueue = ctx.ShadowCasterQueue`（`ForwardRenderer.cpp:673`）这次全量 copy**
    是否在 S04 一并去掉，需要确认 shadow pass 的生命周期不会因此缩短。
 
