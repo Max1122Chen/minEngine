@@ -204,6 +204,11 @@ namespace minEngine
         // handle, not through the frame view beside it.
         m_DrawPacket.VertexBufferRef = m_ScreenQuadVertexBuffer;
         m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
+        // Same hand-over as the present pass, one level down: the vertex state the draw reads its
+        // quad through is named by a handle, so the gate never has to read the bare pointer the
+        // pipeline state was created with.
+        m_DrawPacket.VertexInputLayoutRef = m_ScreenQuadVertexLayout;
+        m_DrawPacket.VertexInputLayout = m_ScreenQuadVertexLayout.get();
         m_DrawPacket.VertexCount = kScreenQuadVertexCount;
     }
 }

@@ -342,6 +342,10 @@ namespace minEngine
         m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet;
         m_DrawPacket.VertexBufferRef = m_CubeVertexBuffer;
         m_DrawPacket.VertexBuffer = m_CubeVertexBuffer.get();
+        // The cube is read through a layout this pass owns as a handle; naming it in the packet is
+        // what lets the gate ask that handle instead of the pointer the pipeline state kept.
+        m_DrawPacket.VertexInputLayoutRef = m_CubeVertexLayout;
+        m_DrawPacket.VertexInputLayout = m_CubeVertexLayout.get();
         m_DrawPacket.VertexCount = CubeVertexCount();
         m_ShouldRender = true;
     }
@@ -412,6 +416,8 @@ namespace minEngine
         packet.ShaderBindingSets[EngineShaderBindings::kSetSkyPass] = m_SkyShaderBindingSet;
         packet.VertexBufferRef = m_CubeVertexBuffer;
         packet.VertexBuffer = m_CubeVertexBuffer.get();
+        packet.VertexInputLayoutRef = m_CubeVertexLayout;
+        packet.VertexInputLayout = m_CubeVertexLayout.get();
         packet.VertexCount = CubeVertexCount();
         cmdList.SubmitMeshDrawPacket(packet);
     }

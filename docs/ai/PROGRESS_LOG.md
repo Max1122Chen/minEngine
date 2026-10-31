@@ -1,3 +1,15 @@
+## 2026-10-31 — 门禁不得解引用悬垂几何：判据先问句柄、内部造包路径全部带句柄（feat/core）
+
+- **真机问题:** Single 拓扑 PIE 退出崩溃，`ExceptionCode=0xC0000005 / FaultRIP=0x0`，栈 `GetDeferredUse`（`RHIDeferredCreate.h:139`）← `CanNameGeometry` ← `SubmitDrawBuffers`。虚表指针读到 0 = 门禁解引用了已释放几何。
+- **根因:** 上一轮把"流要保活几何"做成了**录制模式**的条件，并假定立即列表的包在调用内跑完；实际 packet 可以是**跨帧容器**成员（`BasePass::m_DrawPackets` 这类），生产者早已放下最后一个句柄，门禁为了判断可用性先解引用了裸视图。
+- **修法（门禁）:** `SubmitDrawBuffers` 两段判据。第一段只读 packet 字段问"索引/顶点缓冲/布局**有没有句柄**"（纯数据，不碰对象）；有句柄才用句柄取对象问 `GetDeferredUse`；没有句柄直接拒绝，并按（几何种类 × 立即/录制路线）分槽计数、1/100 限频 Error。立即与录制一律如此。
+- **修法（造包路径）:** Present / PostProcess / SkyBox 原来只把顶点布局挂在 PSO 裸指针上 → 补 `VertexInputLayoutRef`（SkyBox 两处）；EnvMapCapture 三处裸 `SetVertexBuffer`+`Draw`（录制流里只有裸地址）→ 改走 `SubmitMeshDrawPacket`（带缓冲与布局句柄）并补捕获网格就绪检查；场景网格 / 阴影 / 半透 / ScreenUI / widget / text 复核：三个句柄本来就有，未改。`DebugDrawPass` 不造包、裸绑定由 pass 自己持有到回放，保留并记录。
+- **红灯:** 构造"对象已释放 + 内存清零（vtable 指针 0）"的裸视图 packet；修复前 gdb 栈 `GetDeferredUse` ← `CanNameGeometry` ← `SubmitDrawBuffers` SIGSEGV（进程 exit 139），修复后两路线都被拒绝、无绘制、计数报告出现。
+- **验证:** `minEngineTests` 与 `Editor` 构建 exit 0；`draw-packet-lifetime` 17/17（168 assertions，新增 3 例：已释放对象被拒不清、已释放顶点缓冲/布局被拒、引擎各造包形状不被误拒且拒绝计数 0）、`envmap-bake` 5/5（2930）、`scene-proxy-identity/lifetime/render-read`、`screen-ui-*`、`mesh-assembly-determinism` 20/1682、`rhi-command-list/deferred-create/deferred-destroy` 全 PASS；`test smoke` exit 0（`Status: SUCCESS` 27、`FAILURE` 0）。导出 3040 → 3040（增量 0，snapshot delta 0，baseline 无移除，coverage missing 0）。
+- **遗留:** PSO 描述里的 `VertexInputLayout` 仍是裸指针（包**完全**无布局时的回退，寿命跟着创建 PSO 的人）；`DebugDrawPass` 仍是渲染器里最后一条裸绑定录制路径（不造包）；消费者侧（minCraft `ChunkMeshSceneProxy`）不填 `RHIBufferRef` 时现在会被拒绝而非崩溃，需要按新契约补句柄。
+- **记录:** [BUG-RENDER-024](./bugs/BUG-RENDER-024.md)。
+
+
 ## 2026-10-31 — 布局来自管线状态的 Info 限频到进程级 + 记录流必须持住它绘制的几何（feat/core）
 
 - **问题 1（Info 每帧刷屏）：** `SubmitDrawBuffers` 里"顶点状态取自管线状态"的 Info 限频位是命令列表成员，而 Single 拓扑每帧在栈上新造一个列表，于是"每列表一次"等价于"每帧一次"（真机一次会话 4123 条）。改为进程级原子计数（`g_PipelineStateVertexLayoutDrawCount`）：首次必报、之后每 4096 条一条，并带累计计数；头文件里的 per-list 成员删除。真机对照（`MaximumEditor.exe -p MyMEProject --frame-threads single`）：改前约 60s 会话 31860 条，改后 20s 会话 2 条（`1` 与 `4096`），Multi 同为 2 条。

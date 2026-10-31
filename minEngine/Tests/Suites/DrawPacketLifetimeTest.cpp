@@ -19,7 +19,10 @@
 #include "doctest.h"
 
 #include <atomic>
+#include <cstddef>
+#include <cstring>
 #include <mutex>
+#include <new>
 #include <utility>
 
 using minEngine::FrameThreading;
@@ -859,7 +862,7 @@ TEST_CASE("draw-packet-lifetime: twelve recorded frames report the pipeline-stat
     threading.Shutdown();
 }
 
-TEST_CASE("draw-packet-lifetime: a recorded stream refuses geometry it cannot keep alive [smoke]")
+TEST_CASE("draw-packet-lifetime: geometry handed over without a handle is refused on either route [smoke]")
 {
     HeadlessTestRHI rhi;
     InstallDeferredBufferFactory(rhi);
@@ -875,8 +878,8 @@ TEST_CASE("draw-packet-lifetime: a recorded stream refuses geometry it cannot ke
 
     // The producer hands the geometry over as a frame view and nothing else. A recorded stream runs
     // after this call returns, so the only reference left is the producer's - and a producer that
-    // rebuilds its mesh drops it. There is nothing for the stream to hold, so it must not record
-    // the draw: replaying it would name an object nobody owns.
+    // rebuilds its mesh drops it. There is nothing for the stream to hold and nothing the gate may
+    // ask, so it must not record the draw.
     MeshDrawPacket packet;
     packet.IndexBuffer = owner.get();
     packet.IndexCount = 36u;
@@ -896,15 +899,276 @@ TEST_CASE("draw-packet-lifetime: a recorded stream refuses geometry it cannot ke
     CHECK(rhi.NamelessDraws == 0);
     CHECK(GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed) > refusalsBefore);
 
-    // The immediate topology is the other case: its commands run inside the call, so the producer's
-    // own reference covers the draw and the frame view is enough. Refusing here would take the
-    // present and post-process draws out of every frame.
+    // The immediate route runs its commands inside the call, but a packet can be built in an earlier
+    // frame - the passes keep theirs in containers between frames - so the view can be stale here
+    // just the same. It is refused for the same reason, and the refusal is counted on its own route.
+    const int refusalsAfterRecorded =
+        GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed);
     RHICommandList immediate(&rhi);
     immediate.SetImmediateOverride(true);
+    immediate.SubmitMeshDrawPacket(packet);
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed) > refusalsAfterRecorded);
+
+    // What makes the very same packet drawable is the handle beside the view - not the route it runs
+    // on. The geometry is intact the whole time; only the hand-over was incomplete.
+    packet.IndexBufferRef = owner;
     immediate.SubmitMeshDrawPacket(packet);
     REQUIRE(rhi.Draws.size() == 1u);
     CHECK(rhi.Draws[0].bIndexed);
     CHECK(rhi.Draws[0].Count == 36u);
     CHECK(rhi.NamelessDraws == 0);
+}
+
+namespace
+{
+    /**
+     * An object of the given type whose memory has already been released and reused.
+     *
+     * A packet that fills only the borrowed frame view leaves nobody owning the geometry: the
+     * producer drops its last handle, the allocator hands the block to the next owner, and the view
+     * points into whatever that owner put there. Zeroing the block is the deterministic stand-in for
+     * that reuse - the first word of a polymorphic object is its vtable - so any virtual call
+     * through the view jumps to address zero, which is the fault this gate exists to prevent.
+     */
+    template <typename TObject>
+    class ReleasedObject
+    {
+    public:
+        template <typename... TArgs>
+        explicit ReleasedObject(TArgs&&... args)
+        {
+            TObject* object = new (static_cast<void*>(m_Storage)) TObject(std::forward<TArgs>(args)...);
+            object->~TObject();
+            std::memset(static_cast<void*>(m_Storage), 0, sizeof(m_Storage));
+        }
+
+        TObject* Get() { return reinterpret_cast<TObject*>(m_Storage); }
+
+    private:
+        alignas(std::max_align_t) unsigned char m_Storage[sizeof(TObject)];
+    };
+}
+
+TEST_CASE("draw-packet-lifetime: a packet that names a released object is refused, never dereferenced [smoke]")
+{
+    EnsureBorrowedGeometryRefusalSinkInstalled();
+    const int refusalsBefore = GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
+    REQUIRE(layout != nullptr);
+
+    // The geometry this packet names was released before the draw reached the list: the handle that
+    // owned it is gone, and only the borrowed view is left pointing into the memory it used to hold.
+    ReleasedObject<ProbeGeometryBuffer> releasedIndex(MakeIndexBufferDesc());
+    MeshDrawPacket packet;
+    packet.IndexBuffer = releasedIndex.Get();
+    packet.IndexCount = 36u;
+    packet.VertexInputLayoutRef = layout;
+    packet.VertexInputLayout = layout.get();
+    packet.PipelineState = rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+    REQUIRE(packet.IndexBufferRef == nullptr);
+
+    // The immediate route runs its commands inside the call, which is where the field fault came
+    // from: a pass still held a packet built for an earlier frame while the geometry under it had
+    // already been released. Asking that object whether it is usable is the crash itself.
+    //
+    // The refusals are repeated because the report is budgeted to the first one and then every
+    // hundredth, so a hundred refusals make the count visible from whatever the process has already
+    // refused - the check below is about the refusal existing, not about this case being the first.
+    RHICommandList immediate(&rhi);
+    immediate.SetImmediateOverride(true);
+    for (uint32_t attempt = 0; attempt < 100u; ++attempt)
+    {
+        immediate.SubmitMeshDrawPacket(packet);
+    }
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+
+    // The recorded route asks the same question one replay later, and is refused for the same reason.
+    RHICommandList recorded(&rhi);
+    recorded.SetImmediateOverride(false);
+    recorded.BeginRecording();
+    for (uint32_t attempt = 0; attempt < 100u; ++attempt)
+    {
+        recorded.SubmitMeshDrawPacket(packet);
+    }
+    recorded.FinishRecording();
+    recorded.Replay();
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+
+    CHECK(GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed) >= refusalsBefore + 2);
+}
+
+TEST_CASE("draw-packet-lifetime: a packet that names a released vertex buffer or layout is refused too [smoke]")
+{
+    EnsureBorrowedGeometryRefusalSinkInstalled();
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
+    const RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(layout != nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+    REQUIRE(indexBuffer->IsReady());
+
+    // The vertex buffer was released: the packet kept the view for an earlier frame and the handle is
+    // gone, so the vertex state on the other side of the draw is borrowed from nobody.
+    ReleasedObject<ProbeGeometryBuffer> releasedVertex(MakeIndexBufferDesc());
+    MeshDrawPacket releasedVertexPacket;
+    releasedVertexPacket.IndexBufferRef = indexBuffer;
+    releasedVertexPacket.IndexBuffer = indexBuffer.get();
+    releasedVertexPacket.VertexBuffer = releasedVertex.Get();
+    releasedVertexPacket.IndexCount = 36u;
+    releasedVertexPacket.VertexInputLayoutRef = layout;
+    releasedVertexPacket.VertexInputLayout = layout.get();
+    releasedVertexPacket.PipelineState = rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+    REQUIRE(releasedVertexPacket.VertexBufferRef == nullptr);
+
+    // The layout was released, the buffers were not: the draw still cannot be read, because the only
+    // thing that said how the vertices are laid out is memory somebody else owns now.
+    ReleasedObject<DeferredVertexInputLayout> releasedLayout;
+    MeshDrawPacket releasedLayoutPacket;
+    releasedLayoutPacket.IndexBufferRef = indexBuffer;
+    releasedLayoutPacket.IndexBuffer = indexBuffer.get();
+    releasedLayoutPacket.IndexCount = 36u;
+    releasedLayoutPacket.VertexInputLayout = releasedLayout.Get();
+    releasedLayoutPacket.PipelineState = rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+    REQUIRE(releasedLayoutPacket.VertexInputLayoutRef == nullptr);
+
+    RHICommandList immediate(&rhi);
+    immediate.SetImmediateOverride(true);
+    immediate.SubmitMeshDrawPacket(releasedVertexPacket);
+    immediate.SubmitMeshDrawPacket(releasedLayoutPacket);
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+}
+
+namespace
+{
+    /** One frame of a list: immediate runs the packets now, recording replays them at the end. */
+    void SubmitPacketsOnOneFrame(
+        HeadlessTestRHI& rhi,
+        bool bRecorded,
+        const std::vector<MeshDrawPacket>& packets)
+    {
+        RHICommandList cmdList(&rhi);
+        cmdList.SetImmediateOverride(!bRecorded);
+        if (bRecorded)
+        {
+            cmdList.BeginRecording();
+        }
+        for (const MeshDrawPacket& packet : packets)
+        {
+            cmdList.SubmitMeshDrawPacket(packet);
+        }
+        if (bRecorded)
+        {
+            cmdList.FinishRecording();
+            cmdList.Replay();
+        }
+    }
+}
+
+TEST_CASE("draw-packet-lifetime: every packet shape the engine's own passes build is submitted [smoke]")
+{
+    // The gate refuses a draw that names its geometry through a bare view, so every producer inside the
+    // engine has to hand the handles over. This case submits one packet per shape those producers build
+    // and requires all of them to be drawn: a producer that lost its hand-over shows up here as a draw
+    // that never happened.
+    EnsureBorrowedGeometryRefusalSinkInstalled();
+    const int refusalsBefore = GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed);
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    RHIBufferCreateDesc vertexDesc;
+    vertexDesc.Usage = RHIBufferUsage::Vertex;
+    vertexDesc.ByteSize = 4u * 32u;
+    vertexDesc.ElementCount = 4u;
+    const RHIBufferRef vertexBuffer = rhi.RHICreateBuffer(vertexDesc, nullptr);
+    const RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(vertexBuffer != nullptr);
+    REQUIRE(indexBuffer != nullptr);
+    {
+        ScopedFrameThreadKind graphicsRole(FrameThreadKind::Render);
+        rhi.RHIDrainDeferredCreates();
+    }
+    REQUIRE(vertexBuffer->IsReady());
+    REQUIRE(indexBuffer->IsReady());
+
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
+    const minEngine::RHIGraphicsPipelineStateRef pipelineState =
+        rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+    REQUIRE(layout != nullptr);
+    REQUIRE(pipelineState != nullptr);
+
+    std::vector<MeshDrawPacket> packets;
+
+    // Scene mesh, shadow caster, translucency and ScreenUI: a pass turns a mesh draw command into a
+    // packet, and the command carries the handles the proxy handed over.
+    {
+        MeshDrawCommand command;
+        command.m_VertexBufferRef = vertexBuffer;
+        command.m_VertexBuffer = vertexBuffer.get();
+        command.m_IndexBufferRef = indexBuffer;
+        command.m_IndexBuffer = indexBuffer.get();
+        command.m_VertexInputLayoutRef = layout;
+        command.m_VertexInputLayout = layout.get();
+        command.m_IndexCount = 36u;
+        MeshDrawPacket packet;
+        packet.PipelineState = pipelineState;
+        packet.BindDrawCommand(command);
+        packets.push_back(packet);
+    }
+
+    // Present, post-process and the sky box: a pass draws a buffer it owns with no index buffer and
+    // names the vertex state through the handle it holds.
+    {
+        MeshDrawPacket packet;
+        packet.PipelineState = pipelineState;
+        packet.VertexBufferRef = vertexBuffer;
+        packet.VertexBuffer = vertexBuffer.get();
+        packet.VertexInputLayoutRef = layout;
+        packet.VertexInputLayout = layout.get();
+        packet.VertexCount = 6u;
+        packets.push_back(packet);
+    }
+
+    // The screen-UI queue: what a widget proxy hands over, copied into a draw command and then into a
+    // packet - the glyph quad a text widget draws.
+    {
+        WidgetSceneProxy proxy;
+        proxy.SetMeshResources(vertexBuffer, layout, indexBuffer, 6u, 4u);
+        MeshDrawCommand command;
+        command.m_VertexBufferRef = proxy.m_VertexBufferRef;
+        command.m_VertexBuffer = proxy.m_VertexBuffer;
+        command.m_IndexBufferRef = proxy.m_IndexBufferRef;
+        command.m_IndexBuffer = proxy.m_IndexBuffer;
+        command.m_VertexInputLayoutRef = proxy.m_VertexInputLayoutRef;
+        command.m_VertexInputLayout = proxy.m_VertexInputLayout;
+        command.m_IndexCount = proxy.m_IndexCount;
+        MeshDrawPacket packet;
+        packet.PipelineState = pipelineState;
+        packet.BindDrawCommand(command);
+        packets.push_back(packet);
+    }
+
+    REQUIRE(packets.size() == 3u);
+
+    SubmitPacketsOnOneFrame(rhi, false, packets);
+    SubmitPacketsOnOneFrame(rhi, true, packets);
+
+    CHECK(rhi.Draws.size() == 6u);
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed) == refusalsBefore);
 }
 

@@ -194,6 +194,11 @@ namespace minEngine
         // the quad alive until then.
         m_DrawPacket.VertexBufferRef = m_ScreenQuadVertexBuffer;
         m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
+        // The layout travels as a handle too, even though the pipeline state was created with it:
+        // the gate reads the vertex state through a handle it can ask, and only a packet with no
+        // layout at all falls back to the pointer the state keeps.
+        m_DrawPacket.VertexInputLayoutRef = m_ScreenQuadVertexLayout;
+        m_DrawPacket.VertexInputLayout = m_ScreenQuadVertexLayout.get();
         m_DrawPacket.VertexCount = kScreenQuadVertexCount;
     }
 }

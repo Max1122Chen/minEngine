@@ -44,16 +44,59 @@ namespace minEngine
         std::atomic<uint64_t> g_DrawWithoutVertexLayoutCount{0};
 
         /**
-         * Draws a recorded stream refused because the geometry they name is handed over as a bare
-         * pointer.
+         * A piece of geometry a draw names only through the borrowed frame view.
          *
-         * A stream outlives the call that filled it and runs on the graphics role afterwards, so
-         * the only thing that can keep its geometry alive across that gap is a handle captured with
-         * the command. A packet that names a buffer through the frame view alone leaves nothing to
-         * capture: the producer may drop the last handle before the stream is replayed, and the
-         * draw then reaches the backend naming an object whose native half is already gone.
+         * The kinds are kept apart because they are three separate hand-overs of the same draw, and a
+         * producer that fills the vertex buffer's handle still has to fill the layout's.
          */
-        std::atomic<uint64_t> g_DrawWithoutPinnedGeometryCount{0};
+        enum class EBorrowedGeometry : uint32_t
+        {
+            IndexBuffer = 0,
+            VertexBuffer,
+            VertexInputLayout,
+            Count,
+        };
+
+        const char* BorrowedGeometryName(EBorrowedGeometry geometry)
+        {
+            switch (geometry)
+            {
+            case EBorrowedGeometry::IndexBuffer:
+                return "index buffer";
+            case EBorrowedGeometry::VertexBuffer:
+                return "vertex buffer";
+            case EBorrowedGeometry::VertexInputLayout:
+                return "vertex input layout";
+            case EBorrowedGeometry::Count:
+                break;
+            }
+            return "geometry";
+        }
+
+        constexpr uint32_t kBorrowedGeometryImmediateRoute = 0;
+        constexpr uint32_t kBorrowedGeometryRecordedRoute = 1;
+        constexpr uint32_t kBorrowedGeometryRouteCount = 2;
+
+        /**
+         * Draws refused because the geometry they name is handed over as a bare pointer, counted per
+         * piece of geometry and per command route.
+         *
+         * The packet's frame view and the handle beside it are two different facts. A packet that
+         * filled only the view leaves nothing owning the object: its producer drops the last handle,
+         * the object dies, and the view then points into memory that belongs to somebody else. Asking
+         * that memory whether its native half exists is a virtual call on a released object, and the
+         * answer is whatever the new owner left there - in the field, a zero vtable pointer and a
+         * fault at address zero.
+         *
+         * Both routes are refused. A recorded stream is replayed after the call that filled it - after
+         * the packet is gone, on another thread in the frame-threaded topology - while an immediate
+         * list runs inside the call. But an immediate packet can be built in an earlier frame too (a
+         * pass keeps its packets between frames), so a released object reaches it just the same. The
+         * route is part of the count so that a producer which fixed one of them cannot hide the other
+         * in the report.
+         */
+        std::atomic<uint64_t> g_BorrowedGeometryRefusals
+            [static_cast<size_t>(EBorrowedGeometry::Count)][kBorrowedGeometryRouteCount];
 
         /**
          * Draws whose vertices were read through the layout their graphics pipeline state binds.
@@ -145,7 +188,7 @@ namespace minEngine
          * misses it on every draw it submits, and repeating the line for each would bury the one
          * report that says what is wrong.
          */
-        bool RefuseDrawWithoutVertexLayout(uint32_t count)
+        void RefuseDrawWithoutVertexLayout(uint32_t count)
         {
             const uint64_t refused =
                 g_DrawWithoutVertexLayoutCount.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -160,36 +203,57 @@ namespace minEngine
                     count,
                     refused);
             }
-            return false;
         }
 
         /**
-         * Refuses a recorded draw whose geometry the stream cannot keep alive.
+         * Refuses a draw whose geometry the packet hands over as a bare pointer.
          *
-         * Reported under one process-wide budget: a producer that hands geometry over as a bare
-         * pointer does it on every draw it submits, so a line per command would bury the one report
-         * that says which draw and how much it asked for.
+         * Reported once per piece of geometry per route and then every hundredth: a producer that
+         * fills only the frame view does it on every draw it submits, so a line per command would
+         * bury the one report that says which draw asked for how much.
          */
-        bool RefuseDrawWithBorrowedGeometry(const char* kind, const void* view, uint32_t count)
+        void RefuseDrawWithBorrowedGeometry(
+            EBorrowedGeometry geometry,
+            bool bRecordedStream,
+            const void* view,
+            uint32_t count)
         {
-            const uint64_t refused =
-                g_DrawWithoutPinnedGeometryCount.fetch_add(1, std::memory_order_relaxed) + 1;
-            if (refused == 1 || refused % 100 == 0)
+            const size_t route = bRecordedStream ? kBorrowedGeometryRecordedRoute
+                                                : kBorrowedGeometryImmediateRoute;
+            const uint64_t refusedAtSlot =
+                g_BorrowedGeometryRefusals[static_cast<size_t>(geometry)][route].fetch_add(
+                    1,
+                    std::memory_order_relaxed)
+                + 1;
+            if (refusedAtSlot != 1 && refusedAtSlot % 100 != 0)
             {
-                ME_LOG(
-                    LogRender,
-                    Error,
-                    "Draw not submitted: the {} this draw names ({:p}) is handed to the command list "
-                    "as a bare pointer, so the recorded stream cannot keep it alive until it is "
-                    "replayed ({} requested). Fill the packet's handle for the buffer instead of its "
-                    "frame view: a stream recorded now runs after the producer's own reference is "
-                    "gone. {} draw(s) refused so far.",
-                    kind,
-                    view,
-                    count,
-                    refused);
+                return;
             }
-            return false;
+
+            uint64_t refused = 0;
+            for (size_t kind = 0; kind < static_cast<size_t>(EBorrowedGeometry::Count); ++kind)
+            {
+                for (size_t routeIndex = 0; routeIndex < kBorrowedGeometryRouteCount; ++routeIndex)
+                {
+                    refused += g_BorrowedGeometryRefusals[kind][routeIndex].load(
+                        std::memory_order_relaxed);
+                }
+            }
+
+            ME_LOG(
+                LogRender,
+                Error,
+                "Draw not submitted: the {} this draw names ({:p}) is handed to the command list as a "
+                "bare pointer on the {}, and the gate cannot ask an object nobody owns whether it is "
+                "still there ({} requested). Fill the packet's handle for it instead of its frame "
+                "view: a view whose owner is gone points into memory that now belongs to somebody "
+                "else. {} draw(s) refused so far.",
+                BorrowedGeometryName(geometry),
+                view,
+                bRecordedStream ? "recorded route, whose draws replay after this call returns"
+                                : "immediate route, whose draws run inside this call",
+                count,
+                refused);
         }
 
         /**
@@ -733,7 +797,8 @@ namespace minEngine
         // recorded it when replay happens on another thread - so the geometry the stream names is
         // held here, before anything can be skipped. A skipped frame is exactly when the handle
         // would otherwise be released while its creation is still queued for the graphics role.
-        if (!IsImmediate() && m_State == ERHICommandListState::Recording)
+        const bool bRecordedStream = !IsImmediate() && m_State == ERHICommandListState::Recording;
+        if (bRecordedStream)
         {
             if (packet.VertexBufferRef)
             {
@@ -749,16 +814,66 @@ namespace minEngine
             }
         }
 
+        // The judgement runs in two stages, and the order between them is the whole point.
+        //
+        // First the packet's own data: does it carry a handle for each piece of geometry it names?
+        // That question reads the packet and nothing else. Second, and only for the pieces that
+        // answered yes, the objects those handles point at: a handle in the packet is an owner, so
+        // the object behind it is alive for as long as this call runs.
+        //
+        // A piece named through the frame view alone has no owner left to ask. The producer drops the
+        // last handle, the object dies, and the view points into memory that now belongs to somebody
+        // else - so even the question "do you have a native object yet" is a virtual call into
+        // whatever the new owner left there. In the field that was a zero vtable pointer and a fault
+        // at address zero. The draw is refused before anything reads it; the count and the report
+        // make a producer that still hands geometry over that way visible.
+        const bool bIndexedDraw = packet.IndexBufferRef != nullptr || packet.IndexBuffer != nullptr;
+        const uint32_t count = bIndexedDraw ? packet.IndexCount : packet.VertexCount;
+        if (count == 0)
+        {
+            return;
+        }
+
+        if (bIndexedDraw && packet.IndexBufferRef == nullptr)
+        {
+            RefuseDrawWithBorrowedGeometry(
+                EBorrowedGeometry::IndexBuffer,
+                bRecordedStream,
+                packet.IndexBuffer,
+                count);
+            return;
+        }
+        if (packet.VertexBuffer != nullptr && packet.VertexBufferRef == nullptr)
+        {
+            RefuseDrawWithBorrowedGeometry(
+                EBorrowedGeometry::VertexBuffer,
+                bRecordedStream,
+                packet.VertexBuffer,
+                count);
+            return;
+        }
+        if (packet.VertexInputLayout != nullptr && packet.VertexInputLayoutRef == nullptr)
+        {
+            RefuseDrawWithBorrowedGeometry(
+                EBorrowedGeometry::VertexInputLayout,
+                bRecordedStream,
+                packet.VertexInputLayout,
+                count);
+            return;
+        }
+
+        // Everything below names objects this packet owns a reference to.
+        RHIBuffer* const vertexBuffer = packet.VertexBufferRef ? packet.VertexBufferRef.get() : nullptr;
+        RHIBuffer* const indexBuffer = bIndexedDraw ? packet.IndexBufferRef.get() : nullptr;
+
         // The vertex state the draw runs with is the layout the packet names, or - when the packet
-        // names none - the one the pipeline state binds when it is applied. A pass that owns a
+        // names none at all - the one the pipeline state binds when it is applied. A pass that owns a
         // single vertex state keeps it there instead of copying it into every packet it records,
         // which is why a packet without a layout is a complete draw rather than a broken one.
+        const RHIDeferredCreateTarget* vertexLayout = packet.VertexInputLayoutRef
+            ? packet.VertexInputLayoutRef.get()
+            : nullptr;
         bool bLayoutFromPipelineState = false;
-        const RHIDeferredCreateTarget* vertexLayout = packet.VertexInputLayout;
-        if (vertexLayout == nullptr)
-        {
-            vertexLayout = packet.VertexInputLayoutRef.get();
-        }
         if (vertexLayout == nullptr)
         {
             if (const RHIGraphicsPSODesc* const pipelineStateDesc =
@@ -773,125 +888,53 @@ namespace minEngine
         // backend has no vertex array to bind, and the draw names nothing. It is checked before the
         // buffers because a packet can only draw them through it, and a draw that names no layout
         // anywhere has no way to read its vertices at all.
-        const auto canNameVertexState = [vertexLayout, bLayoutFromPipelineState](uint32_t count)
+        if (vertexLayout == nullptr)
         {
-            if (vertexLayout == nullptr)
-            {
-                return RefuseDrawWithoutVertexLayout(count);
-            }
-
-            if (!CanNameGeometry(vertexLayout, "vertex input layout", count))
-            {
-                return false;
-            }
-
-            if (bLayoutFromPipelineState)
-            {
-                ReportPipelineStateVertexLayout(count);
-            }
-            return true;
-        };
-
-        // A stream is replayed after the call that filled it has returned, so nothing it captures by
-        // pointer is still owned by anybody. What keeps the geometry alive is the handle the packet
-        // carries, and a packet that names a buffer through the frame view alone leaves the stream
-        // nothing to hold: the producer drops the last handle, the backend retires the native
-        // object, and the replay then draws geometry that no longer exists. The verdict belongs
-        // here, where the packet still says whether it has that handle - an immediate list is the
-        // other case: its commands run inside this call, so the caller's own reference covers them.
-        // A stream is replayed after the call that filled it has returned, so nothing it captures by
-        // pointer is still owned by anybody. What keeps the geometry alive is the handle the packet
-        // carries, and a packet that names a buffer through the frame view alone leaves the stream
-        // nothing to hold: the producer drops the last handle, the backend retires the native
-        // object, and the replay then draws geometry that no longer exists. The verdict belongs
-        // here, where the packet still says whether it has that handle - an immediate list is the
-        // other case: its commands run inside this call, so the caller's own reference covers them.
-        const bool bStreamMustKeepGeometry =
-            !IsImmediate() && m_State == ERHICommandListState::Recording;
-        const auto canKeepGeometry = [bStreamMustKeepGeometry](
-                                        const RHIBuffer* view,
-                                        const RHIBufferRef& pin,
-                                        const char* kind,
-                                        uint32_t count)
+            RefuseDrawWithoutVertexLayout(count);
+            return;
+        }
+        if (!CanNameGeometry(vertexLayout, "vertex input layout", count))
         {
-            if (!bStreamMustKeepGeometry || view == nullptr || pin != nullptr)
-            {
-                return true;
-            }
-            return RefuseDrawWithBorrowedGeometry(kind, view, count);
-        };
-
-        if (packet.IndexBuffer)
+            return;
+        }
+        if (bLayoutFromPipelineState)
         {
-            if (packet.IndexCount == 0)
+            ReportPipelineStateVertexLayout(count);
+        }
+
+        // A handle whose native object does not exist yet would name no data. Which frame can name it
+        // is the frame that starts after the graphics role created it, so this one is skipped rather
+        // than handed to the backend.
+        if (bIndexedDraw)
+        {
+            if (!CanNameGeometry(indexBuffer, "index buffer", count))
+            {
+                return;
+            }
+            if (vertexBuffer != nullptr && !CanNameGeometry(vertexBuffer, "vertex buffer", count))
             {
                 return;
             }
 
-            if (!canNameVertexState(packet.IndexCount))
+            if (vertexBuffer != nullptr)
             {
-                return;
+                SetVertexBuffer(vertexBuffer);
             }
-
-            // The pin question is asked first: it reads the packet's handles, while the readiness
-            // question below reads the objects the views name, and a view the stream does not hold
-            // is exactly the one that may already be gone.
-            if (!canKeepGeometry(packet.IndexBuffer, packet.IndexBufferRef, "index buffer", packet.IndexCount))
-            {
-                return;
-            }
-            if (!canKeepGeometry(
-                    packet.VertexBuffer,
-                    packet.VertexBufferRef,
-                    "vertex buffer",
-                    packet.IndexCount))
-            {
-                return;
-            }
-
-            // A handle whose native object does not exist yet would name no data. Which frame can
-            // name it is the frame that starts after the graphics role created it, so this one is
-            // skipped rather than handed to the backend.
-            if (!CanNameGeometry(packet.IndexBuffer, "index buffer", packet.IndexCount))
-            {
-                return;
-            }
-            if (packet.VertexBuffer != nullptr &&
-                !CanNameGeometry(packet.VertexBuffer, "vertex buffer", packet.IndexCount))
-            {
-                return;
-            }
-
-            if (packet.VertexBuffer)
-            {
-                SetVertexBuffer(packet.VertexBuffer);
-            }
-            SetIndexBuffer(packet.IndexBuffer);
+            SetIndexBuffer(indexBuffer);
             DrawIndexed(packet.IndexCount, packet.FirstIndex, packet.VertexOffset);
             return;
         }
 
-        if (packet.VertexBuffer == nullptr || packet.VertexCount == 0)
+        if (vertexBuffer == nullptr)
+        {
+            return;
+        }
+        if (!CanNameGeometry(vertexBuffer, "vertex buffer", count))
         {
             return;
         }
 
-        if (!canNameVertexState(packet.VertexCount))
-        {
-            return;
-        }
-
-        if (!canKeepGeometry(packet.VertexBuffer, packet.VertexBufferRef, "vertex buffer", packet.VertexCount))
-        {
-            return;
-        }
-
-        if (!CanNameGeometry(packet.VertexBuffer, "vertex buffer", packet.VertexCount))
-        {
-            return;
-        }
-
-        SetVertexBuffer(packet.VertexBuffer);
+        SetVertexBuffer(vertexBuffer);
         Draw(packet.VertexCount, packet.FirstVertex);
     }
 

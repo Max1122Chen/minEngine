@@ -6,7 +6,9 @@
 #include "Runtime/Function/Render/Environment/EnvMapCapture.h"
 #include "Runtime/Function/Render/Environment/EnvironmentMap.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
+#include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RHI/RHICommandList.h"
+#include "Runtime/Function/Render/RHI/RHIGraphicsPipelineState.h"
 #include "Runtime/Function/Render/RHI/RHIRenderPass.h"
 
 #include "doctest.h"
@@ -64,6 +66,48 @@ namespace
         std::string m_Log;
     };
 
+    /** Geometry the bake's draw names: the device hands out complete handles, as a role does. */
+    class FakeBuffer final : public minEngine::RHIBuffer
+    {
+    public:
+        explicit FakeBuffer(const minEngine::RHIBufferCreateDesc& desc)
+            : m_Desc(desc)
+        {
+        }
+
+        const minEngine::RHIBufferCreateDesc& GetDesc() const override { return m_Desc; }
+        void UpdateSubresource(const void*, uint32_t, uint32_t) override {}
+
+    private:
+        minEngine::RHIBufferCreateDesc m_Desc;
+    };
+
+    /** The vertex state the cube is read through; complete, like a layout created on the role. */
+    class FakeVertexInputLayout final : public minEngine::RHIVertexInputLayout
+    {
+    public:
+        const std::vector<minEngine::RHIVertexElement>& GetElements() const override { return m_Elements; }
+        uint32_t GetStride() const override { return 12u; }
+
+    private:
+        std::vector<minEngine::RHIVertexElement> m_Elements{ { "a_Position", minEngine::VertexElementType::Float3 } };
+    };
+
+    /**
+     * A pipeline state that carries the description it was created from.
+     *
+     * The draw path reads the description back to answer which vertex state the draw runs with, so a
+     * double that cannot produce one would make every draw unanswerable rather than testable.
+     */
+    class FakePipelineState final : public minEngine::RHIGraphicsPSOStateFallback
+    {
+    public:
+        explicit FakePipelineState(const minEngine::RHIGraphicsPSODesc& desc)
+            : minEngine::RHIGraphicsPSOStateFallback(desc)
+        {
+        }
+    };
+
     /**
      * A device that answers with handles and records what reached it.
      *
@@ -105,10 +149,10 @@ namespace
             return nullptr;
         }
         std::shared_ptr<minEngine::RHIBuffer> RHICreateBuffer(
-            const minEngine::RHIBufferCreateDesc&,
+            const minEngine::RHIBufferCreateDesc& desc,
             const void*) override
         {
-            return nullptr;
+            return std::make_shared<FakeBuffer>(desc);
         }
         std::shared_ptr<minEngine::RHIShader> RHICreateShader(
             const minEngine::RHIShaderCreateDesc&,
@@ -124,9 +168,9 @@ namespace
             return std::make_shared<FakeShader>();
         }
         std::shared_ptr<minEngine::RHIGraphicsPipelineState> RHICreateGraphicsPipelineState(
-            const minEngine::RHIGraphicsPSODesc&) override
+            const minEngine::RHIGraphicsPSODesc& desc) override
         {
-            return nullptr;
+            return std::make_shared<FakePipelineState>(desc);
         }
         std::shared_ptr<minEngine::RHIShaderBindingSetLayout> RHICreateShaderBindingSetLayout(
             const std::vector<minEngine::RHIShaderBindingSetLayoutEntry>&) override
@@ -152,7 +196,7 @@ namespace
         std::shared_ptr<minEngine::RHIVertexInputLayout> RHICreateVertexInputLayout(
             std::initializer_list<minEngine::RHIVertexElement>) override
         {
-            return nullptr;
+            return std::make_shared<FakeVertexInputLayout>();
         }
 
         void RHICmdBeginRenderPass(const minEngine::RHIRenderPassInfo& info) override

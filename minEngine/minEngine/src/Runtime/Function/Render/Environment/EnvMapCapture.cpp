@@ -5,6 +5,7 @@
 #include "../TextureCubeLoader.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Math/Math.h"
+#include "Runtime/Function/Render/DrawCommands/MeshDrawPacket.h"
 #include "Runtime/Function/Render/EngineRHITextureUtils.h"
 #include "Runtime/Function/Render/EngineShaderBindings.h"
 #include "Runtime/Function/Render/RHI/RHI.h"
@@ -211,10 +212,29 @@ namespace minEngine
             return resources;
         }
 
-        void DrawEnvMapMesh(RHICommandList& cmdList, const EnvMapMeshResources& mesh)
+        /**
+         * Draws the capture cube through a packet instead of raw binds.
+         *
+         * A bake records into a stream when the frame roles are running, and a recorded command
+         * captures the address it was given, not the object behind it. The packet carries the handles
+         * for the geometry the draw names - the same way it carries them for the pipeline state and
+         * the bindings - so the stream is what keeps the cube alive until it is replayed.
+         */
+        void SubmitEnvMapMesh(
+            RHICommandList& cmdList,
+            const EnvMapMeshResources& mesh,
+            const RHIGraphicsPipelineStateRef& pipelineState,
+            const RHIShaderBindingSetRef& bindingSet)
         {
-            cmdList.SetVertexBuffer(mesh.VertexBuffer.get());
-            cmdList.Draw(mesh.VertexCount, 0);
+            MeshDrawPacket packet;
+            packet.PipelineState = pipelineState;
+            packet.ShaderBindingSets[EngineShaderBindings::kSetEnvCapture] = bindingSet;
+            packet.VertexBufferRef = mesh.VertexBuffer;
+            packet.VertexBuffer = mesh.VertexBuffer.get();
+            packet.VertexInputLayoutRef = mesh.VertexLayout;
+            packet.VertexInputLayout = mesh.VertexLayout.get();
+            packet.VertexCount = mesh.VertexCount;
+            cmdList.SubmitMeshDrawPacket(packet);
         }
 
         void SubmitVulkanImmediateCommandsBeforeResourceDestroy(RHI& rhi)
@@ -306,7 +326,8 @@ namespace minEngine
             return resources;
         }
 
-        RHIShaderBindingSet* AppendEnvCaptureBindingSet(
+        /** The set for one face, as the handle the packet and the pending list both hold. */
+        RHIShaderBindingSetRef AppendEnvCaptureBindingSet(
             RHICommandList& cmdList,
             EnvCaptureDrawResources& drawResources,
             EnvCapturePendingBindings& pending,
@@ -339,8 +360,8 @@ namespace minEngine
             }
 
             pending.FrameUniformBuffers.push_back(std::move(frameUniformBuffer));
-            pending.BindingSets.push_back(std::move(bindingSet));
-            return pending.BindingSets.back().get();
+            pending.BindingSets.push_back(bindingSet);
+            return bindingSet;
         }
 
         RHIShaderResourceViewRef CreateSourceSRV(RHICommandList& cmdList, RHITexture* sourceTexture)
@@ -435,6 +456,17 @@ namespace minEngine
         // on this thread; the recording window below is what the draws need.
         RHICommandList cmdList(&rhi);
         const EnvMapMeshResources mesh = CreateEnvMapMesh(cmdList);
+        if (GetDeferredUse(mesh.VertexBuffer.get()) != RHIDeferredUse::Usable
+            || GetDeferredUse(mesh.VertexLayout.get()) != RHIDeferredUse::Usable)
+        {
+            // The draw names this cube through its handles, and a handle whose native object is still
+            // queued would name nothing: the bake would come back with an empty map instead of the
+            // frame it skipped.
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::RetryLater;
+            const std::string reason =
+                DescribeUnusableHandle("the capture cube mesh", mesh.VertexBuffer.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
+        }
         RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &equirectTexture);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
@@ -468,13 +500,9 @@ namespace minEngine
             EnvCaptureFrameUBO frameData{};
             frameData.Projection = captureProjection;
             frameData.View = captureView;
-            cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-            if (RHIShaderBindingSet* bindingSet = AppendEnvCaptureBindingSet(
-                    cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData))
-            {
-                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet);
-            }
-            DrawEnvMapMesh(cmdList, mesh);
+            const RHIShaderBindingSetRef bindingSet = AppendEnvCaptureBindingSet(
+                cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData);
+            SubmitEnvMapMesh(cmdList, mesh, drawResources.PipelineState, bindingSet);
             cmdList.EndRenderPass();
         }
 
@@ -578,6 +606,17 @@ namespace minEngine
         // on this thread; the recording window below is what the draws need.
         RHICommandList cmdList(&rhi);
         const EnvMapMeshResources mesh = CreateEnvMapMesh(cmdList);
+        if (GetDeferredUse(mesh.VertexBuffer.get()) != RHIDeferredUse::Usable
+            || GetDeferredUse(mesh.VertexLayout.get()) != RHIDeferredUse::Usable)
+        {
+            // The draw names this cube through its handles, and a handle whose native object is still
+            // queued would name nothing: the bake would come back with an empty map instead of the
+            // frame it skipped.
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::RetryLater;
+            const std::string reason =
+                DescribeUnusableHandle("the capture cube mesh", mesh.VertexBuffer.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
+        }
         RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &environmentCube);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
@@ -611,13 +650,9 @@ namespace minEngine
             EnvCaptureFrameUBO frameData{};
             frameData.Projection = captureProjection;
             frameData.View = captureView;
-            cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-            if (RHIShaderBindingSet* bindingSet = AppendEnvCaptureBindingSet(
-                    cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData))
-            {
-                cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet);
-            }
-            DrawEnvMapMesh(cmdList, mesh);
+            const RHIShaderBindingSetRef bindingSet = AppendEnvCaptureBindingSet(
+                cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData);
+            SubmitEnvMapMesh(cmdList, mesh, drawResources.PipelineState, bindingSet);
             cmdList.EndRenderPass();
         }
 
@@ -734,6 +769,17 @@ namespace minEngine
         // on this thread; the recording window below is what the draws need.
         RHICommandList cmdList(&rhi);
         const EnvMapMeshResources mesh = CreateEnvMapMesh(cmdList);
+        if (GetDeferredUse(mesh.VertexBuffer.get()) != RHIDeferredUse::Usable
+            || GetDeferredUse(mesh.VertexLayout.get()) != RHIDeferredUse::Usable)
+        {
+            // The draw names this cube through its handles, and a handle whose native object is still
+            // queued would name nothing: the bake would come back with an empty map instead of the
+            // frame it skipped.
+            EEnvMapCaptureStatus status = EEnvMapCaptureStatus::RetryLater;
+            const std::string reason =
+                DescribeUnusableHandle("the capture cube mesh", mesh.VertexBuffer.get(), status);
+            return reportError("nothing can be baked: " + reason + ".", status);
+        }
         RHIShaderResourceViewRef sourceSrv = CreateSourceSRV(cmdList, &environmentCube);
         EnvCaptureDrawResources drawResources = CreateEnvCaptureDrawResources(
             cmdList,
@@ -775,13 +821,9 @@ namespace minEngine
                 frameData.View = captureView;
                 frameData.Roughness = roughness;
                 frameData.EnvironmentResolution = static_cast<float>(environmentResolution);
-                cmdList.SetGraphicsPipelineState(drawResources.PipelineState.get());
-                if (RHIShaderBindingSet* bindingSet = AppendEnvCaptureBindingSet(
-                        cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData))
-                {
-                    cmdList.SetShaderBindingSet(EngineShaderBindings::kSetEnvCapture, bindingSet);
-                }
-                DrawEnvMapMesh(cmdList, mesh);
+                const RHIShaderBindingSetRef bindingSet = AppendEnvCaptureBindingSet(
+                    cmdList, drawResources, pendingBindings, sourceSrv.get(), frameData);
+                SubmitEnvMapMesh(cmdList, mesh, drawResources.PipelineState, bindingSet);
                 cmdList.EndRenderPass();
             }
         }
