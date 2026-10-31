@@ -76,10 +76,14 @@ namespace minEngine
         ME_PROPERTY(EditAnywhere, meta = (Setter = "SetSourceRectPx", Getter = "GetSourceRectPx"))
         Vector4 m_SourceRectPx{ 0.0f, 0.0f, 0.0f, 0.0f };
 
-        ME_PROPERTY()
+        /**
+         * Bake output, runtime only. SpriteAtlas::Rebuild creates the page texture from pixels, so
+         * it owns no asset identity: a persisted guid would name nothing on the next load. The rect
+         * is the member's place on that page and means nothing without it, so the pair travels
+         * together - neither is written to the asset file.
+         */
         std::shared_ptr<Texture2D> m_BakedTexture{ nullptr };
 
-        ME_PROPERTY()
         Vector4 m_BakedRectPx{ 0.0f, 0.0f, 0.0f, 0.0f };
 
         SpriteAtlas* m_AtlasOwner = nullptr;

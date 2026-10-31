@@ -1,0 +1,33 @@
+{
+    "$engineVersion": "0.0.9",
+    "$schemaVersion": 1,
+    "m_BakedRectPx": [
+        1.0,
+        1.0,
+        4.0,
+        4.0
+    ],
+    "m_BakedTexture": {
+        "$guid": {
+            "high": 15256317073531488911,
+            "low": 13064233963369196537
+        }
+    },
+    "m_Guid": {
+        "High": 1024543761695851559,
+        "Low": 11255611881726548489
+    },
+    "m_Name": "LegacyBakedSprite",
+    "m_SourceRectPx": [
+        0.0,
+        0.0,
+        4.0,
+        4.0
+    ],
+    "m_SourceTexture": {
+        "$guid": {
+            "high": 1084818905618843912,
+            "low": 506097522914230528
+        }
+    }
+}

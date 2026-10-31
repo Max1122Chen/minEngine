@@ -178,7 +178,8 @@ namespace minEngine
             return false;
         }
 
-        // Cascade save member sprites (Baked refs after Rebuild).
+        // Cascade save the members so the atlas and the per-member authoring data it was rebuilt
+        // from never drift apart on disk. The bake itself is not persisted: Rebuild recreates it.
         for (const std::shared_ptr<Sprite>& sprite : m_Session.AtlasAsset->GetMembers())
         {
             if (!sprite)

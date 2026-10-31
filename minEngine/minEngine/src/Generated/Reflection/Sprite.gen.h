@@ -10,8 +10,6 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::Sprite)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::Sprite, m_SourceRectPx)
     ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::Sprite, m_SourceRectPx, GetSourceRectPx)
     ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::Sprite, m_SourceRectPx, SetSourceRectPx)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Sprite, m_BakedTexture)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::Sprite, m_BakedRectPx)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::Sprite, GReflectionClassRegister_Sprite_17e958e5)

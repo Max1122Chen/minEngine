@@ -607,3 +607,141 @@ TEST_CASE("sprite-atlas: rebuild mapping digest is stable [full]")
            "DigestLarge uv(0.0625,0.1000,0.5625,0.9000) baked(1.0000,1.0000,8.0000,8.0000);");
 }
 
+
+namespace
+{
+    /**
+     * One line that carries everything a bake decides: page size, slot placement, and the per-member
+     * baked rect / UV pair the renderer reads. A change to packing or to the Source-to-Baked handoff
+     * moves this string.
+     */
+    std::string BuildBakeSemanticsDigest(minEngine::RHI& rhi)
+    {
+        using namespace minEngine;
+
+        std::shared_ptr<Sprite> small = MakeAtlasMemberSprite(rhi, "BakeDigestSmall", 4, Vector4(0, 0, 4, 4));
+        std::shared_ptr<Sprite> large = MakeAtlasMemberSprite(rhi, "BakeDigestLarge", 8, Vector4(0, 0, 8, 8));
+        if (!small || !large)
+        {
+            return "member-create-failed";
+        }
+
+        std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>("BakeDigestAtlas");
+        atlas->SetMaxSize(64);
+        atlas->SetPadding(1);
+        atlas->AddMember(small);
+        atlas->AddMember(large);
+        const SpriteAtlasRebuildResult rebuilt = atlas->Rebuild(rhi);
+        if (!rebuilt.Ok)
+        {
+            return "rebuild-failed: " + rebuilt.Message;
+        }
+
+        std::ostringstream digest;
+        digest << std::fixed << std::setprecision(4);
+        const std::shared_ptr<Texture2D> page = atlas->GetGeneratedTextures()[0];
+        digest << "page(" << page->GetWidth() << "x" << page->GetHeight() << ");";
+        for (const SpriteAtlasSlot& slot : atlas->GetSlots())
+        {
+            digest << "slot(" << slot.X << "," << slot.Y << "," << slot.Width << "," << slot.Height
+                   << "," << slot.Page << ");";
+        }
+        for (const std::shared_ptr<Sprite>& member : atlas->GetMembers())
+        {
+            const Vector4 source = member->ResolveSourceRectPx();
+            const Vector4 baked = member->GetBakedRectPx();
+            const Vector4 uv = member->GetUVRectNormalized();
+            digest << member->GetName()
+                   << " src(" << source.x << "," << source.y << "," << source.z << "," << source.w << ")"
+                   << " baked(" << baked.x << "," << baked.y << "," << baked.z << "," << baked.w << ")"
+                   << " uv(" << uv.x << "," << uv.y << "," << uv.z << "," << uv.w << ")"
+                   << " page(" << (member->GetRuntimeTexture() == page.get() ? 1 : 0) << ");";
+        }
+        return digest.str();
+    }
+}
+
+TEST_CASE("sprite-atlas: a baked sprite asset stores no baked texture [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    ScopedObjectManager objectManagerScope;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    std::shared_ptr<Sprite> sprite = MakeAtlasMemberSprite(rhi, "BakedRoundTripSprite", 8, Vector4(0, 0, 4, 4));
+    REQUIRE(sprite != nullptr);
+
+    // Texture2DLoader::CreateFromPixels registers the texture under the guid NewObject made and then
+    // stamps the caller's guid on it; re-register so the authored reference in the file resolves.
+    const std::shared_ptr<Texture2D>& sourceTexture = sprite->GetSourceTextureShared();
+    REQUIRE(sourceTexture != nullptr);
+    REQUIRE(ObjectManager::Get().RemapObjectGuid(sourceTexture, sourceTexture->GetGuid()));
+
+    std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>("BakedRoundTripAtlas");
+    atlas->SetMaxSize(64);
+    REQUIRE(atlas->AddMember(sprite));
+    REQUIRE(atlas->Rebuild(rhi).Ok);
+    REQUIRE(sprite->GetBakedTexture() != nullptr);
+
+    const std::filesystem::path tempPath =
+        std::filesystem::temp_directory_path() / "minEngine_sprite_baked_roundtrip.mesprite";
+    std::string writeError;
+    REQUIRE(AssetSerializeHelper::WriteObjectToFile(tempPath.string(), *sprite, &writeError));
+
+    const std::string saved = ReadTextFile(tempPath);
+    REQUIRE_FALSE(saved.empty());
+    // A bake names a page texture that exists only in memory; persisting it writes a guid no load
+    // can resolve, and the rect beside it means nothing without that texture.
+    CHECK(saved.find("m_BakedTexture") == std::string::npos);
+    CHECK(saved.find("m_BakedRectPx") == std::string::npos);
+    CHECK(saved.find("m_SourceTexture") != std::string::npos);
+    CHECK(saved.find("m_SourceRectPx") != std::string::npos);
+
+    std::shared_ptr<Sprite> loaded = NewObject<Sprite>("BakedRoundTripSpriteReloaded");
+    std::string readError;
+    INFO(readError);
+    REQUIRE(AssetSerializeHelper::ReadObjectFromFile(tempPath.string(), *loaded, &readError));
+    CHECK(readError.empty());
+    CHECK(loaded->GetBakedTexture() == nullptr);
+    CHECK(loaded->GetBakedRectPx() == Vector4(0.0f, 0.0f, 0.0f, 0.0f));
+    // The authored half survives: same source texture, same authored rect.
+    CHECK(loaded->GetSourceRectPx() == Vector4(0.0f, 0.0f, 4.0f, 4.0f));
+    REQUIRE(loaded->GetSourceTexture() == sprite->GetSourceTexture());
+
+    // No bake after load, so the quad falls back to the authored rect: 4x4 at the top left of 8x8.
+    const Vector4 uv = loaded->GetUVRectNormalized();
+    CHECK(uv.x == doctest::Approx(0.0f));
+    CHECK(uv.y == doctest::Approx(0.5f));
+    CHECK(uv.z == doctest::Approx(0.5f));
+    CHECK(uv.w == doctest::Approx(1.0f));
+
+    std::error_code removeError;
+    std::filesystem::remove(tempPath, removeError);
+}
+
+TEST_CASE("sprite-atlas: bake semantics digest is unchanged [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    ScopedObjectManager objectManagerScope;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    // Recorded while the baked pair was still serialised: it pins page size, slot placement and the
+    // per-member baked rect / UV pair to the values a bake produced then, so dropping the fields
+    // cannot quietly move what the renderer reads.
+    CHECK(BuildBakeSemanticsDigest(rhi)
+        == "page(16x10);slot(11,1,4,4,0);slot(1,1,8,8,0);"
+           "BakeDigestSmall src(0.0000,0.0000,4.0000,4.0000) baked(11.0000,5.0000,4.0000,4.0000) "
+           "uv(0.6875,0.1000,0.9375,0.5000) page(1);"
+           "BakeDigestLarge src(0.0000,0.0000,8.0000,8.0000) baked(1.0000,1.0000,8.0000,8.0000) "
+           "uv(0.0625,0.1000,0.5625,0.9000) page(1);");
+}
+
