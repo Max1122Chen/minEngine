@@ -23,32 +23,43 @@
 
 ### 1.1 现状时序（已核实到行）
 
+**先纠正一个容易误判的前提**：图集页面**不是**用编辑器烘焙好的资产。
+
+- `SpriteAtlas::m_GeneratedTextures` 是 `ME_PROPERTY()`（`SpriteAtlas.h:102`），序列化的是 **Texture2D 资产引用（GUID）**；
+- 但页面由 `CreateFromPixels` 生成（`SpriteAtlas.cpp:267-268`），是**运行时纹理、没有注册成资产**；
+- 于是重启后 GUID 解析不到对象，`generated` 为空，**必须 `Rebuild(rhi)` 用成员像素重新打包**。
+
+这是引擎缺口（烘焙结果未被持久化），不是消费者选择。
+
+真正让代价翻倍的是构造期一次没要到 RHI 的调用：
+
 ```
-WorldRenderer 构造（RHI 未就绪）                              WorldRenderer.cpp:15-19
-  └─ BlockTextureAtlas::BindProjectAtlasOrFallback(rhi = nullptr)
+WorldRenderer 构造                                          WorldRenderer.cpp:19
+  └─ m_BlockAtlas->BindProjectAtlasOrFallback();     // 未传参，rhi 默认 nullptr
       └─ BindFromAssetPath(path, nullptr)                     BlockTextureAtlas.cpp:196
-          ├─ AssetManager::LoadAssetByPath(path)    ← 贵：解析 123 个成员
-          │    └─ 每个 Sprite::m_SourceTexture 是强引用 → 引擎 eager 建 123 个 GPU 纹理
+          ├─ AssetManager::LoadAssetByPath(path)   ← 贵：解析 123 个成员
+          │    └─ 每个 Sprite::m_SourceTexture 是 shared_ptr<Texture2D>
+          │       加载该资产时按正常路径建出 GPU 纹理（而读像素并不需要它）
           ├─ generated 页面为空
-          ├─ rhi == nullptr → Warn 'has no generated page and RHI is null' → return false   :242-247
+          ├─ rhi == nullptr → Warn has no generated page and RHI is null → false   :242-247
           └─ 回退 BuildDefaultOverworldTiles() → 程序化色块
 
-RHI 就绪后，每帧 WorldRenderer::EnsureSharedMaterial()          WorldRenderer.cpp:60
-  └─ 未 bound 且未 abandoned → 再走一遍 BindFromAssetPath(path, rhi)
-      ├─ 又解析一次 123 成员 → 又建 123 个 GPU 纹理
-      ├─ atlas->Rebuild(*rhi) → 123 tile 当 CPU 像素源 → 建第 247 张 blocks_Atlas 页面
-      └─ Bind(atlas) → 只保留 generated[0]
+RHI 就绪后，EnsureSharedMaterial()                            WorldRenderer.cpp:60
+  └─ 再走一遍同一路径（此时带 rhi）→ 又解析 123 成员 → Rebuild → Bind
 ```
 
-**代价**：一次冷载 246 次 GPU 纹理创建（123 × 2），其中 246 个既没被画过也没人引用，由延迟创建队列作为最后持有者丢弃（`RHIDeferredCreateQueue: dropped 246 creation request(s) of kind 'openGL texture'`）。丢弃**语义正确**，浪费**真实存在**。
+**注意时序**：WorldRenderer 由 `MinCraftWorldSubsystem::Initialize` 创建，那时 RHI **已经存在**
+（`Engine::StartSystems` 里 RenderSystem 在 SceneManager 之前）。问题不是对象出生太早，
+而是**构造期做依赖 RHI 的工作却没有把 RHI 传进去**。
 
-**为什么它在 RHI 没准备好时就启动**：不是疏忽，是刻意的先手——世界渲染器要在“材质构建之前”就有 tile 映射可用，而材质需要 RHI（构造处注释写明 often solid fallback）。代价是最贵的一步（加载 + 解析 123 成员）放在了注定失败的那一次。
+**代价**：一次冷载 246 次 GPU 纹理创建（123 x 2），全部无人引用后被延迟创建队列丢弃；
+另有一次注定失败但很贵的加载解析。
 
 ### 1.2 三个可优化点（按收益/风险排序）
 
 | # | 改动 | 收益 | 风险 |
 |---|---|---|---|
-| A1 | BindFromAssetPath 顶部：rhi 为空且无法生成页面时，**在加载之前**返回 false | 冷载少 123 次纹理创建 + 一次完整解析 | 低。首帧行为不变（本来也是回退程序化） |
+| **A0** | 构造期把 `RenderSystem::Get().GetRHI()` 传给 `BindProjectAtlasOrFallback(rhi)`（一行） | **直接消掉重复加载**：第一次即可 Rebuild 成功 | 极低。只是把已存在的 RHI 传进去 |
 | A2 | 把加载/解析与页面生成分开：解析结果（shared_ptr<SpriteAtlas>）缓存到成员，RHI 就绪后只做 Rebuild | 彻底消除重复解析 | 中。需确认缓存后成员 tile 纹理会否常驻——与引擎侧 A3 联动 |
 | A3（引擎，另开片） | Sprite::m_SourceTexture 改为像素优先：只当图集打包的 CPU 像素源时不建 GPU 纹理 | 一次消掉 123 次创建，且不依赖消费者行为 | 中。要区分被当像素源与被当贴图两种使用 |
 
