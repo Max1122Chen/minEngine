@@ -358,6 +358,9 @@ namespace minEngine
             // rising, so the delta in the line is what happened between two frames.
             current.OffRoleCoreServiceCalls = ObjectManager::GetOffRoleCoreServiceCallCountTotal();
             current.OffRoleRenderCommands = RHICommandList::GetOffRoleCommandRefusalCount();
+            // A process-wide total like the two above, and for the same reason: the assembly is
+            // header-inline, so the counter has to live where every caller's repair is visible.
+            current.MeshAssemblyChunksNotRun = TaskSystem::GetMeshAssemblyChunksNotRunTotal();
 
             const std::string line = DescribeFrameWorkLossDelta(s_LastFrameWorkLoss, current);
             s_LastFrameWorkLoss = current;

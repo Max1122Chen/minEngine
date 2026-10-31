@@ -76,6 +76,17 @@ namespace minEngine
         static void FlushPendingProxyDeletes();
 
         /**
+         * Times the frame-end delete point has been reached, over the whole process.
+         *
+         * The proxy set is immutable only while the frame that reads it is still running: this is
+         * the moment that stops being true. A reader samples it before and after a window in which
+         * it walked the set, and an unchanged value is what makes the read legitimate. Monotone and
+         * process-wide because the delete point is: a value that moved means some frame ended,
+         * whether or not it had anything parked to free.
+         */
+        static uint64_t GetProxyDeleteFlushCount();
+
+        /**
          * True while this scene still owns a proxy or parks one for the frame-end delete.
          *
          * Only a removal empties a scene: it takes the proxy off the draw lists and parks it, the

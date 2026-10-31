@@ -46,6 +46,14 @@ namespace minEngine
         uint64_t OffRoleCoreServiceCalls = 0;
         /** Render commands refused because the caller does not own the graphics role. */
         uint64_t OffRoleRenderCommands = 0;
+        /**
+         * Mesh assembly chunks a fan-out left unrun, so the caller had to assemble them itself.
+         *
+         * The queues are complete when the counter moves - the repair pass runs the chunk in place
+         * - but the parallel work the frame asked for did not happen, which is why this belongs
+         * here rather than in a per-frame timing: a steady frame leaves it at zero.
+         */
+        uint64_t MeshAssemblyChunksNotRun = 0;
 
         bool operator==(const FrameWorkLossCounters& other) const
         {
@@ -57,7 +65,8 @@ namespace minEngine
                 && ContractViolations == other.ContractViolations
                 && RenderWritesDuringFrame == other.RenderWritesDuringFrame
                 && OffRoleCoreServiceCalls == other.OffRoleCoreServiceCalls
-                && OffRoleRenderCommands == other.OffRoleRenderCommands;
+                && OffRoleRenderCommands == other.OffRoleRenderCommands
+                && MeshAssemblyChunksNotRun == other.MeshAssemblyChunksNotRun;
         }
 
         bool operator!=(const FrameWorkLossCounters& other) const { return !(*this == other); }
@@ -105,6 +114,10 @@ namespace minEngine
             (current.OffRoleRenderCommands > previous.OffRoleRenderCommands)
             ? current.OffRoleRenderCommands - previous.OffRoleRenderCommands
             : 0u;
+        const uint64_t meshAssemblyDelta =
+            (current.MeshAssemblyChunksNotRun > previous.MeshAssemblyChunksNotRun)
+            ? current.MeshAssemblyChunksNotRun - previous.MeshAssemblyChunksNotRun
+            : 0u;
 
         std::string line;
         const auto append = [&line](uint64_t delta, const char* label) {
@@ -130,6 +143,7 @@ namespace minEngine
         append(renderWriteDelta, "render-side write(s) made while a frame was in flight");
         append(coreServiceDelta, "core service call(s) made off the game role");
         append(offRoleCommandDelta, "render command(s) refused off the graphics role");
+        append(meshAssemblyDelta, "mesh assembly chunk(s) did not run");
 
         if (line.empty())
         {
@@ -269,6 +283,17 @@ namespace minEngine
 
         /** Writes NoteGameRoleRenderWrite recorded so far. Diagnostics, tests, frame summary. */
         uint64_t GetGameRoleRenderWriteCount() const;
+
+        /**
+         * Process-wide total of mesh assembly chunks a fan-out left unrun.
+         *
+         * The assembly is header-inline, so a counter kept next to it would be one counter per
+         * module: this binary would report only its own repairs, and a test module's repairs would
+         * never reach the frame summary. The total lives here, in the module that owns the pool,
+         * and both the frame summary and a test read the same number.
+         */
+        static void NoteMeshAssemblyChunksNotRun(uint64_t count);
+        static uint64_t GetMeshAssemblyChunksNotRunTotal();
 
         bool IsRunning() const;
         int GetWorkerCount() const;

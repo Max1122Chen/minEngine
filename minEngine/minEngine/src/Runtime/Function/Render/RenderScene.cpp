@@ -40,6 +40,14 @@ namespace minEngine
         constexpr uint64_t kPendingDeleteStallWarnMs = 2000;
 
         /**
+         * Times the frame-end delete point has been reached.
+         *
+         * One counter for the process, because the delete point is: a reader that sampled it before
+         * walking the draw set and sees the same value afterwards knows no frame ended underneath it.
+         */
+        std::atomic<uint64_t> s_ProxyDeleteFlushCount{ 0 };
+
+        /**
          * The scenes waiting for the frame-end delete.
          *
          * The engine reaches the frame end on the render role, where the only scenes it could
@@ -1035,8 +1043,18 @@ namespace minEngine
             m_WidgetSceneProxies.end());
     }
 
+    uint64_t RenderScene::GetProxyDeleteFlushCount()
+    {
+        return s_ProxyDeleteFlushCount.load(std::memory_order_relaxed);
+    }
+
     void RenderScene::FlushPendingProxyDeletes()
     {
+        // Counted before the role gate: what a reader of the draw set has to know is that the
+        // frame-end delete point was reached, not whether this caller was allowed to free
+        // anything. A refused flush still means some frame ended while the set was being read.
+        s_ProxyDeleteFlushCount.fetch_add(1, std::memory_order_relaxed);
+
         FrameEndDeleteRegistry& registry = FrameEndDeleteRegistry::Get();
 
         if (FrameThreading::HasInstance() && !FrameThreading::Get().IsInRenderingThread())

@@ -3,7 +3,10 @@
 #include "Core.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Math/Geometry/Frustum.h"
+#include "Runtime/Core/Profiling/ProfileMacros.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
+#include "Runtime/Core/Threading/FrameThreading.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/DrawCommands/MeshBatchCollector.h"
 #include "Runtime/Function/Render/DrawCommands/MeshCollectContext.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommand.h"
@@ -15,6 +18,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <utility>
 #include <vector>
 
@@ -29,6 +34,10 @@
  *
  * Handing chunks to workers is a property of the schedule, not of this code: a schedule that names
  * no task system assembles everything in one loop, and the pipeline passes exactly that.
+ *
+ * Which topology is running is not part of that decision. Single and Multi differ in which threads
+ * own the frame roles, not in whether workers exist, so the gate asks the pool (is it running, how
+ * many workers) and the draw set (is there enough to spread) - never the mode.
  *
  * These are inline functions in a header for the reason the queue builders next door are: the
  * assemblies are plain data, and a headless test has to be able to call them without the frame
@@ -51,6 +60,14 @@ namespace minEngine
         /** From the frame's draw flags: decides whether a proxy outside the view still casts. */
         bool bEnableShadows = true;
 
+        /**
+         * The scene the draw set belongs to, when the caller has one.
+         *
+         * Read for one fact only: whether the frame-end delete point ran while the set was being
+         * walked. Null means the caller watches that itself, and every other input stays usable.
+         */
+        const RenderScene* Scene = nullptr;
+
         uint32_t GetProxyCount() const
         {
             return PrimitiveProxies != nullptr ? static_cast<uint32_t>(PrimitiveProxies->size()) : 0u;
@@ -64,6 +81,7 @@ namespace minEngine
             input.PrimitiveProxies = ctx.Scene != nullptr ? &ctx.Scene->m_PrimitiveSceneProxies : nullptr;
             input.MainFrustum = mainFrustum;
             input.bEnableShadows = ctx.bEnableShadows;
+            input.Scene = ctx.Scene;
             return input;
         }
     };
@@ -131,6 +149,15 @@ namespace minEngine
         /** Draw-set size below which a fan-out is not worth attempting. */
         uint32_t MinProxiesPerChunk = kMeshAssemblyMinProxiesPerChunk;
 
+        /**
+         * Set by the resolver when the caller turned the fan-out off.
+         *
+         * Kept next to the schedule rather than re-read at the gate: the switch is read once, where
+         * the schedule is built, so the reason a frame stayed serial is the reason it was decided
+         * for, not a second reading that could disagree with it.
+         */
+        bool bParallelDisabled = false;
+
         uint32_t GetChunkCount() const
         {
             return ChunkCount > 0 ? static_cast<uint32_t>(ChunkCount) : 1u;
@@ -141,8 +168,10 @@ namespace minEngine
      * What the assembly has done so far, and what it had to repair.
      *
      * Per module rather than process-wide: the assembly is header-inline, so this binary and the
-     * engine each own the counters of the calls they make. Sharing one would mean exporting it,
-     * and the assembly is deliberately not exported.
+     * engine each own the counters of the calls they make. That is the right scope for what only
+     * the caller needs (calls, chunk count, the reason it stayed serial), and the wrong scope for
+     * one number: a repair the frame summary has to report is accumulated in the engine instead,
+     * through `TaskSystem::NoteMeshAssemblyChunksNotRun`, so every module's repair counts once.
      */
     struct MeshAssemblyStats
     {
@@ -160,6 +189,7 @@ namespace minEngine
 
         uint32_t LastProxyCount = 0;
         uint32_t LastChunkCount = 0;
+        uint32_t LastWorkerCount = 0;
 
         /** Why the last call stayed serial, or null when it fanned out. */
         const char* LastSerialReason = nullptr;
@@ -174,6 +204,158 @@ namespace minEngine
     inline void ResetMeshAssemblyStats()
     {
         GetMeshAssemblyStats() = MeshAssemblyStats{};
+    }
+
+    /**
+     * Whether this module fans its chunks out at all.
+     *
+     * On by default: the fan-out is the point of the cut, and the switch exists so a host that
+     * distrusts it (a profiler session, a driver under investigation, a frame that has to be
+     * reproduced byte for byte) can get the single-loop shape back without rebuilding. Off means
+     * one chunk, which is the same code path the fan-out ends in - not a second traversal.
+     */
+    inline int& MeshAssemblyParallelSwitch()
+    {
+        // -1 follows the environment, 0 forces serial, 1 forces the fan-out. Per module, like the
+        // stats: the switch belongs to the code that assembles, and the environment is what a whole
+        // process shares.
+        static int sSwitch = -1;
+        return sSwitch;
+    }
+
+    /** Reads MINENGINE_MESH_ASSEMBLY_PARALLEL once; unset or empty means enabled. */
+    inline bool ReadMeshAssemblyParallelEnvironment()
+    {
+        const char* const value = std::getenv("MINENGINE_MESH_ASSEMBLY_PARALLEL");
+        if (value == nullptr || value[0] == '\0')
+        {
+            return true;
+        }
+
+        char lowered[8] = {};
+        const size_t length = std::min<size_t>(sizeof(lowered) - 1, std::strlen(value));
+        for (size_t index = 0; index < length; ++index)
+        {
+            const char raw = value[index];
+            lowered[index] = (raw >= 'A' && raw <= 'Z') ? static_cast<char>(raw - 'A' + 'a') : raw;
+        }
+        return !(std::strcmp(lowered, "0") == 0 || std::strcmp(lowered, "off") == 0 ||
+                 std::strcmp(lowered, "false") == 0 || std::strcmp(lowered, "no") == 0);
+    }
+
+    inline bool IsMeshAssemblyParallelEnabled()
+    {
+        const int switchValue = MeshAssemblyParallelSwitch();
+        if (switchValue >= 0)
+        {
+            return switchValue != 0;
+        }
+        static const bool sEnvironmentEnabled = ReadMeshAssemblyParallelEnvironment();
+        return sEnvironmentEnabled;
+    }
+
+    /** Force the fan-out on or off for this module. The environment still decides for a process. */
+    inline void SetMeshAssemblyParallelEnabled(bool enabled)
+    {
+        MeshAssemblyParallelSwitch() = enabled ? 1 : 0;
+    }
+
+    /** Give the decision back to the environment. */
+    inline void ClearMeshAssemblyParallelOverride()
+    {
+        MeshAssemblyParallelSwitch() = -1;
+    }
+
+    /**
+     * Chunks to cut a draw set into for a pool with this many workers.
+     *
+     * Two chunks per worker: the long tail of a scene is one heavy proxy interval, and with one
+     * chunk per worker that interval decides when the join returns. The ceiling is the per-chunk
+     * threshold, because a fan-out pays two submissions and a join whatever a chunk holds - below
+     * that size the parallelism is a loss no matter how many workers are idle.
+     */
+    inline uint32_t ComputeMeshAssemblyChunkCount(uint32_t proxyCount, int32_t workerCount)
+    {
+        if (workerCount <= 1 || proxyCount == 0)
+        {
+            return 1;
+        }
+
+        const uint32_t chunkBudget = std::max<uint32_t>(
+            1u,
+            (proxyCount + kMeshAssemblyMinProxiesPerChunk - 1u) / kMeshAssemblyMinProxiesPerChunk);
+        const uint32_t wanted = static_cast<uint32_t>(workerCount) * 2u;
+        return std::max(1u, std::min(wanted, chunkBudget));
+    }
+
+    /**
+     * The schedule a frame resolves once, before it assembles anything.
+     *
+     * Resolving here and not per chunk is what keeps the reported reason and the actual shape the
+     * same fact: the reason is read off the schedule afterwards, not recomputed from it.
+     */
+    inline MeshAssemblySchedule ResolveMeshAssemblySchedule(TaskSystem* tasks, uint32_t proxyCount)
+    {
+        MeshAssemblySchedule schedule;
+        schedule.Tasks = tasks;
+
+        if (!IsMeshAssemblyParallelEnabled())
+        {
+            schedule.ChunkCount = 1;
+            schedule.bParallelDisabled = true;
+            return schedule;
+        }
+
+        const int32_t workerCount = tasks != nullptr ? tasks->GetWorkerCount() : 1;
+        schedule.ChunkCount = static_cast<int32_t>(ComputeMeshAssemblyChunkCount(proxyCount, workerCount));
+        return schedule;
+    }
+
+    /**
+     * The contract the assembly entry is called under.
+     *
+     * Both reports, never refusals: a frame that silently lost its geometry would be the worse bug,
+     * so the queues are built either way and the frame summary says what was broken. The role check
+     * only asks when a role table exists - a host that never stood one up has no role to hold, and
+     * reporting that as a violation would make the check noise in exactly the place it is silent.
+     */
+    inline void ReportMeshAssemblyEntryContracts()
+    {
+        if (FrameThreading::HasInstance())
+        {
+            ME_ENSURE(
+                FrameThreading::Get().IsInGameThread() || FrameThreading::Get().IsInRenderingThread(),
+                "mesh assembly reads the draw set on a thread that holds the game or render role");
+        }
+        ME_ENSURE(
+            !RHICommandList::IsRecordingWindowOpenOnThisThread(),
+            "mesh assembly runs before the frame opens a recording window, never inside one");
+    }
+
+    /**
+     * Why the draw set could not be held stable while it was read, or null when it was.
+     *
+     * The proxies are only immutable while the frame that reads them is still running; the
+     * frame-end delete is what ends that. Sampling before and after is the whole check, and it is a
+     * named function so a caller can apply the same predicate to its own window.
+     */
+    inline const char* DescribeMeshAssemblySetInstability(
+        const MeshAssemblyInput& input,
+        uint64_t flushSerialBefore)
+    {
+        if (input.Scene == nullptr)
+        {
+            return nullptr;
+        }
+        return RenderScene::GetProxyDeleteFlushCount() == flushSerialBefore
+            ? nullptr
+            : "the frame-end proxy delete ran while the draw set was being assembled";
+    }
+
+    /** The frame-end delete serial this input can observe, or 0 when it has no scene to watch. */
+    inline uint64_t GetMeshAssemblySceneFlushSerial(const MeshAssemblyInput& input)
+    {
+        return input.Scene != nullptr ? RenderScene::GetProxyDeleteFlushCount() : 0u;
     }
 
     /**
@@ -407,6 +589,10 @@ namespace minEngine
         const MeshAssemblyInput& input,
         const MeshAssemblySchedule& schedule)
     {
+        if (schedule.bParallelDisabled)
+        {
+            return "parallel assembly turned off";
+        }
         if (schedule.Tasks == nullptr)
         {
             return "no task system";
@@ -443,6 +629,38 @@ namespace minEngine
      * call that attempts one, and a line per call would bury the refusal under its own repeats.
      * The counter keeps moving either way - the budget bounds the reporting, not the measurement.
      */
+    /**
+     * Says why a call stayed serial, once per change of reason.
+     *
+     * A serial frame is the right answer for a small draw set or a one-worker pool, so this is not
+     * a loss and not a counter - it is the one line that turns "the frame is not parallel" from a
+     * guess into a reading. Transitions only: an editor that runs the same small scene for an hour
+     * has one reason, not one line per frame.
+     */
+    inline void ReportMeshAssemblySerialReason(const char* reason, const MeshAssemblyStats& stats)
+    {
+        static const char* sLastReason = nullptr;
+        if (reason == sLastReason || (reason != nullptr && sLastReason != nullptr &&
+                                      std::strcmp(reason, sLastReason) == 0))
+        {
+            return;
+        }
+        sLastReason = reason;
+        if (reason == nullptr)
+        {
+            return;
+        }
+
+        ME_LOG(
+            LogRender,
+            Debug,
+            "Mesh assembly stayed serial ({}): {} proxies, {} chunk(s), {} worker(s).",
+            reason,
+            stats.LastProxyCount,
+            stats.LastChunkCount,
+            stats.LastWorkerCount);
+    }
+
     inline void ReportMeshAssemblyChunksNotRun(uint32_t chunksNotRun, uint32_t firstChunkNotRun, uint32_t chunkCount)
     {
         constexpr uint32_t kReportBudget = 4;
@@ -490,6 +708,13 @@ namespace minEngine
         const MeshAssemblySchedule& schedule,
         std::vector<MeshAssemblyChunk>* outChunks)
     {
+        // One scope for both shapes: the serial and the fanned-out call are the same measurement,
+        // which is what makes their timings comparable at all.
+        ME_PROFILE_SCOPE("Render.MeshAssembly");
+
+        ReportMeshAssemblyEntryContracts();
+        const uint64_t sceneFlushSerial = GetMeshAssemblySceneFlushSerial(input);
+
         std::vector<MeshAssemblyChunk> chunks;
         ComputeMeshAssemblyChunkRanges(input.GetProxyCount(), schedule.GetChunkCount(), chunks);
 
@@ -498,10 +723,13 @@ namespace minEngine
         stats.Calls += 1;
         stats.LastProxyCount = input.GetProxyCount();
         stats.LastChunkCount = static_cast<uint32_t>(chunks.size());
+        stats.LastWorkerCount =
+            schedule.Tasks != nullptr ? static_cast<uint32_t>(schedule.Tasks->GetWorkerCount()) : 0u;
         stats.LastSerialReason = serialReason;
 
         if (serialReason != nullptr)
         {
+            ReportMeshAssemblySerialReason(serialReason, stats);
             for (MeshAssemblyChunk& chunk : chunks)
             {
                 AssembleMeshAssemblyChunk(input, chunk);
@@ -539,12 +767,22 @@ namespace minEngine
             if (chunksNotRun != 0)
             {
                 stats.ChunksNotRun += chunksNotRun;
+                // The process-level total the frame summary reads: this module's own counter would
+                // be invisible to the frame that reports it.
+                TaskSystem::NoteMeshAssemblyChunksNotRun(chunksNotRun);
                 ReportMeshAssemblyChunksNotRun(
                     chunksNotRun,
                     firstChunkNotRun,
                     static_cast<uint32_t>(chunks.size()));
             }
         }
+
+        // The draw set is only immutable while this frame runs. Read again on the way out, so a
+        // frame end that happened underneath us is a reported contract violation instead of a
+        // comment asking the reader to assume it did not.
+        ME_ENSURE(
+            DescribeMeshAssemblySetInstability(input, sceneFlushSerial) == nullptr,
+            "the frame-end proxy delete waits until the assembly that reads the draw set is done");
 
         MergeMeshAssemblyChunks(chunks, ctx);
 

@@ -438,6 +438,18 @@ chunkCount = clamp(ceil(proxyCount / MinProxiesPerChunk), 1, workerCount * 2)
 - 上界用 `workerCount * 2` 而不是 `workerCount`：长尾（某片特别重）时仍有均衡余量。
 - 分片数**必须不影响结果**（§5.4 的跨帧 digest 恒等就是这条的测试）。
 
+**实现落点（S03 已接线，S05 仍需测量定稿）**
+
+- 分片公式即上面这条，落在 `ComputeMeshAssemblyChunkCount`（`MeshAssemblyChunk.h`）；调度由
+  `ResolveMeshAssemblySchedule` 每帧解析一次，`BuildPrimitiveRenderQueue` 从进程级
+  `TaskSystem` 实例取池。`MinProxiesPerChunk` 仍是 128 的保守初值。
+- 开关：默认开启；`MINENGINE_MESH_ASSEMBLY_PARALLEL=0|off|false|no` 关闭，关掉后是单片的
+  同一段代码（`ChunkCount == 1`），串行原因报 "parallel assembly turned off"。
+- **能力判定不含拓扑**：`Single` 下三角色同线程、`AreFrameRolesRunning() == false` 时扇出照样发生，
+  已由 `mesh-assembly-determinism: a single-topology frame still fans out` 钉住。
+- `MeshAssemblyChunksNotRun` 走进程级 provider（`TaskSystem::NoteMeshAssemblyChunksNotRun` /
+  `GetMeshAssemblyChunksNotRunTotal`）：装配是 header-inline，模块级计数器读不到别的模块的补跑。
+
 ## 8. 可观测性
 
 ### 8.1 进 / 不进 `FrameWorkLossCounters` 的分界

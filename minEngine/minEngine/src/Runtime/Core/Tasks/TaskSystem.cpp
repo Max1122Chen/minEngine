@@ -47,6 +47,15 @@ namespace minEngine
 
         // A queued frame whose role body blocks on user code must not hold shutdown forever.
         constexpr uint32_t kFrameQueueDrainTimeoutMs = 2000;
+
+        /**
+         * Mesh assembly chunks left unrun, over every module that assembles queues.
+         *
+         * Lives here rather than beside the assembly because the assembly is header-inline: a
+         * counter there is one per module, and the frame summary would only ever see its own. The
+         * writers are the callers that had to repair, which is the fact worth reporting.
+         */
+        std::atomic<uint64_t> s_MeshAssemblyChunksNotRun{ 0 };
     }
 
     struct TaskSystem::Impl
@@ -1067,6 +1076,20 @@ namespace minEngine
     int TaskSystem::GetWorkerCount() const
     {
         return m_Impl->WorkerCount;
+    }
+
+    void TaskSystem::NoteMeshAssemblyChunksNotRun(uint64_t count)
+    {
+        if (count == 0)
+        {
+            return;
+        }
+        s_MeshAssemblyChunksNotRun.fetch_add(count, std::memory_order_relaxed);
+    }
+
+    uint64_t TaskSystem::GetMeshAssemblyChunksNotRunTotal()
+    {
+        return s_MeshAssemblyChunksNotRun.load(std::memory_order_relaxed);
     }
 
     std::thread::id TaskSystem::GetGameThreadId() const

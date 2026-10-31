@@ -1,16 +1,20 @@
 #include "MeshAssemblyDeterminismTest.h"
 
+#include "Runtime/Core/Assert/Assert.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/Core/Threading/FrameThreading.h"
 #include "Runtime/Function/Render/DrawCommands/MeshDrawCommandSort.h"
 #include "Runtime/Function/Render/Material.h"
 #include "Runtime/Function/Render/MaterialRenderProxy.h"
 #include "Runtime/Function/Render/PrimitiveSceneProxies/PrimitiveSceneProxy.h"
+#include "Runtime/Function/Render/RHI/RHICommandList.h"
 #include "Runtime/Function/Render/RHI/RHIBuffers.h"
 #include "Runtime/Function/Render/RenderPipeline/MeshAssemblyChunk.h"
 #include "Runtime/Function/Render/RenderPipeline/RenderQueueBuild.h"
 #include "Runtime/Function/Render/RenderScene.h"
 #include "Runtime/Function/Render/SceneRenderContext.h"
+
+#include "Support/HeadlessTestRHI.h"
 
 #include "doctest.h"
 
@@ -22,6 +26,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <string>
 #include <thread>
@@ -133,6 +138,12 @@ namespace
         /** Optional: records which thread this proxy produced its batches on. */
         AssemblyThreadProbe* ThreadProbe = nullptr;
 
+        /**
+         * Optional: runs while this proxy is collected, i.e. inside the assembly that is reading
+         * the draw set. A case uses it to do to the set what the frame end does outside the frame.
+         */
+        std::function<void()> OnCollect;
+
         /** Moves the primitive out of the look-at view, so it is only collected for the shadows. */
         void SetOutsideView(bool bOutsideView)
         {
@@ -151,6 +162,10 @@ namespace
             if (ThreadProbe != nullptr)
             {
                 ThreadProbe->Record();
+            }
+            if (OnCollect)
+            {
+                OnCollect();
             }
 
             for (uint32_t batchIndex = 0; batchIndex < BatchCount; ++batchIndex)
@@ -607,6 +622,43 @@ namespace
 
         PoolOnAnotherThread(const PoolOnAnotherThread&) = delete;
         PoolOnAnotherThread& operator=(const PoolOnAnotherThread&) = delete;
+    };
+
+    /**
+     * Registers a pool as the process instance the pipeline resolves its schedule from, the way
+     * Engine does, and puts back whatever was registered before: a case that left its own pool
+     * behind would hand the next case a pool it never created.
+     */
+    struct TaskSystemInstanceScope
+    {
+        explicit TaskSystemInstanceScope(TaskSystem* tasks)
+            : m_Previous(TaskSystem::HasInstance() ? &TaskSystem::Get() : nullptr)
+        {
+            TaskSystem::SetInstance(tasks);
+        }
+
+        ~TaskSystemInstanceScope() { TaskSystem::SetInstance(m_Previous); }
+
+        TaskSystemInstanceScope(const TaskSystemInstanceScope&) = delete;
+        TaskSystemInstanceScope& operator=(const TaskSystemInstanceScope&) = delete;
+
+    private:
+        TaskSystem* m_Previous = nullptr;
+    };
+
+    /**
+     * Turns the fan-out off for a scope and hands the decision back afterwards.
+     *
+     * The switch lives with the module that assembles, so a case that left it off would change
+     * every later case in this binary.
+     */
+    struct MeshAssemblySwitchScope
+    {
+        explicit MeshAssemblySwitchScope(bool enabled) { minEngine::SetMeshAssemblyParallelEnabled(enabled); }
+        ~MeshAssemblySwitchScope() { minEngine::ClearMeshAssemblyParallelOverride(); }
+
+        MeshAssemblySwitchScope(const MeshAssemblySwitchScope&) = delete;
+        MeshAssemblySwitchScope& operator=(const MeshAssemblySwitchScope&) = delete;
     };
 }
 
@@ -1113,7 +1165,7 @@ TEST_CASE("mesh-assembly-determinism: a refused fan-out is repaired in place [sm
     CHECK(MakeQueueDigest(repaired.ShadowCasterQueue) == MakeQueueDigest(reference.ShadowCasterQueue));
 }
 
-TEST_CASE("mesh-assembly-determinism: the pipeline schedule stays serial with a pool running [smoke]")
+TEST_CASE("mesh-assembly-determinism: the pipeline resolves the pool the process owns [smoke]")
 {
     FrameThreadingScope threading(FrameThreadMode::Multi);
 
@@ -1137,8 +1189,9 @@ TEST_CASE("mesh-assembly-determinism: the pipeline schedule stays serial with a 
     minEngine::ResetMeshAssemblyStats();
     probe.Reset();
 
-    // The pipeline entry the frame calls: a live pool in the process must not reach it, because the
-    // schedule it passes names none.
+    // The pool in this case was never registered as the process instance, so the entry point -
+    // which resolves the instance, the way the engine stands it up - cannot see it. A host that owns
+    // no pool looks the same from here: one chunk, the serial shape, and a reason that says why.
     minEngine::BuildPrimitiveRenderQueue(viaPipeline, &frustum);
     ApplyQueueSorts(viaPipeline);
 
@@ -1183,5 +1236,335 @@ TEST_CASE("mesh-assembly-determinism: the pipeline schedule stays serial with a 
     CHECK(smallStats.ChunksNotRun == 0u);
 
     tasks.Shutdown();
+}
+
+TEST_CASE("mesh-assembly-determinism: a single-topology frame still fans out [smoke]")
+{
+    // Single topology: one thread owns the game, render and RHI role and no frame-role thread is
+    // running. The pool is real, so the workers exist - and the fan-out has to happen anyway,
+    // because who runs the frame and who may run a chunk are two different questions.
+    FrameThreadingScope threading(FrameThreadMode::Single);
+    REQUIRE(FrameThreading::Get().IsSingle());
+    REQUIRE(FrameThreading::Get().IsInGameThread());
+    REQUIRE(FrameThreading::Get().IsInRenderingThread());
+
+    TaskSystem tasks;
+    tasks.Init(2);
+    REQUIRE(tasks.IsRunning());
+    REQUIRE(tasks.GetWorkerCount() > 1);
+    REQUIRE_FALSE(tasks.AreFrameRolesRunning());
+
+    AssemblyScene scene;
+    scene.Reset(1000);
+    AssemblyThreadProbe probe;
+    scene.SetThreadProbe(&probe);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    RenderScene renderScene;
+    renderScene.m_PrimitiveSceneProxies = scene.m_Proxies;
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &renderScene.m_PrimitiveSceneProxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+    ApplyQueueSorts(reference);
+    const uint64_t opaqueDigest = MakeQueueDigest(reference.OpaqueQueue);
+    const uint64_t translucentDigest = MakeQueueDigest(reference.TranslucentQueue);
+    const uint64_t shadowDigest = MakeQueueDigest(reference.ShadowCasterQueue);
+
+    SceneRenderContext viaPipeline;
+    viaPipeline.Scene = &renderScene;
+    viaPipeline.bEnableShadows = true;
+
+    TaskSystemInstanceScope poolScope(&tasks);
+
+    minEngine::ResetMeshAssemblyStats();
+    probe.Reset();
+
+    minEngine::BuildPrimitiveRenderQueue(viaPipeline, &frustum);
+    ApplyQueueSorts(viaPipeline);
+
+    const minEngine::MeshAssemblyStats stats = minEngine::GetMeshAssemblyStats();
+
+    // The gate is the pool and the draw set, never the topology: a frame that runs on a single
+    // thread still spreads its chunks over the workers.
+    REQUIRE(stats.LastSerialReason == nullptr);
+    CHECK(stats.ParallelCalls == 1u);
+    CHECK(stats.ChunksNotRun == 0u);
+    CHECK(stats.LastChunkCount > 1u);
+    CHECK(stats.LastProxyCount ==
+          static_cast<uint32_t>(renderScene.m_PrimitiveSceneProxies.size()));
+
+    // "The pool was asked" is not the fact that matters: the chunks were produced elsewhere.
+    CHECK(probe.OffCaller.load(std::memory_order_relaxed) > 0u);
+    CHECK(probe.OnCaller.load(std::memory_order_relaxed) == 0u);
+
+    CHECK(MakeQueueDigest(viaPipeline.OpaqueQueue) == opaqueDigest);
+    CHECK(MakeQueueDigest(viaPipeline.TranslucentQueue) == translucentDigest);
+    CHECK(MakeQueueDigest(viaPipeline.ShadowCasterQueue) == shadowDigest);
+
+    tasks.Shutdown();
+}
+
+TEST_CASE("mesh-assembly-determinism: turning the fan-out off reproduces the serial shape [smoke]")
+{
+    REQUIRE_FALSE(FrameThreading::HasInstance());
+
+    TaskSystem tasks;
+    tasks.Init(2);
+    REQUIRE(tasks.GetWorkerCount() > 1);
+
+    AssemblyScene scene;
+    scene.Reset(1000);
+    AssemblyThreadProbe probe;
+    scene.SetThreadProbe(&probe);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    RenderScene renderScene;
+    renderScene.m_PrimitiveSceneProxies = scene.m_Proxies;
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &renderScene.m_PrimitiveSceneProxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    SceneRenderContext reference;
+    BuildReferenceQueues(input, reference);
+    ApplyQueueSorts(reference);
+    const uint64_t opaqueDigest = MakeQueueDigest(reference.OpaqueQueue);
+    const uint64_t translucentDigest = MakeQueueDigest(reference.TranslucentQueue);
+    const uint64_t shadowDigest = MakeQueueDigest(reference.ShadowCasterQueue);
+
+    SceneRenderContext off;
+    off.Scene = &renderScene;
+    off.bEnableShadows = true;
+
+    minEngine::ResetMeshAssemblyStats();
+    probe.Reset();
+
+    {
+        MeshAssemblySwitchScope switchScope(false);
+        TaskSystemInstanceScope poolScope(&tasks);
+        minEngine::BuildPrimitiveRenderQueue(off, &frustum);
+    }
+    ApplyQueueSorts(off);
+
+    const minEngine::MeshAssemblyStats stats = minEngine::GetMeshAssemblyStats();
+
+    // Off means the single-chunk shape: one loop, nothing scheduled, and the reason says so.
+    REQUIRE(stats.LastSerialReason != nullptr);
+    CHECK(std::string(stats.LastSerialReason) == "parallel assembly turned off");
+    CHECK(stats.ParallelCalls == 0u);
+    CHECK(stats.ChunksNotRun == 0u);
+    CHECK(stats.LastChunkCount == 1u);
+    CHECK(probe.OffCaller.load(std::memory_order_relaxed) == 0u);
+    CHECK(probe.OnCaller.load(std::memory_order_relaxed) > 0u);
+
+    // ... and byte for byte the reference: the switch changes how the queues are built, never what
+    // they contain.
+    CHECK(off.OpaqueQueue.size() == reference.OpaqueQueue.size());
+    CHECK(off.TranslucentQueue.size() == reference.TranslucentQueue.size());
+    CHECK(off.ShadowCasterQueue.size() == reference.ShadowCasterQueue.size());
+    CHECK(MakeQueueDigest(off.OpaqueQueue) == opaqueDigest);
+    CHECK(MakeQueueDigest(off.TranslucentQueue) == translucentDigest);
+    CHECK(MakeQueueDigest(off.ShadowCasterQueue) == shadowDigest);
+
+    tasks.Shutdown();
+}
+
+TEST_CASE("mesh-assembly-determinism: the chunk count follows the workers and the threshold [full]")
+{
+    struct Row
+    {
+        uint32_t ProxyCount;
+        int32_t WorkerCount;
+        uint32_t ExpectedChunks;
+    };
+
+    // Two chunks per worker, capped by how many chunks the per-chunk threshold allows.
+    const Row rows[] = {
+        { 0u, 8, 1u },
+        { 1u, 8, 1u },
+        { 255u, 8, 2u },
+        { 256u, 8, 2u },
+        { 1000u, 1, 1u },
+        { 1000u, 0, 1u },
+        { 1000u, 2, 4u },
+        { 1000u, 4, 8u },
+        { 1000u, 16, 8u },
+    };
+
+    for (const Row& row : rows)
+    {
+        INFO("proxies=" << row.ProxyCount << " workers=" << row.WorkerCount);
+        CHECK(minEngine::ComputeMeshAssemblyChunkCount(row.ProxyCount, row.WorkerCount) ==
+              row.ExpectedChunks);
+    }
+
+    // A schedule with no pool is one chunk however large the draw set is.
+    CHECK(minEngine::ResolveMeshAssemblySchedule(nullptr, 100000).GetChunkCount() == 1u);
+    CHECK_FALSE(minEngine::ResolveMeshAssemblySchedule(nullptr, 100000).bParallelDisabled);
+
+    // The switch is what marks the shape, so the reason and the chunk count cannot disagree.
+    {
+        MeshAssemblySwitchScope switchScope(false);
+        const MeshAssemblySchedule schedule = minEngine::ResolveMeshAssemblySchedule(nullptr, 100000);
+        CHECK(schedule.GetChunkCount() == 1u);
+        CHECK(schedule.bParallelDisabled);
+    }
+}
+
+TEST_CASE("mesh-assembly-determinism: an unrun chunk reaches the frame summary [smoke]")
+{
+    REQUIRE_FALSE(FrameThreading::HasInstance());
+
+    AssemblyScene scene;
+    scene.Reset(1000);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    // A frame that fanned out and ran every chunk moves nothing.
+    const uint64_t quietBefore = TaskSystem::GetMeshAssemblyChunksNotRunTotal();
+    {
+        TaskSystem tasks;
+        tasks.Init(2);
+        REQUIRE(tasks.GetWorkerCount() > 1);
+        ScopedFrameThreadKind renderRole(FrameThreadKind::Render);
+
+        SceneRenderContext fannedOut;
+        minEngine::BuildMeshAssemblyQueues(input, fannedOut, MakeParallelSchedule(4, tasks), nullptr);
+        minEngine::ResetMeshAssemblyStats();
+        tasks.Shutdown();
+    }
+    CHECK(TaskSystem::GetMeshAssemblyChunksNotRunTotal() == quietBefore);
+
+    // A pool on another thread refuses every body. The queues are repaired, and the number the
+    // frame summary reads is what records the parallel work the frame did not get.
+    PoolOnAnotherThread pool;
+    REQUIRE(pool.Tasks.GetWorkerCount() > 1);
+
+    constexpr int32_t kChunkCount = 4;
+    SceneRenderContext refused;
+    minEngine::BuildMeshAssemblyQueues(
+        input,
+        refused,
+        MakeParallelSchedule(kChunkCount, pool.Tasks),
+        nullptr);
+
+    const uint64_t quietAfter = TaskSystem::GetMeshAssemblyChunksNotRunTotal();
+    REQUIRE(quietAfter > quietBefore);
+    CHECK(quietAfter - quietBefore == static_cast<uint64_t>(kChunkCount));
+
+    minEngine::FrameWorkLossCounters previous;
+    previous.MeshAssemblyChunksNotRun = quietBefore;
+    minEngine::FrameWorkLossCounters current;
+    current.MeshAssemblyChunksNotRun = quietAfter;
+
+    const std::string line = minEngine::DescribeFrameWorkLossDelta(previous, current);
+    CHECK(line.find("mesh assembly chunk(s) did not run") != std::string::npos);
+    CHECK(line.find("4 mesh assembly") != std::string::npos);
+
+    // A frame with nothing lost stays silent, which is what keeps the line worth reading.
+    CHECK(minEngine::DescribeFrameWorkLossDelta(current, current).empty());
+}
+
+TEST_CASE("mesh-assembly-determinism: a frame end during assembly is a reported violation [smoke]")
+{
+    REQUIRE_FALSE(FrameThreading::HasInstance());
+
+    // The draw set is read on the promise that no frame ends while it is being read. The frame-end
+    // delete is what ends one, so a case makes it happen inside the collection and checks that the
+    // promise is enforced rather than merely written down.
+    AssemblyScene scene;
+    scene.ResetDense(200);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    minEngine::RenderScene flushScene;
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+    input.Scene = &flushScene;
+
+    // The predicate itself, on a window nobody disturbed.
+    const uint64_t serial = minEngine::GetMeshAssemblySceneFlushSerial(input);
+    CHECK(minEngine::DescribeMeshAssemblySetInstability(input, serial) == nullptr);
+
+    // A caller with no scene has nothing to watch and must not report what it cannot see.
+    MeshAssemblyInput noScene;
+    CHECK(minEngine::DescribeMeshAssemblySetInstability(noScene, 0u) == nullptr);
+
+    minEngine::RenderScene::FlushPendingProxyDeletes();
+    CHECK(minEngine::RenderScene::GetProxyDeleteFlushCount() > serial);
+    CHECK(minEngine::DescribeMeshAssemblySetInstability(input, serial) != nullptr);
+
+    // Now the whole entry point: the first proxy ends the frame while the assembly walks the set.
+    AssemblyTestProxy* const first = scene.GetProxy(0);
+    REQUIRE(first != nullptr);
+    first->OnCollect = []() {
+        minEngine::RenderScene::FlushPendingProxyDeletes();
+    };
+
+    const uint64_t violationsBefore = minEngine::GetContractViolationCounters().Total();
+    SceneRenderContext ctx;
+    minEngine::BuildMeshAssemblyQueues(input, ctx, MakeSchedule(1), nullptr);
+    first->OnCollect = nullptr;
+
+    CHECK(minEngine::GetContractViolationCounters().Total() > violationsBefore);
+
+    // Reported, not refused: the frame still gets the queues it asked for.
+    CHECK_FALSE(ctx.OpaqueQueue.empty());
+}
+
+TEST_CASE("mesh-assembly-determinism: an assembly inside a recording window is reported [smoke]")
+{
+    // The assembly reads the proxy set and produces plain queue data, so it must not run while this
+    // thread holds a recorded stream that has not been replayed: the two streams would interleave.
+    REQUIRE_FALSE(FrameThreading::HasInstance());
+
+    AssemblyScene scene;
+    scene.Reset(300);
+    const Frustum frustum = MakeLookAtFrustum();
+
+    MeshAssemblyInput input;
+    input.PrimitiveProxies = &scene.m_Proxies;
+    input.MainFrustum = &frustum;
+    input.bEnableShadows = true;
+
+    minEngine::Testing::HeadlessTestRHI device;
+    minEngine::RHICommandList cmdList(&device);
+    cmdList.SetImmediateOverride(false);
+    REQUIRE_FALSE(minEngine::RHICommandList::IsRecordingWindowOpenOnThisThread());
+
+    // Outside a window the entry point has nothing to report, and the queues are built.
+    const uint64_t closedBefore = minEngine::GetContractViolationCounters().Total();
+    SceneRenderContext closed;
+    minEngine::BuildMeshAssemblyQueues(input, closed, MakeSchedule(1), nullptr);
+    CHECK(minEngine::GetContractViolationCounters().Total() == closedBefore);
+    CHECK_FALSE(closed.OpaqueQueue.empty());
+
+    // Inside one it reports the broken contract rather than assembling on in silence.
+    cmdList.BeginRecording();
+    REQUIRE(minEngine::RHICommandList::IsRecordingWindowOpenOnThisThread());
+
+    const uint64_t openBefore = minEngine::GetContractViolationCounters().Total();
+    SceneRenderContext open;
+    minEngine::BuildMeshAssemblyQueues(input, open, MakeSchedule(1), nullptr);
+    CHECK(minEngine::GetContractViolationCounters().Total() > openBefore);
+
+    // Reporting is not skipping: the queue is still the one the frame asked for.
+    CHECK(open.OpaqueQueue.size() == closed.OpaqueQueue.size());
+    CHECK(MakeQueueDigest(open.OpaqueQueue) == MakeQueueDigest(closed.OpaqueQueue));
+
+    cmdList.FinishRecording();
+    CHECK_FALSE(minEngine::RHICommandList::IsRecordingWindowOpenOnThisThread());
 }
 

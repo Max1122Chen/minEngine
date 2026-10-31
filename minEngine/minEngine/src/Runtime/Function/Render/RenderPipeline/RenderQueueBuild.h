@@ -21,13 +21,24 @@
  * more of the renderer, and the export table has no headroom to spend on test reachability.
  *
  * The primitive queue is assembled by the chunked builder in MeshAssemblyChunk.h; this header only
- * keeps the entry point the pipeline and its tests already call.
+ * keeps the entry point the pipeline and its tests already call, and resolves the schedule that
+ * entry runs under - once per call, from the pool the process owns.
  */
 namespace minEngine
 {
     inline void BuildPrimitiveRenderQueue(SceneRenderContext& ctx, const Math::Geometry::Frustum* mainFrustum)
     {
-        BuildPrimitiveRenderQueueChunked(ctx, mainFrustum, MeshAssemblySchedule{}, nullptr);
+        const MeshAssemblyInput input = MeshAssemblyInput::FromContext(ctx, mainFrustum);
+
+        // The pool the process owns, exactly as the engine stood it up: a host that drives the
+        // renderer without one keeps the serial shape, which is the same code with one chunk. Who
+        // runs the frame is not consulted - a single-threaded frame hands its chunks over just the
+        // same, because the workers are there either way.
+        TaskSystem* const tasks = TaskSystem::HasInstance() ? &TaskSystem::Get() : nullptr;
+        const MeshAssemblySchedule schedule =
+            ResolveMeshAssemblySchedule(tasks, input.GetProxyCount());
+
+        BuildMeshAssemblyQueues(input, ctx, schedule, nullptr);
     }
 
     inline void BuildScreenUIDrawQueue(SceneRenderContext& ctx, uint32_t viewportWidth, uint32_t viewportHeight)
