@@ -29,7 +29,7 @@
 - 但页面由 `CreateFromPixels` 生成（`SpriteAtlas.cpp:267-268`），是**运行时纹理、没有注册成资产**；
 - 于是重启后 GUID 解析不到对象，`generated` 为空，**必须 `Rebuild(rhi)` 用成员像素重新打包**。
 
-这是引擎缺口（烘焙结果未被持久化），不是消费者选择。
+**这是刻意设计**：Bake 只组织映射，不产资产；页面在启动时由 `Rebuild(rhi)` 现造。所以**加载后 Rebuild 是正确行为，不是缺陷**。真正的引擎缺陷是另一个：`m_GeneratedTextures` 这个纯运行时集合被标成了 `ME_PROPERTY()` 写进了序列化（见 A1）。
 
 真正让代价翻倍的是构造期一次没要到 RHI 的调用：
 
@@ -55,17 +55,18 @@ RHI 就绪后，EnsureSharedMaterial()                            WorldRenderer.
 **代价**：一次冷载 246 次 GPU 纹理创建（123 x 2），全部无人引用后被延迟创建队列丢弃；
 另有一次注定失败但很贵的加载解析。
 
-### 1.2 三个可优化点（按收益/风险排序）
+### 1.2 两个可优化点（按收益与归属排序）
 
-| # | 改动 | 收益 | 风险 |
-|---|---|---|---|
-| **A0** | 构造期把 `RenderSystem::Get().GetRHI()` 传给 `BindProjectAtlasOrFallback(rhi)`（一行） | **直接消掉重复加载**：第一次即可 Rebuild 成功 | 极低。只是把已存在的 RHI 传进去 |
-| A2 | 把加载/解析与页面生成分开：解析结果（shared_ptr<SpriteAtlas>）缓存到成员，RHI 就绪后只做 Rebuild | 彻底消除重复解析 | 中。需确认缓存后成员 tile 纹理会否常驻——与引擎侧 A3 联动 |
-| A3（引擎，另开片） | Sprite::m_SourceTexture 改为像素优先：只当图集打包的 CPU 像素源时不建 GPU 纹理 | 一次消掉 123 次创建，且不依赖消费者行为 | 中。要区分被当像素源与被当贴图两种使用 |
+| # | 改动 | 归属 | 收益 | 风险 |
+|---|---|---|---|---|
+| **A0** | 构造期把 `RenderSystem::Get().GetRHI()` 传给 `BindProjectAtlasOrFallback(rhi)`（一行） | **消费者** | 直接消掉重复加载：第一次即可 Rebuild 成功，不再回退色块 | 极低，只是把已存在的 RHI 传进去 |
+| **A1** | 把 `m_GeneratedTextures` 从序列化中移除（运行时数据不应进资产） | **引擎** | 旧资产不再带悬垂 GUID；消费者不再需要"generated 为空则 Rebuild"的兜底判断 | 低；需处理旧资产兼容 |
+
+**已确认不做**：Sprite 强引用 Texture2D 是可接受的，不做像素优先加载；Bake 语义不变，不持久化烘焙结果。
 
 ### 1.3 验收标准
 
-1. 一次冷载的 openGL texture 创建数从 247+123 降到 ≤ 2（页面 + 必要的少量）；
+1. 一次冷载的 `openGL texture` 创建数从 123 x 2 降到 123（A0 生效）；资产加载后不再出现 `has no generated page` 之外的悬垂 GUID（A1 生效）；
 2. 日志里 `has no generated page and RHI is null` **不再出现**；
 3. 首帧画面与改动前一致（程序化色块 → 真图集的切换时机不变或更早）；
 4. 冷启动墙钟时间对比（改动前/后各跑 3 次取中位）。
