@@ -26,7 +26,8 @@ namespace minEngine
      *  - The Render role only reads them: GetCompletedGameFrame() is its drain target. The Render
      *    role never advances the logic frame. The frame the Render role has actually applied is
      *    tracked separately and written only by FlushApplyForFrameChecked, so the world-generation
-     *    check compares two values with two different writers.
+     *    check compares two values with two different writers - and that claim never passes the
+     *    announced frame, so "applied" cannot name a frame the game role has not finished.
      *  - Single topology (one OS thread playing every role) goes through exactly the same two
      *    entry points. Sharing a thread is not a licence to advance the frame while draining.
      */
@@ -148,6 +149,14 @@ namespace minEngine
          * so nothing is applied. Returns false when at least one command threw, which means the
          * frame was not cleanly applied; the remaining commands still run so a frame is never
          * half-applied by a single failure.
+         *
+         * The frame this call claims as drawn stops at the frame the game role announced as
+         * complete. A caller that asks for more - a shutdown flush, where the boundary that would
+         * have drained the later frames is the one that is not coming - still gets the work it
+         * finds applied, but the claim is not extended past the announced frame. The game role tags
+         * the commands of its still-open frame with exactly the frame after that one, so claiming it
+         * would put every one of them at or behind the drain, which is how a drain that ran ahead
+         * used to make the game role lose the scene changes of the frame it was in the middle of.
          */
         bool FlushApplyForFrameChecked(uint64_t frameIndex);
 

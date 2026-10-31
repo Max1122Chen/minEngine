@@ -1,3 +1,17 @@
+## 2026-10-31 — drain 不得声明游戏线程还没跑完的那一帧（feat/core）
+
+- **真机问题 1（47 条丢命令）：** Multi 拓扑一次 PIE 进出后关闭编辑器，`RenderCommandPipe: command tagged with frame 126 cannot be applied (render already drained frame 126); dropped.` 全部 47 条标签与已画帧**同一个数**，队列深度 0。
+- **根因 1（不是第三条标签来源，是 drain 越权声明）：** 标签只有 `NewEntryFrame(Current, Completed)` 一条路；缺口在另一侧 —— `SceneManager` 关闭冲刷用 `FlushApplyForFrameChecked(GetCurrentGameFrame())`，而 `Current == Completed + 1` 是游戏线程**正在跑**的那一帧。旧实现把它写进 `m_DrawnFrame`：真机日志对应 `Completed=125 / Current=126`，冲刷声明 126 → 之后 teardown 排队的 `RemovePrimitive` 按 126 入队，`tag(126) <= drawn(126)` 当场被判"已画完"丢掉；同一处还让世界代次检查去比较一个从未提交的帧。
+- **修法 1：** `FlushApplyForFrameChecked` 能声明的帧限制在游戏线程已公告完成的那一帧（越前的关闭冲刷照样把它找到的命令跑完，只是不推进声明）。这样在 `Current == Completed + 1` 不变式下 `tag > drawn` 恒成立；"编号倒退"的防御分支保留并单独覆盖。
+- **红灯 1：** 新用例 `a drain ahead of the announced frame keeps the commands of that frame`：修复前 `CHECK( pipe.GetDrawnFrame() == 125 )` → `values: CHECK( 126 == 125 )`，放宽后下一断言 `DroppedStaleCommands == 0` → `CHECK( 1 == 0 )`，测试当场打印与真机**一模一样**的那行（frame 126 / drained frame 126）。修复后 14/14 PASS。
+- **入队点（真机插桩实测，已还原）：** 丢弃时打印线程角色 + 三个帧号 + 调用栈 —— `role=Game+Render+RHI tag=93 current=93 completed=92 drawn=93`，栈为 `Enqueue` ← `EnqueueRenderCommand` ← `RenderScene::RemovePrimitive`（RenderScene.cpp:425）← `DetachSceneRenderState`（SceneManager.cpp:107）← `RetireScene`（892）← `UnloadActiveScene`（325）← `SceneManager::Shutdown`（254）← `Engine::ShutdownSystems`（Engine.cpp:942）：teardown 的 `RemovePrimitive` 排在 `DrainQueuedRemovals()`（第 217 行）之后，用的正是那条冲刷刚声明掉的帧；同一会话 55 条。
+- **真机复验 1：** 同一工程（minCraft 编辑器，Multi）用修好的 DLL 冷启 + 正常关闭：`cannot be applied` 0 条，管道 `shut down with 0 queued command(s)`。
+- **真机问题 2（一次会话丢 492 个 'openGL texture'）：** 判定**丢弃是对的**。插桩实测：一次冷载 246 次创建 / 123 个不同名字，**每个名字恰好两次** —— 消费者 `BlockTextureAtlas::BindFromAssetPath` 每冷载把图集载两次（先 RHI 为空那次返回 false，再带 RHI 重载），每次解析 123 个 `Sprite::m_SourceTexture`（强引用）即 123 个 tile 纹理；这些纹理只作 CPU 像素源用（`TryLoadMemberSourcePixels` 走 `TryGetCookedPixels` 读盘），页面 `blocks_Atlas` 是第 247 次创建、消费者只留住它（`m_Texture = generated[0]`）。既没人画过也没人再要，队列是最后一个持有者，丢弃安全；浪费来自消费者重复载入 + 引擎为"只当像素源"的引用 eager 建 GPU 纹理。
+- **验证：** `minEngineTests` / `Editor` / `SampleEditor` 构建 exit 0；`render-command-pipe` 14/14、`rhi-deferred-create` 19/19、`task-system` 25/25、`draw-packet-lifetime` 17/17、`mesh-assembly-determinism` 20/20 全 PASS；`test smoke` exit 0（`Status: SUCCESS` 27、`FAILURE` 0）。导出 3040 → 3040（growth 0 <= 25，无符号消失，budget 3040 <= 3500）。
+- **遗留：** `GetDrawnFrame()` 现在停在公告帧，越前 drain 之后仍"落后一帧"（语义更保守，外部无读者）；`SceneManager` 关闭冲刷仍传 `GetCurrentGameFrame()`（现在无害，改成 Completed 更直白）；tile 纹理 eager 创建与消费者重复载入未修（见记录）。
+- **记录：** [BUG-RENDER-025](./bugs/BUG-RENDER-025.md)。
+
+
 ## 2026-10-31 — 门禁不得解引用悬垂几何：判据先问句柄、内部造包路径全部带句柄（feat/core）
 
 - **真机问题:** Single 拓扑 PIE 退出崩溃，`ExceptionCode=0xC0000005 / FaultRIP=0x0`，栈 `GetDeferredUse`（`RHIDeferredCreate.h:139`）← `CanNameGeometry` ← `SubmitDrawBuffers`。虚表指针读到 0 = 门禁解引用了已释放几何。

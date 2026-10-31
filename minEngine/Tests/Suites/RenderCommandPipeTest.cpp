@@ -131,6 +131,15 @@ TEST_CASE("render-command-pipe: drain applies every frame up to the target in or
     REQUIRE(applied.size() == 4);
     CHECK(applied[2] == 2);
     CHECK(applied[3] == 3);
+    // Frame 3 is drained here but not yet announced as complete by the game role, so the claim
+    // stops at 2: a drain that runs ahead applies what is queued without saying the game role has
+    // finished a frame it is still in.
+    CHECK(pipe.GetDrawnFrame() == 2);
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
+
+    // The next announcement makes the claim: frame 3 is complete, so the drain may record it.
+    pipe.PublishGameFrame(3, 4);
+    CHECK(pipe.FlushApplyForFrameChecked(3));
     CHECK(pipe.GetDrawnFrame() == 3);
     CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
 
@@ -171,55 +180,83 @@ TEST_CASE("render-command-pipe: the render role never advances the game frame [s
     CHECK(pipe.GetCurrentGameFrame() == 2);
 }
 
-TEST_CASE("render-command-pipe: drawing a frame the game never published trips the check [smoke]")
+TEST_CASE("render-command-pipe: drawing a frame from a world the game never committed trips the check [smoke]")
 {
-    RenderCommandPipeScope scope;
-    RenderCommandPipe& pipe = scope.Pipe;
+    RenderCommandPipeScope pipeScope;
+    RenderCommandPipe& pipe = pipeScope.Pipe;
 
     // Nothing drawn yet: the check has nothing to compare and stays quiet.
     std::string diagnostic;
     CHECK(pipe.CheckPublishedGenerationForDrawnFrame(&diagnostic));
     CHECK(diagnostic.empty());
 
-    // State construction: the game role published generation 3, while the render role drains
-    // frame 5 - a world the game never committed.
+    // State construction: the committed world generation is 3, while the render role drains
+    // frame 4 - a frame whose world the game role never committed.
     pipe.SetPublishedWorldGen(3);
     pipe.PublishGameFrame(4, 5);
-    CHECK(pipe.FlushApplyForFrameChecked(5));
-    CHECK(pipe.GetDrawnFrame() == 5);
+    CHECK(pipe.FlushApplyForFrameChecked(4));
+    CHECK(pipe.GetDrawnFrame() == 4);
     CHECK(pipe.GetPublishedWorldGen() == 3);
 
     CHECK_FALSE(pipe.CheckPublishedGenerationForDrawnFrame(&diagnostic));
     // Both sides and the queue depth are readable at the failure site.
-    CHECK(diagnostic.find("5") != std::string::npos);
-    CHECK(diagnostic.find("3") != std::string::npos);
+    CHECK(diagnostic.find("drawn frame 4") != std::string::npos);
+    CHECK(diagnostic.find("world generation 3") != std::string::npos);
     CHECK(diagnostic.find("command queue depth") != std::string::npos);
 
-    // Publishing the generation that frame 5 belongs to clears the condition again.
-    pipe.SetPublishedWorldGen(5);
+    // Publishing the generation that frame 4 belongs to clears the condition again.
+    pipe.SetPublishedWorldGen(4);
     CHECK(pipe.CheckPublishedGenerationForDrawnFrame(&diagnostic));
     CHECK(diagnostic.empty());
 }
 
-TEST_CASE("render-command-pipe: commands tagged with an already drained frame are dropped and counted [smoke]")
+TEST_CASE("render-command-pipe: a drain ahead of the announced frame keeps the commands of that frame [smoke]")
+{
+    RenderCommandPipeScope scope;
+    RenderCommandPipe& pipe = scope.Pipe;
+
+    // The shape a shutdown flush produces: frame 125 is announced complete, the game role is
+    // working on frame 126, and the flush asks to apply everything that is queued.
+    pipe.PublishGameFrame(125, 126);
+    CHECK(pipe.FlushApplyForFrameChecked(pipe.GetCurrentGameFrame()));
+
+    // The flush applied what it found but cannot claim frame 126: the game role has not finished
+    // it, so nothing it tags with that frame is late.
+    CHECK(pipe.GetDrawnFrame() == 125);
+
+    // Teardown queued after that flush is tagged with frame 126 and is kept, not dropped.
+    int applied = 0;
+    pipe.Enqueue([&applied]() { ++applied; });
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
+
+    // The next flush of the same shutdown applies it, and the claim still stops at 125.
+    CHECK(pipe.FlushApplyForFrameChecked(pipe.GetCurrentGameFrame()));
+    CHECK(applied == 1);
+    CHECK(pipe.GetDrawnFrame() == 125);
+    CHECK(pipe.GetCounters().DroppedStaleCommands == 0);
+}
+
+TEST_CASE("render-command-pipe: a command tagged behind the drain is refused and counted [smoke]")
 {
     RenderCommandPipeScope scope;
     RenderCommandPipe& pipe = scope.Pipe;
 
     int applied = 0;
-    pipe.PublishGameFrame(0, 1);
+    pipe.PublishGameFrame(4, 5);
+    CHECK(pipe.FlushApplyForFrameChecked(4));
+    CHECK(pipe.GetDrawnFrame() == 4);
 
-    // The render role drained frame 1, i.e. beyond what the game has completed. A command tagged
-    // with the current game frame can no longer be applied in order.
-    CHECK(pipe.FlushApplyForFrameChecked(1));
-    CHECK(pipe.GetDrawnFrame() == 1);
+    // A game role whose numbering went backwards - a producer that kept an old frame number - can
+    // never catch the drain again, so the command is refused instead of waiting for an order that
+    // will not come. The pair is written directly because PublishGameFrame only moves forward.
+    minEngine::Testing::TestAccess<RenderCommandPipe>::StorePublishedFrames(pipe, 1, 2);
     pipe.Enqueue([&applied]() { ++applied; });
 
     CHECK(applied == 0);
     CHECK(pipe.GetCounters().DroppedStaleCommands == 1);
 
     // It is gone, not deferred: a later drain does not run it.
-    CHECK(pipe.FlushApplyForFrameChecked(2));
+    CHECK(pipe.FlushApplyForFrameChecked(4));
     CHECK(applied == 0);
     CHECK(pipe.GetCounters().DroppedStaleCommands == 1);
 }

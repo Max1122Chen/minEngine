@@ -278,10 +278,27 @@ namespace minEngine
                 }
             }
             m_Commands = std::move(remaining);
-            if (drawnFrame == UINT64_MAX || frameIndex > drawnFrame)
+
+            // Render-side progress, written here and nowhere else. What a drain may claim is
+            // bounded by the frame the game role announced as complete: a caller that asks for
+            // more - the shutdown flush, which runs where the boundary that would have drained the
+            // later frames is the one that is not coming - still applies what it finds, but the
+            // claim stops at the announced frame.
+            //
+            // Claiming a frame the game role never published is what once turned a correct flush
+            // into lost scene changes: the game role tags its in-flight commands with exactly the
+            // frame after the announced one, so a claim of that frame put the tag at or behind the
+            // drain and every command of the still-open frame was dropped as unapplicable. The
+            // announced frame is published under this lock, so the pair read here is one whole
+            // published state and not a torn one.
+            const uint64_t announcedFrame = m_CompletedGameFrame.load(std::memory_order_relaxed);
+            if (announcedFrame != UINT64_MAX)
             {
-                // Render-side progress, written here and nowhere else.
-                m_DrawnFrame.store(frameIndex, std::memory_order_release);
+                const uint64_t claimableFrame = frameIndex < announcedFrame ? frameIndex : announcedFrame;
+                if (drawnFrame == UINT64_MAX || claimableFrame > drawnFrame)
+                {
+                    m_DrawnFrame.store(claimableFrame, std::memory_order_release);
+                }
             }
         }
         m_CommandSpaceCv.notify_all();
