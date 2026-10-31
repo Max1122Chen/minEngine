@@ -6,6 +6,7 @@
 #include "Runtime/Function/Render/Sprite/SpriteAtlasPacker.h"
 #include "Runtime/Resource/Loaders/ImageLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
+#include "Runtime/Resource/AssetSerializeHelper.h"
 #include "Access/ObjectManagerTestAccess.h"
 #include "EngineTestFixture.h"
 
@@ -16,6 +17,11 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace
@@ -407,3 +413,197 @@ TEST_CASE("sprite-atlas: DilateBorderRing copies edge into exclusive pad ring [s
 
     ImageLoader::Free(atlas);
 }
+
+
+namespace
+{
+    std::string ReadTextFile(const std::filesystem::path& path)
+    {
+        std::ifstream in(path);
+        if (!in)
+        {
+            return std::string();
+        }
+        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    }
+
+    void WriteTextFile(const std::filesystem::path& path, const std::string& text)
+    {
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        out << text;
+    }
+
+    std::shared_ptr<minEngine::Sprite> MakeAtlasMemberSprite(
+        minEngine::RHI& rhi,
+        const std::string& name,
+        int32_t size,
+        const Vector4& sourceRectPx)
+    {
+        minEngine::ImagePixels pixels = MakeSolidPixels(size, size, 200, 40, 40, 255);
+        std::shared_ptr<minEngine::Texture2D> source =
+            minEngine::Texture2DLoader::CreateFromPixels(rhi, pixels, name + "_Src", minEngine::GenerateGUID());
+        std::shared_ptr<minEngine::Sprite> sprite = minEngine::NewObject<minEngine::Sprite>(name);
+        sprite->ConfigureFromTexture(source, sourceRectPx);
+        sprite->SetAuthoringPixels(pixels);
+        minEngine::ImageLoader::Free(pixels);
+        return sprite;
+    }
+}
+
+TEST_CASE("sprite-atlas: saved asset carries no runtime pages [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    ScopedObjectManager objectManagerScope;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    std::shared_ptr<Sprite> sprite = MakeAtlasMemberSprite(rhi, "RuntimePageSprite", 4, Vector4(0, 0, 4, 4));
+    REQUIRE(sprite != nullptr);
+
+    std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>("RuntimePageAtlas");
+    atlas->SetMaxSize(64);
+    REQUIRE(atlas->AddMember(sprite));
+    REQUIRE(atlas->Rebuild(rhi).Ok);
+    REQUIRE(atlas->GetGeneratedTextures().size() == 1);
+
+    const std::filesystem::path tempPath =
+        std::filesystem::temp_directory_path() / "minEngine_sprite_atlas_runtime_page.mespriteatlas";
+    std::string writeError;
+    REQUIRE(AssetSerializeHelper::WriteObjectToFile(tempPath.string(), *atlas, &writeError));
+
+    const std::string saved = ReadTextFile(tempPath);
+    REQUIRE_FALSE(saved.empty());
+    // The page set is rebuilt at start-up; persisting it only stores guids of unregistered textures.
+    CHECK(saved.find("m_GeneratedTextures") == std::string::npos);
+    CHECK(saved.find("m_Members") != std::string::npos);
+
+    std::shared_ptr<SpriteAtlas> loaded = NewObject<SpriteAtlas>("RuntimePageAtlasReloaded");
+    std::string readError;
+    INFO(readError);
+    REQUIRE(AssetSerializeHelper::ReadObjectFromFile(tempPath.string(), *loaded, &readError));
+    CHECK(loaded->GetGeneratedTextures().empty());
+    CHECK(loaded->GetSlots().empty());
+    REQUIRE(loaded->GetMembers().size() == 1);
+    CHECK(loaded->GetMembers()[0].get() == sprite.get());
+
+    // Loading leaves the pages absent on purpose: the first Rebuild supplies them.
+    const SpriteAtlasRebuildResult rebuilt = loaded->Rebuild(rhi);
+    CHECK(rebuilt.Ok);
+    CHECK(loaded->GetGeneratedTextures().size() == 1);
+
+    std::error_code removeError;
+    std::filesystem::remove(tempPath, removeError);
+}
+
+TEST_CASE("sprite-atlas: legacy asset with page guids still loads [full]")
+{
+    using namespace minEngine;
+
+
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    ScopedObjectManager objectManagerScope;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    std::shared_ptr<Sprite> sprite = MakeAtlasMemberSprite(rhi, "LegacyAtlasSprite", 4, Vector4(0, 0, 4, 4));
+    REQUIRE(sprite != nullptr);
+
+    // Shape of an asset saved before the page set became runtime-only: the member reference plus a
+    // guid array of page textures that no longer resolve to any object or registered asset.
+    const GUID memberGuid = sprite->GetGuid();
+    std::ostringstream legacy;
+    legacy << "{\n"
+           << "  \"$engineVersion\": \"0.0.9\",\n"
+           << "  \"$schemaVersion\": 1,\n"
+           << "  \"m_GeneratedTextures\": [ { \"$guid\": { \"high\": 424242, \"low\": 848484 } } ],\n"
+           << "  \"m_MaxSize\": 64,\n"
+           << "  \"m_Members\": [ { \"$guid\": { \"high\": " << memberGuid.High
+           << ", \"low\": " << memberGuid.Low << " } } ],\n"
+           << "  \"m_Padding\": 1,\n"
+           << "  \"m_PaddingMode\": 0,\n"
+           << "  \"m_SamplerAddress\": 2,\n"
+           << "  \"m_SamplerFilter\": 0\n"
+           << "}\n";
+
+    const std::filesystem::path tempPath =
+        std::filesystem::temp_directory_path() / "minEngine_sprite_atlas_legacy_pages.mespriteatlas";
+    WriteTextFile(tempPath, legacy.str());
+    REQUIRE_FALSE(ReadTextFile(tempPath).empty());
+
+    std::shared_ptr<SpriteAtlas> loaded = NewObject<SpriteAtlas>("LegacyPageAtlas");
+    std::string readError;
+    INFO(readError);
+    REQUIRE(AssetSerializeHelper::ReadObjectFromFile(tempPath.string(), *loaded, &readError));
+    CHECK(loaded->GetGeneratedTextures().empty());
+    CHECK(loaded->GetSlots().empty());
+    REQUIRE(loaded->GetMembers().size() == 1);
+    REQUIRE(loaded->GetMembers()[0] != nullptr);
+    CHECK(loaded->GetMembers()[0].get() == sprite.get());
+    CHECK(loaded->GetMaxSize() == 64);
+    CHECK(loaded->GetPadding() == 1);
+    CHECK(loaded->GetSamplerFilter() == RHISamplerFilter::Nearest);
+
+    const SpriteAtlasRebuildResult rebuilt = loaded->Rebuild(rhi);
+    CHECK(rebuilt.Ok);
+    CHECK(loaded->GetGeneratedTextures().size() == 1);
+
+    std::error_code removeError;
+    std::filesystem::remove(tempPath, removeError);
+}
+
+TEST_CASE("sprite-atlas: rebuild mapping digest is stable [full]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+    ScopedObjectManager objectManagerScope;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    std::shared_ptr<Sprite> small = MakeAtlasMemberSprite(rhi, "DigestSmall", 4, Vector4(0, 0, 4, 4));
+    std::shared_ptr<Sprite> large = MakeAtlasMemberSprite(rhi, "DigestLarge", 8, Vector4(0, 0, 8, 8));
+    REQUIRE(small != nullptr);
+    REQUIRE(large != nullptr);
+
+    std::shared_ptr<SpriteAtlas> atlas = NewObject<SpriteAtlas>("DigestAtlas");
+    atlas->SetMaxSize(64);
+    atlas->SetPadding(1);
+    REQUIRE(atlas->AddMember(small));
+    REQUIRE(atlas->AddMember(large));
+    const SpriteAtlasRebuildResult rebuilt = atlas->Rebuild(rhi);
+    REQUIRE(rebuilt.Ok);
+    REQUIRE(atlas->GetGeneratedTextures().size() == 1);
+    REQUIRE(atlas->GetSlots().size() == 2);
+
+    std::ostringstream digest;
+    digest << std::fixed << std::setprecision(4);
+    digest << atlas->GetGeneratedTextures()[0]->GetWidth() << "x"
+           << atlas->GetGeneratedTextures()[0]->GetHeight() << ";";
+    for (const SpriteAtlasSlot& slot : atlas->GetSlots())
+    {
+        digest << "slot(" << slot.X << "," << slot.Y << "," << slot.Width << "," << slot.Height
+               << "," << slot.Page << ");";
+    }
+    for (const std::shared_ptr<Sprite>& member : atlas->GetMembers())
+    {
+        const Vector4 uv = member->GetUVRectNormalized();
+        const Vector4 baked = member->GetBakedRectPx();
+        digest << member->GetName() << " uv(" << uv.x << "," << uv.y << "," << uv.z << "," << uv.w
+               << ") baked(" << baked.x << "," << baked.y << "," << baked.z << "," << baked.w << ");";
+    }
+
+    CHECK(digest.str()
+        == "16x10;slot(11,1,4,4,0);slot(1,1,8,8,0);"
+           "DigestSmall uv(0.6875,0.1000,0.9375,0.5000) baked(11.0000,5.0000,4.0000,4.0000);"
+           "DigestLarge uv(0.0625,0.1000,0.5625,0.9000) baked(1.0000,1.0000,8.0000,8.0000);");
+}
+

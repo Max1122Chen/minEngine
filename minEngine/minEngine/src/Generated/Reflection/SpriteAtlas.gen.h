@@ -16,7 +16,6 @@ ME_REFLECTION_ACCESSOR_BEGIN(minEngine::SpriteAtlas)
     ME_REFLECTION_PROPERTY_GETTER_THUNK(minEngine::SpriteAtlas, m_SamplerAddress, GetSamplerAddress)
     ME_REFLECTION_PROPERTY_SETTER_THUNK(minEngine::SpriteAtlas, m_SamplerAddress, SetSamplerAddress)
     ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpriteAtlas, m_Members)
-    ME_REFLECTION_ACCESSOR_FIELD(minEngine::SpriteAtlas, m_GeneratedTextures)
 ME_REFLECTION_ACCESSOR_END()
 
 ME_REFLECTION_CLASS_DECLARE(minEngine::SpriteAtlas, GReflectionClassRegister_SpriteAtlas_63df3d6e)

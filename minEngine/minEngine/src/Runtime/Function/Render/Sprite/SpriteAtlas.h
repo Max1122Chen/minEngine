@@ -99,7 +99,10 @@ namespace minEngine
         ME_PROPERTY()
         std::vector<std::shared_ptr<Sprite>> m_Members;
 
-        ME_PROPERTY()
+        /**
+         * Runtime-only pages from Rebuild. Never serialized: a page is created from pixels at
+         * start-up and owns no asset identity, so a persisted guid would name nothing on load.
+         */
         std::vector<std::shared_ptr<Texture2D>> m_GeneratedTextures;
 
         std::vector<SpriteAtlasSlot> m_Slots;
