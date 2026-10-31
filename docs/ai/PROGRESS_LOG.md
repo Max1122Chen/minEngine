@@ -1,3 +1,14 @@
+## 2026-10-31 — 布局来自管线状态的 Info 限频到进程级 + 记录流必须持住它绘制的几何（feat/core）
+
+- **问题 1（Info 每帧刷屏）：** `SubmitDrawBuffers` 里"顶点状态取自管线状态"的 Info 限频位是命令列表成员，而 Single 拓扑每帧在栈上新造一个列表，于是"每列表一次"等价于"每帧一次"（真机一次会话 4123 条）。改为进程级原子计数（`g_PipelineStateVertexLayoutDrawCount`）：首次必报、之后每 4096 条一条，并带累计计数；头文件里的 per-list 成员删除。真机对照（`MaximumEditor.exe -p MyMEProject --frame-threads single`）：改前约 60s 会话 31860 条，改后 20s 会话 2 条（`1` 与 `4096`），Multi 同为 2 条。
+- **问题 2（"索引缓冲没有 native name"）先证伪后定位：** 缓冲的 native 名字只有 `~OpenGLRHIBuffer` 会删，且它在入延迟销毁队列**之前**就把 `m_BufferId` 置 0（`IsReady()` 即 `m_BufferId != 0`），所以"活句柄 + 已删 native"在这个后端不可表示；"零尺寸创建返回 0 但标就绪"同样不成立（创建失败即不就绪，门禁按 Pending 拒）。真正的缺口是**门禁判决在录制时、绘制在回放时**：流能把几何保活到回放的唯一手段是 packet 的句柄，而只填裸视图（帧视图）的 packet 让流手上什么都没有——生产者放下最后一个句柄后回放就命名了已退役的对象，于是门禁读到"可用"、后端读到 0。
+- **修法：** 录制中的流要求它要画的几何**可被持住**（`canKeepGeometry`，独立计数 `g_DrawWithoutPinnedGeometryCount` + 1/100 限频 Error，判决在 `CanNameGeometry` 之前）；立即列表不受约束（命令当场执行，生产者自身的引用覆盖）。生产者补齐：Present / PostProcess / SkyBox 三个 pass 在填帧视图的同时填 `RHIBufferRef`。没有把 GL 那条 Error 降级。
+- **红灯：** (a) 限频临时改回"每次绘制一条"→ `CHECK( notice.Count <= 1 )`：`values: CHECK( 14 <= 1 )`；(b) 临时关掉持住门禁 → `CHECK( rhi.Draws.empty() )`：`values: CHECK( false )`(裸视图几何仍被录进流)。两处修复后转绿，`grep 'TEMPORARY RED PROBE'` = 0。
+- **验证：** `minEngineTests` 与 `Editor` 构建 exit 0；`draw-packet-lifetime` 14 / 141（新增 3 例：Single 12 帧 1 条、Multi 12 帧 1 条、录制流拒绝持不住的几何）、`rhi-deferred-destroy` 16 / 306、`scene-proxy-lifetime` 12 / 194、`sprite-translucency` 2 / 7、`mesh-assembly-determinism` 20 / 1682 全 PASS；`test smoke` exit 0（`Status: SUCCESS` 27、`FAILURE` 0）。导出 3040 → 3040（增量 0，快照未改）。真机 20s 编辑器跑批：持住门禁拒绝 0 条、`has no native name` 0 条。
+- **遗留：** 绕过 `SubmitDrawBuffers` 的裸绑定调用点（`EnvMapCapture`、`DebugDrawPass` 的 `SetVertexBuffer`+`Draw`）不在门禁内（当前都是当场执行、无跨帧回放）；顶点输入布局仍允许裸指针进流（生产者都带句柄）；本树没有"显式销毁 native"入口，将来若有必须同时把句柄置为不可用，否则本次不变式会被绕过；真机复现的"索引缓冲"那条没有在本机复现出来（消费工程 PIE 退出场景），修复依据是代码级不变式 + 红灯用例，需要真机再确认一次。
+- **记录：** [BUG-RENDER-022](./bugs/BUG-RENDER-022.md)、[BUG-RENDER-023](./bugs/BUG-RENDER-023.md)。
+
+
 ## 2026-10-31 — BUG-RENDER-021 未带顶点布局的绘制不再被误拒（feat/core）
 
 - **改了什么：** `RHICommandList::SubmitDrawBuffers` 的几何门禁从"只看 packet 布局"改为三段判断：包内布局（ref 或裸指针）非空 → 按原语义要求可用；为空 → 取管线状态描述的 `VertexInputLayout`（`GetPipelineStateDesc`，`RHIGraphicsPSODesc::VertexInputLayout`，OpenGL 后端在 `ApplyGraphicsPipelineState` 用它绑定顶点数组）；两者皆空才拒绝，并走独立计数 `g_DrawWithoutVertexLayoutCount` + Error。布局来自管线状态时每个 command list 记一条 Info。

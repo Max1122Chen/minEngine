@@ -200,6 +200,9 @@ namespace minEngine
 
         m_DrawPacket.PipelineState = m_PostProcessPipelineState;
         m_DrawPacket.ShaderBindingSets[EngineShaderBindings::kSetEnginePost] = m_PostShaderBindingSet;
+        // Same hand-over as the present pass: the recorded stream keeps the quad through this
+        // handle, not through the frame view beside it.
+        m_DrawPacket.VertexBufferRef = m_ScreenQuadVertexBuffer;
         m_DrawPacket.VertexBuffer = m_ScreenQuadVertexBuffer.get();
         m_DrawPacket.VertexCount = kScreenQuadVertexCount;
     }

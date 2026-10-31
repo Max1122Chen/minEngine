@@ -508,11 +508,60 @@ namespace
                 != std::string::npos)
             {
                 Count.fetch_add(1, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(m_Mutex);
+                LastMessage = record.message;
+            }
+        }
+
+        std::string GetLastMessage()
+        {
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            return LastMessage;
+        }
+
+        std::atomic<int> Count{ 0 };
+
+    private:
+        std::mutex m_Mutex;
+        std::string LastMessage;
+    };
+
+    /**
+     * Counts the refusal a recorded stream reports when the geometry it was handed cannot be kept
+     * alive: the line that says which draw, and how much it asked for, was not submitted.
+     */
+    class BorrowedGeometryRefusalSink final : public minEngine::ILogSink
+    {
+    public:
+        void Write(const minEngine::LogRecord& record) override
+        {
+            if (record.message.find("is handed to the command list as a bare pointer")
+                != std::string::npos)
+            {
+                Count.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
         std::atomic<int> Count{ 0 };
     };
+
+    BorrowedGeometryRefusalSink& GetBorrowedGeometryRefusalSink()
+    {
+        static BorrowedGeometryRefusalSink s_Sink;
+        return s_Sink;
+    }
+
+    void EnsureBorrowedGeometryRefusalSinkInstalled()
+    {
+        static std::once_flag s_Once;
+        std::call_once(s_Once, []() {
+            minEngine::LogSystem::AddSink(std::shared_ptr<minEngine::ILogSink>(
+                &GetBorrowedGeometryRefusalSink(),
+                [](minEngine::ILogSink*) {
+                    // Process-lifetime probe: the log system keeps the reference.
+                }));
+        });
+    }
 
     PipelineStateLayoutNoticeSink& GetLayoutNoticeSink()
     {
@@ -726,4 +775,136 @@ TEST_CASE("draw-packet-lifetime: a text widget's packet names the glyph layout i
     CHECK_FALSE(minEngine::TextMeshBuilder::HasSharedLayout());
 }
 
+
+
+namespace
+{
+    /**
+     * Submits one draw per frame whose vertices are read through the layout its pipeline state
+     * binds, from a command list built for that frame alone - which is what the immediate topology
+     * does with a stack list, and what the pool does when it hands a fresh list back.
+     */
+    void SubmitPipelineStateLayoutFrames(HeadlessTestRHI& rhi, bool bRecorded, uint32_t frames)
+    {
+        RHIBufferRef indexBuffer = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+        REQUIRE(indexBuffer != nullptr);
+        indexBuffer->CreateNativeResources();
+        REQUIRE(indexBuffer->IsReady());
+
+        const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
+        REQUIRE(layout != nullptr);
+        REQUIRE(layout->IsReady());
+
+        MeshDrawPacket packet = MakeQuadPacketWithoutLayout(indexBuffer);
+        packet.PipelineState = MakePipelineStateWithLayout(rhi, layout.get());
+        REQUIRE(packet.VertexInputLayout == nullptr);
+
+        for (uint32_t frame = 0; frame < frames; ++frame)
+        {
+            RHICommandList cmdList(&rhi);
+            cmdList.SetImmediateOverride(!bRecorded);
+            if (bRecorded)
+            {
+                cmdList.BeginRecording();
+                cmdList.SubmitMeshDrawPacket(packet);
+                cmdList.FinishRecording();
+                cmdList.Replay();
+            }
+            else
+            {
+                cmdList.SubmitMeshDrawPacket(packet);
+            }
+        }
+
+        // Every frame drew: the count below is about the notice, not about missing draws.
+        CHECK(rhi.Draws.size() == frames);
+        CHECK(rhi.NamelessDraws == 0);
+    }
+}
+
+TEST_CASE("draw-packet-lifetime: twelve immediate frames report the pipeline-state layout draw once [smoke]")
+{
+    EnsureLayoutNoticeSinkInstalled();
+    PipelineStateLayoutNoticeSink& notice = GetLayoutNoticeSink();
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    // Twelve frames is more than enough to show a per-frame report: before the notice was counted
+    // for the process, each of these frames built its own command list and each list reported
+    // again, so the log carried one line per frame for as long as the session ran.
+    SubmitPipelineStateLayoutFrames(rhi, false, 12u);
+
+    CHECK(notice.Count.load(std::memory_order_relaxed) >= 1);
+    CHECK(notice.Count.load(std::memory_order_relaxed) <= 1);
+    CHECK(notice.GetLastMessage().find("draw(s) have read their vertices this way") != std::string::npos);
+}
+
+TEST_CASE("draw-packet-lifetime: twelve recorded frames report the pipeline-state layout draw once [smoke]")
+{
+    FrameThreading threading;
+    threading.Initialize(FrameThreadMode::Multi);
+
+    EnsureLayoutNoticeSinkInstalled();
+    PipelineStateLayoutNoticeSink& notice = GetLayoutNoticeSink();
+
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+
+    SubmitPipelineStateLayoutFrames(rhi, true, 12u);
+
+    CHECK(notice.Count.load(std::memory_order_relaxed) >= 1);
+    CHECK(notice.Count.load(std::memory_order_relaxed) <= 1);
+
+    threading.Shutdown();
+}
+
+TEST_CASE("draw-packet-lifetime: a recorded stream refuses geometry it cannot keep alive [smoke]")
+{
+    HeadlessTestRHI rhi;
+    InstallDeferredBufferFactory(rhi);
+    EnsureBorrowedGeometryRefusalSinkInstalled();
+
+    RHIBufferRef owner = rhi.RHICreateBuffer(MakeIndexBufferDesc(), nullptr);
+    REQUIRE(owner != nullptr);
+    owner->CreateNativeResources();
+    REQUIRE(owner->IsReady());
+
+    const minEngine::RHIVertexInputLayoutRef layout = MakeReadyLayout(rhi);
+    const int refusalsBefore = GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed);
+
+    // The producer hands the geometry over as a frame view and nothing else. A recorded stream runs
+    // after this call returns, so the only reference left is the producer's - and a producer that
+    // rebuilds its mesh drops it. There is nothing for the stream to hold, so it must not record
+    // the draw: replaying it would name an object nobody owns.
+    MeshDrawPacket packet;
+    packet.IndexBuffer = owner.get();
+    packet.IndexCount = 36u;
+    packet.VertexInputLayoutRef = layout;
+    packet.VertexInputLayout = layout.get();
+    packet.PipelineState = rhi.RHICreateGraphicsPipelineState(RHIGraphicsPSODesc{});
+    REQUIRE(packet.IndexBufferRef == nullptr);
+
+    RHICommandList cmdList(&rhi);
+    cmdList.SetImmediateOverride(false);
+    cmdList.BeginRecording();
+    cmdList.SubmitMeshDrawPacket(packet);
+    cmdList.FinishRecording();
+    cmdList.Replay();
+
+    CHECK(rhi.Draws.empty());
+    CHECK(rhi.NamelessDraws == 0);
+    CHECK(GetBorrowedGeometryRefusalSink().Count.load(std::memory_order_relaxed) > refusalsBefore);
+
+    // The immediate topology is the other case: its commands run inside the call, so the producer's
+    // own reference covers the draw and the frame view is enough. Refusing here would take the
+    // present and post-process draws out of every frame.
+    RHICommandList immediate(&rhi);
+    immediate.SetImmediateOverride(true);
+    immediate.SubmitMeshDrawPacket(packet);
+    REQUIRE(rhi.Draws.size() == 1u);
+    CHECK(rhi.Draws[0].bIndexed);
+    CHECK(rhi.Draws[0].Count == 36u);
+    CHECK(rhi.NamelessDraws == 0);
+}
 

@@ -44,6 +44,30 @@ namespace minEngine
         std::atomic<uint64_t> g_DrawWithoutVertexLayoutCount{0};
 
         /**
+         * Draws a recorded stream refused because the geometry they name is handed over as a bare
+         * pointer.
+         *
+         * A stream outlives the call that filled it and runs on the graphics role afterwards, so
+         * the only thing that can keep its geometry alive across that gap is a handle captured with
+         * the command. A packet that names a buffer through the frame view alone leaves nothing to
+         * capture: the producer may drop the last handle before the stream is replayed, and the
+         * draw then reaches the backend naming an object whose native half is already gone.
+         */
+        std::atomic<uint64_t> g_DrawWithoutPinnedGeometryCount{0};
+
+        /**
+         * Draws whose vertices were read through the layout their graphics pipeline state binds.
+         *
+         * Counted for the whole process rather than per command list, because the lists are not a
+         * stable unit of work: the immediate topology builds one on the stack per frame, so a
+         * per-list report is one line per frame and the notification stops being information.
+         */
+        std::atomic<uint64_t> g_PipelineStateVertexLayoutDrawCount{0};
+
+        /** Draws between two reports of the notice above. */
+        constexpr uint64_t kPipelineStateVertexLayoutReportInterval = 4096;
+
+        /**
          * Whether a draw may name this handle, reported once per hundred refusals.
          *
          * A buffer created off the graphics role exists as a handle at once and as a native object
@@ -137,6 +161,63 @@ namespace minEngine
                     refused);
             }
             return false;
+        }
+
+        /**
+         * Refuses a recorded draw whose geometry the stream cannot keep alive.
+         *
+         * Reported under one process-wide budget: a producer that hands geometry over as a bare
+         * pointer does it on every draw it submits, so a line per command would bury the one report
+         * that says which draw and how much it asked for.
+         */
+        bool RefuseDrawWithBorrowedGeometry(const char* kind, const void* view, uint32_t count)
+        {
+            const uint64_t refused =
+                g_DrawWithoutPinnedGeometryCount.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (refused == 1 || refused % 100 == 0)
+            {
+                ME_LOG(
+                    LogRender,
+                    Error,
+                    "Draw not submitted: the {} this draw names ({:p}) is handed to the command list "
+                    "as a bare pointer, so the recorded stream cannot keep it alive until it is "
+                    "replayed ({} requested). Fill the packet's handle for the buffer instead of its "
+                    "frame view: a stream recorded now runs after the producer's own reference is "
+                    "gone. {} draw(s) refused so far.",
+                    kind,
+                    view,
+                    count,
+                    refused);
+            }
+            return false;
+        }
+
+        /**
+         * Reports a draw that read its vertices through the layout its pipeline state binds.
+         *
+         * The first one is always visible - it is the one that says the case happens at all - and
+         * after that one line per interval carries the running total, so a session that draws this
+         * way for hours is a fact in the log without being a stream of them.
+         */
+        void ReportPipelineStateVertexLayout(uint32_t count)
+        {
+            const uint64_t reported =
+                g_PipelineStateVertexLayoutDrawCount.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (reported != 1 && reported % kPipelineStateVertexLayoutReportInterval != 0)
+            {
+                return;
+            }
+
+            ME_LOG(
+                LogRender,
+                Info,
+                "Draw submitted with the vertex input layout the graphics pipeline state binds "
+                "({} requested): the packet carries none, so the draw reads its vertices through "
+                "the layout the state was created with. {} draw(s) have read their vertices this "
+                "way in this process; reported on the first one and then every {}.",
+                count,
+                reported,
+                kPipelineStateVertexLayoutReportInterval);
         }
 
         /**
@@ -692,7 +773,7 @@ namespace minEngine
         // backend has no vertex array to bind, and the draw names nothing. It is checked before the
         // buffers because a packet can only draw them through it, and a draw that names no layout
         // anywhere has no way to read its vertices at all.
-        const auto canNameVertexState = [this, vertexLayout, bLayoutFromPipelineState](uint32_t count)
+        const auto canNameVertexState = [vertexLayout, bLayoutFromPipelineState](uint32_t count)
         {
             if (vertexLayout == nullptr)
             {
@@ -704,19 +785,40 @@ namespace minEngine
                 return false;
             }
 
-            if (bLayoutFromPipelineState && !m_bReportedPipelineStateVertexLayout)
+            if (bLayoutFromPipelineState)
             {
-                m_bReportedPipelineStateVertexLayout = true;
-                ME_LOG(
-                    LogRender,
-                    Info,
-                    "Draw submitted with the vertex input layout the graphics pipeline state binds "
-                    "({} requested): the packet carries none, so the draw reads its vertices "
-                    "through the layout the state was created with. Reported once per command "
-                    "list.",
-                    count);
+                ReportPipelineStateVertexLayout(count);
             }
             return true;
+        };
+
+        // A stream is replayed after the call that filled it has returned, so nothing it captures by
+        // pointer is still owned by anybody. What keeps the geometry alive is the handle the packet
+        // carries, and a packet that names a buffer through the frame view alone leaves the stream
+        // nothing to hold: the producer drops the last handle, the backend retires the native
+        // object, and the replay then draws geometry that no longer exists. The verdict belongs
+        // here, where the packet still says whether it has that handle - an immediate list is the
+        // other case: its commands run inside this call, so the caller's own reference covers them.
+        // A stream is replayed after the call that filled it has returned, so nothing it captures by
+        // pointer is still owned by anybody. What keeps the geometry alive is the handle the packet
+        // carries, and a packet that names a buffer through the frame view alone leaves the stream
+        // nothing to hold: the producer drops the last handle, the backend retires the native
+        // object, and the replay then draws geometry that no longer exists. The verdict belongs
+        // here, where the packet still says whether it has that handle - an immediate list is the
+        // other case: its commands run inside this call, so the caller's own reference covers them.
+        const bool bStreamMustKeepGeometry =
+            !IsImmediate() && m_State == ERHICommandListState::Recording;
+        const auto canKeepGeometry = [bStreamMustKeepGeometry](
+                                        const RHIBuffer* view,
+                                        const RHIBufferRef& pin,
+                                        const char* kind,
+                                        uint32_t count)
+        {
+            if (!bStreamMustKeepGeometry || view == nullptr || pin != nullptr)
+            {
+                return true;
+            }
+            return RefuseDrawWithBorrowedGeometry(kind, view, count);
         };
 
         if (packet.IndexBuffer)
@@ -727,6 +829,22 @@ namespace minEngine
             }
 
             if (!canNameVertexState(packet.IndexCount))
+            {
+                return;
+            }
+
+            // The pin question is asked first: it reads the packet's handles, while the readiness
+            // question below reads the objects the views name, and a view the stream does not hold
+            // is exactly the one that may already be gone.
+            if (!canKeepGeometry(packet.IndexBuffer, packet.IndexBufferRef, "index buffer", packet.IndexCount))
+            {
+                return;
+            }
+            if (!canKeepGeometry(
+                    packet.VertexBuffer,
+                    packet.VertexBufferRef,
+                    "vertex buffer",
+                    packet.IndexCount))
             {
                 return;
             }
@@ -759,6 +877,11 @@ namespace minEngine
         }
 
         if (!canNameVertexState(packet.VertexCount))
+        {
+            return;
+        }
+
+        if (!canKeepGeometry(packet.VertexBuffer, packet.VertexBufferRef, "vertex buffer", packet.VertexCount))
         {
             return;
         }
