@@ -4,9 +4,9 @@
 - **ID:** `ASSET-F10`
 - **Type:** `Feature`
 - **Complexity:** `L2`
-- **Status:** `In Progress`
+- **Status:** `Done`
 - **Owner:** project maintainer
-- **Last updated:** `2026-10-17`
+- **Last updated:** `2026-11-01`
 - **Related:**
   - [FEATURE_REGISTRY](../FEATURE_REGISTRY.md) · [ACTIVE_WORK](../ACTIVE_WORK.md)
   - [ASSET-F07](./ASSET-F07_DATA_ASSET_DESIGN.md)（薄基类 Done；派生扩展契约需修正）
@@ -334,7 +334,7 @@ DataAsset Load → 类名决定 NewObject → 正文按该类 schema → Cast<T>
 |-------|-------------|--------|
 | **S01** | 通用字段；AM 统一写入；可恢复档缺字段 Warning+重写、不符则失败；DataAsset 缺字段/错类则失败；CreateDataAsset；派生 `vector<ME_STRUCT>` roundtrip | **Done**（仓库内无旧 `.medata`，未做批量迁移工具） |
 | **S02** | `FindAssetMetasByRuntimeClass` 扫 meta 字段；F07 扩展契约勘误 | **Done** |
-| **S03** | AES / Inspector 派生（类选择 Create；`IsA(DataAsset)` 编辑）— 可另 Feature 若膨胀 | Deferred 候选 |
+| **S03** | AES / CB / `asset.create` 按类创建 + 反射类目录；Inspector 显示类名 | **Done** — [S03 Design](./ASSET-F10_S03_DATAASSET_DERIVED_CREATE_DESIGN.md) |
 
 ## Verification Strategy
 
@@ -375,12 +375,13 @@ DataAsset Load → 类名决定 NewObject → 正文按该类 schema → Cast<T>
 - [x] Verification strategy exists
 - [ ] Unresolved questions resolved or explicitly deferred/accepted — Open Q 已标 non-blocking；待维护者审阅
 
-**Ready for implementation?** `yes`（S01/S02 已落地；S03 Deferred）
+**Ready for implementation?** `Done`（S01–S03 已落地）
 
 ## Acceptance Checklist
 
 - [x] Design review waived by maintainer for urgent path（方向已确认后直接实现）
 - [x] S01/S02 实现 + suite `data-asset` PASSED
+- [x] S03 实现 + suite `data-asset`（Resolve/Collect/按名创建）PASSED
 - [x] Progress log updated
 - [x] Feature registry status synced
 - [x] F07 扩展契约勘误（S02）
@@ -389,6 +390,8 @@ DataAsset Load → 类名决定 NewObject → 正文按该类 schema → Cast<T>
 
 | Date | Note |
 |------|------|
+| 2026-11-01 | S03 Done：AES/MCP `runtimeClassName`；反射类目录 CB 菜单；Inspector 类名；导出 `ResolveCreatableClass` / `CollectCreatableClasses`。 |
+| 2026-11-01 | S03 缺口澄清：Load/CreateDataAsset 已通；阻塞在 AES/CB/MCP 只建基类。新增 [S03 Design](./ASSET-F10_S03_DATAASSET_DERIVED_CREATE_DESIGN.md)（类名参数 + 反射目录）。 |
 | 2026-10-17 | S01/S02 落地：`AssetMeta::RuntimeClassName`、Save 统一写入、Load 两档、`CreateDataAsset`、`FindAssetMetasByRuntimeClass`。suite `data-asset` PASSED。存量基类 `.medata` 无仓库内文件，未做批量迁移工具。 |
 | 2026-10-17 | 缺字段两档：AssetType 能唯一推出类 → Warning + best-effort 重写 meta；不能（DataAsset）→ Error + 失败。存量基类 `.medata` 一次性迁移，不在 Load 里猜成基类。 |
 | 2026-10-17 | 修订：`RuntimeClassName` 为通用 AssetMeta 字段（对齐 UE `FAssetData::AssetClassPath`）。DataAsset 用它构造；其它资产 Save 写入并在 Load 时冗余校验。否掉「只为 DataAsset 改 meta」。 |

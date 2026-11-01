@@ -3,6 +3,7 @@
 #include "ContextMenu/Contexts/ContentBrowserMenuContext.h"
 #include "ContextMenu/EditorActionIds.h"
 #include "ContextMenu/EditorActionRegistry.h"
+#include "ContextMenu/EditorMenuBuilder.h"
 #include "ContextMenu/EditorMenuContext.h"
 #include "ContextMenu/IEditorAction.h"
 #include "Services/AssetWorkflowModule.h"
@@ -10,7 +11,14 @@
 #include "Services/ContentBrowser/ContentBrowserModule.h"
 #include "Shell/IEditorContext.h"
 
+#include "Runtime/Core/Reflection/MEClass.h"
+#include "Runtime/Resource/Loaders/DataAssetLoader.h"
+
+#include "imgui.h"
+
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace minEngine
 {
@@ -330,49 +338,6 @@ namespace minEngine
             }
         };
 
-        class ContentBrowserCreateDataAssetAction final : public ContentBrowserScopedAction
-        {
-        public:
-            EditorActionId GetId() const override { return EditorActionId::CreateEmptyGameObject; }
-            const char* GetLabel(const EditorMenuContext& ctx) const override
-            {
-                (void)ctx;
-                return "Data Asset";
-            }
-            EditorMenuSectionId GetSection() const override { return EditorMenuSectionId::Create; }
-            int GetSortOrder() const override { return 24; }
-
-            bool IsVisibleInMenu(const EditorMenuContext& ctx) const override
-            {
-                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
-                if (cbCtx == nullptr)
-                {
-                    return false;
-                }
-
-                return cbCtx->HitKind == ContentBrowserHitKind::TreeDirectory
-                    || cbCtx->HitKind == ContentBrowserHitKind::ListBackground;
-            }
-
-            bool CanExecute(const EditorMenuContext& ctx) const override
-            {
-                return IsVisibleInMenu(ctx);
-            }
-
-            const char* GetDisabledReason(const EditorMenuContext& ctx) const override
-            {
-                (void)ctx;
-                return "";
-            }
-
-            void Execute(IEditorContext& editor, const EditorMenuContext& ctx) const override
-            {
-                const ContentBrowserMenuContext* cbCtx = GetContext(ctx);
-                const std::string_view destDir = cbCtx != nullptr ? cbCtx->CurrentDirectoryRel : std::string_view{};
-                editor.GetAssetWorkflow().TryCreateDataAssetInDirectory(destDir);
-            }
-        };
-
         class ContentBrowserCreateAtlasFromSpritesAction final : public ContentBrowserScopedAction
         {
         public:
@@ -469,6 +434,64 @@ namespace minEngine
         };
     }
 
+    class ContentBrowserCreateDataAssetMenuProviderHost
+    {
+    public:
+        static void Draw(IEditorContext& editor, const EditorMenuContext& ctx, EditorMenuBuilder& builder)
+        {
+            const ContentBrowserMenuContext* cbCtx = ctx.Find<ContentBrowserMenuContext>();
+            if (cbCtx == nullptr)
+            {
+                return;
+            }
+            if (cbCtx->HitKind != ContentBrowserHitKind::TreeDirectory
+                && cbCtx->HitKind != ContentBrowserHitKind::ListBackground)
+            {
+                return;
+            }
+
+            (void)builder;
+
+            const std::vector<const Reflection::MEClass*> classes =
+                DataAssetLoader::CollectCreatableClasses();
+            if (!ImGui::BeginMenu("Data Asset"))
+            {
+                return;
+            }
+
+            if (classes.empty())
+            {
+                ImGui::TextDisabled("No creatable DataAsset classes");
+                ImGui::EndMenu();
+                return;
+            }
+
+            const std::string_view destDir = cbCtx->CurrentDirectoryRel;
+            for (const Reflection::MEClass* classInfo : classes)
+            {
+                if (classInfo == nullptr)
+                {
+                    continue;
+                }
+
+                const std::string& fullName = classInfo->GetName();
+                const size_t colon = fullName.rfind(':');
+                const std::string label =
+                    colon == std::string::npos ? fullName : fullName.substr(colon + 1);
+                if (ImGui::MenuItem(label.c_str()))
+                {
+                    editor.GetAssetWorkflow().TryCreateDataAssetInDirectory(destDir, fullName);
+                }
+                if (ImGui::IsItemHovered() && label != fullName)
+                {
+                    ImGui::SetTooltip("%s", fullName.c_str());
+                }
+            }
+
+            ImGui::EndMenu();
+        }
+    };
+
     void RegisterContentBrowserBuiltInActions(EditorActionRegistry& registry)
     {
         registry.Register(std::make_unique<ContentBrowserImportAction>());
@@ -479,8 +502,8 @@ namespace minEngine
         registry.Register(std::make_unique<ContentBrowserCreateMaterialInstanceAction>());
         registry.Register(std::make_unique<ContentBrowserCreateSpriteAction>());
         registry.Register(std::make_unique<ContentBrowserCreateSpriteAtlasAction>());
-        registry.Register(std::make_unique<ContentBrowserCreateDataAssetAction>());
         registry.Register(std::make_unique<ContentBrowserCreateAtlasFromSpritesAction>());
+        registry.RegisterProvider(&ContentBrowserCreateDataAssetMenuProviderHost::Draw);
     }
 
 } // namespace minEngine

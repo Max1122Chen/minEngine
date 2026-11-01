@@ -55,12 +55,18 @@ namespace minEngine
             std::string_view assetType,
             std::vector<const AssetMeta*>& outMetas) const;
 
+        /**
+         * Create a creatable asset type. For DataAsset, optional runtimeClassName selects the
+         * reflected instance class (empty = base DataAsset). Other asset types reject a non-empty
+         * runtimeClassName.
+         */
         AssetEditorResult Create(
             std::string_view assetType,
             std::string_view directory,
             std::string_view name,
             std::string& outPath,
-            std::string& outGuid);
+            std::string& outGuid,
+            std::string_view runtimeClassName = {});
 
         AssetEditorResult Delete(
             IEditorContext& context,

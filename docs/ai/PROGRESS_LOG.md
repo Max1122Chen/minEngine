@@ -1,3 +1,11 @@
+## 2026-11-01 — ASSET-F10 S03：派生 DataAsset 可按类创建（master）
+
+- **问题：** Load/CreateDataAsset 已通，但 AES / CB / `asset.create` 仍只建基类，游戏侧无法创建自定义表资产。
+- **改了什么：** `DataAssetLoader::ResolveCreatableClass` / `CollectCreatableClasses`；AES `Create(..., runtimeClassName)`；MCP `asset.create` 可选 `runtimeClassName`/`className`；CB「Data Asset」反射子菜单；Inspector 显示运行时类名。
+- **验证：** `minEngine/bin` 下 `test data-asset` PASSED；导出 3040→3042（`ResolveCreatableClass`、`CollectCreatableClasses`），snapshot 已写。
+- **记录：** [S03 Design](./Asset/ASSET-F10_S03_DATAASSET_DERIVED_CREATE_DESIGN.md)；F10 **Done**。
+
+
 ## 2026-11-01 — BUG-SPR-002 sprite_atlas MCP 变更同调用立即落盘（master）
 
 - **问题：** minCraft 反馈 `add_members` / `set_padding` / `set_sampler` 报成功，随后 `save` 也报成功，但磁盘 `m_Members` / padding / sampler 不变。

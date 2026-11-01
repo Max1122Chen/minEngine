@@ -9,12 +9,15 @@
 #include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Core/Reflection/ReflectionUtils.h"
+#include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Core/Tasks/TaskHandle.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
 #include "Runtime/EngineConfig.h"
 #include "Runtime/Function/Framework/Scene/SceneManager.h"
 #include "Runtime/Resource/DataAsset.h"
+#include "Runtime/Resource/Loaders/DataAssetLoader.h"
 
 #if MINENGINE_LINK_GAME_MODULE_STUB
 #include "SampleTableDataAsset.h"
@@ -408,7 +411,140 @@ namespace minEngine
 
             return true;
         }
+
+        bool TestResolveCreatableClassAndCatalog()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            (void)GameModuleStub::SampleTableDataAsset::StaticClass();
+
+            std::string resolveError;
+            const Reflection::MEClass* baseClass =
+                DataAssetLoader::ResolveCreatableClass({}, resolveError);
+            if (baseClass != DataAsset::StaticClass() || !resolveError.empty())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: empty class name should resolve to DataAsset.");
+                return false;
+            }
+
+            const std::string expectedClassName =
+                Reflection::GetClassName<GameModuleStub::SampleTableDataAsset>();
+            const Reflection::MEClass* derivedClass =
+                DataAssetLoader::ResolveCreatableClass(expectedClassName, resolveError);
+            if (derivedClass != GameModuleStub::SampleTableDataAsset::StaticClass()
+                || !resolveError.empty())
+            {
+                ME_LOG(
+                    LogTest,
+                    Error,
+                    "DataAssetTest: ResolveCreatableClass('{}') failed ({})",
+                    expectedClassName,
+                    resolveError);
+                return false;
+            }
+
+            if (DataAssetLoader::ResolveCreatableClass("NotARealClass", resolveError) != nullptr
+                || resolveError.empty())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: missing class should fail resolve.");
+                return false;
+            }
+
+            const std::string textureClassName = Reflection::GetClassName<Texture2D>();
+            if (DataAssetLoader::ResolveCreatableClass(textureClassName, resolveError) != nullptr
+                || resolveError.empty())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: non-DataAsset class should fail resolve.");
+                return false;
+            }
+
+            bool foundDerived = false;
+            bool foundBase = false;
+            for (const Reflection::MEClass* classInfo : DataAssetLoader::CollectCreatableClasses())
+            {
+                if (classInfo == DataAsset::StaticClass())
+                {
+                    foundBase = true;
+                }
+                if (classInfo == GameModuleStub::SampleTableDataAsset::StaticClass())
+                {
+                    foundDerived = true;
+                }
+            }
+            if (!foundBase || !foundDerived)
+            {
+                ME_LOG(
+                    LogTest,
+                    Error,
+                    "DataAssetTest: CollectCreatableClasses missing base={} derived={}",
+                    foundBase,
+                    foundDerived);
+                return false;
+            }
+
+            std::string createError;
+            std::shared_ptr<Asset> createdBase = assetManager.CreateDataAsset(
+                derivedClass,
+                "SampleTableByName",
+                "Assets/_DataAssetUnitTest",
+                createError);
+            std::shared_ptr<GameModuleStub::SampleTableDataAsset> created =
+                Cast<GameModuleStub::SampleTableDataAsset>(createdBase);
+            if (!created || created->GetMeta() == nullptr)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: create via resolved class failed ({})", createError);
+                return false;
+            }
+            if (created->GetMeta()->RuntimeClassName != expectedClassName)
+            {
+                ME_LOG(
+                    LogTest,
+                    Error,
+                    "DataAssetTest: create-via-name meta class '{}'",
+                    created->GetMeta()->RuntimeClassName);
+                return false;
+            }
+
+            return true;
+        }
 #endif
+
+        bool TestResolveCreatableClassBaseOnly()
+        {
+            std::string resolveError;
+            const Reflection::MEClass* baseClass =
+                DataAssetLoader::ResolveCreatableClass({}, resolveError);
+            if (baseClass != DataAsset::StaticClass() || !resolveError.empty())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: empty resolve should yield DataAsset base.");
+                return false;
+            }
+
+            if (DataAssetLoader::ResolveCreatableClass("NotARealClass", resolveError) != nullptr
+                || resolveError.empty())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: unknown class should fail without stub.");
+                return false;
+            }
+
+            bool foundBase = false;
+            for (const Reflection::MEClass* classInfo : DataAssetLoader::CollectCreatableClasses())
+            {
+                if (classInfo == DataAsset::StaticClass())
+                {
+                    foundBase = true;
+                    break;
+                }
+            }
+            if (!foundBase)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: catalog should include DataAsset base.");
+                return false;
+            }
+
+            return true;
+        }
 
         bool RunDataAssetSmokeTestsImpl(int argc, char** argv)
         {
@@ -434,8 +570,16 @@ namespace minEngine
             {
                 return false;
             }
+            if (!TestResolveCreatableClassBaseOnly())
+            {
+                return false;
+            }
 #if MINENGINE_LINK_GAME_MODULE_STUB
             if (!TestDerivedTableRoundtrip())
+            {
+                return false;
+            }
+            if (!TestResolveCreatableClassAndCatalog())
             {
                 return false;
             }

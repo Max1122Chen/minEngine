@@ -5,6 +5,8 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace minEngine
 {
@@ -38,5 +40,17 @@ namespace minEngine
             const std::string& assetName,
             const std::string& directoryRel,
             std::string& outError);
+
+        /**
+         * Resolve a reflected class for CreateDataAsset.
+         * Empty className selects the DataAsset base class. Non-empty must FindClass,
+         * IsA(DataAsset), and not Abstract.
+         */
+        static MINENGINE_API const Reflection::MEClass* ResolveCreatableClass(
+            std::string_view runtimeClassName,
+            std::string& outError);
+
+        /** DataAsset + non-Abstract derived classes currently in the reflection table. */
+        static MINENGINE_API std::vector<const Reflection::MEClass*> CollectCreatableClasses();
     };
 }

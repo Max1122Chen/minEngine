@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-11-01（BUG-SPR-002 Fixed：sprite_atlas MCP mutate 同调用立即 save）
+Last updated: 2026-11-01（ASSET-F10 S03 Done：派生 DataAsset Create 表面）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -26,7 +26,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done** | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
-| 1 | ASSET-F10 | DataAsset 多态 Load/Create | **In Progress**（S01/S02 Done；S03 Deferred） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) |
+| — | ASSET-F10 | DataAsset 多态 Load/Create | **Done**（S01–S03） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) · [S03](./Asset/ASSET-F10_S03_DATAASSET_DERIVED_CREATE_DESIGN.md) |
 | — | CORE-F38 | TaskSystem · TaskFlow + 合成证明 | **Done** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · [Impl](./Platform/Core/CORE-F38_TASK_SYSTEM_IMPLEMENTATION.md) |
 | — | BUILD-F03 刀2 | 烧 `.def`→`explicit`（标宏 + codegen `MODULE_API`） | **Done**（批0–5 + 默认 `explicit`） | [Design](./Platform/ProductBuild/BUILD-F03_SYMBOL_CONTRACT_ROLLOUT_DESIGN.md) · 附录 C |
 | — | GP-F03 | GameplayTag 名身份修订（去 Tag 上 Manager* + hash） | **Done** | [Design](./Gameplay/GP-F03_GAMEPLAY_TAG_MESTRUCT_DESIGN.md) · `test gameplay-tags` |

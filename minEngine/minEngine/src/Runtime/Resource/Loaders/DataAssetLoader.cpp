@@ -2,11 +2,13 @@
 
 #include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
+#include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Core/Reflection/Reflection.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetSerializeHelper.h"
 #include "Runtime/Resource/DataAsset.h"
 
+#include <algorithm>
 #include <filesystem>
 
 namespace minEngine
@@ -215,5 +217,94 @@ namespace minEngine
         std::string& outError)
     {
         return Create(manager, DataAsset::StaticClass(), assetName, directoryRel, outError);
+    }
+
+    const Reflection::MEClass* DataAssetLoader::ResolveCreatableClass(
+        std::string_view runtimeClassName,
+        std::string& outError)
+    {
+        outError.clear();
+        const Reflection::MEClass* dataAssetClass = DataAsset::StaticClass();
+        if (dataAssetClass == nullptr)
+        {
+            outError = "DataAsset::StaticClass() is null";
+            return nullptr;
+        }
+
+        if (runtimeClassName.empty())
+        {
+            return dataAssetClass;
+        }
+
+        const Reflection::MEClass* classInfo =
+            Reflection::ReflectionSystem::Get().FindClass(std::string(runtimeClassName));
+        if (classInfo == nullptr)
+        {
+            outError = "DataAsset class not found: " + std::string(runtimeClassName);
+            return nullptr;
+        }
+
+        if (!classInfo->IsA(dataAssetClass))
+        {
+            outError = "Class is not a DataAsset: " + std::string(runtimeClassName);
+            return nullptr;
+        }
+
+        if (classInfo->HasSpecifier(Reflection::ClassSpecifier::Abstract))
+        {
+            outError = "DataAsset class is Abstract: " + std::string(runtimeClassName);
+            return nullptr;
+        }
+
+        return classInfo;
+    }
+
+    std::vector<const Reflection::MEClass*> DataAssetLoader::CollectCreatableClasses()
+    {
+        const Reflection::MEClass* dataAssetClass = DataAsset::StaticClass();
+        std::vector<const Reflection::MEClass*> result;
+        if (dataAssetClass == nullptr)
+        {
+            return result;
+        }
+
+        const std::vector<const Reflection::MEClass*> derived =
+            Reflection::ReflectionSystem::Get().GetDerivedClasses(dataAssetClass);
+        result.reserve(derived.size() + 1u);
+
+        if (!dataAssetClass->HasSpecifier(Reflection::ClassSpecifier::Abstract))
+        {
+            result.push_back(dataAssetClass);
+        }
+
+        for (const Reflection::MEClass* classInfo : derived)
+        {
+            if (classInfo == nullptr || classInfo == dataAssetClass)
+            {
+                continue;
+            }
+            if (classInfo->HasSpecifier(Reflection::ClassSpecifier::Abstract))
+            {
+                continue;
+            }
+            result.push_back(classInfo);
+        }
+
+        std::sort(
+            result.begin(),
+            result.end(),
+            [dataAssetClass](const Reflection::MEClass* left, const Reflection::MEClass* right)
+            {
+                if (left == dataAssetClass)
+                {
+                    return right != dataAssetClass;
+                }
+                if (right == dataAssetClass)
+                {
+                    return false;
+                }
+                return left->GetName() < right->GetName();
+            });
+        return result;
     }
 }

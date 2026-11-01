@@ -4,10 +4,12 @@
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
+#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Resource/Asset.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
-#include "Runtime/Core/Paths/PathRegistry.h"
+#include "Runtime/Resource/Loaders/DataAssetLoader.h"
 
 #include <algorithm>
 #include <cctype>
@@ -99,7 +101,8 @@ namespace minEngine
         std::string_view directory,
         std::string_view name,
         std::string& outPath,
-        std::string& outGuid)
+        std::string& outGuid,
+        std::string_view runtimeClassName)
     {
         outPath.clear();
         outGuid.clear();
@@ -119,11 +122,37 @@ namespace minEngine
         }
 
         std::string createError;
-        const std::shared_ptr<Asset> created = AssetManager::Get().CreateAssetByTypeId(
-            typeStorage,
-            std::string(name),
-            std::string(directory),
-            createError);
+        std::shared_ptr<Asset> created;
+        if (typeStorage == "DataAsset")
+        {
+            const Reflection::MEClass* classInfo =
+                DataAssetLoader::ResolveCreatableClass(runtimeClassName, createError);
+            if (classInfo == nullptr)
+            {
+                return Fail(createError.empty() ? "Invalid DataAsset class." : createError);
+            }
+
+            created = AssetManager::Get().CreateDataAsset(
+                classInfo,
+                std::string(name),
+                std::string(directory),
+                createError);
+        }
+        else
+        {
+            if (!runtimeClassName.empty())
+            {
+                return Fail(
+                    "runtimeClassName is only supported for assetType DataAsset.");
+            }
+
+            created = AssetManager::Get().CreateAssetByTypeId(
+                typeStorage,
+                std::string(name),
+                std::string(directory),
+                createError);
+        }
+
         if (created == nullptr)
         {
             return Fail(createError.empty() ? "CreateAsset failed." : createError);

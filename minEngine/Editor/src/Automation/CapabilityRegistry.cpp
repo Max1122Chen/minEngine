@@ -54,7 +54,8 @@ namespace minEngine
 
         Add({"asset", "list", "query", "asset.list", false, false, ""});
         Add({"asset", "list_import_products", "query", "asset.list_import_products", false, false, "Discover products/options for a source"});
-        Add({"asset", "create", "asset", "asset.create", false, false, "Not a Scene undo unit"});
+        Add({"asset", "create", "asset", "asset.create", false, false,
+            "Create asset; DataAsset may pass runtimeClassName"});
         Add({"asset", "import", "asset", "asset.import", false, false, "Unified import facade; products[] + options"});
         Add({"asset", "delete", "asset", "asset.delete", false, false, "Not a Scene undo unit"});
         Add({"asset", "open", "control", "asset.open", false, false, "Open and focus; no file dialog"});

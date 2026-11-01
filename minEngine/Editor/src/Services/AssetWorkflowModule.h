@@ -53,7 +53,9 @@ namespace minEngine
         bool TryCreateSpriteInDirectory(std::string_view directoryRel);
         bool TryCreateSpriteAtlasInDirectory(std::string_view directoryRel);
         bool TryCreateSpriteAtlasFromSelection(const std::vector<const AssetMeta*>& selectedSprites);
-        bool TryCreateDataAssetInDirectory(std::string_view directoryRel);
+        bool TryCreateDataAssetInDirectory(
+            std::string_view directoryRel,
+            std::string_view runtimeClassName = {});
         bool TryRequestExit(IEditorContext& context);
 
         bool OpenAsset(const AssetMeta& meta);

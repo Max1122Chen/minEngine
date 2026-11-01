@@ -1933,20 +1933,34 @@ namespace minEngine
     {
         std::string path;
         std::string guid;
+        const std::string runtimeClassName = request.Payload.value(
+            "runtimeClassName",
+            request.Payload.value("className", ""));
         const AssetEditorResult createResult = context.GetAssetEditorServices().Create(
             request.Payload.value("assetType", ""),
             request.Payload.value("directory", ""),
             request.Payload.value("name", ""),
             path,
-            guid);
+            guid,
+            runtimeClassName);
         if (!createResult.Ok)
         {
             return MakeError(request, "InvalidPayload", createResult.Message);
         }
-        return FromEditorResult(
-            request,
-            MakeOk(),
-            Json{{"path", path}, {"guid", guid}});
+
+        Json result = Json{{"path", path}, {"guid", guid}};
+        if (!runtimeClassName.empty())
+        {
+            result["runtimeClassName"] = runtimeClassName;
+        }
+        else if (request.Payload.value("assetType", "") == "DataAsset")
+        {
+            if (const AssetMeta* meta = AssetManager::Get().FindAssetMetaByPath(path))
+            {
+                result["runtimeClassName"] = meta->RuntimeClassName;
+            }
+        }
+        return FromEditorResult(request, MakeOk(), std::move(result));
     }
 
     AutomationResponse EditorAutomationSurface::HandleDeleteAsset(

@@ -860,7 +860,9 @@ namespace minEngine
             });
     }
 
-    bool AssetWorkflowModule::TryCreateDataAssetInDirectory(std::string_view directoryRel)
+    bool AssetWorkflowModule::TryCreateDataAssetInDirectory(
+        std::string_view directoryRel,
+        std::string_view runtimeClassName)
     {
         if (!m_Context || !AssetManager::HasInstance())
         {
@@ -868,14 +870,24 @@ namespace minEngine
         }
 
         const std::string directory = std::string(directoryRel);
+        std::string defaultName = "NewDataAsset";
+        if (!runtimeClassName.empty())
+        {
+            const std::string classStorage(runtimeClassName);
+            const size_t colon = classStorage.rfind(':');
+            defaultName = "New"
+                + (colon == std::string::npos ? classStorage : classStorage.substr(colon + 1));
+        }
+
         std::string createdPath;
         std::string createdGuid;
         const AssetEditorResult createResult = m_Context->GetAssetEditorServices().Create(
             "DataAsset",
             directory,
-            "NewDataAsset",
+            defaultName,
             createdPath,
-            createdGuid);
+            createdGuid,
+            runtimeClassName);
         if (!createResult.Ok)
         {
             ME_LOG(LogEditor, Warn, "AssetWorkflow: Create DataAsset failed — {}", createResult.Message);
@@ -950,8 +962,16 @@ namespace minEngine
 
         ImGui::Separator();
         ImGui::TextUnformatted("DataAsset");
-
         const Reflection::MEClass* assetClass = dataAsset->GetClass();
+        if (assetClass != nullptr)
+        {
+            ImGui::Text("Class: %s", assetClass->GetName().c_str());
+        }
+        else if (!meta.RuntimeClassName.empty())
+        {
+            ImGui::Text("Class: %s", meta.RuntimeClassName.c_str());
+        }
+
         if (assetClass == nullptr)
         {
             return;
