@@ -1,14 +1,19 @@
 #include "Services/Asset/AssetEditorServices.h"
 
+#include "Services/Scene/ScenePropertyValueCodec.h"
 #include "Shell/EditorContextHelpers.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
+#include "Runtime/Core/GUID/GUID.h"
+#include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Reflection/MEClass.h"
+#include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Resource/Asset.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/AssetMeta.h"
+#include "Runtime/Resource/DataAsset.h"
 #include "Runtime/Resource/Loaders/DataAssetLoader.h"
 
 #include <algorithm>
@@ -761,5 +766,146 @@ namespace minEngine
         return OkResult();
     }
 
+    AssetEditorResult AssetEditorServices::SetDataAssetProperty(
+        std::string_view path,
+        std::string_view guid,
+        std::string_view propertyPath,
+        const Json& value,
+        std::string& outPath,
+        std::string& outGuid,
+        std::string& outRuntimeClassName)
+    {
+        outPath.clear();
+        outGuid.clear();
+        outRuntimeClassName.clear();
+
+        if (propertyPath.empty())
+        {
+            return Fail("propertyPath is required.");
+        }
+        if (path.empty() && guid.empty())
+        {
+            return Fail("path or guid is required.");
+        }
+        if (!AssetManager::HasInstance())
+        {
+            return Fail("AssetManager is not available.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<Asset> loaded;
+        if (!path.empty())
+        {
+            loaded = AssetManager::Get().LoadAssetByPath(std::string(path), loadError);
+        }
+        else
+        {
+            GUID parsedGuid;
+            if (!ScenePropertyValueCodec::TryParseGuid(guid, parsedGuid))
+            {
+                return Fail("guid is not a valid GUID.");
+            }
+            loaded = AssetManager::Get().LoadAssetByGUID(parsedGuid, loadError);
+        }
+
+        std::shared_ptr<DataAsset> dataAsset = Cast<DataAsset>(loaded);
+        if (!dataAsset)
+        {
+            return Fail(
+                loadError.empty()
+                    ? "Asset is not a DataAsset or failed to load."
+                    : ("Failed to load DataAsset: " + loadError));
+        }
+
+        const Reflection::MEClass* ownerClass = dataAsset->GetClass();
+        if (ownerClass == nullptr)
+        {
+            return Fail("DataAsset class is null.");
+        }
+
+        const AssetMeta* meta = dataAsset->GetMeta();
+        if (meta == nullptr)
+        {
+            return Fail("DataAsset has no registry meta.");
+        }
+
+        const std::string normalizedPath =
+            ScenePropertyValueCodec::NormalizePropertyPath(propertyPath);
+        Json normalizedValue;
+        ScenePropertyValueCodec::RefError refError = ScenePropertyValueCodec::RefError::None;
+        std::string refErrorMessage;
+        if (!ScenePropertyValueCodec::TryNormalizeValueReferences(
+                value, normalizedValue, refError, refErrorMessage))
+        {
+            return Fail(refErrorMessage.empty() ? "Invalid property value." : refErrorMessage);
+        }
+
+        Serialization::SerializerOptions options;
+        options.skipUnknownField = false;
+        std::string writeError;
+        if (!ScenePropertyValueCodec::TryWriteJsonToLive(
+                *dataAsset,
+                *ownerClass,
+                normalizedPath,
+                normalizedValue,
+                writeError,
+                options,
+                &refError))
+        {
+            return Fail(writeError.empty() ? "Failed to write property." : writeError);
+        }
+
+        if (!AssetManager::Get().SaveAsset(meta->AssetPath, *dataAsset))
+        {
+            return Fail("SaveAsset failed for DataAsset.");
+        }
+
+        outPath = meta->AssetPath;
+        outGuid = meta->Guid.ToString();
+        outRuntimeClassName = ownerClass->GetName();
+        return OkResult();
+    }
+
+    AssetEditorResult AssetEditorServices::SetTextureSampler(
+        std::string_view path,
+        RHISamplerFilter filter,
+        RHISamplerAddress address)
+    {
+        if (path.empty())
+        {
+            return Fail("path is required.");
+        }
+        if (!AssetManager::HasInstance())
+        {
+            return Fail("AssetManager is not available.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<Texture2D> texture = Cast<Texture2D>(
+            AssetManager::Get().LoadAssetByPath(std::string(path), loadError));
+        if (!texture)
+        {
+            return Fail(
+                loadError.empty()
+                    ? "Failed to load Texture2D."
+                    : ("Failed to load Texture2D: " + loadError));
+        }
+
+        const AssetMeta* meta = texture->GetMeta();
+        if (meta == nullptr)
+        {
+            return Fail("Texture2D has no registry meta.");
+        }
+
+        texture->SetSamplerFilter(filter);
+        texture->SetSamplerAddress(address);
+
+        if (!AssetManager::Get().SaveAsset(meta->AssetPath, *texture))
+        {
+            return Fail("SaveAsset failed for Texture2D.");
+        }
+
+        return OkResult();
+    }
 
 }

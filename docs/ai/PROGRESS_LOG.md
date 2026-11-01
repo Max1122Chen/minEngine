@@ -1,3 +1,11 @@
+## 2026-11-01 — ASSET-F12：DataAsset set_property + Texture/Sprite mutate 立即 Save（master）
+
+- **问题：** Agent 无法改派生 DataAsset 字段；内置 Texture/Sprite 缺专用 mutate MCP；不 Save 则 weak 缓存释放后改动丢失（同 BUG-SPR-002）；`Texture2D` SaveHandler 曾只校验 `.metex` 存在不写回 sampler。
+- **改了什么：** AES `SetDataAssetProperty` / `SetTextureSampler`；MCP `dataasset.set_property`、`texture.set_sampler`、`sprite.set_source_rect`（均立即 Save）；SaveHandler 重写 sampler 进 `.metex`；CreateHandler 在无 RenderSystem 时走 CPU Texture 分支。
+- **验证：** `minEngine/bin` 下 `test data-asset` / `sprite-authoring` / `texture-sampler` PASSED；`Editor` 构建 exit 0。
+- **记录：** [Design](./Asset/ASSET-F12_DATAASSET_SET_PROPERTY_AND_TYPED_ASSET_HANDLERS_DESIGN.md)。
+
+
 ## 2026-11-01 — ASSET-F10 S03：派生 DataAsset 可按类创建（master）
 
 - **问题：** Load/CreateDataAsset 已通，但 AES / CB / `asset.create` 仍只建基类，游戏侧无法创建自定义表资产。

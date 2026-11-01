@@ -5,12 +5,14 @@
 #include "Access/SceneManagerTestAccess.h"
 
 #include "AssetManager.h"
+#include "Services/Asset/AssetEditorServices.h"
 #include "Runtime/Core/Log/LogSystem.h"
 #include "Runtime/Core/Object/ObjectCast.h"
 #include "Runtime/Core/Object/ObjectManager.h"
 #include "Runtime/Core/Paths/PathRegistry.h"
 #include "Runtime/Core/Reflection/MEClass.h"
 #include "Runtime/Core/Reflection/ReflectionUtils.h"
+#include "Runtime/Core/Serialization/Json.h"
 #include "Runtime/Function/Render/Texture.h"
 #include "Runtime/Core/Tasks/TaskHandle.h"
 #include "Runtime/Core/Tasks/TaskSystem.h"
@@ -510,6 +512,135 @@ namespace minEngine
         }
 #endif
 
+        bool TestAesSetPropertyPersistsAcrossReload()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            std::string createError;
+            std::shared_ptr<Asset> createdBase = assetManager.CreateAssetByTypeId(
+                "DataAsset", "AesSetProperty", "Assets/_DataAssetUnitTest", createError);
+            std::shared_ptr<DataAsset> created = Cast<DataAsset>(createdBase);
+            if (!created || created->GetMeta() == nullptr)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: AES create failed ({})", createError);
+                return false;
+            }
+
+            const std::string assetPath = created->GetMeta()->AssetPath;
+            const GUID assetGuid = created->GetGuid();
+            created.reset();
+            createdBase.reset();
+            assetManager.EvictLoadedAssetCache(assetPath);
+
+            AssetEditorServices services;
+            std::string outPath;
+            std::string outGuid;
+            std::string outClassName;
+            const AssetEditorResult setResult = services.SetDataAssetProperty(
+                assetPath,
+                {},
+                "m_Notes",
+                Json("aes-set-property-notes"),
+                outPath,
+                outGuid,
+                outClassName);
+            if (!setResult.Ok)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: SetDataAssetProperty failed ({})", setResult.Message);
+                return false;
+            }
+            if (outPath != assetPath || outGuid != assetGuid.ToString())
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: SetDataAssetProperty identity mismatch.");
+                return false;
+            }
+
+            assetManager.EvictLoadedAssetCache(assetPath);
+
+            std::string loadError;
+            std::shared_ptr<DataAsset> reloaded =
+                Cast<DataAsset>(assetManager.LoadAssetByPath(assetPath, loadError));
+            if (!reloaded || reloaded->GetNotes() != "aes-set-property-notes")
+            {
+                ME_LOG(
+                    LogTest,
+                    Error,
+                    "DataAssetTest: notes mismatch after AES set/reload ({})",
+                    loadError);
+                return false;
+            }
+
+            return true;
+        }
+
+#if MINENGINE_LINK_GAME_MODULE_STUB
+        bool TestAesSetPropertyDerivedRowsPersist()
+        {
+            DataAssetTestProject project;
+            AssetManager& assetManager = AssetManager::Get();
+
+            (void)GameModuleStub::SampleTableDataAsset::StaticClass();
+
+            std::string createError;
+            std::shared_ptr<Asset> createdBase = assetManager.CreateDataAsset(
+                GameModuleStub::SampleTableDataAsset::StaticClass(),
+                "AesSetRows",
+                "Assets/_DataAssetUnitTest",
+                createError);
+            std::shared_ptr<GameModuleStub::SampleTableDataAsset> created =
+                Cast<GameModuleStub::SampleTableDataAsset>(createdBase);
+            if (!created || created->GetMeta() == nullptr)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: derived AES create failed ({})", createError);
+                return false;
+            }
+
+            const std::string assetPath = created->GetMeta()->AssetPath;
+            created.reset();
+            createdBase.reset();
+            assetManager.EvictLoadedAssetCache(assetPath);
+
+            Json rows = Json::array();
+            rows.push_back(Json{{"Id", "iron"}, {"Value", 7}});
+
+            AssetEditorServices services;
+            std::string outPath;
+            std::string outGuid;
+            std::string outClassName;
+            const AssetEditorResult setResult = services.SetDataAssetProperty(
+                assetPath,
+                {},
+                "m_Rows",
+                rows,
+                outPath,
+                outGuid,
+                outClassName);
+            if (!setResult.Ok)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: SetDataAssetProperty rows failed ({})", setResult.Message);
+                return false;
+            }
+
+            assetManager.EvictLoadedAssetCache(assetPath);
+
+            std::string loadError;
+            std::shared_ptr<GameModuleStub::SampleTableDataAsset> reloaded =
+                Cast<GameModuleStub::SampleTableDataAsset>(
+                    assetManager.LoadAssetByPath(assetPath, loadError));
+            if (!reloaded
+                || reloaded->GetRows().size() != 1
+                || reloaded->GetRows()[0].Id != "iron"
+                || reloaded->GetRows()[0].Value != 7)
+            {
+                ME_LOG(LogTest, Error, "DataAssetTest: rows mismatch after AES set/reload ({})", loadError);
+                return false;
+            }
+
+            return true;
+        }
+#endif
+
         bool TestResolveCreatableClassBaseOnly()
         {
             std::string resolveError;
@@ -574,12 +705,20 @@ namespace minEngine
             {
                 return false;
             }
+            if (!TestAesSetPropertyPersistsAcrossReload())
+            {
+                return false;
+            }
 #if MINENGINE_LINK_GAME_MODULE_STUB
             if (!TestDerivedTableRoundtrip())
             {
                 return false;
             }
             if (!TestResolveCreatableClassAndCatalog())
+            {
+                return false;
+            }
+            if (!TestAesSetPropertyDerivedRowsPersist())
             {
                 return false;
             }

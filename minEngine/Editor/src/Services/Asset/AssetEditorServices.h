@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Runtime/Core/Serialization/Json.h"
+#include "Runtime/Function/Render/RHI/RHISampler.h"
+
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -105,6 +108,28 @@ namespace minEngine
         AssetEditorResult BatchRename(
             const std::vector<std::string>& orderedPaths,
             std::string_view baseStem);
+
+        /**
+         * Load a DataAsset (any reflected subclass) by path or guid, write one property from JSON,
+         * then SaveAsset while the instance is still held. Empty path uses guid; both empty fails.
+         */
+        AssetEditorResult SetDataAssetProperty(
+            std::string_view path,
+            std::string_view guid,
+            std::string_view propertyPath,
+            const Json& value,
+            std::string& outPath,
+            std::string& outGuid,
+            std::string& outRuntimeClassName);
+
+        /**
+         * Load Texture2D, set sampler axes (callers pass current values for unchanged axes),
+         * then SaveAsset so .metex header matches the live fields.
+         */
+        AssetEditorResult SetTextureSampler(
+            std::string_view path,
+            RHISamplerFilter filter,
+            RHISamplerAddress address);
 
     private:
         static AssetEditorResult OkResult();

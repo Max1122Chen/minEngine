@@ -628,19 +628,31 @@ namespace minEngine
             return false;
         }
 
-        // Runtime GPU-only saves are not supported; keep existing .metex if present.
+        // Keep cooked pixels; rewrite the header so live sampler author fields persist.
         Texture2DCookSettings settings;
         ImagePixels pixels;
         const std::string absolutePath = manager.ResolveAssetAbsolutePath(meta.AssetPath).string();
-        if (ReadCookedFile(absolutePath, settings, pixels, &outError))
+        if (!ReadCookedFile(absolutePath, settings, pixels, &outError))
         {
-            ImageLoader::Free(pixels);
-            return true;
+            outError =
+                "Texture2D Save requires an existing cooked .metex (use Import/Recook to rewrite pixels).";
+            return false;
         }
 
-        outError =
-            "Texture2D Save requires an existing cooked .metex (use Import/Recook to rewrite pixels).";
-        return false;
+        settings.SamplerFilter = texture->GetSamplerFilter();
+        settings.SamplerAddress = texture->GetSamplerAddress();
+
+        std::string writeError;
+        const bool wrote = WriteCookedFile(absolutePath, settings, pixels, &writeError);
+        ImageLoader::Free(pixels);
+        if (!wrote)
+        {
+            outError = writeError.empty() ? "Texture2D Save failed to rewrite .metex." : writeError;
+            return false;
+        }
+
+        outError.clear();
+        return true;
     }
 
     std::shared_ptr<Asset> Texture2DLoader::CreateHandler(
@@ -696,7 +708,7 @@ namespace minEngine
 
         const std::string textureName = absolutePath.stem().string();
         const GUID assetGuid = GenerateGUID();
-        RHI* rhi = RenderSystem::Get().GetRHI();
+        RHI* rhi = RenderSystem::HasInstance() ? RenderSystem::Get().GetRHI() : nullptr;
         std::shared_ptr<Texture2D> texture;
         if (rhi != nullptr)
         {

@@ -98,6 +98,9 @@ namespace minEngine
         AutomationResponse HandleBatchRename(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteCreateFromTexture(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteSave(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleSpriteSetSourceRect(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleDataAssetSetProperty(IEditorContext& context, const AutomationRequest& request);
+        AutomationResponse HandleTextureSetSampler(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasCreate(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasAddMembers(IEditorContext& context, const AutomationRequest& request);
         AutomationResponse HandleSpriteAtlasSetPadding(IEditorContext& context, const AutomationRequest& request);

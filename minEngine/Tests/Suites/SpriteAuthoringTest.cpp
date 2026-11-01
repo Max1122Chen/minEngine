@@ -15,9 +15,12 @@
 #include "Runtime/Function/Render/OpenGL/OpenGLRHI.h"
 #include "Runtime/Function/Render/Sprite/Sprite.h"
 #include "Runtime/Function/Render/Sprite/SpriteAtlas.h"
+#include "Runtime/Function/Render/Texture.h"
+#include "Runtime/Core/Serialization/Json.h"
 #include "Runtime/Resource/AssetManager.h"
 #include "Runtime/Resource/Loaders/ImageLoader.h"
 #include "Runtime/Resource/Loaders/Texture2DLoader.h"
+#include "Runtime/Resource/Loaders/Texture2DCookTypes.h"
 
 #include "doctest.h"
 
@@ -27,6 +30,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <vector>
 
 namespace
@@ -368,4 +374,115 @@ TEST_CASE("sprite-authoring: mutate then save while held persists across reload 
         CHECK(reloaded->GetPaddingMode() == SpriteAtlasPaddingMode::DilateBorder);
         CHECK(reloaded->GetSamplerFilter() == RHISamplerFilter::Linear);
     }
+}
+
+TEST_CASE("sprite-authoring: set source rect then save persists across reload [smoke]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+
+    EngineConfig engineConfig;
+    if (!PathRegistry::Get().LoadEngineConfiguration(
+            reflectionFixture.GetArgc(),
+            reflectionFixture.GetArgv(),
+            engineConfig))
+    {
+        MESSAGE("Skipping: EngineConfig unavailable");
+        return;
+    }
+
+    ScopedManagers managers;
+    ScopedTempProject project;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    ImagePixels pixels = MakeSolidPixels(8, 8);
+    std::shared_ptr<Texture2D> texture =
+        Texture2DLoader::CreateFromPixels(rhi, pixels, "RectPersist_Tex", GenerateGUID());
+    REQUIRE(texture);
+    ImageLoader::Free(pixels);
+
+    AssetEditorServices assetServices;
+    SpriteEditorServices services;
+
+    std::shared_ptr<Sprite> sprite;
+    std::string spritePath;
+    REQUIRE(services
+                .CreateSpriteFromTexture(
+                    assetServices,
+                    texture,
+                    Vector4(0.0f, 0.0f, 8.0f, 8.0f),
+                    project.GetSpritesDir(),
+                    "RectPersistSprite",
+                    &sprite,
+                    &spritePath,
+                    nullptr)
+                .Ok);
+
+    EditorCommandStack stack;
+    REQUIRE(services.SetSpriteSourceRect(stack, *sprite, Vector4(1.0f, 2.0f, 3.0f, 4.0f)).Ok);
+    REQUIRE(services.SaveSprite(*sprite).Ok);
+    sprite.reset();
+
+    // In-memory textures are not registry assets; assert the authored rect on disk instead of a
+    // full LoadAssetByPath round-trip that would fail resolving m_SourceTexture.
+    const std::filesystem::path diskPath = AssetManager::Get().ResolveAssetAbsolutePath(spritePath);
+    REQUIRE(std::filesystem::exists(diskPath));
+
+    std::ifstream in(diskPath);
+    REQUIRE(in);
+    const Json root = Json::parse(in);
+    REQUIRE(root.contains("m_SourceRectPx"));
+    REQUIRE(root["m_SourceRectPx"].is_array());
+    REQUIRE(root["m_SourceRectPx"].size() == 4);
+    CHECK(root["m_SourceRectPx"][0].get<float>() == doctest::Approx(1.0f));
+    CHECK(root["m_SourceRectPx"][1].get<float>() == doctest::Approx(2.0f));
+    CHECK(root["m_SourceRectPx"][2].get<float>() == doctest::Approx(3.0f));
+    CHECK(root["m_SourceRectPx"][3].get<float>() == doctest::Approx(4.0f));
+}
+
+TEST_CASE("sprite-authoring: texture sampler SaveHandler rewrites .metex [smoke]")
+{
+    using namespace minEngine;
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+
+    EngineConfig engineConfig;
+    if (!PathRegistry::Get().LoadEngineConfiguration(
+            reflectionFixture.GetArgc(),
+            reflectionFixture.GetArgv(),
+            engineConfig))
+    {
+        MESSAGE("Skipping: EngineConfig unavailable");
+        return;
+    }
+
+    ScopedManagers managers;
+    ScopedTempProject project;
+
+    // Hold the Create shared_ptr so SaveAsset runs without a GPU Load (no RenderSystem here).
+    std::string createError;
+    std::shared_ptr<Texture2D> texture = std::dynamic_pointer_cast<Texture2D>(
+        AssetManager::Get().CreateAssetByTypeId(
+            "Texture2D", "SamplerPersist", project.GetSpritesDir(), createError));
+    REQUIRE(texture);
+    REQUIRE(texture->GetMeta() != nullptr);
+    const std::string createdPath = texture->GetMeta()->AssetPath;
+
+    texture->SetSamplerFilter(RHISamplerFilter::Nearest);
+    texture->SetSamplerAddress(RHISamplerAddress::ClampToBorder);
+    REQUIRE(AssetManager::Get().SaveAsset(createdPath, *texture));
+
+    Texture2DCookSettings loaded;
+    ImagePixels loadedPixels;
+    std::string readError;
+    const std::filesystem::path diskPath = AssetManager::Get().ResolveAssetAbsolutePath(createdPath);
+    REQUIRE(Texture2DLoader::ReadCookedFile(diskPath.string(), loaded, loadedPixels, &readError));
+    CHECK(loaded.SamplerFilter == RHISamplerFilter::Nearest);
+    CHECK(loaded.SamplerAddress == RHISamplerAddress::ClampToBorder);
+    ImageLoader::Free(loadedPixels);
 }

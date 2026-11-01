@@ -87,6 +87,9 @@ namespace minEngine
 
         Add({"sprite", "create_from_texture", "asset", "sprite.create_from_texture", false, false, "Create Sprite from Texture2D"});
         Add({"sprite", "save", "asset", "sprite.save", false, false, "Save Sprite asset"});
+        Add({"sprite", "set_source_rect", "asset", "sprite.set_source_rect", false, false, "Set Sprite sourceRect and save"});
+        Add({"dataasset", "set_property", "asset", "dataasset.set_property", false, false, "Set DataAsset reflected property and save"});
+        Add({"texture", "set_sampler", "asset", "texture.set_sampler", false, false, "Set Texture2D sampler filter/address and save"});
         Add({"sprite_atlas", "create", "asset", "sprite_atlas.create", false, false, "Create empty SpriteAtlas"});
         Add({"sprite_atlas", "add_members", "asset", "sprite_atlas.add_members", false, false, "Add Sprite members and save"});
         Add({"sprite_atlas", "set_padding", "asset", "sprite_atlas.set_padding", false, false, "Set atlas padding/mode and save"});

@@ -317,6 +317,21 @@ namespace minEngine
                 return HandleSpriteSave(context, request);
             });
         m_Handlers.emplace(
+            "sprite.set_source_rect",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleSpriteSetSourceRect(context, request);
+            });
+        m_Handlers.emplace(
+            "dataasset.set_property",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleDataAssetSetProperty(context, request);
+            });
+        m_Handlers.emplace(
+            "texture.set_sampler",
+            [this](IEditorContext& context, const AutomationRequest& request) {
+                return HandleTextureSetSampler(context, request);
+            });
+        m_Handlers.emplace(
             "sprite_atlas.create",
             [this](IEditorContext& context, const AutomationRequest& request) {
                 return HandleSpriteAtlasCreate(context, request);
@@ -2271,6 +2286,215 @@ namespace minEngine
             return MakeError(request, "InternalError", result.Message);
         }
         return FromEditorResult(request, MakeOk(), Json{{"saved", true}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleSpriteSetSourceRect(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string path = request.Payload.value("path", "");
+        if (path.empty())
+        {
+            return MakeError(request, "InvalidPayload", "path is required.");
+        }
+        if (!request.Payload.contains("sourceRect") || !request.Payload["sourceRect"].is_array()
+            || request.Payload["sourceRect"].size() < 4)
+        {
+            return MakeError(request, "InvalidPayload", "sourceRect [x,y,w,h] is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<Sprite> sprite = std::dynamic_pointer_cast<Sprite>(
+            AssetManager::Get().LoadAssetByPath(path, loadError));
+        if (sprite == nullptr)
+        {
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load Sprite: " + path
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
+        }
+
+        const Vector4 rect(
+            request.Payload["sourceRect"][0].get<float>(),
+            request.Payload["sourceRect"][1].get<float>(),
+            request.Payload["sourceRect"][2].get<float>(),
+            request.Payload["sourceRect"][3].get<float>());
+
+        // Local stack: this op persists immediately, so there is no cross-RPC undo session.
+        EditorCommandStack commandStack;
+        const GraphEditorResult setResult =
+            context.GetSpriteEditorServices().SetSpriteSourceRect(commandStack, *sprite, rect);
+        if (!setResult.Ok)
+        {
+            return MakeError(request, "InternalError", setResult.Message);
+        }
+
+        const GraphEditorResult saveResult = context.GetSpriteEditorServices().SaveSprite(*sprite);
+        if (!saveResult.Ok)
+        {
+            return MakeError(request, "InternalError", saveResult.Message);
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{{"saved", true}, {"path", path}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleDataAssetSetProperty(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string path = request.Payload.value("path", "");
+        const std::string guid = request.Payload.value("guid", "");
+        const std::string propertyPath = request.Payload.value("propertyPath", "");
+        if (!request.Payload.contains("value"))
+        {
+            return MakeError(request, "InvalidPayload", "value is required.");
+        }
+
+        std::string outPath;
+        std::string outGuid;
+        std::string outRuntimeClassName;
+        const AssetEditorResult result = context.GetAssetEditorServices().SetDataAssetProperty(
+            path,
+            guid,
+            propertyPath,
+            request.Payload.at("value"),
+            outPath,
+            outGuid,
+            outRuntimeClassName);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InvalidPayload", result.Message);
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"saved", true},
+                {"path", outPath},
+                {"guid", outGuid},
+                {"runtimeClassName", outRuntimeClassName},
+                {"propertyPath", propertyPath}});
+    }
+
+    AutomationResponse EditorAutomationSurface::HandleTextureSetSampler(
+        IEditorContext& context,
+        const AutomationRequest& request)
+    {
+        const std::string path = request.Payload.value("path", "");
+        if (path.empty())
+        {
+            return MakeError(request, "InvalidPayload", "path is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<Texture2D> texture = std::dynamic_pointer_cast<Texture2D>(
+            AssetManager::Get().LoadAssetByPath(path, loadError));
+        if (texture == nullptr)
+        {
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load Texture2D: " + path
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
+        }
+
+        RHISamplerFilter filter = texture->GetSamplerFilter();
+        RHISamplerAddress address = texture->GetSamplerAddress();
+
+        const std::string filterStr = request.Payload.value(
+            "filter",
+            request.Payload.value("samplerFilter", ""));
+        if (!filterStr.empty())
+        {
+            if (filterStr == "Nearest")
+            {
+                filter = RHISamplerFilter::Nearest;
+            }
+            else if (filterStr == "Linear")
+            {
+                filter = RHISamplerFilter::Linear;
+            }
+            else
+            {
+                return MakeError(
+                    request,
+                    "InvalidPayload",
+                    "Unknown filter '" + filterStr + "' (expected Nearest or Linear)");
+            }
+        }
+
+        const std::string addressStr = request.Payload.value(
+            "address",
+            request.Payload.value("samplerAddress", ""));
+        if (!addressStr.empty())
+        {
+            if (addressStr == "Repeat")
+            {
+                address = RHISamplerAddress::Repeat;
+            }
+            else if (addressStr == "MirroredRepeat")
+            {
+                address = RHISamplerAddress::MirroredRepeat;
+            }
+            else if (addressStr == "ClampToEdge")
+            {
+                address = RHISamplerAddress::ClampToEdge;
+            }
+            else if (addressStr == "ClampToBorder")
+            {
+                address = RHISamplerAddress::ClampToBorder;
+            }
+            else
+            {
+                return MakeError(
+                    request,
+                    "InvalidPayload",
+                    "Unknown address '" + addressStr
+                        + "' (expected Repeat, MirroredRepeat, ClampToEdge, or ClampToBorder)");
+            }
+        }
+
+        // Drop the peek load before the service reloads and saves while holding its own shared_ptr.
+        texture.reset();
+
+        const AssetEditorResult result =
+            context.GetAssetEditorServices().SetTextureSampler(path, filter, address);
+        if (!result.Ok)
+        {
+            return MakeError(request, "InternalError", result.Message);
+        }
+
+        const char* addressName = "Repeat";
+        switch (address)
+        {
+        case RHISamplerAddress::MirroredRepeat:
+            addressName = "MirroredRepeat";
+            break;
+        case RHISamplerAddress::ClampToEdge:
+            addressName = "ClampToEdge";
+            break;
+        case RHISamplerAddress::ClampToBorder:
+            addressName = "ClampToBorder";
+            break;
+        case RHISamplerAddress::Repeat:
+        default:
+            addressName = "Repeat";
+            break;
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"saved", true},
+                {"path", path},
+                {"filter", filter == RHISamplerFilter::Nearest ? "Nearest" : "Linear"},
+                {"address", addressName}});
     }
 
     AutomationResponse EditorAutomationSurface::HandleSpriteAtlasCreate(

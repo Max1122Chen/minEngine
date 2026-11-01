@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-11-01（ASSET-F10 S03 Done：派生 DataAsset Create 表面）
+Last updated: 2026-11-01（ASSET-F12 Done：dataasset.set_property + typed mutate/Save）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  
@@ -25,6 +25,7 @@ Purpose: **short, human-maintained** list of what matters now. Agents use this f
 | 3 | RND-F30 | DebugDraw 索引线网 + AlwaysVisible 补全 | **In Progress**（S01/S02） | [Design](./Render/RND-F30_DEBUG_DRAW_INDEXED_LINES_DESIGN.md) · 续 F11 · 描边默认 Tested |
 | — | RND-F26 | View-Aware Mesh Collect（Proxy 子剔除钩子） | **Done** | [Design](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_DESIGN.md) · [Impl](./Render/RND-F26_VIEW_AWARE_MESH_COLLECT_IMPLEMENTATION.md) |
 | — | ASSET-F11 | AsyncLoad JSON 资产通用化 | **Draft**（低优挂号） | [Design](./Asset/ASSET-F11_ASYNC_JSON_ASSET_LOAD_GENERALIZATION_DESIGN.md) |
+| — | ASSET-F12 | DataAsset set_property + texture/sprite mutate（立即 Save） | **Done** | [Design](./Asset/ASSET-F12_DATAASSET_SET_PROPERTY_AND_TYPED_ASSET_HANDLERS_DESIGN.md) |
 | — | ASSET-F09 / CORE-F44 | 异步 DataAsset + Serializer 分段 | **Done** | 见 Registry |
 | — | ASSET-F10 | DataAsset 多态 Load/Create | **Done**（S01–S03） | [Design](./Asset/ASSET-F10_DATAASSET_POLYMORPHIC_LOAD_DESIGN.md) · [S03](./Asset/ASSET-F10_S03_DATAASSET_DERIVED_CREATE_DESIGN.md) |
 | — | CORE-F38 | TaskSystem · TaskFlow + 合成证明 | **Done** | [Design](./Platform/Core/CORE-F38_TASK_SYSTEM_DESIGN.md) · [Impl](./Platform/Core/CORE-F38_TASK_SYSTEM_IMPLEMENTATION.md) |
