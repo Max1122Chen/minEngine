@@ -34,6 +34,7 @@
 #include "Services/TypeQuery/TypeQueryServices.h"
 #include "Shell/Document/EditorDocumentHost.h"
 #include "Shell/Document/EditorDocumentSession.h"
+#include "Shell/EditorCommandStack.h"
 #include "Shell/IEditorContext.h"
 #include "SubEditor/Scene/SceneEditor.h"
 
@@ -2284,10 +2285,21 @@ namespace minEngine
         const AutomationRequest& request)
     {
         const std::string atlasPath = request.Payload.value("atlasPath", "");
-        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
+        if (atlasPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "atlasPath is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> atlas = std::dynamic_pointer_cast<SpriteAtlas>(
+            AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
         if (atlas == nullptr)
         {
-            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load SpriteAtlas: " + atlasPath
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
         }
 
         std::vector<std::shared_ptr<Sprite>> sprites;
@@ -2297,36 +2309,75 @@ namespace minEngine
             {
                 if (!item.is_string())
                 {
-                    continue;
+                    return MakeError(
+                        request,
+                        "InvalidPayload",
+                        "spritePaths entries must be strings.");
                 }
-                std::shared_ptr<Sprite> sprite = ([&]() -> std::shared_ptr<Sprite> { std::string _loadAssetError; return std::dynamic_pointer_cast<Sprite>(AssetManager::Get().LoadAssetByPath(item.get<std::string>(), _loadAssetError)); })();
-                if (sprite != nullptr)
+
+                const std::string spritePath = item.get<std::string>();
+                std::string spriteLoadError;
+                std::shared_ptr<Sprite> sprite = std::dynamic_pointer_cast<Sprite>(
+                    AssetManager::Get().LoadAssetByPath(spritePath, spriteLoadError));
+                if (sprite == nullptr)
                 {
-                    sprites.push_back(sprite);
+                    return MakeError(
+                        request,
+                        "InvalidPayload",
+                        "Failed to load Sprite '" + spritePath
+                            + (spriteLoadError.empty() ? "'." : ("': " + spriteLoadError)));
                 }
+                sprites.push_back(std::move(sprite));
             }
         }
 
-        const GraphEditorResult result = context.GetSpriteEditorServices().AddAtlasMembers(
-            context.GetCommandStack(),
-            *atlas,
-            sprites);
-        if (!result.Ok)
+        const size_t memberCountBefore = atlas->GetMembers().size();
+        // Local stack: this op persists immediately, so there is no cross-RPC undo session.
+        EditorCommandStack commandStack;
+        const GraphEditorResult addResult =
+            context.GetSpriteEditorServices().AddAtlasMembers(commandStack, *atlas, sprites);
+        if (!addResult.Ok)
         {
-            return MakeError(request, "InternalError", result.Message);
+            return MakeError(request, "InternalError", addResult.Message);
         }
-        return FromEditorResult(request, MakeOk(), Json{{"added", sprites.size()}});
+
+        const GraphEditorResult saveResult = context.GetSpriteEditorServices().SaveAtlas(*atlas);
+        if (!saveResult.Ok)
+        {
+            return MakeError(request, "InternalError", saveResult.Message);
+        }
+
+        const size_t added = atlas->GetMembers().size() - memberCountBefore;
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"added", added},
+                {"memberCount", atlas->GetMembers().size()},
+                {"saved", true}});
     }
 
     AutomationResponse EditorAutomationSurface::HandleSpriteAtlasSetPadding(
         IEditorContext& context,
         const AutomationRequest& request)
     {
-        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
+        const std::string atlasPath =
+            request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        if (atlasPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "atlasPath is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> atlas = std::dynamic_pointer_cast<SpriteAtlas>(
+            AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
         if (atlas == nullptr)
         {
-            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load SpriteAtlas: " + atlasPath
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
         }
 
         const int32_t padding = request.Payload.value("padding", atlas->GetPadding());
@@ -2336,36 +2387,63 @@ namespace minEngine
         {
             mode = SpriteAtlasPaddingMode::DilateBorder;
         }
-        else if (modeStr == "PadWithZero" || modeStr == "zero" || !modeStr.empty())
+        else if (modeStr == "PadWithZero" || modeStr == "zero")
         {
-            if (modeStr == "PadWithZero" || modeStr == "zero")
-            {
-                mode = SpriteAtlasPaddingMode::PadWithZero;
-            }
+            mode = SpriteAtlasPaddingMode::PadWithZero;
+        }
+        else if (!modeStr.empty())
+        {
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Unknown paddingMode '" + modeStr
+                    + "' (expected DilateBorder/dilate or PadWithZero/zero)");
         }
 
-        const GraphEditorResult result =
+        const GraphEditorResult setResult =
             context.GetSpriteEditorServices().SetAtlasPadding(*atlas, padding, mode);
-        if (!result.Ok)
+        if (!setResult.Ok)
         {
-            return MakeError(request, "InternalError", result.Message);
+            return MakeError(request, "InternalError", setResult.Message);
         }
-        return FromEditorResult(request, MakeOk(), Json{{"padding", padding}});
+
+        const GraphEditorResult saveResult = context.GetSpriteEditorServices().SaveAtlas(*atlas);
+        if (!saveResult.Ok)
+        {
+            return MakeError(request, "InternalError", saveResult.Message);
+        }
+
+        return FromEditorResult(
+            request,
+            MakeOk(),
+            Json{
+                {"padding", padding},
+                {"paddingMode",
+                 mode == SpriteAtlasPaddingMode::DilateBorder ? "DilateBorder" : "PadWithZero"},
+                {"saved", true}});
     }
 
     AutomationResponse EditorAutomationSurface::HandleSpriteAtlasSetSampler(
         IEditorContext& context,
         const AutomationRequest& request)
     {
-        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> {
-            std::string loadAssetError;
-            return std::dynamic_pointer_cast<SpriteAtlas>(
-                AssetManager::Get().LoadAssetByPath(atlasPath, loadAssetError));
-        })();
+        const std::string atlasPath =
+            request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        if (atlasPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "atlasPath is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> atlas = std::dynamic_pointer_cast<SpriteAtlas>(
+            AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
         if (atlas == nullptr)
         {
-            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load SpriteAtlas: " + atlasPath
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
         }
 
         RHISamplerFilter filter = atlas->GetSamplerFilter();
@@ -2424,11 +2502,17 @@ namespace minEngine
             }
         }
 
-        const GraphEditorResult result =
+        const GraphEditorResult setResult =
             context.GetSpriteEditorServices().SetAtlasSampler(*atlas, filter, address);
-        if (!result.Ok)
+        if (!setResult.Ok)
         {
-            return MakeError(request, "InternalError", result.Message);
+            return MakeError(request, "InternalError", setResult.Message);
+        }
+
+        const GraphEditorResult saveResult = context.GetSpriteEditorServices().SaveAtlas(*atlas);
+        if (!saveResult.Ok)
+        {
+            return MakeError(request, "InternalError", saveResult.Message);
         }
 
         const char* addressName = "ClampToEdge";
@@ -2452,43 +2536,95 @@ namespace minEngine
             MakeOk(),
             Json{
                 {"filter", filter == RHISamplerFilter::Nearest ? "Nearest" : "Linear"},
-                {"address", addressName}});
+                {"address", addressName},
+                {"saved", true}});
     }
 
     AutomationResponse EditorAutomationSurface::HandleSpriteAtlasRebuild(
         IEditorContext& context,
         const AutomationRequest& request)
     {
-        (void)context;
-        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
+        const std::string atlasPath =
+            request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        if (atlasPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "atlasPath is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> atlas = std::dynamic_pointer_cast<SpriteAtlas>(
+            AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
         if (atlas == nullptr)
         {
-            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load SpriteAtlas: " + atlasPath
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
         }
-        RHI* rhi = RenderSystem::Get().GetRHI();
-        if (rhi == nullptr)
+
+        if (!RenderSystem::HasInstance() || RenderSystem::Get().GetRHI() == nullptr)
         {
             return MakeError(request, "InternalError", "RHI is not available.");
         }
-        const GraphEditorResult result = context.GetSpriteEditorServices().RebuildAtlas(*atlas, *rhi);
-        if (!result.Ok)
+
+        const GraphEditorResult rebuildResult =
+            context.GetSpriteEditorServices().RebuildAtlas(*atlas, *RenderSystem::Get().GetRHI());
+        if (!rebuildResult.Ok)
         {
-            return MakeError(request, "InternalError", result.Message);
+            return MakeError(request, "InternalError", rebuildResult.Message);
         }
-        return FromEditorResult(request, MakeOk(), Json{{"rebuilt", true}});
+
+        const GraphEditorResult saveResult = context.GetSpriteEditorServices().SaveAtlas(*atlas);
+        if (!saveResult.Ok)
+        {
+            return MakeError(request, "InternalError", saveResult.Message);
+        }
+
+        for (const std::shared_ptr<Sprite>& sprite : atlas->GetMembers())
+        {
+            if (!sprite)
+            {
+                continue;
+            }
+            const GraphEditorResult spriteSave =
+                context.GetSpriteEditorServices().SaveSprite(*sprite);
+            if (!spriteSave.Ok)
+            {
+                return MakeError(
+                    request,
+                    "InternalError",
+                    "Rebuild succeeded but cascade save for sprite '" + sprite->GetName()
+                        + "' failed: " + spriteSave.Message);
+            }
+        }
+
+        return FromEditorResult(request, MakeOk(), Json{{"rebuilt", true}, {"saved", true}});
     }
 
     AutomationResponse EditorAutomationSurface::HandleSpriteAtlasSave(
         IEditorContext& context,
         const AutomationRequest& request)
     {
-        const std::string atlasPath = request.Payload.value("atlasPath", request.Payload.value("path", ""));
-        std::shared_ptr<SpriteAtlas> atlas = ([&]() -> std::shared_ptr<SpriteAtlas> { std::string _loadAssetError; return std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, _loadAssetError)); })();
+        const std::string atlasPath =
+            request.Payload.value("atlasPath", request.Payload.value("path", ""));
+        if (atlasPath.empty())
+        {
+            return MakeError(request, "InvalidPayload", "atlasPath is required.");
+        }
+
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> atlas = std::dynamic_pointer_cast<SpriteAtlas>(
+            AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
         if (atlas == nullptr)
         {
-            return MakeError(request, "InvalidPayload", "Failed to load SpriteAtlas: " + atlasPath);
+            return MakeError(
+                request,
+                "InvalidPayload",
+                "Failed to load SpriteAtlas: " + atlasPath
+                    + (loadError.empty() ? "" : (" (" + loadError + ")")));
         }
+
         const GraphEditorResult result = context.GetSpriteEditorServices().SaveAtlas(*atlas);
         if (!result.Ok)
         {

@@ -287,3 +287,85 @@ TEST_CASE("sprite-authoring: reject member owned by other atlas [smoke]")
     CHECK_FALSE(addOther.Ok);
     CHECK(atlasB->GetMembers().empty());
 }
+
+TEST_CASE("sprite-authoring: mutate then save while held persists across reload [smoke]")
+{
+    using namespace minEngine;
+
+    // Mimics automation: load → mutate → save before releasing the shared_ptr.
+    // AssetManager only caches weak_ptr, so a mutate without save is lost on the next load.
+
+    EngineReflectionFixture reflectionFixture;
+    REQUIRE(reflectionFixture.IsReflectionReady());
+
+    EngineConfig engineConfig;
+    if (!PathRegistry::Get().LoadEngineConfiguration(
+            reflectionFixture.GetArgc(),
+            reflectionFixture.GetArgv(),
+            engineConfig))
+    {
+        MESSAGE("Skipping: EngineConfig unavailable");
+        return;
+    }
+
+    ScopedManagers managers;
+    ScopedTempProject project;
+    ScopedHeadlessGlContext gl;
+    REQUIRE(gl.IsReady());
+    OpenGLRHI rhi;
+
+    ImagePixels pixels = MakeSolidPixels(4, 4);
+    std::shared_ptr<Texture2D> texture =
+        Texture2DLoader::CreateFromPixels(rhi, pixels, "Persist_Tex", GenerateGUID());
+    REQUIRE(texture);
+
+    AssetEditorServices assetServices;
+    SpriteEditorServices services;
+
+    std::shared_ptr<Sprite> sprite;
+    std::string spritePath;
+    REQUIRE(services
+                .CreateSpriteFromTexture(
+                    assetServices,
+                    texture,
+                    Vector4(0.0f, 0.0f, 4.0f, 4.0f),
+                    project.GetSpritesDir(),
+                    "PersistSprite",
+                    &sprite,
+                    &spritePath,
+                    nullptr)
+                .Ok);
+    REQUIRE(sprite->SetAuthoringPixels(pixels));
+    ImageLoader::Free(pixels);
+
+    std::shared_ptr<SpriteAtlas> created;
+    std::string atlasPath;
+    REQUIRE(services.CreateAtlas(assetServices, project.GetSpritesDir(), "PersistAtlas", &created, &atlasPath, nullptr)
+                .Ok);
+    created.reset();
+
+    {
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> atlas =
+            std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
+        REQUIRE(atlas);
+        EditorCommandStack stack;
+        REQUIRE(services.AddAtlasMembers(stack, *atlas, { sprite }).Ok);
+        atlas->SetPaddingMode(SpriteAtlasPaddingMode::DilateBorder);
+        atlas->SetSamplerFilter(RHISamplerFilter::Linear);
+        REQUIRE(services.SaveAtlas(*atlas).Ok);
+    }
+
+    // Force the next load through the disk path (weak cache may already be empty).
+    AssetManager::Get().EvictLoadedAssetCache(atlasPath);
+
+    {
+        std::string loadError;
+        std::shared_ptr<SpriteAtlas> reloaded =
+            std::dynamic_pointer_cast<SpriteAtlas>(AssetManager::Get().LoadAssetByPath(atlasPath, loadError));
+        REQUIRE(reloaded);
+        CHECK(reloaded->GetMembers().size() == 1);
+        CHECK(reloaded->GetPaddingMode() == SpriteAtlasPaddingMode::DilateBorder);
+        CHECK(reloaded->GetSamplerFilter() == RHISamplerFilter::Linear);
+    }
+}

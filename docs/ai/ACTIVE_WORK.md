@@ -1,6 +1,6 @@
 # Active work (agent backlog)
 
-Last updated: 2026-10-30（`master`：合入 feat/render — RND-F29/F30 + BUG-SPR-001；TD-055 Open）
+Last updated: 2026-11-01（BUG-SPR-002 Fixed：sprite_atlas MCP mutate 同调用立即 save）
 Purpose: **short, human-maintained** list of what matters now. Agents use this for planning instead of old roadmaps or unchecked design checkboxes.
 
 > **Agent:** Treat this file as the primary backlog.  

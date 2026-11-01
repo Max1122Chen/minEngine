@@ -1,3 +1,12 @@
+## 2026-11-01 — BUG-SPR-002 sprite_atlas MCP 变更同调用立即落盘（master）
+
+- **问题：** minCraft 反馈 `add_members` / `set_padding` / `set_sampler` 报成功，随后 `save` 也报成功，但磁盘 `m_Members` / padding / sampler 不变。
+- **根因：** Automation 每次 Load → 改 → 释放唯一强引用；AssetManager 仅 weak 缓存；下次 `save` 从盘重载旧对象再写回。
+- **修法：** mutate / rebuild 在持有 `shared_ptr` 期间立刻 `SaveAtlas`（rebuild 级联 SaveSprite）；响应带 `"saved": true`；sprite 路径加载失败硬失败；`added` 报成员数增量。不走 Document 钉住（与 create 同类 path 契约）。
+- **验证：** `minEngine/bin` 下 `test sprite-authoring` 4/4 PASS（46 assertions）；`MaximumEditorLib` / `Editor` / `minEngineTests` 构建 exit 0。真机 MCP 待 minCraft 复验。
+- **记录：** [BUG-SPR-002](./bugs/BUG-SPR-002.md)。
+
+
 ## 2026-10-31 — drain 不得声明游戏线程还没跑完的那一帧（feat/core）
 
 - **真机问题 1（47 条丢命令）：** Multi 拓扑一次 PIE 进出后关闭编辑器，`RenderCommandPipe: command tagged with frame 126 cannot be applied (render already drained frame 126); dropped.` 全部 47 条标签与已画帧**同一个数**，队列深度 0。
